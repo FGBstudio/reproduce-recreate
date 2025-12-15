@@ -1,12 +1,56 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import Header from "@/components/dashboard/Header";
+import RegionNav from "@/components/dashboard/RegionNav";
+import RegionOverlay from "@/components/dashboard/RegionOverlay";
+import MapView from "@/components/dashboard/MapView";
+import ProjectDetail from "@/components/dashboard/ProjectDetail";
+import { Project } from "@/lib/data";
 
 const Index = () => {
+  const [currentRegion, setCurrentRegion] = useState("GLOBAL");
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const handleRegionChange = (region: string) => {
+    setCurrentRegion(region);
+  };
+
+  const handleProjectSelect = (project: Project) => {
+    setSelectedProject(project);
+  };
+
+  const handleCloseProject = () => {
+    setSelectedProject(null);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="h-screen w-screen overflow-hidden bg-background">
+      {/* Map Layer */}
+      <MapView 
+        currentRegion={currentRegion} 
+        onProjectSelect={handleProjectSelect} 
+      />
+
+      {/* UI Overlay */}
+      <Header />
+      
+      <RegionOverlay 
+        currentRegion={currentRegion} 
+        visible={!selectedProject && currentRegion !== "GLOBAL"} 
+      />
+      
+      <RegionNav 
+        currentRegion={currentRegion} 
+        onRegionChange={handleRegionChange}
+        visible={!selectedProject}
+      />
+
+      {/* Project Detail Modal */}
+      {selectedProject && (
+        <ProjectDetail 
+          project={selectedProject} 
+          onClose={handleCloseProject} 
+        />
+      )}
     </div>
   );
 };
