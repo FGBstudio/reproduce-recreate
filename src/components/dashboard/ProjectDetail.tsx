@@ -1,11 +1,66 @@
-import { useState, useMemo } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Zap, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet } from "lucide-react";
 import { Project } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from "recharts";
+import html2canvas from "html2canvas";
+
+// Export utilities
+const exportAsImage = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
+  if (!ref.current) return;
+  try {
+    const canvas = await html2canvas(ref.current, { backgroundColor: '#ffffff', scale: 2 });
+    const link = document.createElement('a');
+    link.download = `${filename}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (error) {
+    console.error('Export image failed:', error);
+  }
+};
+
+const exportAsCSV = (data: Record<string, unknown>[], filename: string) => {
+  if (!data.length) return;
+  const headers = Object.keys(data[0]);
+  const csvContent = [headers.join(','), ...data.map(row => headers.map(h => row[h]).join(','))].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}.csv`;
+  link.click();
+};
+
+const exportAsJSON = (data: Record<string, unknown>[], filename: string) => {
+  const jsonContent = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonContent], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}.json`;
+  link.click();
+};
+
+interface ExportButtonsProps {
+  chartRef: React.RefObject<HTMLDivElement | null>;
+  data: Record<string, unknown>[];
+  filename: string;
+}
+
+const ExportButtons = ({ chartRef, data, filename }: ExportButtonsProps) => (
+  <div className="flex gap-1">
+    <button onClick={() => exportAsImage(chartRef, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export PNG">
+      <Image className="w-3.5 h-3.5 text-gray-600" />
+    </button>
+    <button onClick={() => exportAsCSV(data, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export CSV">
+      <FileSpreadsheet className="w-3.5 h-3.5 text-gray-600" />
+    </button>
+    <button onClick={() => exportAsJSON(data, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export JSON">
+      <FileJson className="w-3.5 h-3.5 text-gray-600" />
+    </button>
+  </div>
+);
 
 interface ProjectDetailProps {
   project: Project | null;
@@ -15,6 +70,19 @@ interface ProjectDetailProps {
 const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const totalSlides = 5;
+
+  // Chart refs for export
+  const energyDensityRef = useRef<HTMLDivElement>(null);
+  const alertsRef = useRef<HTMLDivElement>(null);
+  const periodRef = useRef<HTMLDivElement>(null);
+  const heatmapRef = useRef<HTMLDivElement>(null);
+  const actualVsAvgRef = useRef<HTMLDivElement>(null);
+  const powerConsRef = useRef<HTMLDivElement>(null);
+  const deviceConsRef = useRef<HTMLDivElement>(null);
+  const carbonRef = useRef<HTMLDivElement>(null);
+  const trendRef = useRef<HTMLDivElement>(null);
+  const outdoorRef = useRef<HTMLDivElement>(null);
+  const airQualityRef = useRef<HTMLDivElement>(null);
 
   // Generate heatmap data
   const heatmapData = useMemo(() => {
@@ -29,6 +97,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
     return hours;
   }, [project?.id]);
+
+  const heatmapExportData = useMemo(() => {
+    const days = ['27-05', '28-05', '29-05', '30-05', '31-05', '01-06', '02-06'];
+    return heatmapData.map((row, h) => {
+      const obj: Record<string, unknown> = { hour: `${String(h).padStart(2, '0')}:00` };
+      days.forEach((day, d) => obj[day] = row[d]);
+      return obj;
+    });
+  }, [heatmapData]);
 
   // Monthly energy data
   const monthlyData = useMemo(() => [
@@ -101,6 +178,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { name: 'Plugs and Loads', value: 20, color: 'hsl(338, 50%, 75%)' },
   ], []);
 
+  // Alert data for export
+  const alertData = useMemo(() => [
+    { type: 'Critical', count: 0 },
+    { type: 'High', count: 0 },
+    { type: 'Medium', count: 0 },
+    { type: 'Low', count: 0 },
+  ], []);
+
   if (!project) return null;
 
   const nextSlide = () => {
@@ -116,6 +201,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   };
 
   const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
+
+  // Air quality data for export
+  const airQualityData = [
+    { metric: 'Air Quality Index', value: project.data.aq },
+    { metric: 'CO2 (ppm)', value: project.data.co2 },
+    { metric: 'Temperature', value: project.data.temp },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 animate-slide-up">
@@ -178,8 +270,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
               <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                 {/* Energy Density Donut */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Energy density</h3>
+                <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Energy density</h3>
+                    <ExportButtons chartRef={energyDensityRef} data={donutData} filename="energy-density" />
+                  </div>
                   <div className="flex items-center gap-8">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -246,8 +341,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
               <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Site Alerts */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Site Alerts</h3>
+                <div ref={alertsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Site Alerts</h3>
+                    <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
+                  </div>
                   <div className="flex items-start gap-8">
                     <div className="text-center">
                       <p className="text-sm text-gray-500 mb-2">Open now</p>
@@ -282,7 +380,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Period Table */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Energy Periods</h3>
+                    <ExportButtons chartRef={periodRef} data={periodData} filename="energy-periods" />
+                  </div>
                   <table className="w-full">
                     <thead>
                       <tr className="text-gray-500 text-sm">
@@ -307,8 +409,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Heatmap */}
-                <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Heatmap</h3>
+                <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Heatmap</h3>
+                    <ExportButtons chartRef={heatmapRef} data={heatmapExportData} filename="heatmap" />
+                  </div>
                   <div className="flex gap-4">
                     <div className="text-xs text-gray-500 space-y-[6px] pt-1">
                       {Array.from({ length: 24 }, (_, i) => (
@@ -350,8 +455,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
               <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Actual vs Average */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Actual vs Average</h3>
+                <div ref={actualVsAvgRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Actual vs Average</h3>
+                    <ExportButtons chartRef={actualVsAvgRef} data={monthlyData} filename="actual-vs-average" />
+                  </div>
                   <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={monthlyData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -368,8 +476,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Power Consumption Donut */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Power consumption</h3>
+                <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Power consumption</h3>
+                    <ExportButtons chartRef={powerConsRef} data={donutData} filename="power-consumption" />
+                  </div>
                   <div className="flex items-center gap-8">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -409,8 +520,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Device Consumption Bar Chart */}
-                <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Device consumption</h3>
+                <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Device consumption</h3>
+                    <ExportButtons chartRef={deviceConsRef} data={deviceData} filename="device-consumption" />
+                  </div>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={deviceData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -431,8 +545,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
               <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Carbon Footprint */}
-                <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Carbon Footprint</h3>
+                <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Carbon Footprint</h3>
+                    <ExportButtons chartRef={carbonRef} data={carbonData} filename="carbon-footprint" />
+                  </div>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={carbonData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -449,8 +566,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Energy Trend Over Time */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Energy Trend Over Time</h3>
+                <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Energy Trend Over Time</h3>
+                    <ExportButtons chartRef={trendRef} data={trendData} filename="energy-trend" />
+                  </div>
                   <ResponsiveContainer width="100%" height={200}>
                     <AreaChart data={trendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -467,8 +587,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Energy vs Outdoor */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Energy consumption vs outdoor condition</h3>
+                <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-800">Energy consumption vs outdoor condition</h3>
+                    <ExportButtons chartRef={outdoorRef} data={outdoorData} filename="energy-vs-outdoor" />
+                  </div>
                   <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={outdoorData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -486,7 +609,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
             {/* Slide 5: Air Quality (Original Slide 2) */}
             <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
-              <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
+              <div ref={airQualityRef} className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
+                <div className="absolute top-4 right-4">
+                  <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
+                </div>
                 <div className="flex-1 text-center md:text-left z-10">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 text-xs font-bold mb-4">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
