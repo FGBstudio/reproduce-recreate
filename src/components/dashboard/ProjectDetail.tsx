@@ -1,6 +1,11 @@
 import { useState, useMemo } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Zap, Wind, Thermometer, AlertCircle } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Zap, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud } from "lucide-react";
 import { Project } from "@/lib/data";
+import {
+  LineChart, Line, BarChart, Bar, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from "recharts";
 
 interface ProjectDetailProps {
   project: Project | null;
@@ -9,15 +14,92 @@ interface ProjectDetailProps {
 
 const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 3;
+  const totalSlides = 5;
 
   // Generate heatmap data
   const heatmapData = useMemo(() => {
-    return Array(72).fill(0).map(() => {
-      const r = Math.random();
-      return r > 0.9 ? "bg-rose-500" : r > 0.6 ? "bg-yellow-400" : r > 0.3 ? "bg-teal-500" : "bg-white/10";
-    });
+    const hours = [];
+    for (let h = 0; h < 24; h++) {
+      const row = [];
+      for (let d = 0; d < 7; d++) {
+        const r = Math.random();
+        row.push(r > 0.85 ? 4 : r > 0.6 ? 3 : r > 0.35 ? 2 : 1);
+      }
+      hours.push(row);
+    }
+    return hours;
   }, [project?.id]);
+
+  // Monthly energy data
+  const monthlyData = useMemo(() => [
+    { month: 'Jan', actual: 850, expected: 900, average: 780, offHours: 120 },
+    { month: 'Feb', actual: 720, expected: 850, average: 750, offHours: 100 },
+    { month: 'Mar', actual: 680, expected: 800, average: 720, offHours: 90 },
+    { month: 'Apr', actual: 590, expected: 750, average: 680, offHours: 80 },
+    { month: 'May', actual: 480, expected: 600, average: 550, offHours: 70 },
+    { month: 'Jun', actual: 420, expected: 500, average: 480, offHours: 60 },
+    { month: 'Jul', actual: 380, expected: 450, average: 420, offHours: 55 },
+    { month: 'Aug', actual: 410, expected: 480, average: 450, offHours: 65 },
+    { month: 'Sep', actual: 520, expected: 600, average: 550, offHours: 75 },
+    { month: 'Oct', actual: 650, expected: 750, average: 680, offHours: 90 },
+    { month: 'Nov', actual: 780, expected: 850, average: 750, offHours: 110 },
+    { month: 'Dec', actual: 890, expected: 950, average: 820, offHours: 130 },
+  ], []);
+
+  // Device consumption data
+  const deviceData = useMemo(() => [
+    { month: 'Jan', hvac: 8500, lighting: 4200, plugs: 2100 },
+    { month: 'Feb', hvac: 7800, lighting: 3900, plugs: 2000 },
+    { month: 'Mar', hvac: 6500, lighting: 3600, plugs: 1900 },
+    { month: 'Apr', hvac: 5200, lighting: 3400, plugs: 1800 },
+    { month: 'May', hvac: 4800, lighting: 3200, plugs: 1750 },
+    { month: 'Jun', hvac: 6200, lighting: 3000, plugs: 1700 },
+    { month: 'Jul', hvac: 7500, lighting: 2800, plugs: 1650 },
+    { month: 'Aug', hvac: 7800, lighting: 2900, plugs: 1680 },
+    { month: 'Sep', hvac: 6000, lighting: 3100, plugs: 1720 },
+    { month: 'Oct', hvac: 4500, lighting: 3500, plugs: 1850 },
+    { month: 'Nov', hvac: 6800, lighting: 3800, plugs: 1950 },
+    { month: 'Dec', hvac: 8200, lighting: 4100, plugs: 2050 },
+  ], []);
+
+  // Carbon footprint data
+  const carbonData = useMemo(() => [
+    { week: 'W1', june: 450, july: 520, august: 480, september: 410 },
+    { week: 'W2', june: 380, july: 490, august: 520, september: 390 },
+    { week: 'W3', june: 420, july: 550, august: 490, september: 420 },
+    { week: 'W4', june: 390, july: 480, august: 510, september: 380 },
+  ], []);
+
+  // Energy trend data
+  const trendData = useMemo(() => [
+    { day: 'Tue', general: 4.2, lights: 1.8, hvac: 2.1, plugs: 0.8 },
+    { day: 'Wed', general: 8.5, lights: 2.2, hvac: 4.8, plugs: 1.2 },
+    { day: 'Thu', general: 12.8, lights: 3.1, hvac: 7.2, plugs: 1.8 },
+    { day: 'Fri', general: 18.5, lights: 4.2, hvac: 10.5, plugs: 2.4 },
+  ], []);
+
+  // Energy vs outdoor data
+  const outdoorData = useMemo(() => [
+    { day: 'Tue', hvacOffice: 3.2, temperature: 2.1 },
+    { day: 'Wed', hvacOffice: 5.8, temperature: 4.2 },
+    { day: 'Thu', hvacOffice: 8.5, temperature: 6.8 },
+    { day: 'Fri', hvacOffice: 12.2, temperature: 9.5 },
+  ], []);
+
+  // Period table data
+  const periodData = useMemo(() => [
+    { period: 'Mar 2025', kWh: 4834.81, price: 'US$1,112.01', trend: 'down' },
+    { period: 'Apr 2025', kWh: 5423.12, price: 'US$1,247.32', trend: 'down' },
+    { period: 'May 2025', kWh: 5759.18, price: 'US$1,324.61', trend: 'down' },
+    { period: 'Jun 2025', kWh: 757.51, price: 'US$174.23', trend: 'down' },
+  ], []);
+
+  // Donut chart data
+  const donutData = useMemo(() => [
+    { name: 'HVAC', value: 45, color: 'hsl(188, 100%, 19%)' },
+    { name: 'Lighting', value: 35, color: 'hsl(338, 50%, 45%)' },
+    { name: 'Plugs and Loads', value: 20, color: 'hsl(338, 50%, 75%)' },
+  ], []);
 
   if (!project) return null;
 
@@ -33,12 +115,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   };
 
-  const aqColorClass = {
-    EXCELLENT: "text-emerald-400",
-    GOOD: "text-emerald-400",
-    MODERATE: "text-yellow-400",
-    POOR: "text-rose-400",
-  }[project.data.aq] || "text-foreground";
+  const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
 
   return (
     <div className="fixed inset-0 z-50 animate-slide-up">
@@ -47,184 +124,390 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         <img 
           src={project.img} 
           alt={project.name}
-          className="w-full h-full object-cover brightness-[0.4]"
+          className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/40 to-white/60" />
       </div>
 
       {/* Header */}
-      <div className="absolute top-0 w-full px-8 py-6 flex justify-between items-center z-10">
+      <div className="absolute top-0 left-0 w-full px-8 py-6 flex justify-between items-center z-10">
         <button 
           onClick={onClose}
-          className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-sm font-semibold transition-all group border border-white/10"
+          className="flex items-center gap-2 px-4 py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-sm font-semibold transition-all group border border-black/10"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           Back to Region
         </button>
-        <div className="text-right">
-          <h1 className="text-3xl font-serif text-foreground tracking-wide">{project.name}</h1>
-          <p className="text-sm text-muted-foreground font-light tracking-widest uppercase">{project.address}</p>
-        </div>
       </div>
 
-      {/* Carousel Content */}
-      <div className="absolute bottom-0 w-full h-[85vh] flex flex-col justify-center px-4 md:px-16 pb-12">
-        <div className="relative w-full max-w-7xl mx-auto h-[600px] overflow-hidden">
+      {/* Main Content */}
+      <div className="absolute inset-0 pt-20 pb-24 flex flex-col">
+        {/* Title Area with Icons */}
+        <div className="px-8 md:px-16 mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-fgb-secondary flex items-center justify-center">
+              <Lightbulb className="w-5 h-5 text-white" />
+            </div>
+            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+              <Cloud className="w-5 h-5 text-gray-500" />
+            </div>
+            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+              <Droplet className="w-5 h-5 text-gray-500" />
+            </div>
+            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+              <Award className="w-5 h-5 text-gray-500" />
+            </div>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-fgb-secondary tracking-wide">{project.name}</h1>
+          <div className="flex items-center gap-3 text-gray-600">
+            <span>{project.address}</span>
+            <span className="text-gray-400">|</span>
+            <span className="flex items-center gap-1">
+              {project.data.temp}° <Cloud className="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+
+        {/* Carousel Content */}
+        <div className="flex-1 relative overflow-hidden">
           <div 
             className="flex h-full transition-transform duration-700 ease-in-out"
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
-            {/* Slide 1: Energy Overview */}
-            <div className="w-full flex-shrink-0 px-4 flex items-center justify-center">
-              <div className="w-full h-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-end">
-                {/* Main Donut Card */}
-                <div className="glass-card p-10 relative overflow-hidden h-[400px] flex flex-col justify-between group">
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Zap className="w-5 h-5 text-fgb-accent" />
-                      <h3 className="text-2xl font-bold">Energy Density</h3>
+            {/* Slide 1: Energy Density Overview */}
+            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                {/* Energy Density Donut */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Energy density</h3>
+                  <div className="flex items-center gap-8">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-fgb-secondary" />
+                        <span className="text-sm text-gray-600">HVAC</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,45%)]" />
+                        <span className="text-sm text-gray-600">Lighting</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,75%)]" />
+                        <span className="text-sm text-gray-600">Plugs and Loads</span>
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">Total consumption kWh/m²</div>
-                  </div>
-                  
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-64 h-64">
-                    <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                      <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.1)" strokeWidth="10" fill="none" />
-                      <circle 
-                        cx="50" cy="50" r="40" 
-                        stroke="hsl(188, 100%, 19%)" 
-                        strokeWidth="10" 
-                        fill="none" 
-                        strokeDasharray="251" 
-                        strokeDashoffset="100" 
-                      />
-                      <circle 
-                        cx="50" cy="50" r="40" 
-                        stroke="hsl(43, 41%, 57%)" 
-                        strokeWidth="10" 
-                        fill="none" 
-                        strokeDasharray="251" 
-                        strokeDashoffset="200" 
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-5xl font-bold text-foreground">{project.data.total}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-8 relative z-10">
-                    <div>
-                      <div className="text-xs text-fgb-accent uppercase mb-1">HVAC</div>
-                      <div className="text-2xl font-bold">{project.data.hvac}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-fgb-accent uppercase mb-1">Lighting</div>
-                      <div className="text-2xl font-bold">{project.data.light}</div>
+                    <div className="relative w-40 h-40">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={donutData}
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            {donutData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-4xl font-bold text-fgb-secondary">{project.data.total}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Context Card */}
-                <div className="glass-card p-8 h-[300px] flex flex-col justify-center">
-                  <h4 className="text-lg font-bold mb-6 border-b border-white/10 pb-4">Consumption Breakdown</h4>
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <span className="w-8 text-xs font-bold text-muted-foreground">HVAC</span>
-                      <div className="flex-1 h-3 bg-muted/50 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-teal-500 to-teal-300 w-[45%]" />
-                      </div>
-                      <span className="text-sm font-bold">45%</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="w-8 text-xs font-bold text-muted-foreground">LGT</span>
-                      <div className="flex-1 h-3 bg-muted/50 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-yellow-500 to-yellow-300 w-[35%]" />
-                      </div>
-                      <span className="text-sm font-bold">35%</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="w-8 text-xs font-bold text-muted-foreground">PLG</span>
-                      <div className="flex-1 h-3 bg-muted/50 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-pink-500 to-pink-300 w-[20%]" />
-                      </div>
-                      <span className="text-sm font-bold">20%</span>
-                    </div>
+                {/* Energy Density Cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Energy density</p>
+                    <p className="text-sm font-semibold text-fgb-secondary mb-2">HVAC</p>
+                    <p className="text-4xl font-bold text-fgb-secondary">{project.data.hvac}</p>
+                    <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+                  </div>
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Energy density</p>
+                    <p className="text-sm font-semibold text-[hsl(338,50%,45%)] mb-2">Lighting</p>
+                    <p className="text-4xl font-bold text-[hsl(338,50%,45%)]">{project.data.light}</p>
+                    <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+                  </div>
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Energy density</p>
+                    <p className="text-sm font-semibold text-[hsl(338,50%,75%)] mb-2">Plugs & Loads</p>
+                    <p className="text-4xl font-bold text-[hsl(338,50%,75%)]">11</p>
+                    <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Slide 2: Air Quality */}
-            <div className="w-full flex-shrink-0 px-4 flex items-center justify-center">
-              <div className="w-full max-w-4xl glass-card p-12 flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
-                {/* Background Decoration */}
-                <div className="absolute -right-20 -top-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl" />
-                
-                <div className="flex-1 text-center md:text-left z-10">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold mb-4">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    LIVE MONITORING
+            {/* Slide 2: Site Alerts & Heatmap */}
+            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Site Alerts */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Site Alerts</h3>
+                  <div className="flex items-start gap-8">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-500 mb-2">Open now</p>
+                      <p className="text-6xl font-bold text-gray-800">{project.data.alerts}</p>
+                      <div className="flex gap-2 mt-4">
+                        <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 Critical</span>
+                        <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 High</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-4">Opened in last 7 days</p>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-fgb-secondary font-semibold">Critical</span>
+                          <span className="text-sm text-gray-600">0</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-fgb-secondary font-semibold">High</span>
+                          <span className="text-sm text-gray-600">0</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Medium</span>
+                          <span className="text-sm text-gray-600">0</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-fgb-secondary font-semibold">Low</span>
+                          <span className="text-sm text-gray-600">0</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className={`text-6xl font-bold mb-2 tracking-tight ${aqColorClass}`}>
-                    {project.data.aq}
-                  </h3>
-                  <p className="text-muted-foreground uppercase tracking-[0.2em] text-sm">Indoor Air Quality Index</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6 z-10">
-                  <div className="bg-black/20 p-6 rounded-2xl border border-white/5 text-center w-36">
-                    <Wind className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <div className="text-3xl font-bold text-foreground">{project.data.co2}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase mt-1">ppm CO2</div>
-                  </div>
-                  <div className="bg-black/20 p-6 rounded-2xl border border-white/5 text-center w-36">
-                    <Thermometer className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <div className="text-3xl font-bold text-foreground">{project.data.temp}°</div>
-                    <div className="text-[10px] text-muted-foreground uppercase mt-1">Temperature</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Slide 3: Alerts & Heatmap */}
-            <div className="w-full flex-shrink-0 px-4 flex items-center justify-center">
-              <div className="w-full h-full grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Alert Status */}
-                <div className="glass-card p-8 flex flex-col items-center justify-center text-center">
-                  <div className={`w-24 h-24 rounded-full border-4 ${project.data.alerts > 0 ? "border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.3)]" : "border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"} flex items-center justify-center mb-6`}>
-                    <span className="text-4xl font-bold text-foreground">{project.data.alerts}</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-1">Active Alerts</h3>
-                  <p className="text-xs text-muted-foreground mb-6">Last 24 Hours</p>
-                  <button className={`w-full py-3 rounded-lg ${project.data.alerts > 0 ? "bg-rose-500/20 border border-rose-500/50 text-rose-300 hover:bg-rose-500 hover:text-foreground" : "bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-background"} text-sm font-bold transition`}>
-                    VIEW LOGS
-                  </button>
+                {/* Period Table */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-gray-500 text-sm">
+                        <th className="text-left pb-4">Period</th>
+                        <th className="text-right pb-4">kWh</th>
+                        <th className="text-right pb-4">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {periodData.map((row, idx) => (
+                        <tr key={idx} className="border-t border-gray-100">
+                          <td className="py-3 text-sm">
+                            <span className="text-gray-800">{row.period}</span>
+                            <span className="text-green-500 ml-1">↓</span>
+                          </td>
+                          <td className="py-3 text-sm text-right text-gray-600">{row.kWh.toLocaleString()}</td>
+                          <td className="py-3 text-sm text-right text-gray-600">{row.price}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* Heatmap */}
-                <div className="md:col-span-2 glass-card p-8 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold">Occupancy Heatmap</h3>
-                    <div className="flex gap-2">
-                      <span className="w-3 h-3 bg-background rounded-sm" />
-                      <span className="w-3 h-3 bg-teal-500 rounded-sm" />
-                      <span className="w-3 h-3 bg-yellow-400 rounded-sm" />
-                      <span className="w-3 h-3 bg-rose-500 rounded-sm" />
+                <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Heatmap</h3>
+                  <div className="flex gap-4">
+                    <div className="text-xs text-gray-500 space-y-[6px] pt-1">
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <div key={i} className="h-4">{String(i).padStart(2, '0')}:00</div>
+                      ))}
+                    </div>
+                    <div className="flex-1">
+                      <div className="grid grid-cols-7 gap-[2px]">
+                        {heatmapData.flat().map((val, idx) => (
+                          <div 
+                            key={idx}
+                            className="h-4 rounded-sm"
+                            style={{ backgroundColor: heatmapColors[val] }}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>27-05</span>
+                        <span>28-05</span>
+                        <span>29-05</span>
+                        <span>30-05</span>
+                        <span>31-05</span>
+                        <span>01-06</span>
+                        <span>02-06</span>
+                      </div>
+                      <div className="flex gap-4 mt-4 text-xs">
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[1] }} /> 0-4.9 kWh</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[2] }} /> 4.9-9.8 kWh</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[3] }} /> 14.7-19.6 kWh</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[4] }} /> 19.6-24.5 kWh</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex-1 grid grid-cols-12 grid-rows-6 gap-1">
-                    {heatmapData.map((color, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`${color} rounded-sm opacity-80 hover:opacity-100 transition`} 
-                      />
-                    ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Slide 3: Actual vs Average & Device Consumption */}
+            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Actual vs Average */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Actual vs Average</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kWh`} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Power Consumption Donut */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Power consumption</h3>
+                  <div className="flex items-center gap-8">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-fgb-secondary" />
+                        <span className="text-sm text-gray-600">HVAC</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,45%)]" />
+                        <span className="text-sm text-gray-600">Lighting</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,75%)]" />
+                        <span className="text-sm text-gray-600">Plugs and Loads</span>
+                      </div>
+                    </div>
+                    <div className="relative w-40 h-40">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={donutData}
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            {donutData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-4xl font-bold text-fgb-secondary">89</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-2 font-mono">
-                    <span>08:00</span>
-                    <span>12:00</span>
-                    <span>16:00</span>
-                    <span>20:00</span>
+                </div>
+
+                {/* Device Consumption Bar Chart */}
+                <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Device consumption</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={deviceData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v/1000}k kWh`} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
+                      <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Lighting" />
+                      <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Slide 4: Carbon Footprint & Energy Trends */}
+            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Carbon Footprint */}
+                <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Carbon Footprint</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={carbonData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="week" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" />
+                      <Bar dataKey="july" fill="hsl(338, 50%, 45%)" name="July" />
+                      <Bar dataKey="august" fill="hsl(338, 50%, 75%)" name="August" />
+                      <Bar dataKey="september" fill="hsl(188, 100%, 35%)" name="September" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Energy Trend Over Time */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Energy Trend Over Time</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.6} name="General" />
+                      <Area type="monotone" dataKey="hvac" stackId="2" stroke="hsl(338, 50%, 45%)" fill="hsl(338, 50%, 45%)" fillOpacity={0.6} name="HVAC" />
+                      <Area type="monotone" dataKey="lights" stackId="3" stroke="hsl(188, 100%, 35%)" fill="hsl(188, 100%, 35%)" fillOpacity={0.4} name="Lights" />
+                      <Area type="monotone" dataKey="plugs" stackId="4" stroke="hsl(338, 50%, 75%)" fill="hsl(338, 50%, 75%)" fillOpacity={0.4} name="Plugs" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Energy vs Outdoor */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">Energy consumption vs outdoor condition</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={outdoorData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={2} name="HVAC Office" />
+                      <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={2} name="Temperature" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Slide 5: Air Quality (Original Slide 2) */}
+            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
+              <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
+                <div className="flex-1 text-center md:text-left z-10">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 text-xs font-bold mb-4">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    LIVE MONITORING
+                  </div>
+                  <h3 className="text-5xl font-bold mb-2 tracking-tight text-emerald-600">
+                    {project.data.aq}
+                  </h3>
+                  <p className="text-gray-500 uppercase tracking-[0.2em] text-sm">Indoor Air Quality Index</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 z-10">
+                  <div className="bg-gray-100 p-6 rounded-2xl text-center w-36">
+                    <Wind className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <div className="text-3xl font-bold text-gray-800">{project.data.co2}</div>
+                    <div className="text-[10px] text-gray-500 uppercase mt-1">ppm CO2</div>
+                  </div>
+                  <div className="bg-gray-100 p-6 rounded-2xl text-center w-36">
+                    <Thermometer className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <div className="text-3xl font-bold text-gray-800">{project.data.temp}°</div>
+                    <div className="text-[10px] text-gray-500 uppercase mt-1">Temperature</div>
                   </div>
                 </div>
               </div>
@@ -233,11 +516,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-center items-center gap-6 mt-8">
+        <div className="flex justify-center items-center gap-6 mt-4">
           <button 
             onClick={prevSlide}
             disabled={currentSlide === 0}
-            className="w-10 h-10 rounded-full border border-white/20 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-foreground"
+            className="w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-gray-600"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -248,8 +531,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 onClick={() => setCurrentSlide(idx)}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   idx === currentSlide 
-                    ? "w-6 bg-fgb-accent" 
-                    : "w-2 bg-white/30 hover:bg-foreground"
+                    ? "w-6 bg-fgb-secondary" 
+                    : "w-2 bg-gray-300 hover:bg-gray-400"
                 }`}
               />
             ))}
@@ -257,19 +540,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           <button 
             onClick={nextSlide}
             disabled={currentSlide === totalSlides - 1}
-            className="w-10 h-10 rounded-full border border-white/20 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-foreground"
+            className="w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-gray-600"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Time Scale (Aesthetic) */}
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-        <div className="vertical-text rotate-180 cursor-pointer hover:text-foreground transition">Year</div>
-        <div className="vertical-text rotate-180 cursor-pointer hover:text-foreground transition">Month</div>
-        <div className="vertical-text rotate-180 text-fgb-accent border-l-2 border-fgb-accent pl-2">Week</div>
-        <div className="vertical-text rotate-180 cursor-pointer hover:text-foreground transition">Day</div>
+      {/* Time Scale */}
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
+        <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Hour</div>
+        <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Day</div>
+        <div className="vertical-text rotate-180 text-fgb-secondary border-l-2 border-fgb-secondary pl-2">Week</div>
+        <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Month</div>
+        <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Year</div>
       </div>
     </div>
   );
