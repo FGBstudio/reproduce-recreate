@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { projects, regions, Project } from "@/lib/data";
 
 interface MapViewProps {
@@ -10,12 +10,8 @@ interface MapViewProps {
 
 const MapView = ({ currentRegion, onProjectSelect }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const [mapboxToken, setMapboxToken] = useState(() => 
-    localStorage.getItem("mapbox_token") || ""
-  );
-  const [isMapReady, setIsMapReady] = useState(false);
+  const map = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
 
   // Filter projects by region
   const visibleProjects = currentRegion === "GLOBAL" 
@@ -24,174 +20,118 @@ const MapView = ({ currentRegion, onProjectSelect }: MapViewProps) => {
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = mapboxToken;
+    map.current = L.map(mapContainer.current, {
+      center: [20, 30],
+      zoom: 2,
+      zoomControl: false,
+      attributionControl: false,
+    });
 
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/dark-v11",
-        projection: "globe",
-        zoom: 1.5,
-        center: [30, 20],
-        pitch: 20,
-      });
+    // Dark themed OpenStreetMap tiles (CartoDB Dark Matter - free)
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+    }).addTo(map.current);
 
-      map.current.addControl(
-        new mapboxgl.NavigationControl({
-          visualizePitch: true,
-        }),
-        "top-right"
-      );
+    // Add zoom control to top-right
+    L.control.zoom({ position: "topright" }).addTo(map.current);
 
-      map.current.on("style.load", () => {
-        map.current?.setFog({
-          color: "rgb(0, 20, 30)",
-          "high-color": "rgb(0, 40, 60)",
-          "horizon-blend": 0.1,
-        });
-        setIsMapReady(true);
-      });
-
-      // Slow rotation
-      const secondsPerRevolution = 360;
-      let userInteracting = false;
-
-      function spinGlobe() {
-        if (!map.current) return;
-        const zoom = map.current.getZoom();
-        if (!userInteracting && zoom < 3) {
-          const center = map.current.getCenter();
-          center.lng -= 360 / secondsPerRevolution;
-          map.current.easeTo({ center, duration: 1000, easing: (n) => n });
-        }
-      }
-
-      map.current.on("mousedown", () => { userInteracting = true; });
-      map.current.on("mouseup", () => { userInteracting = false; spinGlobe(); });
-      map.current.on("touchend", () => { userInteracting = false; spinGlobe(); });
-      map.current.on("moveend", spinGlobe);
-
-      spinGlobe();
-    } catch (error) {
-      console.error("Mapbox initialization error:", error);
-      setIsMapReady(false);
-    }
+    // Add attribution
+    L.control.attribution({ position: "bottomleft" })
+      .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>')
+      .addTo(map.current);
 
     return () => {
       map.current?.remove();
-      setIsMapReady(false);
+      map.current = null;
     };
-  }, [mapboxToken]);
+  }, []);
 
   // Fly to region when changed
   useEffect(() => {
-    if (!map.current || !isMapReady) return;
+    if (!map.current) return;
 
     if (currentRegion === "GLOBAL") {
-      map.current.flyTo({
-        center: [30, 20],
-        zoom: 1.5,
-        pitch: 20,
-        duration: 2000,
-      });
+      map.current.flyTo([20, 30], 2, { duration: 1.5 });
     } else {
       const region = regions[currentRegion];
-      map.current.flyTo({
-        center: [region.center.lng, region.center.lat],
-        zoom: region.zoom,
-        pitch: 30,
-        duration: 2000,
-      });
+      map.current.flyTo([region.center.lat, region.center.lng], region.zoom, { duration: 1.5 });
     }
-  }, [currentRegion, isMapReady]);
+  }, [currentRegion]);
 
   // Update markers
   useEffect(() => {
-    if (!map.current || !isMapReady) return;
+    if (!map.current) return;
 
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
+    // Custom icon
+    const createCustomIcon = () => {
+      return L.divIcon({
+        className: "custom-marker",
+        html: `
+          <div class="marker-container">
+            <div class="marker-pulse"></div>
+            <div class="marker-dot">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+              </svg>
+            </div>
+          </div>
+        `,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+      });
+    };
+
     // Add markers for visible projects
     visibleProjects.forEach((project) => {
-      const el = document.createElement("div");
-      el.className = "mapbox-marker";
-      el.innerHTML = `
-        <div class="marker-pulse"></div>
-        <div class="marker-dot">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-          </svg>
+      const marker = L.marker([project.lat, project.lng], {
+        icon: createCustomIcon(),
+      }).addTo(map.current!);
+
+      // Create popup content
+      const popupContent = `
+        <div class="leaflet-custom-popup">
+          <div class="popup-title">${project.name}</div>
+          <div class="popup-address">${project.address}</div>
         </div>
       `;
 
-      el.addEventListener("click", () => onProjectSelect(project));
+      marker.bindPopup(popupContent, {
+        className: "custom-popup",
+        closeButton: false,
+      });
 
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([project.lng, project.lat])
-        .addTo(map.current!);
+      marker.on("click", () => {
+        onProjectSelect(project);
+      });
+
+      marker.on("mouseover", () => {
+        marker.openPopup();
+      });
+
+      marker.on("mouseout", () => {
+        marker.closePopup();
+      });
 
       markersRef.current.push(marker);
     });
-  }, [visibleProjects, isMapReady, onProjectSelect]);
-
-  const handleTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem("mapbox_token", mapboxToken);
-    window.location.reload();
-  };
-
-  // Token input screen
-  if (!mapboxToken) {
-    return (
-      <div className="absolute inset-0 z-0 bg-background flex items-center justify-center">
-        <div className="glass-panel p-8 max-w-md w-full mx-4">
-          <h2 className="text-xl font-bold text-foreground mb-4">Mapbox Token Required</h2>
-          <p className="text-muted-foreground text-sm mb-6">
-            Per visualizzare la mappa, inserisci il tuo Mapbox public token. 
-            Puoi ottenerlo gratuitamente su{" "}
-            <a 
-              href="https://mapbox.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-fgb-accent hover:underline"
-            >
-              mapbox.com
-            </a>
-          </p>
-          <form onSubmit={handleTokenSubmit} className="space-y-4">
-            <input
-              type="text"
-              value={mapboxToken}
-              onChange={(e) => setMapboxToken(e.target.value)}
-              placeholder="pk.eyJ1Ijoi..."
-              className="w-full px-4 py-3 bg-background/50 border border-white/10 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-fgb-accent/50"
-            />
-            <button
-              type="submit"
-              className="w-full py-3 bg-fgb-accent text-fgb-accent-foreground font-semibold rounded-xl hover:bg-fgb-accent/90 transition-colors"
-            >
-              Attiva Mappa
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
+  }, [visibleProjects, onProjectSelect]);
 
   return (
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="absolute inset-0" />
       
       {/* Overlay gradient for better UI integration */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/30 via-transparent to-background/20" />
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/40 via-transparent to-background/30" />
       
       {/* Region label */}
-      {currentRegion !== "GLOBAL" && isMapReady && (
-        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none">
+      {currentRegion !== "GLOBAL" && (
+        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none z-[1000]">
           <div className="text-fgb-accent text-sm font-bold tracking-[0.3em] uppercase">
             {regions[currentRegion].name}
           </div>
@@ -200,17 +140,22 @@ const MapView = ({ currentRegion, onProjectSelect }: MapViewProps) => {
 
       {/* Custom marker styles */}
       <style>{`
-        .mapbox-marker {
-          cursor: pointer;
+        .custom-marker {
+          background: transparent;
+          border: none;
+        }
+        .marker-container {
           position: relative;
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .marker-pulse {
           position: absolute;
           width: 48px;
           height: 48px;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
           background: hsl(188, 100%, 19%, 0.3);
           border-radius: 50%;
           animation: pulse-ring 2s ease-out infinite;
@@ -228,25 +173,67 @@ const MapView = ({ currentRegion, onProjectSelect }: MapViewProps) => {
           color: hsl(50, 100%, 94%);
           box-shadow: 0 0 20px rgba(0, 77, 97, 0.6);
           transition: all 0.3s ease;
+          cursor: pointer;
         }
-        .mapbox-marker:hover .marker-dot {
+        .marker-container:hover .marker-dot {
           background: hsl(43, 49%, 57%);
           transform: scale(1.25);
           box-shadow: 0 0 40px rgba(192, 160, 98, 0.7);
         }
-        .mapboxgl-ctrl-group {
+        
+        /* Custom popup styles */
+        .custom-popup .leaflet-popup-content-wrapper {
+          background: rgba(0, 20, 30, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        .custom-popup .leaflet-popup-tip {
+          background: rgba(0, 20, 30, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .leaflet-custom-popup {
+          padding: 4px 8px;
+        }
+        .popup-title {
+          color: hsl(50, 100%, 94%);
+          font-weight: 600;
+          font-size: 13px;
+        }
+        .popup-address {
+          color: hsl(188, 30%, 60%);
+          font-size: 11px;
+          margin-top: 2px;
+        }
+        
+        /* Leaflet control styles */
+        .leaflet-control-zoom {
           background: rgba(0, 20, 30, 0.8) !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           backdrop-filter: blur(10px);
+          border-radius: 8px !important;
+          overflow: hidden;
         }
-        .mapboxgl-ctrl-group button {
+        .leaflet-control-zoom a {
           background: transparent !important;
+          color: hsl(50, 100%, 94%) !important;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
-        .mapboxgl-ctrl-group button:hover {
+        .leaflet-control-zoom a:hover {
           background: rgba(255, 255, 255, 0.1) !important;
         }
-        .mapboxgl-ctrl-icon {
-          filter: invert(1);
+        .leaflet-control-zoom a:last-child {
+          border-bottom: none !important;
+        }
+        .leaflet-control-attribution {
+          background: rgba(0, 20, 30, 0.7) !important;
+          color: rgba(255, 255, 255, 0.5) !important;
+          font-size: 10px !important;
+          backdrop-filter: blur(5px);
+        }
+        .leaflet-control-attribution a {
+          color: rgba(255, 255, 255, 0.6) !important;
         }
       `}</style>
     </div>
