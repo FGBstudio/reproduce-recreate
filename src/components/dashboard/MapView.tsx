@@ -1,22 +1,26 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { projects, regions, Project } from "@/lib/data";
+import { projects, regions, Project, MonitoringType } from "@/lib/data";
 
 interface MapViewProps {
   currentRegion: string;
   onProjectSelect: (project: Project) => void;
+  activeFilters: MonitoringType[];
 }
 
-const MapView = ({ currentRegion, onProjectSelect }: MapViewProps) => {
+const MapView = ({ currentRegion, onProjectSelect, activeFilters }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
-  // Filter projects by region
-  const visibleProjects = currentRegion === "GLOBAL" 
-    ? projects 
-    : projects.filter(p => p.region === currentRegion);
+  // Filter projects by region and monitoring type
+  const visibleProjects = projects.filter(p => {
+    const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
+    const monitoringMatch = activeFilters.length === 0 || 
+      activeFilters.some(filter => p.monitoring.includes(filter));
+    return regionMatch && monitoringMatch;
+  });
 
   // Initialize map
   useEffect(() => {
@@ -120,7 +124,7 @@ const MapView = ({ currentRegion, onProjectSelect }: MapViewProps) => {
 
       markersRef.current.push(marker);
     });
-  }, [visibleProjects, onProjectSelect]);
+  }, [visibleProjects, onProjectSelect, activeFilters]);
 
   return (
     <div className="absolute inset-0 z-0">
