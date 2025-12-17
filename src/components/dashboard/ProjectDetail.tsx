@@ -8,6 +8,9 @@ import {
 } from "recharts";
 import html2canvas from "html2canvas";
 
+// Dashboard types
+type DashboardType = "energy" | "air" | "water" | "certification";
+
 // Export utilities
 const exportAsImage = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
   if (!ref.current) return;
@@ -69,7 +72,20 @@ interface ProjectDetailProps {
 
 const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 5;
+  const [activeDashboard, setActiveDashboard] = useState<DashboardType>("energy");
+  
+  // Different total slides based on dashboard
+  const getTotalSlides = () => {
+    switch (activeDashboard) {
+      case "energy": return 4;
+      case "air": return 1;
+      case "water": return 1;
+      case "certification": return 1;
+      default: return 4;
+    }
+  };
+  
+  const totalSlides = getTotalSlides();
 
   // Chart refs for export
   const energyDensityRef = useRef<HTMLDivElement>(null);
@@ -200,6 +216,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   };
 
+  const handleDashboardChange = (dashboard: DashboardType) => {
+    setActiveDashboard(dashboard);
+    setCurrentSlide(0);
+  };
+
+  const getAqColor = (aq: string) => {
+    switch (aq) {
+      case "EXCELLENT": return "text-emerald-500";
+      case "GOOD": return "text-emerald-600";
+      case "MODERATE": return "text-yellow-500";
+      case "POOR": return "text-red-500";
+      default: return "text-gray-600";
+    }
+  };
+
+  const getAqBgColor = (aq: string) => {
+    switch (aq) {
+      case "EXCELLENT": return "bg-emerald-500/20 border-emerald-500/30";
+      case "GOOD": return "bg-emerald-500/20 border-emerald-500/30";
+      case "MODERATE": return "bg-yellow-500/20 border-yellow-500/30";
+      case "POOR": return "bg-red-500/20 border-red-500/30";
+      default: return "bg-gray-500/20 border-gray-500/30";
+    }
+  };
+
   const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
 
   // Air quality data for export
@@ -234,21 +275,53 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       {/* Main Content */}
       <div className="absolute inset-0 pt-20 pb-24 flex flex-col">
-        {/* Title Area with Icons */}
+        {/* Title Area with Dashboard Tabs */}
         <div className="px-8 md:px-16 mb-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-fgb-secondary flex items-center justify-center">
-              <Lightbulb className="w-5 h-5 text-white" />
-            </div>
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-              <Cloud className="w-5 h-5 text-gray-500" />
-            </div>
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-              <Droplet className="w-5 h-5 text-gray-500" />
-            </div>
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-              <Award className="w-5 h-5 text-gray-500" />
-            </div>
+            <button 
+              onClick={() => handleDashboardChange("energy")}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                activeDashboard === "energy" 
+                  ? "bg-fgb-secondary text-white" 
+                  : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+              }`}
+              title="Energy Dashboard"
+            >
+              <Lightbulb className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => handleDashboardChange("air")}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                activeDashboard === "air" 
+                  ? "bg-fgb-secondary text-white" 
+                  : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+              }`}
+              title="Air Quality Dashboard"
+            >
+              <Cloud className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => handleDashboardChange("water")}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                activeDashboard === "water" 
+                  ? "bg-fgb-secondary text-white" 
+                  : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+              }`}
+              title="Water Dashboard"
+            >
+              <Droplet className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => handleDashboardChange("certification")}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                activeDashboard === "certification" 
+                  ? "bg-fgb-secondary text-white" 
+                  : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+              }`}
+              title="Certification Dashboard"
+            >
+              <Award className="w-5 h-5" />
+            </button>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-fgb-secondary tracking-wide">{project.name}</h1>
           <div className="flex items-center gap-3 text-gray-600">
@@ -266,378 +339,326 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             className="flex h-full transition-transform duration-700 ease-in-out"
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
-            {/* Slide 1: Energy Density Overview */}
-            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
-              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                {/* Energy Density Donut */}
-                <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Energy density</h3>
-                    <ExportButtons chartRef={energyDensityRef} data={donutData} filename="energy-density" />
-                  </div>
-                  <div className="flex items-center gap-8">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-fgb-secondary" />
-                        <span className="text-sm text-gray-600">HVAC</span>
+            {/* ENERGY DASHBOARD */}
+            {activeDashboard === "energy" && (
+              <>
+                {/* Slide 1: Energy Density Overview */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                    <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Energy density</h3>
+                        <ExportButtons chartRef={energyDensityRef} data={donutData} filename="energy-density" />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,45%)]" />
-                        <span className="text-sm text-gray-600">Lighting</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,75%)]" />
-                        <span className="text-sm text-gray-600">Plugs and Loads</span>
+                      <div className="flex items-center gap-8">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-fgb-secondary" />
+                            <span className="text-sm text-gray-600">HVAC</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,45%)]" />
+                            <span className="text-sm text-gray-600">Lighting</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,75%)]" />
+                            <span className="text-sm text-gray-600">Plugs and Loads</span>
+                          </div>
+                        </div>
+                        <div className="relative w-40 h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={donutData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">
+                                {donutData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-4xl font-bold text-fgb-secondary">{project.data.total}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="relative w-40 h-40">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={donutData}
-                            innerRadius={45}
-                            outerRadius={65}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {donutData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Energy density</p>
+                        <p className="text-sm font-semibold text-fgb-secondary mb-2">HVAC</p>
+                        <p className="text-4xl font-bold text-fgb-secondary">{project.data.hvac}</p>
+                        <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Energy density</p>
+                        <p className="text-sm font-semibold text-[hsl(338,50%,45%)] mb-2">Lighting</p>
+                        <p className="text-4xl font-bold text-[hsl(338,50%,45%)]">{project.data.light}</p>
+                        <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Energy density</p>
+                        <p className="text-sm font-semibold text-[hsl(338,50%,75%)] mb-2">Plugs & Loads</p>
+                        <p className="text-4xl font-bold text-[hsl(338,50%,75%)]">11</p>
+                        <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slide 2: Site Alerts & Heatmap */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div ref={alertsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Site Alerts</h3>
+                        <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
+                      </div>
+                      <div className="flex items-start gap-8">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500 mb-2">Open now</p>
+                          <p className="text-6xl font-bold text-gray-800">{project.data.alerts}</p>
+                          <div className="flex gap-2 mt-4">
+                            <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 Critical</span>
+                            <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 High</span>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-500 mb-4">Opened in last 7 days</p>
+                          <div className="space-y-2">
+                            {["Critical", "High", "Medium", "Low"].map(level => (
+                              <div key={level} className="flex justify-between">
+                                <span className="text-sm text-fgb-secondary font-semibold">{level}</span>
+                                <span className="text-sm text-gray-600">0</span>
+                              </div>
                             ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-4xl font-bold text-fgb-secondary">{project.data.total}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Energy Density Cards */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Energy density</p>
-                    <p className="text-sm font-semibold text-fgb-secondary mb-2">HVAC</p>
-                    <p className="text-4xl font-bold text-fgb-secondary">{project.data.hvac}</p>
-                    <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
-                  </div>
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Energy density</p>
-                    <p className="text-sm font-semibold text-[hsl(338,50%,45%)] mb-2">Lighting</p>
-                    <p className="text-4xl font-bold text-[hsl(338,50%,45%)]">{project.data.light}</p>
-                    <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
-                  </div>
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Energy density</p>
-                    <p className="text-sm font-semibold text-[hsl(338,50%,75%)] mb-2">Plugs & Loads</p>
-                    <p className="text-4xl font-bold text-[hsl(338,50%,75%)]">11</p>
-                    <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Slide 2: Site Alerts & Heatmap */}
-            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
-              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Site Alerts */}
-                <div ref={alertsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Site Alerts</h3>
-                    <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
-                  </div>
-                  <div className="flex items-start gap-8">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500 mb-2">Open now</p>
-                      <p className="text-6xl font-bold text-gray-800">{project.data.alerts}</p>
-                      <div className="flex gap-2 mt-4">
-                        <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 Critical</span>
-                        <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 High</span>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-500 mb-4">Opened in last 7 days</p>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-fgb-secondary font-semibold">Critical</span>
-                          <span className="text-sm text-gray-600">0</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-fgb-secondary font-semibold">High</span>
-                          <span className="text-sm text-gray-600">0</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Medium</span>
-                          <span className="text-sm text-gray-600">0</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-fgb-secondary font-semibold">Low</span>
-                          <span className="text-sm text-gray-600">0</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Period Table */}
-                <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Energy Periods</h3>
-                    <ExportButtons chartRef={periodRef} data={periodData} filename="energy-periods" />
-                  </div>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-gray-500 text-sm">
-                        <th className="text-left pb-4">Period</th>
-                        <th className="text-right pb-4">kWh</th>
-                        <th className="text-right pb-4">Price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {periodData.map((row, idx) => (
-                        <tr key={idx} className="border-t border-gray-100">
-                          <td className="py-3 text-sm">
-                            <span className="text-gray-800">{row.period}</span>
-                            <span className="text-green-500 ml-1">↓</span>
-                          </td>
-                          <td className="py-3 text-sm text-right text-gray-600">{row.kWh.toLocaleString()}</td>
-                          <td className="py-3 text-sm text-right text-gray-600">{row.price}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Heatmap */}
-                <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Heatmap</h3>
-                    <ExportButtons chartRef={heatmapRef} data={heatmapExportData} filename="heatmap" />
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="text-xs text-gray-500 space-y-[6px] pt-1">
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <div key={i} className="h-4">{String(i).padStart(2, '0')}:00</div>
-                      ))}
+                    <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Energy Periods</h3>
+                        <ExportButtons chartRef={periodRef} data={periodData} filename="energy-periods" />
+                      </div>
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-gray-500 text-sm">
+                            <th className="text-left pb-4">Period</th>
+                            <th className="text-right pb-4">kWh</th>
+                            <th className="text-right pb-4">Price</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {periodData.map((row, idx) => (
+                            <tr key={idx} className="border-t border-gray-100">
+                              <td className="py-3 text-sm"><span className="text-gray-800">{row.period}</span><span className="text-green-500 ml-1">↓</span></td>
+                              <td className="py-3 text-sm text-right text-gray-600">{row.kWh.toLocaleString()}</td>
+                              <td className="py-3 text-sm text-right text-gray-600">{row.price}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <div className="flex-1">
-                      <div className="grid grid-cols-7 gap-[2px]">
-                        {heatmapData.flat().map((val, idx) => (
-                          <div 
-                            key={idx}
-                            className="h-4 rounded-sm"
-                            style={{ backgroundColor: heatmapColors[val] }}
-                          />
-                        ))}
+                    <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Heatmap</h3>
+                        <ExportButtons chartRef={heatmapRef} data={heatmapExportData} filename="heatmap" />
                       </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>27-05</span>
-                        <span>28-05</span>
-                        <span>29-05</span>
-                        <span>30-05</span>
-                        <span>31-05</span>
-                        <span>01-06</span>
-                        <span>02-06</span>
-                      </div>
-                      <div className="flex gap-4 mt-4 text-xs">
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[1] }} /> 0-4.9 kWh</span>
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[2] }} /> 4.9-9.8 kWh</span>
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[3] }} /> 14.7-19.6 kWh</span>
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[4] }} /> 19.6-24.5 kWh</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Slide 3: Actual vs Average & Device Consumption */}
-            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
-              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Actual vs Average */}
-                <div ref={actualVsAvgRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Actual vs Average</h3>
-                    <ExportButtons chartRef={actualVsAvgRef} data={monthlyData} filename="actual-vs-average" />
-                  </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                      <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kWh`} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Power Consumption Donut */}
-                <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Power consumption</h3>
-                    <ExportButtons chartRef={powerConsRef} data={donutData} filename="power-consumption" />
-                  </div>
-                  <div className="flex items-center gap-8">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-fgb-secondary" />
-                        <span className="text-sm text-gray-600">HVAC</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,45%)]" />
-                        <span className="text-sm text-gray-600">Lighting</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,75%)]" />
-                        <span className="text-sm text-gray-600">Plugs and Loads</span>
-                      </div>
-                    </div>
-                    <div className="relative w-40 h-40">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={donutData}
-                            innerRadius={45}
-                            outerRadius={65}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {donutData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
+                      <div className="flex gap-4">
+                        <div className="text-xs text-gray-500 space-y-[6px] pt-1">
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <div key={i} className="h-4">{String(i).padStart(2, '0')}:00</div>
+                          ))}
+                        </div>
+                        <div className="flex-1">
+                          <div className="grid grid-cols-7 gap-[2px]">
+                            {heatmapData.flat().map((val, idx) => (
+                              <div key={idx} className="h-4 rounded-sm" style={{ backgroundColor: heatmapColors[val] }} />
                             ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-4xl font-bold text-fgb-secondary">89</span>
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-500 mt-2">
+                            {['27-05', '28-05', '29-05', '30-05', '31-05', '01-06', '02-06'].map(d => <span key={d}>{d}</span>)}
+                          </div>
+                          <div className="flex gap-4 mt-4 text-xs">
+                            {[{ c: 1, l: '0-4.9 kWh' }, { c: 2, l: '4.9-9.8 kWh' }, { c: 3, l: '14.7-19.6 kWh' }, { c: 4, l: '19.6-24.5 kWh' }].map(({ c, l }) => (
+                              <span key={c} className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[c] }} /> {l}</span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Device Consumption Bar Chart */}
-                <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Device consumption</h3>
-                    <ExportButtons chartRef={deviceConsRef} data={deviceData} filename="device-consumption" />
+                {/* Slide 3: Actual vs Average & Device Consumption */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div ref={actualVsAvgRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Actual vs Average</h3>
+                        <ExportButtons chartRef={actualVsAvgRef} data={monthlyData} filename="actual-vs-average" />
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                          <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kWh`} />
+                          <Tooltip />
+                          <Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Power consumption</h3>
+                        <ExportButtons chartRef={powerConsRef} data={donutData} filename="power-consumption" />
+                      </div>
+                      <div className="flex items-center gap-8">
+                        <div className="space-y-2">
+                          {[{ n: 'HVAC', c: 'bg-fgb-secondary' }, { n: 'Lighting', c: 'bg-[hsl(338,50%,45%)]' }, { n: 'Plugs and Loads', c: 'bg-[hsl(338,50%,75%)]' }].map(({ n, c }) => (
+                            <div key={n} className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${c}`} /><span className="text-sm text-gray-600">{n}</span></div>
+                          ))}
+                        </div>
+                        <div className="relative w-40 h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart><Pie data={donutData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">{donutData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Pie></PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex items-center justify-center"><span className="text-4xl font-bold text-fgb-secondary">89</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Device consumption</h3>
+                        <ExportButtons chartRef={deviceConsRef} data={deviceData} filename="device-consumption" />
+                      </div>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={deviceData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                          <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v/1000}k kWh`} />
+                          <Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
+                          <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Lighting" />
+                          <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={deviceData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                      <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v/1000}k kWh`} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
-                      <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Lighting" />
-                      <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                </div>
+
+                {/* Slide 4: Carbon Footprint & Energy Trends */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Carbon Footprint</h3>
+                        <ExportButtons chartRef={carbonRef} data={carbonData} filename="carbon-footprint" />
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={carbonData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                          <XAxis dataKey="week" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" />
+                          <Bar dataKey="july" fill="hsl(338, 50%, 45%)" name="July" />
+                          <Bar dataKey="august" fill="hsl(338, 50%, 75%)" name="August" />
+                          <Bar dataKey="september" fill="hsl(188, 100%, 35%)" name="September" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Energy Trend Over Time</h3>
+                        <ExportButtons chartRef={trendRef} data={trendData} filename="energy-trend" />
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={trendData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                          <XAxis dataKey="day" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.6} name="General" />
+                          <Area type="monotone" dataKey="hvac" stackId="2" stroke="hsl(338, 50%, 45%)" fill="hsl(338, 50%, 45%)" fillOpacity={0.6} name="HVAC" />
+                          <Area type="monotone" dataKey="lights" stackId="3" stroke="hsl(188, 100%, 35%)" fill="hsl(188, 100%, 35%)" fillOpacity={0.4} name="Lights" />
+                          <Area type="monotone" dataKey="plugs" stackId="4" stroke="hsl(338, 50%, 75%)" fill="hsl(338, 50%, 75%)" fillOpacity={0.4} name="Plugs" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Energy vs outdoor condition</h3>
+                        <ExportButtons chartRef={outdoorRef} data={outdoorData} filename="energy-vs-outdoor" />
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={outdoorData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                          <XAxis dataKey="day" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={2} name="HVAC Office" />
+                          <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={2} name="Temperature" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* AIR QUALITY DASHBOARD */}
+            {activeDashboard === "air" && (
+              <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
+                <div ref={airQualityRef} className="w-full max-w-5xl bg-white/95 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-lg flex flex-col md:flex-row items-center gap-8 md:gap-16 relative overflow-hidden">
+                  <div className="absolute top-4 right-4">
+                    <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
+                  </div>
+                  <div className="flex-1 text-center md:text-left z-10">
+                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold mb-4`}>
+                      <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                      LIVE MONITORING
+                    </div>
+                    <h3 className={`text-5xl md:text-6xl font-bold mb-2 tracking-tight ${getAqColor(project.data.aq)}`}>
+                      {project.data.aq}
+                    </h3>
+                    <p className="text-gray-500 uppercase tracking-[0.2em] text-sm">Indoor Air Quality Index</p>
+                  </div>
+
+                  <div className="flex gap-4 md:gap-6 z-10">
+                    <div className="bg-gray-100 p-4 md:p-6 rounded-2xl text-center w-28 md:w-36">
+                      <Wind className="w-6 h-6 md:w-8 md:h-8 text-gray-400 mx-auto mb-2" />
+                      <div className="text-2xl md:text-3xl font-bold text-gray-800">{project.data.co2}</div>
+                      <div className="text-[10px] text-gray-500 uppercase mt-1">ppm CO2</div>
+                    </div>
+                    <div className="bg-gray-100 p-4 md:p-6 rounded-2xl text-center w-28 md:w-36">
+                      <Thermometer className="w-6 h-6 md:w-8 md:h-8 text-gray-400 mx-auto mb-2" />
+                      <div className="text-2xl md:text-3xl font-bold text-gray-800">{project.data.temp}°</div>
+                      <div className="text-[10px] text-gray-500 uppercase mt-1">Temperature</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Slide 4: Carbon Footprint & Energy Trends */}
-            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
-              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Carbon Footprint */}
-                <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Carbon Footprint</h3>
-                    <ExportButtons chartRef={carbonRef} data={carbonData} filename="carbon-footprint" />
-                  </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={carbonData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                      <XAxis dataKey="week" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" />
-                      <Bar dataKey="july" fill="hsl(338, 50%, 45%)" name="July" />
-                      <Bar dataKey="august" fill="hsl(338, 50%, 75%)" name="August" />
-                      <Bar dataKey="september" fill="hsl(188, 100%, 35%)" name="September" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Energy Trend Over Time */}
-                <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Energy Trend Over Time</h3>
-                    <ExportButtons chartRef={trendRef} data={trendData} filename="energy-trend" />
-                  </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={trendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                      <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.6} name="General" />
-                      <Area type="monotone" dataKey="hvac" stackId="2" stroke="hsl(338, 50%, 45%)" fill="hsl(338, 50%, 45%)" fillOpacity={0.6} name="HVAC" />
-                      <Area type="monotone" dataKey="lights" stackId="3" stroke="hsl(188, 100%, 35%)" fill="hsl(188, 100%, 35%)" fillOpacity={0.4} name="Lights" />
-                      <Area type="monotone" dataKey="plugs" stackId="4" stroke="hsl(338, 50%, 75%)" fill="hsl(338, 50%, 75%)" fillOpacity={0.4} name="Plugs" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Energy vs Outdoor */}
-                <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Energy consumption vs outdoor condition</h3>
-                    <ExportButtons chartRef={outdoorRef} data={outdoorData} filename="energy-vs-outdoor" />
-                  </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={outdoorData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                      <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={2} name="HVAC Office" />
-                      <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={2} name="Temperature" />
-                    </LineChart>
-                  </ResponsiveContainer>
+            {/* WATER DASHBOARD */}
+            {activeDashboard === "water" && (
+              <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
+                <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg text-center">
+                  <Droplet className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                  <h3 className="text-3xl font-bold text-gray-800 mb-2">Water Monitoring</h3>
+                  <p className="text-gray-500">Water consumption data coming soon...</p>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Slide 5: Air Quality (Original Slide 2) */}
-            <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
-              <div ref={airQualityRef} className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
-                <div className="absolute top-4 right-4">
-                  <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
-                </div>
-                <div className="flex-1 text-center md:text-left z-10">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 text-xs font-bold mb-4">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    LIVE MONITORING
-                  </div>
-                  <h3 className="text-5xl font-bold mb-2 tracking-tight text-emerald-600">
-                    {project.data.aq}
-                  </h3>
-                  <p className="text-gray-500 uppercase tracking-[0.2em] text-sm">Indoor Air Quality Index</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6 z-10">
-                  <div className="bg-gray-100 p-6 rounded-2xl text-center w-36">
-                    <Wind className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <div className="text-3xl font-bold text-gray-800">{project.data.co2}</div>
-                    <div className="text-[10px] text-gray-500 uppercase mt-1">ppm CO2</div>
-                  </div>
-                  <div className="bg-gray-100 p-6 rounded-2xl text-center w-36">
-                    <Thermometer className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <div className="text-3xl font-bold text-gray-800">{project.data.temp}°</div>
-                    <div className="text-[10px] text-gray-500 uppercase mt-1">Temperature</div>
-                  </div>
+            {/* CERTIFICATION DASHBOARD */}
+            {activeDashboard === "certification" && (
+              <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
+                <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg text-center">
+                  <Award className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+                  <h3 className="text-3xl font-bold text-gray-800 mb-2">Certifications</h3>
+                  <p className="text-gray-500">Building certification data coming soon...</p>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
