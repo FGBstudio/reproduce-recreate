@@ -1,9 +1,12 @@
 import { Zap, Wind, Droplets } from "lucide-react";
+import { MonitoringType } from "@/lib/data";
 
 interface RegionNavProps {
   currentRegion: string;
   onRegionChange: (region: string) => void;
   visible?: boolean;
+  activeFilters: MonitoringType[];
+  onFilterToggle: (filter: MonitoringType) => void;
 }
 
 const regionButtons = [
@@ -14,7 +17,19 @@ const regionButtons = [
   { code: "MEA", label: "MEA" },
 ];
 
-const RegionNav = ({ currentRegion, onRegionChange, visible = true }: RegionNavProps) => {
+const monitoringFilters: { type: MonitoringType; icon: typeof Zap }[] = [
+  { type: "energy", icon: Zap },
+  { type: "air", icon: Wind },
+  { type: "water", icon: Droplets },
+];
+
+const RegionNav = ({ 
+  currentRegion, 
+  onRegionChange, 
+  visible = true,
+  activeFilters,
+  onFilterToggle
+}: RegionNavProps) => {
   return (
     <nav 
       className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 transition-transform duration-500 ${
@@ -38,17 +53,25 @@ const RegionNav = ({ currentRegion, onRegionChange, visible = true }: RegionNavP
         ))}
       </div>
 
-      {/* Metric Toggles */}
+      {/* Monitoring Filters */}
       <div className="glass-panel rounded-full p-2 flex gap-2">
-        <button className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center transition hover:scale-110">
-          <Zap className="w-5 h-5" />
-        </button>
-        <button className="w-10 h-10 rounded-full hover:bg-white/10 text-foreground flex items-center justify-center transition hover:scale-110">
-          <Wind className="w-5 h-5" />
-        </button>
-        <button className="w-10 h-10 rounded-full hover:bg-white/10 text-foreground flex items-center justify-center transition hover:scale-110">
-          <Droplets className="w-5 h-5" />
-        </button>
+        {monitoringFilters.map(({ type, icon: Icon }) => {
+          const isActive = activeFilters.includes(type);
+          return (
+            <button
+              key={type}
+              onClick={() => onFilterToggle(type)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition hover:scale-110 ${
+                isActive 
+                  ? "bg-foreground text-background" 
+                  : "hover:bg-white/10 text-foreground"
+              }`}
+              title={`Filter by ${type} monitoring`}
+            >
+              <Icon className="w-5 h-5" />
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

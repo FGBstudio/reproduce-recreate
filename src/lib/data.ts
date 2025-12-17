@@ -22,6 +22,8 @@ export interface ProjectData {
   aq: string;
 }
 
+export type MonitoringType = "energy" | "air" | "water";
+
 export interface Project {
   id: number;
   name: string;
@@ -31,6 +33,7 @@ export interface Project {
   address: string;
   img: string;
   data: ProjectData;
+  monitoring: MonitoringType[];
 }
 
 export const regions: Record<string, Region> = {
@@ -71,7 +74,8 @@ export const projects: Project[] = [
     lng: 9.1900, 
     address: "Milan, Italy", 
     img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop",
-    data: { hvac: 32, light: 46, total: 89, co2: 420, temp: 22, alerts: 0, aq: "GOOD" } 
+    data: { hvac: 32, light: 46, total: 89, co2: 420, temp: 22, alerts: 0, aq: "GOOD" },
+    monitoring: ["energy", "air", "water"]
   },
   { 
     id: 2, 
@@ -81,7 +85,8 @@ export const projects: Project[] = [
     lng: 2.3522, 
     address: "Paris, France", 
     img: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1920&h=1080&fit=crop",
-    data: { hvac: 40, light: 35, total: 95, co2: 500, temp: 21, alerts: 1, aq: "MODERATE" } 
+    data: { hvac: 40, light: 35, total: 95, co2: 500, temp: 21, alerts: 1, aq: "MODERATE" },
+    monitoring: ["energy", "air"]
   },
   // Americas
   { 
@@ -92,7 +97,8 @@ export const projects: Project[] = [
     lng: -74.0060, 
     address: "New York, USA", 
     img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1920&h=1080&fit=crop",
-    data: { hvac: 55, light: 50, total: 120, co2: 600, temp: 20, alerts: 2, aq: "MODERATE" } 
+    data: { hvac: 55, light: 50, total: 120, co2: 600, temp: 20, alerts: 2, aq: "MODERATE" },
+    monitoring: ["energy", "water"]
   },
   // APAC
   { 
@@ -103,7 +109,8 @@ export const projects: Project[] = [
     lng: 139.6503, 
     address: "Tokyo, Japan", 
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
-    data: { hvac: 25, light: 30, total: 65, co2: 380, temp: 23, alerts: 0, aq: "EXCELLENT" } 
+    data: { hvac: 25, light: 30, total: 65, co2: 380, temp: 23, alerts: 0, aq: "EXCELLENT" },
+    monitoring: ["energy", "air", "water"]
   },
   // MEA
   { 
@@ -114,6 +121,7 @@ export const projects: Project[] = [
     lng: 55.2744, 
     address: "Dubai, UAE", 
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
-    data: { hvac: 75, light: 42, total: 130, co2: 550, temp: 19, alerts: 3, aq: "POOR" } 
+    data: { hvac: 75, light: 42, total: 130, co2: 550, temp: 19, alerts: 3, aq: "POOR" },
+    monitoring: ["energy"]
   }
 ];
