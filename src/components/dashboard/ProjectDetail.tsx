@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet } from "lucide-react";
+import { useState, useMemo, useRef, ReactNode } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X } from "lucide-react";
 import { Project } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -7,9 +7,37 @@ import {
   PieChart, Pie, Cell
 } from "recharts";
 import html2canvas from "html2canvas";
+import { createPortal } from "react-dom";
 
 // Dashboard types
 type DashboardType = "energy" | "air" | "water" | "certification";
+
+// Chart axis styling
+const axisStyle = {
+  fontSize: 11,
+  fontFamily: "'Montserrat', sans-serif",
+  fill: '#64748b',
+  fontWeight: 500
+};
+
+const gridStyle = {
+  strokeDasharray: "4 4",
+  stroke: "#e2e8f0"
+};
+
+// Custom tooltip style
+const tooltipStyle = {
+  contentStyle: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    border: 'none',
+    borderRadius: '12px',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+    padding: '12px 16px',
+    fontFamily: "'Montserrat', sans-serif"
+  },
+  itemStyle: { color: '#334155', fontWeight: 500 },
+  labelStyle: { color: '#64748b', fontWeight: 600, marginBottom: 4 }
+};
 
 // Export utilities
 const exportAsImage = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
@@ -45,14 +73,58 @@ const exportAsJSON = (data: Record<string, unknown>[], filename: string) => {
   link.click();
 };
 
+// Fullscreen modal component
+const ChartFullscreenModal = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  title: string; 
+  children: ReactNode 
+}) => {
+  if (!isOpen) return null;
+  
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-3xl w-full max-w-6xl max-h-[90vh] overflow-auto shadow-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white z-10 flex justify-between items-center p-6 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+        <div className="p-6 md:p-8" style={{ minHeight: '500px' }}>
+          {children}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 interface ExportButtonsProps {
   chartRef: React.RefObject<HTMLDivElement | null>;
   data: Record<string, unknown>[];
   filename: string;
+  onExpand?: () => void;
 }
 
-const ExportButtons = ({ chartRef, data, filename }: ExportButtonsProps) => (
+const ExportButtons = ({ chartRef, data, filename, onExpand }: ExportButtonsProps) => (
   <div className="flex gap-1">
+    {onExpand && (
+      <button onClick={onExpand} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Fullscreen">
+        <Maximize2 className="w-3.5 h-3.5 text-gray-600" />
+      </button>
+    )}
     <button onClick={() => exportAsImage(chartRef, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export PNG">
       <Image className="w-3.5 h-3.5 text-gray-600" />
     </button>
@@ -73,6 +145,7 @@ interface ProjectDetailProps {
 const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>("energy");
+  const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
   
   // Different total slides based on dashboard
   const getTotalSlides = () => {
@@ -333,7 +406,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           </div>
         </div>
 
-        {/* Carousel Content */}
+        {/* Carousel Content - Scrollable */}
         <div className="flex-1 relative overflow-hidden">
           <div 
             className="flex h-full transition-transform duration-700 ease-in-out"
@@ -343,7 +416,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {activeDashboard === "energy" && (
               <>
                 {/* Slide 1: Energy Density Overview */}
-                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                     <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
@@ -405,7 +478,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Slide 2: Site Alerts & Heatmap */}
-                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div ref={alertsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
@@ -441,18 +514,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <table className="w-full">
                         <thead>
-                          <tr className="text-gray-500 text-sm">
-                            <th className="text-left pb-4">Period</th>
-                            <th className="text-right pb-4">kWh</th>
-                            <th className="text-right pb-4">Price</th>
+                          <tr className="text-gray-500 text-sm font-medium">
+                            <th className="text-left pb-4 font-semibold">Period</th>
+                            <th className="text-right pb-4 font-semibold">kWh</th>
+                            <th className="text-right pb-4 font-semibold">Price</th>
                           </tr>
                         </thead>
                         <tbody>
                           {periodData.map((row, idx) => (
                             <tr key={idx} className="border-t border-gray-100">
-                              <td className="py-3 text-sm"><span className="text-gray-800">{row.period}</span><span className="text-green-500 ml-1">↓</span></td>
+                              <td className="py-3 text-sm"><span className="text-gray-800 font-medium">{row.period}</span><span className="text-emerald-500 ml-1">↓</span></td>
                               <td className="py-3 text-sm text-right text-gray-600">{row.kWh.toLocaleString()}</td>
-                              <td className="py-3 text-sm text-right text-gray-600">{row.price}</td>
+                              <td className="py-3 text-sm text-right text-gray-600 font-medium">{row.price}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -461,10 +534,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Heatmap</h3>
-                        <ExportButtons chartRef={heatmapRef} data={heatmapExportData} filename="heatmap" />
+                        <ExportButtons chartRef={heatmapRef} data={heatmapExportData} filename="heatmap" onExpand={() => setFullscreenChart('heatmap')} />
                       </div>
                       <div className="flex gap-4">
-                        <div className="text-xs text-gray-500 space-y-[6px] pt-1">
+                        <div className="text-xs text-gray-500 space-y-[6px] pt-1 font-medium">
                           {Array.from({ length: 24 }, (_, i) => (
                             <div key={i} className="h-4">{String(i).padStart(2, '0')}:00</div>
                           ))}
@@ -472,10 +545,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="flex-1">
                           <div className="grid grid-cols-7 gap-[2px]">
                             {heatmapData.flat().map((val, idx) => (
-                              <div key={idx} className="h-4 rounded-sm" style={{ backgroundColor: heatmapColors[val] }} />
+                              <div key={idx} className="h-4 rounded-sm transition-transform hover:scale-110" style={{ backgroundColor: heatmapColors[val] }} />
                             ))}
                           </div>
-                          <div className="flex justify-between text-xs text-gray-500 mt-2">
+                          <div className="flex justify-between text-xs text-gray-500 mt-2 font-medium">
                             {['27-05', '28-05', '29-05', '30-05', '31-05', '01-06', '02-06'].map(d => <span key={d}>{d}</span>)}
                           </div>
                           <div className="flex gap-4 mt-4 text-xs">
@@ -490,24 +563,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Slide 3: Actual vs Average & Device Consumption */}
-                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div ref={actualVsAvgRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Actual vs Average</h3>
-                        <ExportButtons chartRef={actualVsAvgRef} data={monthlyData} filename="actual-vs-average" />
+                        <ExportButtons chartRef={actualVsAvgRef} data={monthlyData} filename="actual-vs-average" onExpand={() => setFullscreenChart('actualVsAvg')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={monthlyData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                          <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kWh`} />
-                          <Tooltip />
-                          <Legend wrapperStyle={{ fontSize: 10 }} />
-                          <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} />
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="month" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v}`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 3 }} activeDot={{ r: 5 }} name="Actual" />
+                          <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Expected" />
+                          <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} name="Average" />
+                          <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} name="Off Hours" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -517,33 +590,45 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={powerConsRef} data={donutData} filename="power-consumption" />
                       </div>
                       <div className="flex items-center gap-8">
-                        <div className="space-y-2">
-                          {[{ n: 'HVAC', c: 'bg-fgb-secondary' }, { n: 'Lighting', c: 'bg-[hsl(338,50%,45%)]' }, { n: 'Plugs and Loads', c: 'bg-[hsl(338,50%,75%)]' }].map(({ n, c }) => (
-                            <div key={n} className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${c}`} /><span className="text-sm text-gray-600">{n}</span></div>
+                        <div className="space-y-3">
+                          {[{ n: 'HVAC', c: 'bg-fgb-secondary', v: '45%' }, { n: 'Lighting', c: 'bg-[hsl(338,50%,45%)]', v: '35%' }, { n: 'Plugs and Loads', c: 'bg-[hsl(338,50%,75%)]', v: '20%' }].map(({ n, c, v }) => (
+                            <div key={n} className="flex items-center gap-2">
+                              <span className={`w-3 h-3 rounded-full ${c}`} />
+                              <span className="text-sm text-gray-600">{n}</span>
+                              <span className="text-sm font-semibold text-gray-800 ml-auto">{v}</span>
+                            </div>
                           ))}
                         </div>
-                        <div className="relative w-40 h-40">
+                        <div className="relative w-44 h-44">
                           <ResponsiveContainer width="100%" height="100%">
-                            <PieChart><Pie data={donutData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">{donutData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Pie></PieChart>
+                            <PieChart>
+                              <Pie data={donutData} innerRadius={50} outerRadius={70} paddingAngle={3} dataKey="value">
+                                {donutData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="white" strokeWidth={2} />)}
+                              </Pie>
+                            </PieChart>
                           </ResponsiveContainer>
-                          <div className="absolute inset-0 flex items-center justify-center"><span className="text-4xl font-bold text-fgb-secondary">89</span></div>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-4xl font-bold text-fgb-secondary">89</span>
+                            <span className="text-xs text-gray-500">kWh/m²</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                     <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Device consumption</h3>
-                        <ExportButtons chartRef={deviceConsRef} data={deviceData} filename="device-consumption" />
+                        <ExportButtons chartRef={deviceConsRef} data={deviceData} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={deviceData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                          <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v/1000}k kWh`} />
-                          <Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
-                          <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={deviceData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="month" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v/1000}k`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" radius={[0, 0, 0, 0]} />
                           <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Lighting" />
-                          <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" />
+                          <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -551,51 +636,60 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </div>
 
                 {/* Slide 4: Carbon Footprint & Energy Trends */}
-                <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-start">
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Carbon Footprint</h3>
-                        <ExportButtons chartRef={carbonRef} data={carbonData} filename="carbon-footprint" />
+                        <ExportButtons chartRef={carbonRef} data={carbonData} filename="carbon-footprint" onExpand={() => setFullscreenChart('carbon')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={carbonData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                          <XAxis dataKey="week" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
-                          <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" />
-                          <Bar dataKey="july" fill="hsl(338, 50%, 45%)" name="July" />
-                          <Bar dataKey="august" fill="hsl(338, 50%, 75%)" name="August" />
-                          <Bar dataKey="september" fill="hsl(188, 100%, 35%)" name="September" />
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={carbonData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="week" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="july" fill="hsl(338, 50%, 45%)" name="July" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="august" fill="hsl(338, 50%, 75%)" name="August" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="september" fill="hsl(188, 100%, 35%)" name="September" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                     <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Energy Trend Over Time</h3>
-                        <ExportButtons chartRef={trendRef} data={trendData} filename="energy-trend" />
+                        <ExportButtons chartRef={trendRef} data={trendData} filename="energy-trend" onExpand={() => setFullscreenChart('trend')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={trendData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                          <XAxis dataKey="day" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
-                          <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.6} name="General" />
-                          <Area type="monotone" dataKey="hvac" stackId="2" stroke="hsl(338, 50%, 45%)" fill="hsl(338, 50%, 45%)" fillOpacity={0.6} name="HVAC" />
-                          <Area type="monotone" dataKey="lights" stackId="3" stroke="hsl(188, 100%, 35%)" fill="hsl(188, 100%, 35%)" fillOpacity={0.4} name="Lights" />
-                          <Area type="monotone" dataKey="plugs" stackId="4" stroke="hsl(338, 50%, 75%)" fill="hsl(338, 50%, 75%)" fillOpacity={0.4} name="Plugs" />
+                      <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={trendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v}`} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.7} name="General" />
+                          <Area type="monotone" dataKey="hvac" stackId="2" stroke="hsl(338, 50%, 45%)" fill="hsl(338, 50%, 45%)" fillOpacity={0.7} name="HVAC" />
+                          <Area type="monotone" dataKey="lights" stackId="3" stroke="hsl(188, 100%, 35%)" fill="hsl(188, 100%, 35%)" fillOpacity={0.5} name="Lights" />
+                          <Area type="monotone" dataKey="plugs" stackId="4" stroke="hsl(338, 50%, 75%)" fill="hsl(338, 50%, 75%)" fillOpacity={0.5} name="Plugs" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
                     <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Energy vs outdoor condition</h3>
-                        <ExportButtons chartRef={outdoorRef} data={outdoorData} filename="energy-vs-outdoor" />
+                        <ExportButtons chartRef={outdoorRef} data={outdoorData} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={outdoorData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                          <XAxis dataKey="day" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} kW`} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} />
-                          <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={2} name="HVAC Office" />
-                          <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={2} name="Temperature" />
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={outdoorData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v}`} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }} name="HVAC Office" />
+                          <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={2.5} dot={{ fill: 'hsl(338, 50%, 45%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }} name="Temperature" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -702,6 +796,104 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Month</div>
         <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Year</div>
       </div>
+
+      {/* Fullscreen Modals */}
+      <ChartFullscreenModal isOpen={fullscreenChart === 'heatmap'} onClose={() => setFullscreenChart(null)} title="Energy Heatmap">
+        <div className="flex gap-4">
+          <div className="text-xs text-gray-500 space-y-[8px] pt-1 font-medium">
+            {Array.from({ length: 24 }, (_, i) => (
+              <div key={i} className="h-5">{String(i).padStart(2, '0')}:00</div>
+            ))}
+          </div>
+          <div className="flex-1">
+            <div className="grid grid-cols-7 gap-1">
+              {heatmapData.flat().map((val, idx) => (
+                <div key={idx} className="h-5 rounded" style={{ backgroundColor: heatmapColors[val] }} />
+              ))}
+            </div>
+            <div className="flex justify-between text-sm text-gray-500 mt-4 font-medium">
+              {['27-05', '28-05', '29-05', '30-05', '31-05', '01-06', '02-06'].map(d => <span key={d}>{d}</span>)}
+            </div>
+          </div>
+        </div>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'actualVsAvg'} onClose={() => setFullscreenChart(null)} title="Actual vs Average">
+        <ResponsiveContainer width="100%" height={450}>
+          <LineChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="month" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={3} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 7 }} name="Actual" />
+            <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2.5} strokeDasharray="5 5" dot={false} name="Expected" />
+            <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2.5} dot={false} name="Average" />
+            <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2.5} dot={false} name="Off Hours" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'deviceCons'} onClose={() => setFullscreenChart(null)} title="Device Consumption">
+        <ResponsiveContainer width="100%" height={450}>
+          <BarChart data={deviceData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="month" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v/1000}k`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
+            <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Lighting" />
+            <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'carbon'} onClose={() => setFullscreenChart(null)} title="Carbon Footprint">
+        <ResponsiveContainer width="100%" height={450}>
+          <BarChart data={carbonData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="week" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="july" fill="hsl(338, 50%, 45%)" name="July" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="august" fill="hsl(338, 50%, 75%)" name="August" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="september" fill="hsl(188, 100%, 35%)" name="September" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'trend'} onClose={() => setFullscreenChart(null)} title="Energy Trend Over Time">
+        <ResponsiveContainer width="100%" height={450}>
+          <AreaChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="day" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.7} name="General" />
+            <Area type="monotone" dataKey="hvac" stackId="2" stroke="hsl(338, 50%, 45%)" fill="hsl(338, 50%, 45%)" fillOpacity={0.7} name="HVAC" />
+            <Area type="monotone" dataKey="lights" stackId="3" stroke="hsl(188, 100%, 35%)" fill="hsl(188, 100%, 35%)" fillOpacity={0.5} name="Lights" />
+            <Area type="monotone" dataKey="plugs" stackId="4" stroke="hsl(338, 50%, 75%)" fill="hsl(338, 50%, 75%)" fillOpacity={0.5} name="Plugs" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'outdoor'} onClose={() => setFullscreenChart(null)} title="Energy vs Outdoor Condition">
+        <ResponsiveContainer width="100%" height={450}>
+          <LineChart data={outdoorData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="day" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={3} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 5 }} activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }} name="HVAC Office" />
+            <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={3} dot={{ fill: 'hsl(338, 50%, 45%)', strokeWidth: 0, r: 5 }} activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }} name="Temperature" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
     </div>
   );
 };
