@@ -153,7 +153,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       case "energy": return 4;
       case "air": return 3;
       case "water": return 1;
-      case "certification": return 1;
+      case "certification": return 2;
       default: return 4;
     }
   };
@@ -1045,13 +1045,267 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               </div>
             )}
 
-            {/* CERTIFICATION DASHBOARD */}
-            {activeDashboard === "certification" && (
-              <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
-                <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg text-center">
-                  <Award className="w-16 h-16 text-amber-400 mx-auto mb-4" />
-                  <h3 className="text-3xl font-bold text-gray-800 mb-2">Certifications</h3>
-                  <p className="text-gray-500">Building certification data coming soon...</p>
+            {/* CERTIFICATION DASHBOARD - Slide 1: Overview */}
+            {activeDashboard === "certification" && currentSlide === 0 && (
+              <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
+                  {/* LEED Card */}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
+                        <span className="text-white font-black text-lg">LEED</span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">LEED v4.1</h3>
+                        <span className="inline-block px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">Gold</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Punti ottenuti</span>
+                        <span className="font-bold text-gray-800">68 / 110</span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all" style={{ width: '62%' }} />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>Certified (40)</span>
+                        <span>Silver (50)</span>
+                        <span className="font-bold text-amber-600">Gold (60)</span>
+                        <span>Platinum (80)</span>
+                      </div>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-sm text-emerald-600">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Certificato dal 2023</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BREEAM Card */}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg">
+                        <span className="text-white font-black text-xs">BREEAM</span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">BREEAM In-Use</h3>
+                        <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-semibold">Excellent</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Score</span>
+                        <span className="font-bold text-gray-800">72.5%</span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-sky-400 to-sky-600 rounded-full transition-all" style={{ width: '72.5%' }} />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>Pass (30%)</span>
+                        <span>Good (45%)</span>
+                        <span>V.Good (55%)</span>
+                        <span className="font-bold text-emerald-600">Exc (70%)</span>
+                        <span>Outs (85%)</span>
+                      </div>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-sm text-sky-600">
+                        <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+                        <span>Rinnovo: Dic 2025</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* WELL Card */}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
+                        <span className="text-white font-black text-lg">WELL</span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">WELL v2</h3>
+                        <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm font-semibold">Silver</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Punti ottenuti</span>
+                        <span className="font-bold text-gray-800">54 / 100</span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all" style={{ width: '54%' }} />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>Bronze (40)</span>
+                        <span className="font-bold text-gray-600">Silver (50)</span>
+                        <span>Gold (60)</span>
+                        <span>Platinum (80)</span>
+                      </div>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-sm text-amber-600">
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span>In corso verso Gold</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
+                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                    <div className="text-3xl font-black text-emerald-500">3</div>
+                    <div className="text-sm text-gray-600 mt-1">Certificazioni Attive</div>
+                  </div>
+                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                    <div className="text-3xl font-black text-amber-500">12</div>
+                    <div className="text-sm text-gray-600 mt-1">Milestones Raggiunte</div>
+                  </div>
+                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                    <div className="text-3xl font-black text-sky-500">5</div>
+                    <div className="text-sm text-gray-600 mt-1">In Corso</div>
+                  </div>
+                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                    <div className="text-3xl font-black text-rose-500">2026</div>
+                    <div className="text-sm text-gray-600 mt-1">Prossimo Audit</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CERTIFICATION DASHBOARD - Slide 2: Milestones */}
+            {activeDashboard === "certification" && currentSlide === 1 && (
+              <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
+                  {/* LEED Milestones */}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                        <span className="text-white font-bold text-xs">LEED</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-800">LEED Milestones</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {[
+                        { name: 'Energy & Atmosphere', completed: true, points: '18/33' },
+                        { name: 'Water Efficiency', completed: true, points: '10/12' },
+                        { name: 'Materials & Resources', completed: true, points: '8/13' },
+                        { name: 'Indoor Environmental Quality', completed: false, points: '12/16' },
+                        { name: 'Sustainable Sites', completed: false, points: '10/26' },
+                        { name: 'Innovation', completed: true, points: '5/6' },
+                        { name: 'Regional Priority', completed: true, points: '4/4' },
+                      ].map((milestone, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${milestone.completed ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            {milestone.completed ? '✓' : idx + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
+                            <div className="text-xs text-gray-500">{milestone.points} punti</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* BREEAM Milestones */}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
+                        <span className="text-white font-bold text-[8px]">BREEAM</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-800">BREEAM Milestones</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {[
+                        { name: 'Management', completed: true, score: '85%' },
+                        { name: 'Health & Wellbeing', completed: true, score: '78%' },
+                        { name: 'Energy', completed: true, score: '82%' },
+                        { name: 'Transport', completed: true, score: '65%' },
+                        { name: 'Water', completed: false, score: '70%' },
+                        { name: 'Materials', completed: false, score: '58%' },
+                        { name: 'Waste', completed: true, score: '72%' },
+                        { name: 'Land Use & Ecology', completed: false, score: '45%' },
+                        { name: 'Pollution', completed: true, score: '80%' },
+                      ].map((milestone, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${milestone.completed ? 'bg-sky-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            {milestone.completed ? '✓' : idx + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
+                            <div className="text-xs text-gray-500">{milestone.score}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* WELL Milestones */}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
+                        <span className="text-white font-bold text-xs">WELL</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-800">WELL Milestones</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {[
+                        { name: 'Air', completed: true, points: '8/14' },
+                        { name: 'Water', completed: true, points: '6/8' },
+                        { name: 'Nourishment', completed: false, points: '4/9' },
+                        { name: 'Light', completed: true, points: '7/10' },
+                        { name: 'Movement', completed: false, points: '5/10' },
+                        { name: 'Thermal Comfort', completed: true, points: '8/9' },
+                        { name: 'Sound', completed: true, points: '6/9' },
+                        { name: 'Materials', completed: false, points: '4/10' },
+                        { name: 'Mind', completed: false, points: '3/12' },
+                        { name: 'Community', completed: true, points: '3/9' },
+                      ].map((milestone, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${milestone.completed ? 'bg-rose-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            {milestone.completed ? '✓' : idx + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
+                            <div className="text-xs text-gray-500">{milestone.points} punti</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-6">Timeline Certificazioni</h3>
+                  <div className="relative">
+                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+                    <div className="space-y-6">
+                      {[
+                        { date: 'Gen 2023', event: 'LEED Gold Certification', type: 'leed' },
+                        { date: 'Mar 2023', event: 'BREEAM In-Use Assessment Started', type: 'breeam' },
+                        { date: 'Giu 2023', event: 'WELL Silver Achieved', type: 'well' },
+                        { date: 'Set 2023', event: 'BREEAM Excellent Certified', type: 'breeam' },
+                        { date: 'Gen 2024', event: 'WELL Gold Target Set', type: 'well' },
+                        { date: 'Giu 2024', event: 'Mid-Year Performance Review', type: 'all' },
+                        { date: 'Dic 2025', event: 'BREEAM Renewal Due', type: 'breeam' },
+                        { date: 'Mar 2026', event: 'LEED Recertification', type: 'leed' },
+                      ].map((item, idx) => (
+                        <div key={idx} className="relative pl-10">
+                          <div className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white shadow ${
+                            item.type === 'leed' ? 'bg-emerald-500' :
+                            item.type === 'breeam' ? 'bg-sky-500' :
+                            item.type === 'well' ? 'bg-rose-500' : 'bg-gray-400'
+                          }`} />
+                          <div className="text-xs text-gray-500 font-medium">{item.date}</div>
+                          <div className="text-sm font-medium text-gray-700">{item.event}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
