@@ -151,7 +151,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const getTotalSlides = () => {
     switch (activeDashboard) {
       case "energy": return 4;
-      case "air": return 1;
+      case "air": return 3;
       case "water": return 1;
       case "certification": return 1;
       default: return 4;
@@ -172,6 +172,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const trendRef = useRef<HTMLDivElement>(null);
   const outdoorRef = useRef<HTMLDivElement>(null);
   const airQualityRef = useRef<HTMLDivElement>(null);
+  
+  // Air quality chart refs
+  const co2TrendRef = useRef<HTMLDivElement>(null);
+  const tvocTrendRef = useRef<HTMLDivElement>(null);
+  const tempHumidityRef = useRef<HTMLDivElement>(null);
+  const pm25Ref = useRef<HTMLDivElement>(null);
+  const pm10Ref = useRef<HTMLDivElement>(null);
+  const coO3Ref = useRef<HTMLDivElement>(null);
 
   // Generate heatmap data
   const heatmapData = useMemo(() => {
@@ -273,6 +281,81 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { type: 'High', count: 0 },
     { type: 'Medium', count: 0 },
     { type: 'Low', count: 0 },
+  ], []);
+
+  // Air quality historical data
+  const co2HistoryData = useMemo(() => [
+    { time: '00:00', co2: 420, limit: 1000 },
+    { time: '02:00', co2: 380, limit: 1000 },
+    { time: '04:00', co2: 350, limit: 1000 },
+    { time: '06:00', co2: 390, limit: 1000 },
+    { time: '08:00', co2: 580, limit: 1000 },
+    { time: '10:00', co2: 720, limit: 1000 },
+    { time: '12:00', co2: 680, limit: 1000 },
+    { time: '14:00', co2: 750, limit: 1000 },
+    { time: '16:00', co2: 690, limit: 1000 },
+    { time: '18:00', co2: 520, limit: 1000 },
+    { time: '20:00', co2: 450, limit: 1000 },
+    { time: '22:00', co2: 400, limit: 1000 },
+  ], []);
+
+  const tvocHistoryData = useMemo(() => [
+    { time: '00:00', tvoc: 120, limit: 500 },
+    { time: '02:00', tvoc: 95, limit: 500 },
+    { time: '04:00', tvoc: 85, limit: 500 },
+    { time: '06:00', tvoc: 110, limit: 500 },
+    { time: '08:00', tvoc: 280, limit: 500 },
+    { time: '10:00', tvoc: 350, limit: 500 },
+    { time: '12:00', tvoc: 320, limit: 500 },
+    { time: '14:00', tvoc: 380, limit: 500 },
+    { time: '16:00', tvoc: 290, limit: 500 },
+    { time: '18:00', tvoc: 180, limit: 500 },
+    { time: '20:00', tvoc: 150, limit: 500 },
+    { time: '22:00', tvoc: 130, limit: 500 },
+  ], []);
+
+  const tempHumidityData = useMemo(() => [
+    { time: '00:00', temp: 21.5, humidity: 45 },
+    { time: '02:00', temp: 21.0, humidity: 48 },
+    { time: '04:00', temp: 20.5, humidity: 52 },
+    { time: '06:00', temp: 20.8, humidity: 50 },
+    { time: '08:00', temp: 22.0, humidity: 42 },
+    { time: '10:00', temp: 23.5, humidity: 38 },
+    { time: '12:00', temp: 24.0, humidity: 35 },
+    { time: '14:00', temp: 24.5, humidity: 33 },
+    { time: '16:00', temp: 24.0, humidity: 36 },
+    { time: '18:00', temp: 23.0, humidity: 40 },
+    { time: '20:00', temp: 22.0, humidity: 44 },
+    { time: '22:00', temp: 21.5, humidity: 46 },
+  ], []);
+
+  const pm25Data = useMemo(() => [
+    { day: 'Lun', indoor: 12, outdoor: 28, limit: 25 },
+    { day: 'Mar', indoor: 15, outdoor: 35, limit: 25 },
+    { day: 'Mer', indoor: 10, outdoor: 22, limit: 25 },
+    { day: 'Gio', indoor: 18, outdoor: 42, limit: 25 },
+    { day: 'Ven', indoor: 14, outdoor: 30, limit: 25 },
+    { day: 'Sab', indoor: 8, outdoor: 18, limit: 25 },
+    { day: 'Dom', indoor: 6, outdoor: 15, limit: 25 },
+  ], []);
+
+  const pm10Data = useMemo(() => [
+    { day: 'Lun', indoor: 22, outdoor: 45, limit: 50 },
+    { day: 'Mar', indoor: 28, outdoor: 58, limit: 50 },
+    { day: 'Mer', indoor: 18, outdoor: 38, limit: 50 },
+    { day: 'Gio', indoor: 32, outdoor: 65, limit: 50 },
+    { day: 'Ven', indoor: 25, outdoor: 48, limit: 50 },
+    { day: 'Sab', indoor: 15, outdoor: 32, limit: 50 },
+    { day: 'Dom', indoor: 12, outdoor: 28, limit: 50 },
+  ], []);
+
+  const coO3Data = useMemo(() => [
+    { time: '00:00', co: 0.8, o3: 15 },
+    { time: '04:00', co: 0.5, o3: 12 },
+    { time: '08:00', co: 1.2, o3: 25 },
+    { time: '12:00', co: 0.9, o3: 45 },
+    { time: '16:00', co: 1.1, o3: 38 },
+    { time: '20:00', co: 0.7, o3: 20 },
   ], []);
 
   if (!project) return null;
@@ -700,36 +783,255 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
             {/* AIR QUALITY DASHBOARD */}
             {activeDashboard === "air" && (
-              <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
-                <div ref={airQualityRef} className="w-full max-w-5xl bg-white/95 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-lg flex flex-col md:flex-row items-center gap-8 md:gap-16 relative overflow-hidden">
-                  <div className="absolute top-4 right-4">
-                    <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
-                  </div>
-                  <div className="flex-1 text-center md:text-left z-10">
-                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold mb-4`}>
-                      <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-                      LIVE MONITORING
+              <>
+                {/* Slide 1: Overview + CO2 + TVOC */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Air Quality Overview Card */}
+                    <div ref={airQualityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
+                      <div className="absolute top-4 right-4">
+                        <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
+                      </div>
+                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold mb-4`}>
+                        <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                        LIVE
+                      </div>
+                      <h3 className={`text-4xl font-bold mb-1 tracking-tight ${getAqColor(project.data.aq)}`}>
+                        {project.data.aq}
+                      </h3>
+                      <p className="text-gray-500 uppercase tracking-widest text-xs mb-4">Indoor Air Quality</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Wind className="w-5 h-5 text-sky-500 mx-auto mb-1" />
+                          <div className="text-xl font-bold text-gray-800">{project.data.co2}</div>
+                          <div className="text-[9px] text-gray-500 uppercase">ppm CO₂</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Thermometer className="w-5 h-5 text-orange-500 mx-auto mb-1" />
+                          <div className="text-xl font-bold text-gray-800">{project.data.temp}°</div>
+                          <div className="text-[9px] text-gray-500 uppercase">Temp</div>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className={`text-5xl md:text-6xl font-bold mb-2 tracking-tight ${getAqColor(project.data.aq)}`}>
-                      {project.data.aq}
-                    </h3>
-                    <p className="text-gray-500 uppercase tracking-[0.2em] text-sm">Indoor Air Quality Index</p>
-                  </div>
 
-                  <div className="flex gap-4 md:gap-6 z-10">
-                    <div className="bg-gray-100 p-4 md:p-6 rounded-2xl text-center w-28 md:w-36">
-                      <Wind className="w-6 h-6 md:w-8 md:h-8 text-gray-400 mx-auto mb-2" />
-                      <div className="text-2xl md:text-3xl font-bold text-gray-800">{project.data.co2}</div>
-                      <div className="text-[10px] text-gray-500 uppercase mt-1">ppm CO2</div>
+                    {/* CO2 Trend Chart */}
+                    <div ref={co2TrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">CO₂ Trend (24h)</h3>
+                        <ExportButtons chartRef={co2TrendRef} data={co2HistoryData} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={co2HistoryData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="co2Gradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.05} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Area type="monotone" dataKey="co2" stroke="hsl(188, 100%, 35%)" strokeWidth={2.5} fill="url(#co2Gradient)" name="CO₂" />
+                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="bg-gray-100 p-4 md:p-6 rounded-2xl text-center w-28 md:w-36">
-                      <Thermometer className="w-6 h-6 md:w-8 md:h-8 text-gray-400 mx-auto mb-2" />
-                      <div className="text-2xl md:text-3xl font-bold text-gray-800">{project.data.temp}°</div>
-                      <div className="text-[10px] text-gray-500 uppercase mt-1">Temperature</div>
+
+                    {/* TVOC Trend Chart */}
+                    <div ref={tvocTrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">TVOC Trend (24h)</h3>
+                        <ExportButtons chartRef={tvocTrendRef} data={tvocHistoryData} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={tvocHistoryData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="tvocGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(280, 60%, 50%)" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="hsl(280, 60%, 50%)" stopOpacity={0.05} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Area type="monotone" dataKey="tvoc" stroke="hsl(280, 60%, 50%)" strokeWidth={2.5} fill="url(#tvocGradient)" name="TVOC" />
+                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Temperature & Humidity Chart - Full Width */}
+                    <div ref={tempHumidityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Temperatura & Umidità Relativa (24h)</h3>
+                        <ExportButtons chartRef={tempHumidityRef} data={tempHumidityData} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={tempHumidityData} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis yAxisId="temp" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Line yAxisId="temp" type="monotone" dataKey="temp" stroke="#f97316" strokeWidth={2.5} dot={{ fill: '#f97316', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Temperatura (°C)" />
+                          <Line yAxisId="humidity" type="monotone" dataKey="humidity" stroke="#06b6d4" strokeWidth={2.5} dot={{ fill: '#06b6d4', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Umidità (%)" />
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
                 </div>
-              </div>
+
+                {/* Slide 2: Particulate Matter PM2.5 & PM10 */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* PM2.5 Chart */}
+                    <div ref={pm25Ref} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">PM2.5 - Particolato Fine</h3>
+                          <p className="text-xs text-gray-500">Indoor vs Outdoor (settimanale)</p>
+                        </div>
+                        <ExportButtons chartRef={pm25Ref} data={pm25Data} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={pm25Data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Bar dataKey="indoor" fill="hsl(188, 100%, 35%)" name="Indoor" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="outdoor" fill="hsl(188, 100%, 60%)" name="Outdoor" radius={[4, 4, 0, 0]} />
+                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                        <span className="w-3 h-0.5 bg-red-500 rounded" />
+                        <span>Limite OMS: 25 μg/m³</span>
+                      </div>
+                    </div>
+
+                    {/* PM10 Chart */}
+                    <div ref={pm10Ref} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">PM10 - Particolato Grossolano</h3>
+                          <p className="text-xs text-gray-500">Indoor vs Outdoor (settimanale)</p>
+                        </div>
+                        <ExportButtons chartRef={pm10Ref} data={pm10Data} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={pm10Data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Bar dataKey="indoor" fill="hsl(338, 50%, 45%)" name="Indoor" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="outdoor" fill="hsl(338, 50%, 70%)" name="Outdoor" radius={[4, 4, 0, 0]} />
+                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                        <span className="w-3 h-0.5 bg-red-500 rounded" />
+                        <span>Limite OMS: 50 μg/m³</span>
+                      </div>
+                    </div>
+
+                    {/* Real-time PM indicators */}
+                    <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <div className="text-3xl font-bold text-emerald-500">12</div>
+                        <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Indoor</div>
+                        <div className="text-[10px] text-emerald-500 mt-1">● Ottimo</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <div className="text-3xl font-bold text-yellow-500">28</div>
+                        <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Outdoor</div>
+                        <div className="text-[10px] text-yellow-500 mt-1">● Moderato</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <div className="text-3xl font-bold text-emerald-500">22</div>
+                        <div className="text-xs text-gray-500 uppercase mt-1">PM10 Indoor</div>
+                        <div className="text-[10px] text-emerald-500 mt-1">● Ottimo</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <div className="text-3xl font-bold text-yellow-500">45</div>
+                        <div className="text-xs text-gray-500 uppercase mt-1">PM10 Outdoor</div>
+                        <div className="text-[10px] text-yellow-500 mt-1">● Moderato</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slide 3: CO & O3 */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* CO & O3 Combined Chart */}
+                    <div ref={coO3Ref} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Monossido di Carbonio (CO) & Ozono (O₃)</h3>
+                          <p className="text-xs text-gray-500">Trend giornaliero</p>
+                        </div>
+                        <ExportButtons chartRef={coO3Ref} data={coO3Data} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <LineChart data={coO3Data} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis yAxisId="co" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Line yAxisId="co" type="monotone" dataKey="co" stroke="#ef4444" strokeWidth={2.5} dot={{ fill: '#ef4444', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="CO (ppm)" />
+                          <Line yAxisId="o3" type="monotone" dataKey="o3" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: '#8b5cf6', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="O₃ (ppb)" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Real-time Gas indicators */}
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">CO - Monossido di Carbonio</h3>
+                      <div className="flex items-center gap-6">
+                        <div className="flex-1">
+                          <div className="text-4xl font-bold text-emerald-500">0.8</div>
+                          <div className="text-sm text-gray-500">ppm (attuale)</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 mb-1">Limite sicurezza</div>
+                          <div className="text-lg font-semibold text-gray-700">9 ppm</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Sicuro</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: '9%' }} />
+                      </div>
+                    </div>
+
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">O₃ - Ozono</h3>
+                      <div className="flex items-center gap-6">
+                        <div className="flex-1">
+                          <div className="text-4xl font-bold text-emerald-500">25</div>
+                          <div className="text-sm text-gray-500">ppb (attuale)</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 mb-1">Limite OMS</div>
+                          <div className="text-lg font-semibold text-gray-700">100 ppb</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Ottimo</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: '25%' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* WATER DASHBOARD */}
@@ -891,6 +1193,107 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
             <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={3} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 5 }} activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }} name="HVAC Office" />
             <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={3} dot={{ fill: 'hsl(338, 50%, 45%)', strokeWidth: 0, r: 5 }} activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }} name="Temperature" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* Air Quality Fullscreen Modals */}
+      <ChartFullscreenModal isOpen={fullscreenChart === 'co2Trend'} onClose={() => setFullscreenChart(null)} title="CO₂ Trend (24h)">
+        <ResponsiveContainer width="100%" height={450}>
+          <AreaChart data={co2HistoryData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <defs>
+              <linearGradient id="co2GradientFull" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Area type="monotone" dataKey="co2" stroke="hsl(188, 100%, 35%)" strokeWidth={3} fill="url(#co2GradientFull)" name="CO₂" />
+            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'tvocTrend'} onClose={() => setFullscreenChart(null)} title="TVOC Trend (24h)">
+        <ResponsiveContainer width="100%" height={450}>
+          <AreaChart data={tvocHistoryData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <defs>
+              <linearGradient id="tvocGradientFull" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(280, 60%, 50%)" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="hsl(280, 60%, 50%)" stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Area type="monotone" dataKey="tvoc" stroke="hsl(280, 60%, 50%)" strokeWidth={3} fill="url(#tvocGradientFull)" name="TVOC" />
+            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'tempHumidity'} onClose={() => setFullscreenChart(null)} title="Temperatura & Umidità Relativa (24h)">
+        <ResponsiveContainer width="100%" height={450}>
+          <LineChart data={tempHumidityData} margin={{ top: 20, right: 60, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis yAxisId="temp" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <YAxis yAxisId="humidity" orientation="right" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Line yAxisId="temp" type="monotone" dataKey="temp" stroke="#f97316" strokeWidth={3} dot={{ fill: '#f97316', strokeWidth: 0, r: 5 }} activeDot={{ r: 7 }} name="Temperatura (°C)" />
+            <Line yAxisId="humidity" type="monotone" dataKey="humidity" stroke="#06b6d4" strokeWidth={3} dot={{ fill: '#06b6d4', strokeWidth: 0, r: 5 }} activeDot={{ r: 7 }} name="Umidità (%)" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'pm25'} onClose={() => setFullscreenChart(null)} title="PM2.5 - Particolato Fine">
+        <ResponsiveContainer width="100%" height={450}>
+          <BarChart data={pm25Data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="day" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Bar dataKey="indoor" fill="hsl(188, 100%, 35%)" name="Indoor" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="outdoor" fill="hsl(188, 100%, 60%)" name="Outdoor" radius={[6, 6, 0, 0]} />
+            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'pm10'} onClose={() => setFullscreenChart(null)} title="PM10 - Particolato Grossolano">
+        <ResponsiveContainer width="100%" height={450}>
+          <BarChart data={pm10Data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="day" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Bar dataKey="indoor" fill="hsl(338, 50%, 45%)" name="Indoor" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="outdoor" fill="hsl(338, 50%, 70%)" name="Outdoor" radius={[6, 6, 0, 0]} />
+            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      <ChartFullscreenModal isOpen={fullscreenChart === 'coO3'} onClose={() => setFullscreenChart(null)} title="Monossido di Carbonio (CO) & Ozono (O₃)">
+        <ResponsiveContainer width="100%" height={450}>
+          <LineChart data={coO3Data} margin={{ top: 20, right: 60, left: 20, bottom: 20 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis yAxisId="co" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <YAxis yAxisId="o3" orientation="right" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
+            <Line yAxisId="co" type="monotone" dataKey="co" stroke="#ef4444" strokeWidth={3} dot={{ fill: '#ef4444', strokeWidth: 0, r: 5 }} activeDot={{ r: 7 }} name="CO (ppm)" />
+            <Line yAxisId="o3" type="monotone" dataKey="o3" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', strokeWidth: 0, r: 5 }} activeDot={{ r: 7 }} name="O₃ (ppb)" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
