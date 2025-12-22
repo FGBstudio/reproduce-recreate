@@ -27,12 +27,14 @@ export type MonitoringType = "energy" | "air" | "water";
 export interface Holding {
   id: string;
   name: string;
+  logo: string;
 }
 
 export interface Brand {
   id: string;
   name: string;
   holdingId: string;
+  logo: string;
 }
 
 export interface Project {
@@ -49,23 +51,23 @@ export interface Project {
 }
 
 export const holdings: Holding[] = [
-  { id: "kering", name: "Kering" },
-  { id: "lvmh", name: "LVMH" },
-  { id: "richemont", name: "Richemont" },
+  { id: "kering", name: "Kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Kering_Logo.svg/512px-Kering_Logo.svg.png" },
+  { id: "lvmh", name: "LVMH", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/LVMH_logo.svg/512px-LVMH_logo.svg.png" },
+  { id: "richemont", name: "Richemont", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Richemont.svg/512px-Richemont.svg.png" },
 ];
 
 export const brands: Brand[] = [
   // Kering
-  { id: "gucci", name: "Gucci", holdingId: "kering" },
-  { id: "bottega", name: "Bottega Veneta", holdingId: "kering" },
-  { id: "ysl", name: "Saint Laurent", holdingId: "kering" },
+  { id: "gucci", name: "Gucci", holdingId: "kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" },
+  { id: "bottega", name: "Bottega Veneta", holdingId: "kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Bottega_Veneta_Logo.svg/512px-Bottega_Veneta_Logo.svg.png" },
+  { id: "ysl", name: "Saint Laurent", holdingId: "kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Yves_Saint_Laurent_Logo.svg/512px-Yves_Saint_Laurent_Logo.svg.png" },
   // LVMH
-  { id: "lv", name: "Louis Vuitton", holdingId: "lvmh" },
-  { id: "dior", name: "Dior", holdingId: "lvmh" },
-  { id: "fendi", name: "Fendi", holdingId: "lvmh" },
+  { id: "lv", name: "Louis Vuitton", holdingId: "lvmh", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Louis_Vuitton_logo_and_wordmark.svg/512px-Louis_Vuitton_logo_and_wordmark.svg.png" },
+  { id: "dior", name: "Dior", holdingId: "lvmh", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Dior_Logo.svg/512px-Dior_Logo.svg.png" },
+  { id: "fendi", name: "Fendi", holdingId: "lvmh", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Fendi_logo.svg/512px-Fendi_logo.svg.png" },
   // Richemont
-  { id: "cartier", name: "Cartier", holdingId: "richemont" },
-  { id: "iwc", name: "IWC", holdingId: "richemont" },
+  { id: "cartier", name: "Cartier", holdingId: "richemont", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Cartier_Logo.svg/512px-Cartier_Logo.svg.png" },
+  { id: "iwc", name: "IWC", holdingId: "richemont", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/IWC_Schaffhausen_logo.svg/512px-IWC_Schaffhausen_logo.svg.png" },
 ];
 
 export const regions: Record<string, Region> = {

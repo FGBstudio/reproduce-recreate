@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "@/components/dashboard/Header";
 import RegionNav from "@/components/dashboard/RegionNav";
 import RegionOverlay from "@/components/dashboard/RegionOverlay";
+import BrandOverlay from "@/components/dashboard/BrandOverlay";
 import MapView from "@/components/dashboard/MapView";
 import ProjectDetail from "@/components/dashboard/ProjectDetail";
 import { Project, MonitoringType } from "@/lib/data";
@@ -33,6 +34,8 @@ const Index = () => {
     );
   };
 
+  const showBrandOverlay = (selectedBrand || selectedHolding) && !selectedProject;
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
       {/* Map Layer */}
@@ -47,9 +50,16 @@ const Index = () => {
       {/* UI Overlay */}
       <Header />
       
+      {/* Brand/Holding Overlay - shows when brand or holding is selected */}
+      <BrandOverlay 
+        selectedBrand={selectedBrand}
+        selectedHolding={selectedHolding}
+        visible={showBrandOverlay}
+      />
+      
       <RegionOverlay 
         currentRegion={currentRegion} 
-        visible={!selectedProject && currentRegion !== "GLOBAL"} 
+        visible={!selectedProject && currentRegion !== "GLOBAL" && !showBrandOverlay} 
       />
       
       <RegionNav 
