@@ -1,4 +1,9 @@
-import { Brand, Holding, getBrandById, getHoldingById, projects, getBrandsByHolding } from "@/lib/data";
+import { useMemo } from "react";
+import { getBrandById, getHoldingById, projects, getBrandsByHolding, Project } from "@/lib/data";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
+} from "recharts";
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
@@ -7,89 +12,194 @@ interface BrandOverlayProps {
 }
 
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
-  // Get brand or holding info
   const brand = selectedBrand ? getBrandById(selectedBrand) : null;
   const holding = selectedHolding ? getHoldingById(selectedHolding) : null;
   
-  // Calculate stats
-  const getStats = () => {
-    let filteredProjects = projects;
-    
+  // Get filtered projects
+  const filteredProjects = useMemo(() => {
     if (selectedBrand) {
-      filteredProjects = projects.filter(p => p.brandId === selectedBrand);
+      return projects.filter(p => p.brandId === selectedBrand);
     } else if (selectedHolding) {
       const holdingBrands = getBrandsByHolding(selectedHolding);
-      filteredProjects = projects.filter(p => holdingBrands.some(b => b.id === p.brandId));
+      return projects.filter(p => holdingBrands.some(b => b.id === p.brandId));
     }
+    return [];
+  }, [selectedBrand, selectedHolding]);
+
+  // Chart data for store comparison
+  const energyComparisonData = useMemo(() => {
+    return filteredProjects.map(p => ({
+      name: p.name.split(' ').slice(-1)[0], // Get last word (city)
+      fullName: p.name,
+      hvac: p.data.hvac,
+      light: p.data.light,
+      total: p.data.total
+    }));
+  }, [filteredProjects]);
+
+  const airQualityComparisonData = useMemo(() => {
+    return filteredProjects.map(p => ({
+      name: p.name.split(' ').slice(-1)[0],
+      fullName: p.name,
+      co2: p.data.co2,
+      temp: p.data.temp,
+      alerts: p.data.alerts
+    }));
+  }, [filteredProjects]);
+
+  // Radar chart data for overall comparison
+  const radarData = useMemo(() => {
+    if (filteredProjects.length === 0) return [];
     
+    const maxEnergy = Math.max(...filteredProjects.map(p => p.data.total));
+    const maxCo2 = Math.max(...filteredProjects.map(p => p.data.co2));
+    
+    return [
+      { metric: 'Energy', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.total / maxEnergy) * 100])) },
+      { metric: 'HVAC', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.hvac / (maxEnergy * 0.6)) * 100])) },
+      { metric: 'Lighting', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.light / (maxEnergy * 0.5)) * 100])) },
+      { metric: 'CO₂', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.co2 / maxCo2) * 100])) },
+      { metric: 'Temp', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.temp / 30) * 100])) },
+    ];
+  }, [filteredProjects]);
+
+  // Calculate stats
+  const stats = useMemo(() => {
     const totalEnergy = filteredProjects.reduce((sum, p) => sum + p.data.total, 0);
-    const avgTemp = filteredProjects.length 
-      ? (filteredProjects.reduce((sum, p) => sum + p.data.temp, 0) / filteredProjects.length).toFixed(1)
-      : 0;
-    const totalAlerts = filteredProjects.reduce((sum, p) => sum + p.data.alerts, 0);
     const avgCo2 = filteredProjects.length 
       ? Math.round(filteredProjects.reduce((sum, p) => sum + p.data.co2, 0) / filteredProjects.length)
       : 0;
+    const totalAlerts = filteredProjects.reduce((sum, p) => sum + p.data.alerts, 0);
     
-    return {
-      projectCount: filteredProjects.length,
-      totalEnergy,
-      avgTemp,
-      totalAlerts,
-      avgCo2
-    };
-  };
+    return { projectCount: filteredProjects.length, totalEnergy, avgCo2, totalAlerts };
+  }, [filteredProjects]);
   
-  const stats = getStats();
   const displayEntity = brand || holding;
+  const storeNames = filteredProjects.map(p => p.name.split(' ').slice(-1)[0]);
+  const chartColors = ['hsl(188, 100%, 35%)', 'hsl(338, 50%, 50%)', 'hsl(43, 70%, 50%)', 'hsl(160, 60%, 40%)', 'hsl(280, 50%, 50%)'];
   
   if (!displayEntity || !visible) return null;
 
+  const showCharts = filteredProjects.length > 1;
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20">
-      <div className="flex flex-col items-center gap-8 animate-fade-in">
-        {/* Brand/Holding Logo */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full scale-150" />
-          <div className="relative bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl">
-            <img 
-              src={displayEntity.logo} 
-              alt={displayEntity.name}
-              className="h-20 md:h-28 w-auto object-contain filter brightness-0 invert opacity-90"
-            />
-          </div>
-        </div>
+    <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-4">
+      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 animate-fade-in max-w-6xl w-full">
         
-        {/* Stats Cards */}
-        <div className="glass-panel rounded-2xl p-6 min-w-[320px]">
-          <div className="text-center mb-4">
-            <h3 className="text-lg font-semibold text-foreground">{displayEntity.name}</h3>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              {brand ? 'Brand Overview' : 'Holding Overview'}
-            </p>
+        {/* Left: Logo & Stats */}
+        <div className="flex flex-col items-center gap-6">
+          {/* Brand/Holding Logo */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full scale-150" />
+            <div className="relative bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl">
+              <img 
+                src={displayEntity.logo} 
+                alt={displayEntity.name}
+                className="h-16 md:h-20 w-auto object-contain filter brightness-0 invert opacity-90"
+              />
+            </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
-              <div className="text-2xl font-bold text-foreground">{stats.projectCount}</div>
-              <div className="text-[10px] uppercase text-muted-foreground">Stores</div>
+          {/* Stats Cards */}
+          <div className="glass-panel rounded-2xl p-5 min-w-[280px]">
+            <div className="text-center mb-3">
+              <h3 className="text-lg font-semibold text-foreground">{displayEntity.name}</h3>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                {brand ? 'Brand Overview' : 'Holding Overview'}
+              </p>
             </div>
-            <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
-              <div className="text-2xl font-bold text-foreground">{stats.totalEnergy}</div>
-              <div className="text-[10px] uppercase text-muted-foreground">kWh Total</div>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
-              <div className="text-2xl font-bold text-foreground">{stats.avgCo2}</div>
-              <div className="text-[10px] uppercase text-muted-foreground">Avg CO₂ ppm</div>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
-              <div className={`text-2xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                {stats.totalAlerts}
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <div className="text-xl font-bold text-foreground">{stats.projectCount}</div>
+                <div className="text-[9px] uppercase text-muted-foreground">Stores</div>
               </div>
-              <div className="text-[10px] uppercase text-muted-foreground">Alerts</div>
+              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <div className="text-xl font-bold text-foreground">{stats.totalEnergy}</div>
+                <div className="text-[9px] uppercase text-muted-foreground">kWh</div>
+              </div>
+              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <div className="text-xl font-bold text-foreground">{stats.avgCo2}</div>
+                <div className="text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
+              </div>
+              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <div className={`text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {stats.totalAlerts}
+                </div>
+                <div className="text-[9px] uppercase text-muted-foreground">Alerts</div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Right: Comparison Charts */}
+        {showCharts && (
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl pointer-events-auto">
+            {/* Energy Comparison Bar Chart */}
+            <div className="glass-panel rounded-2xl p-4">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Energy Consumption (kWh)</h4>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={energyComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
+                  />
+                  <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* CO2 Comparison */}
+            <div className="glass-panel rounded-2xl p-4">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Air Quality (CO₂ ppm)</h4>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
+                  />
+                  <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Radar Chart - Overall Comparison */}
+            <div className="glass-panel rounded-2xl p-4 lg:col-span-2">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Store Performance Comparison</h4>
+              <ResponsiveContainer width="100%" height={220}>
+                <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
+                  <PolarGrid stroke="rgba(255,255,255,0.15)" />
+                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 9 }} />
+                  {storeNames.map((name, idx) => (
+                    <Radar 
+                      key={name} 
+                      name={name} 
+                      dataKey={name} 
+                      stroke={chartColors[idx % chartColors.length]} 
+                      fill={chartColors[idx % chartColors.length]} 
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                  ))}
+                  <Legend 
+                    wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} 
+                    iconType="circle"
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
