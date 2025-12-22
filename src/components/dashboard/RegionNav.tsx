@@ -1,5 +1,12 @@
-import { Zap, Wind, Droplets } from "lucide-react";
-import { MonitoringType } from "@/lib/data";
+import { Zap, Wind, Droplets, Building2, Tag } from "lucide-react";
+import { MonitoringType, holdings, brands, getBrandsByHolding } from "@/lib/data";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface RegionNavProps {
   currentRegion: string;
@@ -7,6 +14,10 @@ interface RegionNavProps {
   visible?: boolean;
   activeFilters: MonitoringType[];
   onFilterToggle: (filter: MonitoringType) => void;
+  selectedHolding: string | null;
+  selectedBrand: string | null;
+  onHoldingChange: (holdingId: string | null) => void;
+  onBrandChange: (brandId: string | null) => void;
 }
 
 const regionButtons = [
@@ -28,14 +39,62 @@ const RegionNav = ({
   onRegionChange, 
   visible = true,
   activeFilters,
-  onFilterToggle
+  onFilterToggle,
+  selectedHolding,
+  selectedBrand,
+  onHoldingChange,
+  onBrandChange
 }: RegionNavProps) => {
+  const availableBrands = selectedHolding 
+    ? getBrandsByHolding(selectedHolding) 
+    : brands;
+
   return (
     <nav 
-      className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 transition-transform duration-500 ${
+      className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 transition-transform duration-500 ${
         visible ? "translate-y-0" : "translate-y-40"
       }`}
     >
+      {/* Holding & Brand Filters */}
+      <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2">
+        <Building2 className="w-4 h-4 text-muted-foreground" />
+        <Select 
+          value={selectedHolding || "all"} 
+          onValueChange={(val) => {
+            onHoldingChange(val === "all" ? null : val);
+            onBrandChange(null); // Reset brand when holding changes
+          }}
+        >
+          <SelectTrigger className="w-[120px] h-8 border-0 bg-transparent text-sm focus:ring-0">
+            <SelectValue placeholder="All Holdings" />
+          </SelectTrigger>
+          <SelectContent className="glass-panel border-white/10">
+            <SelectItem value="all">All Holdings</SelectItem>
+            {holdings.map(h => (
+              <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="w-px h-6 bg-white/20" />
+
+        <Tag className="w-4 h-4 text-muted-foreground" />
+        <Select 
+          value={selectedBrand || "all"} 
+          onValueChange={(val) => onBrandChange(val === "all" ? null : val)}
+        >
+          <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent text-sm focus:ring-0">
+            <SelectValue placeholder="All Brands" />
+          </SelectTrigger>
+          <SelectContent className="glass-panel border-white/10">
+            <SelectItem value="all">All Brands</SelectItem>
+            {availableBrands.map(b => (
+              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Region Buttons */}
       <div className="glass-panel rounded-full px-6 py-3 flex items-center gap-2">
         {regionButtons.map((btn) => (

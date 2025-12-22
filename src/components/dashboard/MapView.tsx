@@ -1,25 +1,38 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { projects, regions, Project, MonitoringType } from "@/lib/data";
+import { projects, regions, Project, MonitoringType, getBrandsByHolding } from "@/lib/data";
 
 interface MapViewProps {
   currentRegion: string;
   onProjectSelect: (project: Project) => void;
   activeFilters: MonitoringType[];
+  selectedHolding: string | null;
+  selectedBrand: string | null;
 }
 
-const MapView = ({ currentRegion, onProjectSelect, activeFilters }: MapViewProps) => {
+const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHolding, selectedBrand }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
-  // Filter projects by region and monitoring type
+  // Filter projects by region, monitoring type, holding and brand
   const visibleProjects = projects.filter(p => {
     const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
     const monitoringMatch = activeFilters.length === 0 || 
       activeFilters.some(filter => p.monitoring.includes(filter));
-    return regionMatch && monitoringMatch;
+    
+    // Holding filter
+    let holdingMatch = true;
+    if (selectedHolding) {
+      const holdingBrands = getBrandsByHolding(selectedHolding);
+      holdingMatch = holdingBrands.some(b => b.id === p.brandId);
+    }
+    
+    // Brand filter
+    const brandMatch = !selectedBrand || p.brandId === selectedBrand;
+    
+    return regionMatch && monitoringMatch && holdingMatch && brandMatch;
   });
 
   // Initialize map
@@ -124,7 +137,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters }: MapViewProps
 
       markersRef.current.push(marker);
     });
-  }, [visibleProjects, onProjectSelect, activeFilters]);
+  }, [visibleProjects, onProjectSelect, activeFilters, selectedHolding, selectedBrand]);
 
   return (
     <div className="absolute inset-0 z-0">
