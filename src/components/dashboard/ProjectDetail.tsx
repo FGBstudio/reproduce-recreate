@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, ReactNode } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X } from "lucide-react";
-import { Project } from "@/lib/data";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag } from "lucide-react";
+import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -480,12 +480,35 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             </button>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-fgb-secondary tracking-wide">{project.name}</h1>
-          <div className="flex items-center gap-3 text-gray-600">
+          <div className="flex items-center gap-3 text-gray-600 flex-wrap">
             <span>{project.address}</span>
             <span className="text-gray-400">|</span>
             <span className="flex items-center gap-1">
               {project.data.temp}° <Cloud className="w-4 h-4" />
             </span>
+            {/* Brand & Holding Info */}
+            {(() => {
+              const brand = getBrandById(project.brandId);
+              const holding = brand ? getHoldingById(brand.holdingId) : null;
+              return brand ? (
+                <>
+                  <span className="text-gray-400">|</span>
+                  <span className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-gray-400" />
+                    <span className="font-medium">{brand.name}</span>
+                  </span>
+                  {holding && (
+                    <>
+                      <span className="text-gray-400">|</span>
+                      <span className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{holding.name}</span>
+                      </span>
+                    </>
+                  )}
+                </>
+              ) : null;
+            })()}
           </div>
         </div>
 
