@@ -10,6 +10,8 @@ const Index = () => {
   const [currentRegion, setCurrentRegion] = useState("GLOBAL");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeFilters, setActiveFilters] = useState<MonitoringType[]>(["energy", "air", "water"]);
+  const [selectedHolding, setSelectedHolding] = useState<string | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
 
   const handleRegionChange = (region: string) => {
     setCurrentRegion(region);
@@ -38,6 +40,8 @@ const Index = () => {
         currentRegion={currentRegion} 
         onProjectSelect={handleProjectSelect}
         activeFilters={activeFilters}
+        selectedHolding={selectedHolding}
+        selectedBrand={selectedBrand}
       />
 
       {/* UI Overlay */}
@@ -54,6 +58,10 @@ const Index = () => {
         visible={!selectedProject}
         activeFilters={activeFilters}
         onFilterToggle={handleFilterToggle}
+        selectedHolding={selectedHolding}
+        selectedBrand={selectedBrand}
+        onHoldingChange={setSelectedHolding}
+        onBrandChange={setSelectedBrand}
       />
 
       {/* Project Detail Modal */}
