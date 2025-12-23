@@ -152,7 +152,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     switch (activeDashboard) {
       case "energy": return 4;
       case "air": return 3;
-      case "water": return 1;
+      case "water": return 3;
       case "certification": return 2;
       default: return 4;
     }
@@ -180,6 +180,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const pm25Ref = useRef<HTMLDivElement>(null);
   const pm10Ref = useRef<HTMLDivElement>(null);
   const coO3Ref = useRef<HTMLDivElement>(null);
+
+  // Water dashboard refs
+  const waterConsumptionRef = useRef<HTMLDivElement>(null);
+  const waterLeaksRef = useRef<HTMLDivElement>(null);
+  const waterQualityRef = useRef<HTMLDivElement>(null);
+  const waterTrendRef = useRef<HTMLDivElement>(null);
+  const waterDistributionRef = useRef<HTMLDivElement>(null);
+  const waterEfficiencyRef = useRef<HTMLDivElement>(null);
 
   // Generate heatmap data
   const heatmapData = useMemo(() => {
@@ -356,6 +364,75 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { time: '12:00', co: 0.9, o3: 45 },
     { time: '16:00', co: 1.1, o3: 38 },
     { time: '20:00', co: 0.7, o3: 20 },
+  ], []);
+
+  // Water dashboard data
+  const waterConsumptionData = useMemo(() => [
+    { month: 'Gen', consumption: 1250, target: 1100, lastYear: 1400 },
+    { month: 'Feb', consumption: 1180, target: 1050, lastYear: 1320 },
+    { month: 'Mar', consumption: 1320, target: 1150, lastYear: 1450 },
+    { month: 'Apr', consumption: 1420, target: 1200, lastYear: 1580 },
+    { month: 'Mag', consumption: 1680, target: 1400, lastYear: 1820 },
+    { month: 'Giu', consumption: 1950, target: 1600, lastYear: 2100 },
+    { month: 'Lug', consumption: 2180, target: 1800, lastYear: 2350 },
+    { month: 'Ago', consumption: 2250, target: 1850, lastYear: 2400 },
+    { month: 'Set', consumption: 1780, target: 1500, lastYear: 1920 },
+    { month: 'Ott', consumption: 1380, target: 1200, lastYear: 1520 },
+    { month: 'Nov', consumption: 1200, target: 1080, lastYear: 1350 },
+    { month: 'Dic', consumption: 1150, target: 1050, lastYear: 1280 },
+  ], []);
+
+  const waterLeaksData = useMemo(() => [
+    { zone: 'Bagni Piano 1', leakRate: 2.3, status: 'warning', detected: '3 giorni fa' },
+    { zone: 'Cucina', leakRate: 0.8, status: 'ok', detected: '-' },
+    { zone: 'Irrigazione', leakRate: 5.2, status: 'critical', detected: '1 ora fa' },
+    { zone: 'Bagni Piano 2', leakRate: 1.1, status: 'ok', detected: '-' },
+    { zone: 'HVAC Cooling', leakRate: 0.5, status: 'ok', detected: '-' },
+    { zone: 'Fontane', leakRate: 3.8, status: 'warning', detected: '12 ore fa' },
+  ], []);
+
+  const waterQualityData = useMemo(() => [
+    { time: '00:00', ph: 7.2, turbidity: 0.8, chlorine: 0.5 },
+    { time: '04:00', ph: 7.1, turbidity: 0.7, chlorine: 0.48 },
+    { time: '08:00', ph: 7.3, turbidity: 1.2, chlorine: 0.52 },
+    { time: '12:00', ph: 7.4, turbidity: 1.5, chlorine: 0.55 },
+    { time: '16:00', ph: 7.2, turbidity: 1.1, chlorine: 0.51 },
+    { time: '20:00', ph: 7.1, turbidity: 0.9, chlorine: 0.49 },
+  ], []);
+
+  const waterDistributionData = useMemo(() => [
+    { name: 'Sanitari', value: 35, color: 'hsl(200, 80%, 50%)' },
+    { name: 'HVAC', value: 28, color: 'hsl(200, 60%, 40%)' },
+    { name: 'Irrigazione', value: 18, color: 'hsl(200, 70%, 60%)' },
+    { name: 'Cucina', value: 12, color: 'hsl(200, 50%, 70%)' },
+    { name: 'Altro', value: 7, color: 'hsl(200, 40%, 80%)' },
+  ], []);
+
+  const waterDailyTrendData = useMemo(() => [
+    { hour: '06:00', consumption: 45, peak: false },
+    { hour: '07:00', consumption: 120, peak: false },
+    { hour: '08:00', consumption: 280, peak: true },
+    { hour: '09:00', consumption: 350, peak: true },
+    { hour: '10:00', consumption: 220, peak: false },
+    { hour: '11:00', consumption: 180, peak: false },
+    { hour: '12:00', consumption: 290, peak: true },
+    { hour: '13:00', consumption: 310, peak: true },
+    { hour: '14:00', consumption: 200, peak: false },
+    { hour: '15:00', consumption: 170, peak: false },
+    { hour: '16:00', consumption: 190, peak: false },
+    { hour: '17:00', consumption: 240, peak: false },
+    { hour: '18:00', consumption: 320, peak: true },
+    { hour: '19:00', consumption: 280, peak: false },
+    { hour: '20:00', consumption: 150, peak: false },
+    { hour: '21:00', consumption: 90, peak: false },
+    { hour: '22:00', consumption: 60, peak: false },
+  ], []);
+
+  const waterEfficiencyData = useMemo(() => [
+    { week: 'Sett 1', efficiency: 78, waste: 22 },
+    { week: 'Sett 2', efficiency: 82, waste: 18 },
+    { week: 'Sett 3', efficiency: 75, waste: 25 },
+    { week: 'Sett 4', efficiency: 88, waste: 12 },
   ], []);
 
   if (!project) return null;
@@ -1059,13 +1136,295 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
             {/* WATER DASHBOARD */}
             {activeDashboard === "water" && (
-              <div className="w-full flex-shrink-0 px-4 md:px-16 flex items-center justify-center">
-                <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl p-12 shadow-lg text-center">
-                  <Droplet className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-                  <h3 className="text-3xl font-bold text-gray-800 mb-2">Water Monitoring</h3>
-                  <p className="text-gray-500">Water consumption data coming soon...</p>
+              <>
+                {/* Slide 1: Consumo idrico & Distribuzione */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Consumo mensile */}
+                    <div ref={waterConsumptionRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Consumo Idrico Mensile</h3>
+                          <p className="text-xs text-gray-500">Confronto con target e anno precedente</p>
+                        </div>
+                        <ExportButtons chartRef={waterConsumptionRef} data={waterConsumptionData} filename="water-consumption" onExpand={() => setFullscreenChart('waterConsumption')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <AreaChart data={waterConsumptionData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(200, 80%, 50%)" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="hsl(200, 80%, 50%)" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="month" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'm³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Area type="monotone" dataKey="consumption" stroke="hsl(200, 80%, 50%)" strokeWidth={2.5} fill="url(#waterGradient)" name="Consumo Attuale" />
+                          <Line type="monotone" dataKey="target" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
+                          <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Anno Precedente" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Distribuzione consumo */}
+                    <div ref={waterDistributionRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Distribuzione Consumo</h3>
+                        <ExportButtons chartRef={waterDistributionRef} data={waterDistributionData} filename="water-distribution" />
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="space-y-2">
+                          {waterDistributionData.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span className="text-sm text-gray-600">{item.name}</span>
+                              <span className="text-sm font-semibold text-gray-800 ml-auto">{item.value}%</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="relative w-40 h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={waterDistributionData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">
+                                {waterDistributionData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <Droplet className="w-6 h-6 text-blue-500 mb-1" />
+                            <span className="text-xs text-gray-500">m³/mese</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Consumo Totale</p>
+                        <p className="text-3xl font-bold text-blue-500">18,740</p>
+                        <p className="text-xs text-gray-500 mt-1">m³ / anno</p>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ 12% vs anno scorso</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Costo Stimato</p>
+                        <p className="text-3xl font-bold text-gray-800">€24,562</p>
+                        <p className="text-xs text-gray-500 mt-1">/ anno</p>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 risparmiati</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Efficienza</p>
+                        <p className="text-3xl font-bold text-emerald-500">82%</p>
+                        <p className="text-xs text-gray-500 mt-1">utilizzo efficiente</p>
+                        <div className="mt-2 text-xs text-blue-500 font-medium">↑ 5% vs mese scorso</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Perdite Rilevate</p>
+                        <p className="text-3xl font-bold text-amber-500">2</p>
+                        <p className="text-xs text-gray-500 mt-1">zone con anomalie</p>
+                        <div className="mt-2 text-xs text-red-500 font-medium">⚠ Richiede attenzione</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+
+                {/* Slide 2: Perdite & Trend Giornaliero */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Rilevamento Perdite */}
+                    <div ref={waterLeaksRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Rilevamento Perdite</h3>
+                          <p className="text-xs text-gray-500">Monitoraggio zone critiche</p>
+                        </div>
+                        <ExportButtons chartRef={waterLeaksRef} data={waterLeaksData} filename="water-leaks" />
+                      </div>
+                      <div className="space-y-3">
+                        {waterLeaksData.map((zone, idx) => (
+                          <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <div className={`w-3 h-3 rounded-full ${
+                              zone.status === 'critical' ? 'bg-red-500 animate-pulse' :
+                              zone.status === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'
+                            }`} />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-700">{zone.zone}</div>
+                              <div className="text-xs text-gray-500">
+                                {zone.status === 'ok' ? 'Nessuna anomalia' : `Rilevato: ${zone.detected}`}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`text-lg font-bold ${
+                                zone.status === 'critical' ? 'text-red-500' :
+                                zone.status === 'warning' ? 'text-amber-500' : 'text-emerald-500'
+                              }`}>{zone.leakRate}%</div>
+                              <div className="text-xs text-gray-500">tasso perdita</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Trend Giornaliero */}
+                    <div ref={waterTrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Trend Consumo Giornaliero</h3>
+                          <p className="text-xs text-gray-500">Picchi e consumi orari</p>
+                        </div>
+                        <ExportButtons chartRef={waterTrendRef} data={waterDailyTrendData} filename="water-daily-trend" onExpand={() => setFullscreenChart('waterTrend')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={waterDailyTrendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'litri', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Bar dataKey="consumption" name="Consumo">
+                            {waterDailyTrendData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.peak ? 'hsl(200, 80%, 40%)' : 'hsl(200, 60%, 60%)'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Efficienza Settimanale */}
+                    <div ref={waterEfficiencyRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Efficienza Settimanale</h3>
+                          <p className="text-xs text-gray-500">Rapporto utilizzo/spreco</p>
+                        </div>
+                        <ExportButtons chartRef={waterEfficiencyRef} data={waterEfficiencyData} filename="water-efficiency" />
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={waterEfficiencyData} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis type="number" domain={[0, 100]} tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v}%`} />
+                          <YAxis type="category" dataKey="week" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Bar dataKey="efficiency" stackId="a" fill="hsl(150, 60%, 45%)" name="Efficienza" radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="waste" stackId="a" fill="hsl(0, 60%, 60%)" name="Spreco" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slide 3: Qualità Acqua */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Qualità Acqua Chart */}
+                    <div ref={waterQualityRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Parametri Qualità Acqua</h3>
+                          <p className="text-xs text-gray-500">pH, Torbidità, Cloro residuo</p>
+                        </div>
+                        <ExportButtons chartRef={waterQualityRef} data={waterQualityData} filename="water-quality" onExpand={() => setFullscreenChart('waterQuality')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <LineChart data={waterQualityData} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis yAxisId="ph" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[6.5, 8]} label={{ value: 'pH', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis yAxisId="other" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'NTU / mg/L', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Line yAxisId="ph" type="monotone" dataKey="ph" stroke="hsl(200, 80%, 50%)" strokeWidth={2.5} dot={{ fill: 'hsl(200, 80%, 50%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="pH" />
+                          <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2.5} dot={{ fill: 'hsl(30, 80%, 50%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Torbidità (NTU)" />
+                          <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2.5} dot={{ fill: 'hsl(150, 60%, 45%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Cloro (mg/L)" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Indicatori Qualità */}
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">pH - Acidità</h3>
+                      <div className="flex items-center gap-6">
+                        <div className="flex-1">
+                          <div className="text-4xl font-bold text-blue-500">7.2</div>
+                          <div className="text-sm text-gray-500">valore attuale</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 mb-1">Range ottimale</div>
+                          <div className="text-lg font-semibold text-gray-700">6.5 - 8.5</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Ottimale</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 h-3 bg-gradient-to-r from-red-400 via-emerald-400 to-blue-400 rounded-full overflow-hidden relative">
+                        <div className="absolute h-full w-1 bg-white shadow-lg" style={{ left: '47%' }} />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>Acido (6)</span>
+                        <span>Neutro (7)</span>
+                        <span>Basico (9)</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">Torbidità</h3>
+                      <div className="flex items-center gap-6">
+                        <div className="flex-1">
+                          <div className="text-4xl font-bold text-amber-500">0.9</div>
+                          <div className="text-sm text-gray-500">NTU (attuale)</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 mb-1">Limite OMS</div>
+                          <div className="text-lg font-semibold text-gray-700">&lt; 4 NTU</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Eccellente</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: '22%' }} />
+                      </div>
+                    </div>
+
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">Cloro Residuo</h3>
+                      <div className="flex items-center gap-6">
+                        <div className="flex-1">
+                          <div className="text-4xl font-bold text-emerald-500">0.5</div>
+                          <div className="text-sm text-gray-500">mg/L (attuale)</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 mb-1">Range ideale</div>
+                          <div className="text-lg font-semibold text-gray-700">0.2 - 1.0</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Nel range</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: '50%' }} />
+                      </div>
+                    </div>
+
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">Temperatura Acqua</h3>
+                      <div className="flex items-center gap-6">
+                        <div className="flex-1">
+                          <div className="text-4xl font-bold text-blue-500">18.5</div>
+                          <div className="text-sm text-gray-500">°C (attuale)</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 mb-1">Range comfort</div>
+                          <div className="text-lg font-semibold text-gray-700">15 - 25 °C</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Ideale</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full" style={{ width: '35%' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* CERTIFICATION DASHBOARD - Slide 1: Overview */}
