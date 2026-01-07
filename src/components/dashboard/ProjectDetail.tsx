@@ -1,5 +1,12 @@
 import { useState, useMemo, useRef, ReactNode } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, Calendar } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -11,6 +18,14 @@ import { createPortal } from "react-dom";
 
 // Dashboard types
 type DashboardType = "energy" | "air" | "water" | "certification";
+type TimePeriod = "today" | "week" | "month" | "year";
+
+const timePeriodLabels: Record<TimePeriod, string> = {
+  today: "Oggi",
+  week: "Settimana",
+  month: "Mese",
+  year: "Anno"
+};
 
 // Chart axis styling
 const axisStyle = {
@@ -146,6 +161,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>("energy");
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   
   // Different total slides based on dashboard
   const getTotalSlides = () => {
@@ -555,6 +571,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             >
               <Award className="w-5 h-5" />
             </button>
+            {/* Time Period Selector */}
+            <div className="ml-auto">
+              <Select value={timePeriod} onValueChange={(val: TimePeriod) => setTimePeriod(val)}>
+                <SelectTrigger className="w-[140px] h-9 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm">
+                  <Calendar className="w-4 h-4 mr-2 text-gray-500" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Oggi</SelectItem>
+                  <SelectItem value="week">Settimana</SelectItem>
+                  <SelectItem value="month">Mese</SelectItem>
+                  <SelectItem value="year">Anno</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-fgb-secondary tracking-wide">{project.name}</h1>
           <div className="flex items-center gap-3 text-gray-600 flex-wrap">
