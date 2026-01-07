@@ -1,12 +1,5 @@
 import { useState, useMemo, useRef, ReactNode } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, Calendar } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag } from "lucide-react";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -15,17 +8,18 @@ import {
 } from "recharts";
 import html2canvas from "html2canvas";
 import { createPortal } from "react-dom";
+import { TimePeriodSelector, TimePeriod } from "./TimePeriodSelector";
+import { 
+  DateRange, 
+  useEnergyData, 
+  useDeviceData, 
+  useCO2Data, 
+  useWaterData,
+  getPeriodLabel 
+} from "@/hooks/useTimeFilteredData";
 
 // Dashboard types
 type DashboardType = "energy" | "air" | "water" | "certification";
-type TimePeriod = "today" | "week" | "month" | "year";
-
-const timePeriodLabels: Record<TimePeriod, string> = {
-  today: "Oggi",
-  week: "Settimana",
-  month: "Mese",
-  year: "Anno"
-};
 
 // Chart axis styling
 const axisStyle = {
@@ -162,6 +156,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>("energy");
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  
+  // Dynamic data based on time period
+  const filteredEnergyData = useEnergyData(timePeriod, dateRange);
+  const filteredDeviceData = useDeviceData(timePeriod, dateRange);
+  const filteredCO2Data = useCO2Data(timePeriod, dateRange);
+  const filteredWaterData = useWaterData(timePeriod, dateRange);
+  const periodLabel = getPeriodLabel(timePeriod, dateRange);
   
   // Different total slides based on dashboard
   const getTotalSlides = () => {
@@ -572,19 +574,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <Award className="w-5 h-5" />
             </button>
             {/* Time Period Selector */}
-            <div className="ml-auto">
-              <Select value={timePeriod} onValueChange={(val: TimePeriod) => setTimePeriod(val)}>
-                <SelectTrigger className="w-[140px] h-9 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm">
-                  <Calendar className="w-4 h-4 mr-2 text-gray-500" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Oggi</SelectItem>
-                  <SelectItem value="week">Settimana</SelectItem>
-                  <SelectItem value="month">Mese</SelectItem>
-                  <SelectItem value="year">Anno</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="ml-auto flex items-center gap-3">
+              <span className="text-sm text-gray-500 hidden md:inline">{periodLabel}</span>
+              <TimePeriodSelector
+                value={timePeriod}
+                onChange={setTimePeriod}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
             </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-fgb-secondary tracking-wide">{project.name}</h1>
@@ -782,19 +779,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={actualVsAvgRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Actual vs Average</h3>
-                        <ExportButtons chartRef={actualVsAvgRef} data={monthlyData} filename="actual-vs-average" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData} filename="actual-vs-average" onExpand={() => setFullscreenChart('actualVsAvg')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <LineChart data={filteredEnergyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="month" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v}`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 3 }} activeDot={{ r: 5 }} name="Actual" />
-                          <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Expected" />
-                          <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} name="Average" />
-                          <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} name="Off Hours" />
+                          <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 3 }} activeDot={{ r: 5 }} name="Attuale" />
+                          <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Previsto" />
+                          <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} name="Media" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -830,19 +826,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
                     <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Device consumption</h3>
-                        <ExportButtons chartRef={deviceConsRef} data={deviceData} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
+                        <h3 className="text-lg font-bold text-gray-800">Consumo Dispositivi</h3>
+                        <ExportButtons chartRef={deviceConsRef} data={filteredDeviceData} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                       </div>
                       <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={deviceData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <BarChart data={filteredDeviceData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="month" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v/1000}k`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" radius={[0, 0, 0, 0]} />
-                          <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Lighting" />
-                          <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Illuminazione" />
+                          <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Prese" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -1175,13 +1171,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={waterConsumptionRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Consumo Idrico Mensile</h3>
+                          <h3 className="text-lg font-bold text-gray-800">Consumo Idrico</h3>
                           <p className="text-xs text-gray-500">Confronto con target e anno precedente</p>
                         </div>
-                        <ExportButtons chartRef={waterConsumptionRef} data={waterConsumptionData} filename="water-consumption" onExpand={() => setFullscreenChart('waterConsumption')} />
+                        <ExportButtons chartRef={waterConsumptionRef} data={filteredWaterData} filename="water-consumption" onExpand={() => setFullscreenChart('waterConsumption')} />
                       </div>
                       <ResponsiveContainer width="100%" height={280}>
-                        <AreaChart data={waterConsumptionData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <AreaChart data={filteredWaterData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <defs>
                             <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="hsl(200, 80%, 50%)" stopOpacity={0.4}/>
@@ -1189,7 +1185,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </linearGradient>
                           </defs>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="month" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'm³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
@@ -1789,31 +1785,30 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       <ChartFullscreenModal isOpen={fullscreenChart === 'actualVsAvg'} onClose={() => setFullscreenChart(null)} title="Actual vs Average">
         <ResponsiveContainer width="100%" height={450}>
-          <LineChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <LineChart data={filteredEnergyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="month" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="label" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
             <Tooltip {...tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
-            <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={3} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 7 }} name="Actual" />
-            <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2.5} strokeDasharray="5 5" dot={false} name="Expected" />
-            <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2.5} dot={false} name="Average" />
-            <Line type="monotone" dataKey="offHours" stroke="hsl(338, 50%, 75%)" strokeWidth={2.5} dot={false} name="Off Hours" />
+            <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={3} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 7 }} name="Attuale" />
+            <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2.5} strokeDasharray="5 5" dot={false} name="Previsto" />
+            <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2.5} dot={false} name="Media" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
-      <ChartFullscreenModal isOpen={fullscreenChart === 'deviceCons'} onClose={() => setFullscreenChart(null)} title="Device Consumption">
+      <ChartFullscreenModal isOpen={fullscreenChart === 'deviceCons'} onClose={() => setFullscreenChart(null)} title="Consumo Dispositivi">
         <ResponsiveContainer width="100%" height={450}>
-          <BarChart data={deviceData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <BarChart data={filteredDeviceData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="month" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="label" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v/1000}k`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
             <Tooltip {...tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
             <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
-            <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Lighting" />
-            <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Plugs" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Illuminazione" />
+            <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Prese" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
