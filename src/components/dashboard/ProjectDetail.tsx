@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, ReactNode } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag } from "lucide-react";
+import { useState, useMemo, useRef, ReactNode, useCallback } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2 } from "lucide-react";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -17,6 +17,8 @@ import {
   useWaterData,
   getPeriodLabel 
 } from "@/hooks/useTimeFilteredData";
+import { generatePdfReport } from "./PdfReportGenerator";
+import { Button } from "@/components/ui/button";
 
 // Dashboard types
 type DashboardType = "energy" | "air" | "water" | "certification";
@@ -157,6 +159,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   // Dynamic data based on time period
   const filteredEnergyData = useEnergyData(timePeriod, dateRange);
@@ -501,6 +504,41 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { metric: 'Temperature', value: project.data.temp },
   ];
 
+  // PDF Export handler
+  const handleExportPdf = useCallback(async () => {
+    if (!project || isGeneratingPdf) return;
+    
+    setIsGeneratingPdf(true);
+    try {
+      await generatePdfReport({
+        project,
+        timePeriod,
+        dateRange,
+        data: {
+          energy: {
+            consumption: filteredEnergyData as Record<string, unknown>[],
+            devices: filteredDeviceData as Record<string, unknown>[],
+            co2: filteredCO2Data as Record<string, unknown>[],
+          },
+          water: {
+            consumption: filteredWaterData as Record<string, unknown>[],
+            quality: waterQualityData as Record<string, unknown>[],
+            leaks: waterLeaksData as Record<string, unknown>[],
+          },
+          airQuality: {
+            co2History: co2HistoryData as Record<string, unknown>[],
+            tempHumidity: tempHumidityData as Record<string, unknown>[],
+            particulates: pm25Data as Record<string, unknown>[],
+          },
+        },
+      });
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }, [project, timePeriod, dateRange, filteredEnergyData, filteredDeviceData, filteredCO2Data, filteredWaterData, waterQualityData, waterLeaksData, co2HistoryData, tempHumidityData, pm25Data, isGeneratingPdf]);
+
   return (
     <div className="fixed inset-0 z-50 animate-slide-up">
       {/* Background Image */}
@@ -573,7 +611,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             >
               <Award className="w-5 h-5" />
             </button>
-            {/* Time Period Selector */}
+            {/* Time Period Selector & Export */}
             <div className="ml-auto flex items-center gap-3">
               <span className="text-sm text-gray-500 hidden md:inline">{periodLabel}</span>
               <TimePeriodSelector
@@ -582,6 +620,25 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
               />
+              <Button
+                onClick={handleExportPdf}
+                disabled={isGeneratingPdf}
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm hover:bg-fgb-secondary hover:text-white hover:border-fgb-secondary transition-all"
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generazione...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Esporta PDF
+                  </>
+                )}
+              </Button>
             </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-fgb-secondary tracking-wide">{project.name}</h1>
