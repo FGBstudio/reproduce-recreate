@@ -1,18 +1,11 @@
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import { TimePeriod } from "./TimePeriodSelector";
 import { DateRange, getPeriodLabel } from "@/hooks/useTimeFilteredData";
-
-// Extend jsPDF type for autotable
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: Record<string, unknown>) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 interface ReportData {
   energy: {
@@ -32,11 +25,19 @@ interface ReportData {
   };
 }
 
+interface ChartRefs {
+  energyChart?: React.RefObject<HTMLDivElement | null>;
+  deviceChart?: React.RefObject<HTMLDivElement | null>;
+  waterChart?: React.RefObject<HTMLDivElement | null>;
+  airQualityChart?: React.RefObject<HTMLDivElement | null>;
+}
+
 interface GeneratePdfOptions {
   project: Project;
   timePeriod: TimePeriod;
   dateRange?: DateRange;
   data: ReportData;
+  chartRefs?: ChartRefs;
 }
 
 const COLORS = {
@@ -50,7 +51,23 @@ const COLORS = {
   lightGray: [241, 245, 249] as [number, number, number],
 };
 
-export const generatePdfReport = async ({ project, timePeriod, dateRange, data }: GeneratePdfOptions) => {
+const captureChartAsImage = async (ref: React.RefObject<HTMLDivElement | null>): Promise<string | null> => {
+  if (!ref?.current) return null;
+  try {
+    const canvas = await html2canvas(ref.current, { 
+      backgroundColor: '#ffffff', 
+      scale: 2,
+      logging: false,
+      useCORS: true
+    });
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error('Chart capture failed:', error);
+    return null;
+  }
+};
+
+export const generatePdfReport = async ({ project, timePeriod, dateRange, data, chartRefs }: GeneratePdfOptions) => {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -66,6 +83,14 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
   const holding = brand ? getHoldingById(brand.holdingId) : null;
   const periodLabel = getPeriodLabel(timePeriod, dateRange);
   const generatedDate = format(new Date(), "dd MMMM yyyy, HH:mm", { locale: it });
+
+  // Capture chart images in parallel
+  const [energyChartImg, deviceChartImg, waterChartImg, airQualityChartImg] = await Promise.all([
+    chartRefs?.energyChart ? captureChartAsImage(chartRefs.energyChart) : null,
+    chartRefs?.deviceChart ? captureChartAsImage(chartRefs.deviceChart) : null,
+    chartRefs?.waterChart ? captureChartAsImage(chartRefs.waterChart) : null,
+    chartRefs?.airQualityChart ? captureChartAsImage(chartRefs.airQualityChart) : null,
+  ]);
 
   // Helper functions
   const addPage = () => {
@@ -126,12 +151,19 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
     doc.setFont("helvetica", "normal");
   };
 
+  const addChartImage = (imageData: string, title: string, height: number = 60) => {
+    checkPageBreak(height + 15);
+    drawHeader(title, 3);
+    
+    const imgWidth = pageWidth - 2 * margin;
+    doc.addImage(imageData, 'PNG', margin, yPos, imgWidth, height);
+    yPos += height + 10;
+  };
+
   // ========== COVER PAGE ==========
-  // Background header
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 0, pageWidth, 80, "F");
 
-  // Title
   doc.setFontSize(28);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -144,7 +176,6 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
   doc.setFontSize(11);
   doc.text(`Periodo: ${periodLabel}`, margin, 62);
 
-  // Project info box
   yPos = 95;
   doc.setFillColor(...COLORS.lightGray);
   doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 50, 3, 3, "F");
@@ -156,7 +187,6 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
   drawKeyValue("Regione", project.region.toUpperCase());
   drawKeyValue("Generato il", generatedDate);
 
-  // KPIs
   yPos = 160;
   drawHeader("KPI Attuali", 2);
   yPos += 5;
@@ -172,9 +202,14 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
   drawHeader("📊 Dashboard Energia", 1);
   drawSeparator();
 
+  // Add energy chart snapshot if available
+  if (energyChartImg) {
+    addChartImage(energyChartImg, "Grafico Consumi Energetici", 55);
+  }
+
   drawHeader("Consumi Energetici", 2);
   if (data.energy.consumption.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.energy.consumption[0])],
       body: data.energy.consumption.map(row => Object.values(row)),
@@ -183,13 +218,19 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+  }
+
+  // Add device chart snapshot if available
+  if (deviceChartImg) {
+    checkPageBreak(70);
+    addChartImage(deviceChartImg, "Grafico Consumi per Dispositivo", 55);
   }
 
   checkPageBreak(60);
   drawHeader("Consumi per Dispositivo", 2);
   if (data.energy.devices.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.energy.devices[0])],
       body: data.energy.devices.map(row => Object.values(row)),
@@ -198,13 +239,13 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader("Emissioni CO₂", 2);
   if (data.energy.co2.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.energy.co2[0])],
       body: data.energy.co2.map(row => Object.values(row)),
@@ -213,7 +254,7 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   // ========== WATER SECTION ==========
@@ -221,9 +262,14 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
   drawHeader("💧 Dashboard Acqua", 1);
   drawSeparator();
 
+  // Add water chart snapshot if available
+  if (waterChartImg) {
+    addChartImage(waterChartImg, "Grafico Consumi Idrici", 55);
+  }
+
   drawHeader("Consumi Idrici", 2);
   if (data.water.consumption.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.water.consumption[0])],
       body: data.water.consumption.map(row => Object.values(row)),
@@ -232,13 +278,13 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader("Qualità Acqua", 2);
   if (data.water.quality.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.water.quality[0])],
       body: data.water.quality.map(row => Object.values(row)),
@@ -247,13 +293,13 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader("Rilevamento Perdite", 2);
   if (data.water.leaks.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [["Zona", "Tasso Perdita (L/h)", "Stato", "Rilevato"]],
       body: data.water.leaks.map(row => [
@@ -267,7 +313,7 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   // ========== AIR QUALITY SECTION ==========
@@ -275,9 +321,14 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
   drawHeader("🌬️ Dashboard Qualità Aria", 1);
   drawSeparator();
 
+  // Add air quality chart snapshot if available
+  if (airQualityChartImg) {
+    addChartImage(airQualityChartImg, "Grafico Qualità Aria", 55);
+  }
+
   drawHeader("Storico CO₂ e TVOC", 2);
   if (data.airQuality.co2History.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.airQuality.co2History[0])],
       body: data.airQuality.co2History.map(row => Object.values(row)),
@@ -286,13 +337,13 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader("Temperatura e Umidità", 2);
   if (data.airQuality.tempHumidity.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.airQuality.tempHumidity[0])],
       body: data.airQuality.tempHumidity.map(row => Object.values(row)),
@@ -301,13 +352,13 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader("Particolato (PM2.5 / PM10)", 2);
   if (data.airQuality.particulates.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.airQuality.particulates[0])],
       body: data.airQuality.particulates.map(row => Object.values(row)),
@@ -316,7 +367,7 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data }
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: COLORS.lightGray },
     });
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
   // ========== FOOTER ON ALL PAGES ==========

@@ -531,6 +531,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             particulates: pm25Data as Record<string, unknown>[],
           },
         },
+        chartRefs: {
+          energyChart: actualVsAvgRef,
+          deviceChart: deviceConsRef,
+          waterChart: waterConsumptionRef,
+          airQualityChart: co2TrendRef,
+        },
       });
     } catch (error) {
       console.error('PDF generation failed:', error);
