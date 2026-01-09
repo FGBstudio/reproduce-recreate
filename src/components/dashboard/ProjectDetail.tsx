@@ -429,6 +429,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { name: 'Altro', value: 7, color: 'hsl(200, 40%, 80%)' },
   ], []);
 
+  const energyDistributionData = useMemo(() => [
+    { name: 'HVAC', value: 35, color: 'hsl(188, 100%, 19%)' },
+    { name: 'Lighting', value: 28, color: 'hsl(338, 50%, 45%)' },
+    { name: 'Plugs & Loads', value: 18, color: 'hsl(338, 50%, 75%)' },
+    { name: 'Other', value: 12, color: 'hsl(188, 100%, 35%)' },
+  ], []);
+
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -689,63 +696,97 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
               <>
-                {/* Slide 1: Energy Density Overview */}
+                {/* Slide 1: Energy Overview - Like Water Dashboard */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Consumo Energetico - Full width */}
+                    <div ref={actualVsAvgRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Consumo Energetico</h3>
+                          <p className="text-xs text-gray-500">Confronto con previsione e media</p>
+                        </div>
+                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData} filename="energy-consumption" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <AreaChart data={filteredEnergyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="energyGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Area type="monotone" dataKey="actual" stroke="hsl(188, 100%, 35%)" strokeWidth={2.5} fill="url(#energyGradient)" name="Consumo Attuale" />
+                          <Line type="monotone" dataKey="expected" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Previsto" />
+                          <Line type="monotone" dataKey="average" stroke="hsl(0, 0%, 60%)" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Media" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Distribuzione Consumo Energetico */}
                     <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Energy density</h3>
-                        <ExportButtons chartRef={energyDensityRef} data={donutData} filename="energy-density" />
+                        <h3 className="text-lg font-bold text-gray-800">Distribuzione Consumo</h3>
+                        <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-distribution" />
                       </div>
-                      <div className="flex items-center gap-8">
+                      <div className="flex items-center gap-6">
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-fgb-secondary" />
-                            <span className="text-sm text-gray-600">HVAC</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,45%)]" />
-                            <span className="text-sm text-gray-600">Lighting</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[hsl(338,50%,75%)]" />
-                            <span className="text-sm text-gray-600">Plugs and Loads</span>
-                          </div>
+                          {energyDistributionData.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span className="text-sm text-gray-600">{item.name}</span>
+                              <span className="text-sm font-semibold text-gray-800 ml-auto">{item.value}%</span>
+                            </div>
+                          ))}
                         </div>
                         <div className="relative w-40 h-40">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Pie data={donutData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">
-                                {donutData.map((entry, index) => (
+                              <Pie data={energyDistributionData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">
+                                {energyDistributionData.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
                             </PieChart>
                           </ResponsiveContainer>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-4xl font-bold text-fgb-secondary">{project.data.total}</span>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <Lightbulb className="w-6 h-6 text-fgb-secondary mb-1" />
+                            <span className="text-xs text-gray-500">kWh/m²</span>
                           </div>
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Energy density</p>
-                        <p className="text-sm font-semibold text-fgb-secondary mb-2">HVAC</p>
-                        <p className="text-4xl font-bold text-fgb-secondary">{project.data.hvac}</p>
-                        <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+
+                    {/* KPI Cards - 2x2 Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Consumo Totale</p>
+                        <p className="text-3xl font-bold text-fgb-secondary">{project.data.total}</p>
+                        <p className="text-xs text-gray-500 mt-1">kWh/m² / anno</p>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ 8% vs anno scorso</div>
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Energy density</p>
-                        <p className="text-sm font-semibold text-[hsl(338,50%,45%)] mb-2">Lighting</p>
-                        <p className="text-4xl font-bold text-[hsl(338,50%,45%)]">{project.data.light}</p>
-                        <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Costo Stimato</p>
+                        <p className="text-3xl font-bold text-gray-800">€32,450</p>
+                        <p className="text-xs text-gray-500 mt-1">/ anno</p>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €4,200 risparmiati</div>
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Energy density</p>
-                        <p className="text-sm font-semibold text-[hsl(338,50%,75%)] mb-2">Plugs & Loads</p>
-                        <p className="text-4xl font-bold text-[hsl(338,50%,75%)]">11</p>
-                        <p className="text-xs text-gray-500 mt-1">KWh/m²</p>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Efficienza</p>
+                        <p className="text-3xl font-bold text-emerald-500">87%</p>
+                        <p className="text-xs text-gray-500 mt-1">rating energetico</p>
+                        <div className="mt-2 text-xs text-blue-500 font-medium">↑ 3% vs mese scorso</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-gray-500 mb-1">Alert Attivi</p>
+                        <p className="text-3xl font-bold text-amber-500">{project.data.alerts}</p>
+                        <p className="text-xs text-gray-500 mt-1">anomalie rilevate</p>
+                        <div className="mt-2 text-xs text-red-500 font-medium">⚠ Richiede attenzione</div>
                       </div>
                     </div>
                   </div>
