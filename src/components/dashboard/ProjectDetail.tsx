@@ -557,6 +557,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       {/* Background Image */}
       <div className="absolute inset-0">
         <img 
+          data-project-bg={project.id}
           src={project.img} 
           alt={project.name}
           className="w-full h-full object-cover"
@@ -573,10 +574,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           Back to Region
         </button>
+        {/* Change Background Button */}
+        <label className="flex items-center gap-2 px-3 py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs font-medium transition-all cursor-pointer border border-black/10">
+          <Image className="w-4 h-4" />
+          <span className="hidden md:inline">Cambia Sfondo</span>
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && project) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  const imgEl = document.querySelector(`[data-project-bg="${project.id}"]`) as HTMLImageElement;
+                  if (imgEl && ev.target?.result) {
+                    imgEl.src = ev.target.result as string;
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+          />
+        </label>
       </div>
 
       {/* Main Content */}
-      <div className="absolute inset-0 pt-20 pb-24 flex flex-col">
+      <div className="absolute inset-0 pt-20 pb-16 flex flex-col">
         {/* Title Area with Dashboard Tabs */}
         <div className="px-8 md:px-16 mb-4">
           <div className="flex items-center gap-3 mb-2">
@@ -1826,7 +1850,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-center items-center gap-6 mt-4">
+        <div className="flex justify-center items-center gap-6 mt-2">
           <button 
             onClick={prevSlide}
             disabled={currentSlide === 0}
