@@ -566,17 +566,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       </div>
 
       {/* Header */}
-      <div className="absolute top-0 left-0 w-full px-8 py-6 flex justify-between items-center z-10">
+      <div className="absolute top-0 left-0 w-full px-4 md:px-8 py-3 md:py-6 flex justify-between items-center z-10">
         <button 
           onClick={onClose}
-          className="flex items-center gap-2 px-4 py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-sm font-semibold transition-all group border border-black/10"
+          className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold transition-all group border border-black/10"
         >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back to Region
+          <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="hidden sm:inline">Back to Region</span>
         </button>
         {/* Change Background Button */}
-        <label className="flex items-center gap-2 px-3 py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs font-medium transition-all cursor-pointer border border-black/10">
-          <Image className="w-4 h-4" />
+        <label className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs font-medium transition-all cursor-pointer border border-black/10">
+          <Image className="w-3.5 h-3.5 md:w-4 md:h-4" />
           <span className="hidden md:inline">Cambia Sfondo</span>
           <input 
             type="file" 
@@ -600,57 +600,58 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="absolute inset-0 pt-20 pb-16 flex flex-col">
+      <div className="absolute inset-0 pt-14 md:pt-20 pb-14 md:pb-16 flex flex-col">
         {/* Title Area with Dashboard Tabs */}
-        <div className="px-8 md:px-16 mb-4">
-          <div className="flex items-center gap-3 mb-2">
+        <div className="px-4 md:px-16 mb-2 md:mb-4">
+          {/* Dashboard Tabs - Scrollable on mobile */}
+          <div className="flex items-center gap-2 md:gap-3 mb-2 overflow-x-auto pb-1 scrollbar-hide">
             <button 
               onClick={() => handleDashboardChange("energy")}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "energy" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-gray-200 text-gray-500 hover:bg-gray-300"
               }`}
               title="Energy Dashboard"
             >
-              <Lightbulb className="w-5 h-5" />
+              <Lightbulb className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button 
               onClick={() => handleDashboardChange("air")}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "air" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-gray-200 text-gray-500 hover:bg-gray-300"
               }`}
               title="Air Quality Dashboard"
             >
-              <Cloud className="w-5 h-5" />
+              <Cloud className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button 
               onClick={() => handleDashboardChange("water")}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "water" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-gray-200 text-gray-500 hover:bg-gray-300"
               }`}
               title="Water Dashboard"
             >
-              <Droplet className="w-5 h-5" />
+              <Droplet className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button 
               onClick={() => handleDashboardChange("certification")}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "certification" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-gray-200 text-gray-500 hover:bg-gray-300"
               }`}
               title="Certification Dashboard"
             >
-              <Award className="w-5 h-5" />
+              <Award className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             {/* Time Period Selector & Export */}
-            <div className="ml-auto flex items-center gap-3">
-              <span className="text-sm text-gray-500 hidden md:inline">{periodLabel}</span>
+            <div className="ml-auto flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+              <span className="text-sm text-gray-500 hidden lg:inline">{periodLabel}</span>
               <TimePeriodSelector
                 value={timePeriod}
                 onChange={setTimePeriod}
@@ -662,44 +663,41 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 disabled={isGeneratingPdf}
                 variant="outline"
                 size="sm"
-                className="h-9 px-3 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm hover:bg-fgb-secondary hover:text-white hover:border-fgb-secondary transition-all"
+                className="h-7 md:h-9 px-2 md:px-3 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-xs md:text-sm font-medium shadow-sm hover:bg-fgb-secondary hover:text-white hover:border-fgb-secondary transition-all"
               >
                 {isGeneratingPdf ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generazione...
-                  </>
+                  <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
                 ) : (
                   <>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Esporta PDF
+                    <FileText className="w-3.5 h-3.5 md:w-4 md:h-4 md:mr-2" />
+                    <span className="hidden md:inline">Esporta PDF</span>
                   </>
                 )}
               </Button>
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-fgb-secondary tracking-wide">{project.name}</h1>
-          <div className="flex items-center gap-3 text-gray-600 flex-wrap">
-            <span>{project.address}</span>
-            <span className="text-gray-400">|</span>
+          <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-fgb-secondary tracking-wide truncate">{project.name}</h1>
+          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-gray-600 flex-wrap">
+            <span className="truncate max-w-[150px] md:max-w-none">{project.address}</span>
+            <span className="text-gray-400 hidden sm:inline">|</span>
             <span className="flex items-center gap-1">
-              {project.data.temp}° <Cloud className="w-4 h-4" />
+              {project.data.temp}° <Cloud className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </span>
-            {/* Brand & Holding Info */}
+            {/* Brand & Holding Info - Hidden on small mobile */}
             {(() => {
               const brand = getBrandById(project.brandId);
               const holding = brand ? getHoldingById(brand.holdingId) : null;
               return brand ? (
                 <>
-                  <span className="text-gray-400">|</span>
-                  <span className="flex items-center gap-2">
+                  <span className="text-gray-400 hidden md:inline">|</span>
+                  <span className="hidden md:flex items-center gap-2">
                     <Tag className="w-4 h-4 text-gray-400" />
                     <span className="font-medium">{brand.name}</span>
                   </span>
                   {holding && (
                     <>
-                      <span className="text-gray-400">|</span>
-                      <span className="flex items-center gap-2">
+                      <span className="text-gray-400 hidden lg:inline">|</span>
+                      <span className="hidden lg:flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-gray-400" />
                         <span className="font-medium">{holding.name}</span>
                       </span>
@@ -721,19 +719,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {activeDashboard === "energy" && (
               <>
                 {/* Slide 1: Energy Overview - Like Water Dashboard */}
-                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                     {/* Consumo Energetico - Full width */}
-                    <div ref={actualVsAvgRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
+                    <div ref={actualVsAvgRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-3 md:mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Consumo Energetico</h3>
-                          <p className="text-xs text-gray-500">Confronto con previsione e media</p>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Energetico</h3>
+                          <p className="text-[10px] md:text-xs text-gray-500">Confronto con previsione e media</p>
                         </div>
                         <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData} filename="energy-consumption" onExpand={() => setFullscreenChart('actualVsAvg')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={280}>
-                        <AreaChart data={filteredEnergyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                      <ResponsiveContainer width="100%" height={180} className="md:!h-[280px]">
+                        <AreaChart data={filteredEnergyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                           <defs>
                             <linearGradient id="energyGradient" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4}/>
@@ -741,37 +739,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </linearGradient>
                           </defs>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <XAxis dataKey="label" tick={{ ...axisStyle, fontSize: 9 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" />
+                          <YAxis tick={{ ...axisStyle, fontSize: 9 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={35} />
                           <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Area type="monotone" dataKey="actual" stroke="hsl(188, 100%, 35%)" strokeWidth={2.5} fill="url(#energyGradient)" name="Consumo Attuale" />
-                          <Line type="monotone" dataKey="expected" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Previsto" />
-                          <Line type="monotone" dataKey="average" stroke="hsl(0, 0%, 60%)" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Media" />
+                          <Legend wrapperStyle={{ fontSize: 9, fontWeight: 500, paddingTop: 5 }} />
+                          <Area type="monotone" dataKey="actual" stroke="hsl(188, 100%, 35%)" strokeWidth={2} fill="url(#energyGradient)" name="Attuale" />
+                          <Line type="monotone" dataKey="expected" stroke="hsl(150, 60%, 45%)" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Previsto" />
+                          <Line type="monotone" dataKey="average" stroke="hsl(0, 0%, 60%)" strokeWidth={1} strokeDasharray="3 3" dot={false} name="Media" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
 
                     {/* Distribuzione Consumo Energetico */}
-                    <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Distribuzione Consumo</h3>
+                    <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-3 md:mb-4">
+                        <h3 className="text-base md:text-lg font-bold text-gray-800">Distribuzione Consumo</h3>
                         <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-distribution" />
                       </div>
-                      <div className="flex items-center gap-6">
-                        <div className="space-y-2">
+                      <div className="flex items-center gap-4 md:gap-6">
+                        <div className="space-y-1.5 md:space-y-2 flex-1">
                           {energyDistributionData.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                              <span className="text-sm text-gray-600">{item.name}</span>
-                              <span className="text-sm font-semibold text-gray-800 ml-auto">{item.value}%</span>
+                              <span className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                              <span className="text-xs md:text-sm text-gray-600 truncate">{item.name}</span>
+                              <span className="text-xs md:text-sm font-semibold text-gray-800 ml-auto">{item.value}%</span>
                             </div>
                           ))}
                         </div>
-                        <div className="relative w-40 h-40">
+                        <div className="relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Pie data={energyDistributionData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">
+                              <Pie data={energyDistributionData} innerRadius="55%" outerRadius="80%" paddingAngle={2} dataKey="value">
                                 {energyDistributionData.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
@@ -779,38 +777,38 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </PieChart>
                           </ResponsiveContainer>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <Lightbulb className="w-6 h-6 text-fgb-secondary mb-1" />
-                            <span className="text-xs text-gray-500">kWh/m²</span>
+                            <Lightbulb className="w-4 h-4 md:w-6 md:h-6 text-fgb-secondary mb-1" />
+                            <span className="text-[10px] md:text-xs text-gray-500">kWh/m²</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* KPI Cards - 2x2 Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Consumo Totale</p>
-                        <p className="text-3xl font-bold text-fgb-secondary">{project.data.total}</p>
-                        <p className="text-xs text-gray-500 mt-1">kWh/m² / anno</p>
-                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ 8% vs anno scorso</div>
+                    <div className="grid grid-cols-2 gap-2 md:gap-4">
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Consumo Totale</p>
+                        <p className="text-xl md:text-3xl font-bold text-fgb-secondary">{project.data.total}</p>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m² / anno</p>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ 8% vs anno</div>
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Costo Stimato</p>
-                        <p className="text-3xl font-bold text-gray-800">€32,450</p>
-                        <p className="text-xs text-gray-500 mt-1">/ anno</p>
-                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €4,200 risparmiati</div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Costo Stimato</p>
+                        <p className="text-xl md:text-3xl font-bold text-gray-800">€32,450</p>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">/ anno</p>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200</div>
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Efficienza</p>
-                        <p className="text-3xl font-bold text-emerald-500">87%</p>
-                        <p className="text-xs text-gray-500 mt-1">rating energetico</p>
-                        <div className="mt-2 text-xs text-blue-500 font-medium">↑ 3% vs mese scorso</div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficienza</p>
+                        <p className="text-xl md:text-3xl font-bold text-emerald-500">87%</p>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">rating</p>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-blue-500 font-medium">↑ 3%</div>
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Alert Attivi</p>
-                        <p className="text-3xl font-bold text-amber-500">{project.data.alerts}</p>
-                        <p className="text-xs text-gray-500 mt-1">anomalie rilevate</p>
-                        <div className="mt-2 text-xs text-red-500 font-medium">⚠ Richiede attenzione</div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Alert Attivi</p>
+                        <p className="text-xl md:text-3xl font-bold text-amber-500">{project.data.alerts}</p>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">anomalie</p>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">⚠ Attenzione</div>
                       </div>
                     </div>
                   </div>
@@ -1850,23 +1848,23 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-center items-center gap-6 mt-2">
+        <div className="flex justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2">
           <button 
             onClick={prevSlide}
             disabled={currentSlide === 0}
-            className="w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-gray-600"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-gray-600"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
           </button>
-          <div className="flex gap-3">
+          <div className="flex gap-2 md:gap-3">
             {Array(totalSlides).fill(0).map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${
                   idx === currentSlide 
-                    ? "w-6 bg-fgb-secondary" 
-                    : "w-2 bg-gray-300 hover:bg-gray-400"
+                    ? "w-5 md:w-6 bg-fgb-secondary" 
+                    : "w-1.5 md:w-2 bg-gray-300 hover:bg-gray-400"
                 }`}
               />
             ))}
@@ -1874,15 +1872,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           <button 
             onClick={nextSlide}
             disabled={currentSlide === totalSlides - 1}
-            className="w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-gray-600"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-gray-600"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
       </div>
 
-      {/* Time Scale */}
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
+      {/* Time Scale - Hidden on mobile */}
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
         <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Hour</div>
         <div className="vertical-text rotate-180 cursor-pointer hover:text-gray-600 transition">Day</div>
         <div className="vertical-text rotate-180 text-fgb-secondary border-l-2 border-fgb-secondary pl-2">Week</div>
