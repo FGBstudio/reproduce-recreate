@@ -143,13 +143,13 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {/* Overlay gradient for better UI integration */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/40 via-transparent to-background/30" />
+      {/* Overlay gradient for better UI integration - stronger on mobile for nav visibility */}
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/60 md:from-background/40 via-transparent to-background/40 md:to-background/30" />
       
-      {/* Region label */}
+      {/* Region label - repositioned on mobile */}
       {currentRegion !== "GLOBAL" && (
-        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none z-[1000]">
-          <div className="text-fgb-accent text-sm font-bold tracking-[0.3em] uppercase">
+        <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none z-[1000]">
+          <div className="text-fgb-accent text-xs md:text-sm font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase">
             {regions[currentRegion].name}
           </div>
         </div>
@@ -163,24 +163,36 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         }
         .marker-container {
           position: relative;
-          width: 48px;
-          height: 48px;
+          width: 36px;
+          height: 36px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
+        @media (min-width: 768px) {
+          .marker-container {
+            width: 48px;
+            height: 48px;
+          }
+        }
         .marker-pulse {
           position: absolute;
-          width: 48px;
-          height: 48px;
+          width: 36px;
+          height: 36px;
           background: hsl(188, 100%, 19%, 0.3);
           border-radius: 50%;
           animation: pulse-ring 2s ease-out infinite;
         }
+        @media (min-width: 768px) {
+          .marker-pulse {
+            width: 48px;
+            height: 48px;
+          }
+        }
         .marker-dot {
           position: relative;
-          width: 36px;
-          height: 36px;
+          width: 28px;
+          height: 28px;
           background: hsl(188, 100%, 19%);
           border: 2px solid hsl(50, 100%, 94%);
           border-radius: 50%;
@@ -191,6 +203,22 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
           box-shadow: 0 0 20px rgba(0, 77, 97, 0.6);
           transition: all 0.3s ease;
           cursor: pointer;
+        }
+        @media (min-width: 768px) {
+          .marker-dot {
+            width: 36px;
+            height: 36px;
+          }
+        }
+        .marker-dot svg {
+          width: 12px;
+          height: 12px;
+        }
+        @media (min-width: 768px) {
+          .marker-dot svg {
+            width: 16px;
+            height: 16px;
+          }
         }
         .marker-container:hover .marker-dot {
           background: hsl(43, 49%, 57%);

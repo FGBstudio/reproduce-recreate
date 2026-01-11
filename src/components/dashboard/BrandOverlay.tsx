@@ -83,58 +83,58 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const showCharts = filteredProjects.length > 1;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-4">
-      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 animate-fade-in max-w-6xl w-full">
+    <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
+      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-3 md:gap-6 animate-fade-in max-w-6xl w-full max-h-full overflow-y-auto">
         
         {/* Left: Logo & Stats */}
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-3 md:gap-6">
           {/* Brand/Holding Logo */}
           <div className="relative">
             <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full scale-150" />
-            <div className="relative bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl">
+            <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/20 shadow-2xl">
               <img 
                 src={displayEntity.logo} 
                 alt={displayEntity.name}
-                className="h-16 md:h-20 w-auto object-contain filter brightness-0 invert opacity-90"
+                className="h-12 md:h-20 w-auto object-contain filter brightness-0 invert opacity-90"
               />
             </div>
           </div>
           
           {/* Stats Cards */}
-          <div className="glass-panel rounded-2xl p-5 min-w-[280px]">
-            <div className="text-center mb-3">
-              <h3 className="text-lg font-semibold text-foreground">{displayEntity.name}</h3>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">
+          <div className="glass-panel rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px]">
+            <div className="text-center mb-2 md:mb-3">
+              <h3 className="text-base md:text-lg font-semibold text-foreground">{displayEntity.name}</h3>
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
                 {brand ? 'Brand Overview' : 'Holding Overview'}
               </p>
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <div className="text-xl font-bold text-foreground">{stats.projectCount}</div>
-                <div className="text-[9px] uppercase text-muted-foreground">Stores</div>
+            <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className="text-base md:text-xl font-bold text-foreground">{stats.projectCount}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Stores</div>
               </div>
-              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <div className="text-xl font-bold text-foreground">{stats.totalEnergy}</div>
-                <div className="text-[9px] uppercase text-muted-foreground">kWh</div>
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className="text-base md:text-xl font-bold text-foreground">{stats.totalEnergy}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kWh</div>
               </div>
-              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <div className="text-xl font-bold text-foreground">{stats.avgCo2}</div>
-                <div className="text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className="text-base md:text-xl font-bold text-foreground">{stats.avgCo2}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
               </div>
-              <div className="text-center p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <div className={`text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className={`text-base md:text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                   {stats.totalAlerts}
                 </div>
-                <div className="text-[9px] uppercase text-muted-foreground">Alerts</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Alerts</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right: Comparison Charts */}
+        {/* Right: Comparison Charts - Hidden on mobile */}
         {showCharts && (
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl pointer-events-auto">
+          <div className="hidden md:grid flex-1 grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl pointer-events-auto">
             {/* Energy Comparison Bar Chart */}
             <div className="glass-panel rounded-2xl p-4">
               <h4 className="text-sm font-semibold text-foreground mb-3">Energy Consumption (kWh)</h4>
