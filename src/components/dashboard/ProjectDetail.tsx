@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, ReactNode, useCallback } from "react";
+import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2 } from "lucide-react";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import {
@@ -160,6 +160,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  
+  // Touch/swipe handling
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const minSwipeDistance = 50;
   
   // Dynamic data based on time period
   const filteredEnergyData = useEnergyData(timePeriod, dateRange);
@@ -477,6 +482,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   };
 
+  // Swipe handlers
+  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = null;
+  };
+
+  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      nextSlide();
+    } else if (isRightSwipe) {
+      prevSlide();
+    }
+    
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   const handleDashboardChange = (dashboard: DashboardType) => {
     setActiveDashboard(dashboard);
     setCurrentSlide(0);
@@ -709,8 +741,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           </div>
         </div>
 
-        {/* Carousel Content - Scrollable */}
-        <div className="flex-1 relative overflow-hidden">
+        {/* Carousel Content - Scrollable with touch support */}
+        <div 
+          className="flex-1 relative overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div 
             className="flex h-full transition-transform duration-700 ease-in-out"
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
