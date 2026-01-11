@@ -42,18 +42,13 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     map.current = L.map(mapContainer.current, {
       center: [20, 30],
       zoom: 2,
-      minZoom: 2,
-      maxBounds: [[-85, -180], [85, 180]],
-      maxBoundsViscosity: 1.0,
       zoomControl: false,
       attributionControl: false,
     });
 
-    // Dark themed OpenStreetMap tiles (CartoDB Dark Matter - free, with noWrap)
+    // Dark themed OpenStreetMap tiles (CartoDB Dark Matter - free)
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
-      noWrap: true,
-      bounds: [[-85, -180], [85, 180]],
     }).addTo(map.current);
 
     // Add zoom control to top-right
