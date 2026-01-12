@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { getBrandById, getHoldingById, projects, getBrandsByHolding, Project } from "@/lib/data";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
 } from "recharts";
+import { BarChart3, ChevronUp, ChevronDown } from "lucide-react";
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
@@ -12,6 +13,7 @@ interface BrandOverlayProps {
 }
 
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
+  const [chartsExpanded, setChartsExpanded] = useState(false);
   const brand = selectedBrand ? getBrandById(selectedBrand) : null;
   const holding = selectedHolding ? getHoldingById(selectedHolding) : null;
   
@@ -129,12 +131,24 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                 <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Alerts</div>
               </div>
             </div>
+            
+            {/* Mobile toggle button for charts */}
+            {showCharts && (
+              <button
+                onClick={() => setChartsExpanded(!chartsExpanded)}
+                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg border border-white/20 text-xs font-medium transition-all pointer-events-auto"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
+                {chartsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Comparison Charts - Vertical scrollable on mobile */}
+        {/* Comparison Charts - Vertical scrollable on mobile, toggle controlled */}
         {showCharts && (
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full">
+          <div className={`flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full ${chartsExpanded ? 'grid' : 'hidden'} md:grid`}>
             {/* Energy Comparison Bar Chart */}
             <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
               <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Energy Consumption (kWh)</h4>
