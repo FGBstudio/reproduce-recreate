@@ -132,13 +132,27 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           </div>
         </div>
 
-        {/* Right: Comparison Charts - Hidden on mobile */}
+        {/* Comparison Charts - Vertical scrollable on mobile */}
         {showCharts && (
-          <div className="hidden md:grid flex-1 grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl pointer-events-auto">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full">
             {/* Energy Comparison Bar Chart */}
-            <div className="glass-panel rounded-2xl p-4">
-              <h4 className="text-sm font-semibold text-foreground mb-3">Energy Consumption (kWh)</h4>
-              <ResponsiveContainer width="100%" height={180}>
+            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
+              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Energy Consumption (kWh)</h4>
+              <ResponsiveContainer width="100%" height={120} className="md:hidden">
+                <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: 10 }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
+                  />
+                  <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={180} className="hidden md:block">
                 <BarChart data={energyComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
@@ -155,9 +169,22 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
 
             {/* CO2 Comparison */}
-            <div className="glass-panel rounded-2xl p-4">
-              <h4 className="text-sm font-semibold text-foreground mb-3">Air Quality (CO₂ ppm)</h4>
-              <ResponsiveContainer width="100%" height={180}>
+            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
+              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Air Quality (CO₂ ppm)</h4>
+              <ResponsiveContainer width="100%" height={120} className="md:hidden">
+                <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: 10 }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
+                  />
+                  <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={180} className="hidden md:block">
                 <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.2)' }} />
@@ -173,9 +200,32 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
 
             {/* Radar Chart - Overall Comparison */}
-            <div className="glass-panel rounded-2xl p-4 lg:col-span-2">
-              <h4 className="text-sm font-semibold text-foreground mb-3">Store Performance Comparison</h4>
-              <ResponsiveContainer width="100%" height={220}>
+            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4 md:col-span-2">
+              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Store Performance</h4>
+              <ResponsiveContainer width="100%" height={160} className="md:hidden">
+                <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                  <PolarGrid stroke="rgba(255,255,255,0.15)" />
+                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 8 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 7 }} />
+                  {storeNames.map((name, idx) => (
+                    <Radar 
+                      key={name} 
+                      name={name} 
+                      dataKey={name} 
+                      stroke={chartColors[idx % chartColors.length]} 
+                      fill={chartColors[idx % chartColors.length]} 
+                      fillOpacity={0.2}
+                      strokeWidth={1.5}
+                    />
+                  ))}
+                  <Legend 
+                    wrapperStyle={{ fontSize: 9, color: '#94a3b8' }} 
+                    iconType="circle"
+                    iconSize={6}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={220} className="hidden md:block">
                 <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
                   <PolarGrid stroke="rgba(255,255,255,0.15)" />
                   <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 11 }} />
