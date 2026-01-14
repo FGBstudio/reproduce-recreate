@@ -1,8 +1,11 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { ModuleConfig, ModuleType } from '@/lib/types/admin';
 import { ModuleLockedNotice } from './ModuleLockedNotice';
 import { DemoBadge } from './DemoBadge';
 import { ModulePlaceholderGrid } from './ModulePlaceholder';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ModuleGateProps {
   module: ModuleType;
@@ -11,39 +14,73 @@ interface ModuleGateProps {
   demoContent?: ReactNode;
 }
 
+const moduleLabels: Record<ModuleType, string> = {
+  energy: 'Energia',
+  air: 'Aria',
+  water: 'Acqua',
+};
+
 /**
  * ModuleGate - Wrapper component for module access control
  * 
  * Logic:
  * - If module.enabled = true → render children (real data)
- * - If module.enabled = false AND module.showDemo = true → render demoContent with DEMO badge
- * - If module.enabled = false AND module.showDemo = false → render placeholder
- * 
- * Always shows ModuleLockedNotice when module is not enabled
+ * - If module.enabled = false → show locked notice with optional demo toggle
+ *   - If showDemo = true → show checkbox to expand demo dashboard
+ *   - If showDemo = false → show placeholder only
  */
 export const ModuleGate = ({ module, config, children, demoContent }: ModuleGateProps) => {
+  const [showDemoExpanded, setShowDemoExpanded] = useState(false);
+
   // Module is enabled - render real content
   if (config.enabled) {
     return <>{children}</>;
   }
 
-  // Module not enabled - show locked notice first
+  // Module not enabled - show locked notice with demo toggle option
   return (
     <div className="space-y-4">
-      <ModuleLockedNotice module={module} config={config.lockCopy} />
+      <ModuleLockedNotice module={module} config={config.lockCopy}>
+        {config.showDemo && demoContent && (
+          <div className="mt-4 pt-4 border-t border-amber-200/50">
+            <div 
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => setShowDemoExpanded(!showDemoExpanded)}
+            >
+              <Checkbox 
+                id={`demo-toggle-${module}`}
+                checked={showDemoExpanded}
+                onCheckedChange={(checked) => setShowDemoExpanded(checked === true)}
+                className="border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+              />
+              <Label 
+                htmlFor={`demo-toggle-${module}`}
+                className="text-sm text-amber-800 cursor-pointer group-hover:text-amber-900 transition-colors flex items-center gap-2"
+              >
+                Vuoi vedere una demo della dashboard {moduleLabels[module]}?
+                {showDemoExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Label>
+            </div>
+          </div>
+        )}
+      </ModuleLockedNotice>
       
-      {config.showDemo && demoContent ? (
-        // Show demo content with badge
-        <div className="relative">
+      {showDemoExpanded && config.showDemo && demoContent ? (
+        // Show demo content with badge when expanded
+        <div className="relative animate-in slide-in-from-top-2 duration-300">
           <div className="absolute top-2 right-2 z-10">
             <DemoBadge />
           </div>
           {demoContent}
         </div>
-      ) : (
-        // Show placeholder
+      ) : !config.showDemo ? (
+        // Show placeholder only if demo is not available
         <ModulePlaceholderGrid module={module} />
-      )}
+      ) : null}
     </div>
   );
 };

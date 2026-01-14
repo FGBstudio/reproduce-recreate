@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { Lock, Mail, ExternalLink, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ModuleConfig, ModuleType } from '@/lib/types/admin';
@@ -5,6 +6,7 @@ import { ModuleConfig, ModuleType } from '@/lib/types/admin';
 interface ModuleLockedNoticeProps {
   module: ModuleType;
   config: ModuleConfig['lockCopy'];
+  children?: ReactNode;
 }
 
 const moduleIcons: Record<ModuleType, string> = {
@@ -19,7 +21,7 @@ const moduleLabels: Record<ModuleType, string> = {
   water: 'Water',
 };
 
-export const ModuleLockedNotice = ({ module, config }: ModuleLockedNoticeProps) => {
+export const ModuleLockedNotice = ({ module, config, children }: ModuleLockedNoticeProps) => {
   const handleCTA = () => {
     switch (config.ctaType) {
       case 'email':
@@ -46,7 +48,7 @@ export const ModuleLockedNotice = ({ module, config }: ModuleLockedNoticeProps) 
   };
 
   return (
-    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 md:p-6 mb-4">
+    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 md:p-6">
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
           <Lock className="w-5 h-5 text-amber-600" />
@@ -70,6 +72,7 @@ export const ModuleLockedNotice = ({ module, config }: ModuleLockedNoticeProps) 
             {getCtaIcon()}
             <span className="ml-2">{config.ctaLabel}</span>
           </Button>
+          {children}
         </div>
       </div>
     </div>
