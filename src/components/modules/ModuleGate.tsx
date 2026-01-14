@@ -39,8 +39,9 @@ export const ModuleGate = ({ module, config, children, demoContent }: ModuleGate
 
   // Module not enabled - show locked notice with demo toggle option
   return (
-    <div className="space-y-4">
-      <ModuleLockedNotice module={module} config={config.lockCopy}>
+    <div className="w-full flex-shrink-0 space-y-4">
+      <div className="px-3 md:px-16">
+        <ModuleLockedNotice module={module} config={config.lockCopy}>
         {config.showDemo && demoContent && (
           <div className="mt-4 pt-4 border-t border-amber-200/50">
             <div 
@@ -66,20 +67,23 @@ export const ModuleGate = ({ module, config, children, demoContent }: ModuleGate
               </Label>
             </div>
           </div>
-        )}
-      </ModuleLockedNotice>
+          )}
+        </ModuleLockedNotice>
+      </div>
       
       {showDemoExpanded && config.showDemo && demoContent ? (
-        // Show demo content with badge when expanded
-        <div className="relative animate-in slide-in-from-top-2 duration-300">
-          <div className="absolute top-2 right-2 z-10">
+        // Show demo content with badge when expanded - full width centered
+        <div className="relative w-full animate-in slide-in-from-top-2 duration-300 px-3 md:px-16">
+          <div className="absolute top-4 right-6 md:right-20 z-10">
             <DemoBadge />
           </div>
           {demoContent}
         </div>
       ) : !config.showDemo ? (
         // Show placeholder only if demo is not available
-        <ModulePlaceholderGrid module={module} />
+        <div className="w-full px-3 md:px-16">
+          <ModulePlaceholderGrid module={module} />
+        </div>
       ) : null}
     </div>
   );
