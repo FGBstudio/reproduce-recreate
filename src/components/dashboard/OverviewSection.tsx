@@ -38,17 +38,26 @@ const getStatusColor = (level: StatusLevel) => {
   }
 };
 
-const getStatusBgColor = (level: StatusLevel) => {
+const getStatusBorderColor = (level: StatusLevel) => {
   switch (level) {
-    case "GOOD": return "bg-emerald-500/10 border-emerald-500/30";
-    case "OK": return "bg-blue-500/10 border-blue-500/30";
-    case "WARNING": return "bg-amber-500/10 border-amber-500/30";
-    case "CRITICAL": return "bg-red-500/10 border-red-500/30";
+    case "GOOD": return "border-emerald-500/40";
+    case "OK": return "border-blue-500/40";
+    case "WARNING": return "border-amber-500/40";
+    case "CRITICAL": return "border-red-500/40";
+  }
+};
+
+const getStatusIconBg = (level: StatusLevel) => {
+  switch (level) {
+    case "GOOD": return "bg-emerald-100";
+    case "OK": return "bg-blue-100";
+    case "WARNING": return "bg-amber-100";
+    case "CRITICAL": return "bg-red-100";
   }
 };
 
 const getLiveBadgeColor = (isLive: boolean) => {
-  return isLive 
+  return isLive
     ? "bg-emerald-500 text-white" 
     : "bg-gray-400 text-white";
 };
@@ -95,12 +104,12 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
   const enabledCount = [moduleConfig.energy.enabled, moduleConfig.air.enabled, moduleConfig.water.enabled].filter(Boolean).length;
   
   return (
-    <Card className={`border ${getStatusBgColor(status.level)} backdrop-blur-sm transition-all hover:shadow-lg col-span-full`}>
+    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
       <CardContent className="p-4 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* Left: Status */}
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full ${getStatusBgColor(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
+            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
               <Activity className="w-7 h-7 md:w-8 md:h-8" />
             </div>
             <div>
@@ -204,12 +213,12 @@ const EnergyCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolea
   }
 
   return (
-    <Card className={`border ${getStatusBgColor(status.level)} backdrop-blur-sm transition-all hover:shadow-lg h-full`}>
+    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full`}>
       <CardContent className="p-4 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 rounded-full ${getStatusBgColor(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
+            <div className={`w-10 h-10 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
               <Zap className="w-5 h-5" />
             </div>
             <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
@@ -306,12 +315,12 @@ const AirCard = ({ status, enabled, project }: { status: ModuleStatus; enabled: 
   }
 
   return (
-    <Card className={`border ${getStatusBgColor(status.level)} backdrop-blur-sm transition-all hover:shadow-lg h-full`}>
+    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full`}>
       <CardContent className="p-4 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 rounded-full ${getStatusBgColor(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
+            <div className={`w-10 h-10 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
               <Wind className="w-5 h-5" />
             </div>
             <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
@@ -422,12 +431,12 @@ const WaterCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolean
   }
 
   return (
-    <Card className={`border ${getStatusBgColor(status.level)} backdrop-blur-sm transition-all hover:shadow-lg h-full`}>
+    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full`}>
       <CardContent className="p-4 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 rounded-full ${getStatusBgColor(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
+            <div className={`w-10 h-10 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
               <Droplet className="w-5 h-5" />
             </div>
             <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
