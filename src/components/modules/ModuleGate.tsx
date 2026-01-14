@@ -72,8 +72,8 @@ export const ModuleGate = ({ module, config, children, demoContent }: ModuleGate
       </div>
       
       {showDemoExpanded && config.showDemo && demoContent ? (
-        // Show demo content with badge when expanded - full width centered
-        <div className="relative w-full animate-in slide-in-from-top-2 duration-300 px-3 md:px-16">
+        // Show demo content with badge when expanded - match active module slide behavior
+        <div className="relative w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4 animate-in slide-in-from-top-2 duration-300">
           <div className="absolute top-4 right-6 md:right-20 z-10">
             <DemoBadge />
           </div>
