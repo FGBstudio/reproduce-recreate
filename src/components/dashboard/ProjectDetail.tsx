@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard } from "lucide-react";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -22,9 +22,10 @@ import { Button } from "@/components/ui/button";
 import { ModuleGate } from "@/components/modules/ModuleGate";
 import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
 import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
+import { OverviewSection } from "./OverviewSection";
 
 // Dashboard types
-type DashboardType = "energy" | "air" | "water" | "certification";
+type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
 
 // Chart axis styling
 const axisStyle = {
@@ -158,7 +159,7 @@ interface ProjectDetailProps {
 
 const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [activeDashboard, setActiveDashboard] = useState<DashboardType>("energy");
+  const [activeDashboard, setActiveDashboard] = useState<DashboardType>("overview");
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -182,6 +183,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Different total slides based on dashboard
   const getTotalSlides = () => {
     switch (activeDashboard) {
+      case "overview": return 1;
       case "energy": return 4;
       case "air": return 3;
       case "water": return 3;
@@ -644,6 +646,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           {/* Dashboard Tabs - Scrollable on mobile */}
           <div className="flex items-center gap-2 md:gap-3 mb-2 overflow-x-auto pb-1 scrollbar-hide">
             <button 
+              onClick={() => handleDashboardChange("overview")}
+              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                activeDashboard === "overview" 
+                  ? "bg-fgb-secondary text-white" 
+                  : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+              }`}
+              title="Overview"
+            >
+              <LayoutDashboard className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+            <button 
               onClick={() => handleDashboardChange("energy")}
               className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "energy" 
@@ -758,6 +771,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             className="flex h-full transition-transform duration-700 ease-in-out"
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
+            {/* OVERVIEW DASHBOARD */}
+            {activeDashboard === "overview" && (
+              <div className="w-full flex-shrink-0 overflow-y-auto pb-4">
+                <OverviewSection project={project} moduleConfig={moduleConfig} />
+              </div>
+            )}
+            
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
               <ModuleGate module="energy" config={moduleConfig.energy} demoContent={<EnergyDemoContent />}>
