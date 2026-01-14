@@ -20,6 +20,7 @@ interface OverviewSectionProps {
     air: { enabled: boolean };
     water: { enabled: boolean };
   };
+  onNavigate?: (tab: string) => void;
 }
 
 const getStatusLevel = (score: number): StatusLevel => {
@@ -183,7 +184,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
 };
 
 // Energy Card with detailed readings
-const EnergyCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolean }) => {
+const EnergyCard = ({ status, enabled, onClick }: { status: ModuleStatus; enabled: boolean; onClick?: () => void }) => {
   // Mock latest readings
   const readings = {
     hvac: { value: 45.2, status: "good" as const },
@@ -213,7 +214,7 @@ const EnergyCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolea
   }
 
   return (
-    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full`}>
+    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full cursor-pointer`} onClick={onClick}>
       <CardContent className="p-4 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
@@ -282,7 +283,7 @@ const EnergyCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolea
 };
 
 // Air Quality Card with all monitored parameters
-const AirCard = ({ status, enabled, project }: { status: ModuleStatus; enabled: boolean; project: Project }) => {
+const AirCard = ({ status, enabled, project, onClick }: { status: ModuleStatus; enabled: boolean; project: Project; onClick?: () => void }) => {
   // All monitored air quality parameters
   const readings = {
     co2: { value: project.data.co2 || 520, unit: "ppm", status: project.data.co2 < 600 ? "good" as const : project.data.co2 < 800 ? "warning" as const : "critical" as const },
@@ -315,7 +316,7 @@ const AirCard = ({ status, enabled, project }: { status: ModuleStatus; enabled: 
   }
 
   return (
-    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full`}>
+    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full cursor-pointer`} onClick={onClick}>
       <CardContent className="p-4 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
@@ -403,7 +404,7 @@ const AirCard = ({ status, enabled, project }: { status: ModuleStatus; enabled: 
 };
 
 // Water Card with detailed readings
-const WaterCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolean }) => {
+const WaterCard = ({ status, enabled, onClick }: { status: ModuleStatus; enabled: boolean; onClick?: () => void }) => {
   const readings = {
     dailyConsumption: 1456,
     vsBaseline: -8,
@@ -431,7 +432,7 @@ const WaterCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolean
   }
 
   return (
-    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full`}>
+    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full cursor-pointer`} onClick={onClick}>
       <CardContent className="p-4 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
@@ -484,7 +485,7 @@ const WaterCard = ({ status, enabled }: { status: ModuleStatus; enabled: boolean
   );
 };
 
-export const OverviewSection = ({ project, moduleConfig }: OverviewSectionProps) => {
+export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewSectionProps) => {
   // Calculate status for each module based on project data
   const energyStatus = useMemo<ModuleStatus>(() => {
     const efficiency = project.data.hvac || 85;
@@ -537,6 +538,12 @@ export const OverviewSection = ({ project, moduleConfig }: OverviewSectionProps)
     };
   }, [moduleConfig, energyStatus, airStatus, waterStatus]);
 
+  const handleCardClick = (tab: string) => {
+    if (onNavigate) {
+      onNavigate(tab);
+    }
+  };
+
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
@@ -550,9 +557,22 @@ export const OverviewSection = ({ project, moduleConfig }: OverviewSectionProps)
         />
         
         {/* Three detail cards below */}
-        <EnergyCard status={energyStatus} enabled={moduleConfig.energy.enabled} />
-        <AirCard status={airStatus} enabled={moduleConfig.air.enabled} project={project} />
-        <WaterCard status={waterStatus} enabled={moduleConfig.water.enabled} />
+        <EnergyCard 
+          status={energyStatus} 
+          enabled={moduleConfig.energy.enabled} 
+          onClick={moduleConfig.energy.enabled ? () => handleCardClick("energy") : undefined}
+        />
+        <AirCard 
+          status={airStatus} 
+          enabled={moduleConfig.air.enabled} 
+          project={project}
+          onClick={moduleConfig.air.enabled ? () => handleCardClick("air") : undefined}
+        />
+        <WaterCard 
+          status={waterStatus} 
+          enabled={moduleConfig.water.enabled}
+          onClick={moduleConfig.water.enabled ? () => handleCardClick("water") : undefined}
+        />
       </div>
     </div>
   );

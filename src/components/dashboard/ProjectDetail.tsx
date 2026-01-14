@@ -774,7 +774,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {/* OVERVIEW DASHBOARD */}
             {activeDashboard === "overview" && (
               <div className="w-full flex-shrink-0 overflow-y-auto pb-4">
-                <OverviewSection project={project} moduleConfig={moduleConfig} />
+                <OverviewSection 
+                  project={project} 
+                  moduleConfig={moduleConfig} 
+                  onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
+                />
               </div>
             )}
             
