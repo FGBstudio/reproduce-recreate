@@ -48,11 +48,13 @@ interface DemoCarouselProps {
 }
 
 const DemoCarousel = ({ children }: DemoCarouselProps) => {
+  const slides = Array.isArray(children) ? children : [children];
+  const totalSlides = slides.length;
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const minSwipeDistance = 50;
-  const totalSlides = children.length;
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     touchStartX.current = e.targetTouches[0].clientX;
@@ -63,34 +65,47 @@ const DemoCarousel = ({ children }: DemoCarouselProps) => {
   }, []);
 
   const handleTouchEnd = useCallback(() => {
-    if (!touchStartX.current || !touchEndX.current) return;
+    if (touchStartX.current == null || touchEndX.current == null) return;
+
     const distance = touchStartX.current - touchEndX.current;
     if (Math.abs(distance) > minSwipeDistance) {
       if (distance > 0 && currentSlide < totalSlides - 1) {
-        setCurrentSlide(prev => prev + 1);
+        setCurrentSlide((prev) => prev + 1);
       } else if (distance < 0 && currentSlide > 0) {
-        setCurrentSlide(prev => prev - 1);
+        setCurrentSlide((prev) => prev - 1);
       }
     }
+
     touchStartX.current = null;
     touchEndX.current = null;
   }, [currentSlide, totalSlides]);
 
+  // NOTE: translateX(%) is relative to the *track width*, so we size the track explicitly
+  // and translate by 100/totalSlides per step.
+  const trackTranslatePct = totalSlides > 0 ? (currentSlide * 100) / totalSlides : 0;
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full h-full">
       {/* Carousel Content */}
-      <div 
-        className="relative overflow-hidden"
+      <div
+        className="relative overflow-x-hidden overflow-y-visible h-full"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div 
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+        <div
+          className="flex h-full transition-transform duration-500 ease-in-out"
+          style={{
+            width: `${totalSlides * 100}%`,
+            transform: `translateX(-${trackTranslatePct}%)`,
+          }}
         >
-          {children.map((child, idx) => (
-            <div key={idx} className="w-full flex-shrink-0">
+          {slides.map((child, idx) => (
+            <div
+              key={idx}
+              className="h-full flex-shrink-0 overflow-y-auto pb-4"
+              style={{ width: `${100 / totalSlides}%` }}
+            >
               {child}
             </div>
           ))}
@@ -100,29 +115,31 @@ const DemoCarousel = ({ children }: DemoCarouselProps) => {
       {/* Navigation */}
       <div className="flex justify-center items-center gap-4 mt-4">
         <button
-          onClick={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
+          onClick={() => setCurrentSlide((prev) => Math.max(0, prev - 1))}
           disabled={currentSlide === 0}
           className="p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           <ChevronLeft className="w-5 h-5 text-gray-700" />
         </button>
-        
+
         <div className="flex gap-2">
           {Array.from({ length: totalSlides }).map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentSlide(idx)}
               className={`w-2.5 h-2.5 rounded-full transition-all ${
-                idx === currentSlide 
-                  ? 'bg-fgb-secondary scale-125' 
+                idx === currentSlide
+                  ? 'bg-fgb-secondary scale-125'
                   : 'bg-gray-300 hover:bg-gray-400'
               }`}
             />
           ))}
         </div>
-        
+
         <button
-          onClick={() => setCurrentSlide(prev => Math.min(totalSlides - 1, prev + 1))}
+          onClick={() =>
+            setCurrentSlide((prev) => Math.min(totalSlides - 1, prev + 1))
+          }
           disabled={currentSlide === totalSlides - 1}
           className="p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
