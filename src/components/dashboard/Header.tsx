@@ -1,10 +1,22 @@
-import { User } from "lucide-react";
+import { User, Shield } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   userName?: string;
 }
 
 const Header = ({ userName = "Maria Rossi" }: HeaderProps) => {
+  const navigate = useNavigate();
+  const { user, isAdmin, login } = useAuth();
+
+  const handleAdminClick = () => {
+    if (!user) {
+      login('admin@fgb.com', 'admin');
+    }
+    navigate('/admin');
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 md:px-8 py-3 md:py-5">
       {/* Logo */}
@@ -20,11 +32,23 @@ const Header = ({ userName = "Maria Rossi" }: HeaderProps) => {
         </div>
       </div>
 
-      {/* User Avatar */}
-      <div className="flex items-center gap-2 md:gap-3 glass-panel rounded-full px-3 md:px-4 py-1.5 md:py-2">
-        <span className="text-xs md:text-sm font-medium text-foreground hidden sm:block">{userName}</span>
-        <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-fgb-light flex items-center justify-center overflow-hidden border border-white/20">
-          <User className="w-4 h-4 md:w-5 md:h-5 text-foreground" />
+      {/* User Avatar & Admin */}
+      <div className="flex items-center gap-2 md:gap-3">
+        <button
+          onClick={handleAdminClick}
+          className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-2 hover:bg-fgb-light/50 transition-colors"
+          title="Admin Console"
+        >
+          <Shield className="w-4 h-4 text-fgb-accent" />
+          <span className="hidden sm:inline text-xs font-medium text-foreground">Admin</span>
+        </button>
+        <div className="flex items-center gap-2 md:gap-3 glass-panel rounded-full px-3 md:px-4 py-1.5 md:py-2">
+          <span className="text-xs md:text-sm font-medium text-foreground hidden sm:block">
+            {user?.name || userName}
+          </span>
+          <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-fgb-light flex items-center justify-center overflow-hidden border border-white/20">
+            <User className="w-4 h-4 md:w-5 md:h-5 text-foreground" />
+          </div>
         </div>
       </div>
     </header>
