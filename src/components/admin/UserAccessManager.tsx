@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Users, Shield, Eye, Edit, Crown } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { UserMembership, ScopeType, Permission } from '@/lib/types/admin';
-import { mockUsers } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -35,6 +35,7 @@ const regionOptions = [
 
 export const UserAccessManager = () => {
   const { holdings, brands, sites, projects, memberships, addMembership, updateMembership, deleteMembership } = useAdminData();
+  const { users } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMembership, setEditingMembership] = useState<UserMembership | null>(null);
   const [formData, setFormData] = useState({
@@ -43,8 +44,6 @@ export const UserAccessManager = () => {
     scopeId: '',
     permission: 'view' as Permission,
   });
-
-  const users = Object.values(mockUsers);
 
   const handleOpenCreate = () => {
     setEditingMembership(null);
