@@ -19,6 +19,9 @@ import {
 } from "@/hooks/useTimeFilteredData";
 import { generatePdfReport } from "./PdfReportGenerator";
 import { Button } from "@/components/ui/button";
+import { ModuleGate } from "@/components/modules/ModuleGate";
+import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
+import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
 
 // Dashboard types
 type DashboardType = "energy" | "air" | "water" | "certification";
@@ -161,12 +164,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
+  // Get module configuration for this project
+  const moduleConfig = useProjectModuleConfig(project);
+  
   // Touch/swipe handling
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const minSwipeDistance = 50;
   
-  // Dynamic data based on time period
+  // Dynamic data based on time period - only fetch if module is enabled
   const filteredEnergyData = useEnergyData(timePeriod, dateRange);
   const filteredDeviceData = useDeviceData(timePeriod, dateRange);
   const filteredCO2Data = useCO2Data(timePeriod, dateRange);
@@ -754,7 +760,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           >
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
-              <>
+              <ModuleGate module="energy" config={moduleConfig.energy} demoContent={<EnergyDemoContent />}>
+                <>
                 {/* Slide 1: Energy Overview - Like Water Dashboard */}
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
@@ -1069,11 +1076,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 </div>
               </>
+              </ModuleGate>
             )}
 
             {/* AIR QUALITY DASHBOARD */}
             {activeDashboard === "air" && (
-              <>
+              <ModuleGate module="air" config={moduleConfig.air} demoContent={<AirDemoContent />}>
+                <>
                 {/* Slide 1: Overview + CO2 + TVOC */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1322,11 +1331,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 </div>
               </>
+              </ModuleGate>
             )}
 
             {/* WATER DASHBOARD */}
             {activeDashboard === "water" && (
-              <>
+              <ModuleGate module="water" config={moduleConfig.water} demoContent={<WaterDemoContent />}>
+                <>
                 {/* Slide 1: Consumo idrico & Distribuzione */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1615,6 +1626,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 </div>
               </>
+              </ModuleGate>
             )}
 
             {/* CERTIFICATION DASHBOARD - Slide 1: Overview */}
