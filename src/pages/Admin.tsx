@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Settings, Shield } from 'lucide-react';
+import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,15 @@ import { BrandsManager } from '@/components/admin/BrandsManager';
 import { SitesManager } from '@/components/admin/SitesManager';
 import { ProjectsManager } from '@/components/admin/ProjectsManager';
 import { UserAccessManager } from '@/components/admin/UserAccessManager';
+import { UsersManager } from '@/components/admin/UsersManager';
+import { HierarchyView } from '@/components/admin/HierarchyView';
+import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminAuthGate } from '@/components/admin/AdminAuthGate';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState('holdings');
+  const { user, users, addUser, updateUser, deleteUser } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
     <AdminAuthGate>
@@ -40,7 +43,7 @@ const Admin = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-slate-500 hidden sm:inline">
                   {user?.name}
                 </span>
                 <span className="px-2 py-0.5 text-xs font-medium bg-fgb-secondary/10 text-fgb-secondary rounded-full">
@@ -52,47 +55,122 @@ const Admin = () => {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid bg-white shadow-sm">
-              <TabsTrigger value="holdings" className="gap-2">
-                <Building2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Holdings</span>
-              </TabsTrigger>
-              <TabsTrigger value="brands" className="gap-2">
-                <Tag className="w-4 h-4" />
-                <span className="hidden sm:inline">Brands</span>
-              </TabsTrigger>
-              <TabsTrigger value="sites" className="gap-2">
-                <MapPin className="w-4 h-4" />
-                <span className="hidden sm:inline">Sites</span>
-              </TabsTrigger>
-              <TabsTrigger value="projects" className="gap-2">
-                <FolderKanban className="w-4 h-4" />
-                <span className="hidden sm:inline">Projects</span>
-              </TabsTrigger>
-              <TabsTrigger value="access" className="gap-2">
-                <Users className="w-4 h-4" />
-                <span className="hidden sm:inline">Access</span>
-              </TabsTrigger>
-            </TabsList>
+            {/* Tab navigation */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
+              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 gap-1 bg-transparent h-auto p-0">
+                <TabsTrigger 
+                  value="dashboard" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span className="hidden lg:inline">Dashboard</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="hierarchy" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <GitBranch className="w-4 h-4" />
+                  <span className="hidden lg:inline">Gerarchia</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="holdings" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span className="hidden lg:inline">Holdings</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="brands" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <Tag className="w-4 h-4" />
+                  <span className="hidden lg:inline">Brands</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="sites" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span className="hidden lg:inline">Sites</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="projects" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <FolderKanban className="w-4 h-4" />
+                  <span className="hidden lg:inline">Projects</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="users" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <UserCog className="w-4 h-4" />
+                  <span className="hidden lg:inline">Utenti</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="access" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <Users className="w-4 h-4" />
+                  <span className="hidden lg:inline">Accessi</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
+            {/* Dashboard Tab */}
+            <TabsContent value="dashboard" className="space-y-6">
+              <AdminStats users={users} />
+              <div className="grid lg:grid-cols-2 gap-6">
+                <HierarchyView />
+                <div className="space-y-6">
+                  <UsersManager 
+                    users={users}
+                    onAddUser={addUser}
+                    onUpdateUser={updateUser}
+                    onDeleteUser={deleteUser}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Hierarchy Tab */}
+            <TabsContent value="hierarchy">
+              <HierarchyView />
+            </TabsContent>
+
+            {/* Holdings Tab */}
             <TabsContent value="holdings">
               <HoldingsManager />
             </TabsContent>
             
+            {/* Brands Tab */}
             <TabsContent value="brands">
               <BrandsManager />
             </TabsContent>
             
+            {/* Sites Tab */}
             <TabsContent value="sites">
               <SitesManager />
             </TabsContent>
             
+            {/* Projects Tab */}
             <TabsContent value="projects">
               <ProjectsManager />
             </TabsContent>
+
+            {/* Users Tab */}
+            <TabsContent value="users">
+              <UsersManager 
+                users={users}
+                onAddUser={addUser}
+                onUpdateUser={updateUser}
+                onDeleteUser={deleteUser}
+              />
+            </TabsContent>
             
+            {/* Access Tab */}
             <TabsContent value="access">
               <UserAccessManager />
             </TabsContent>
