@@ -137,10 +137,10 @@ function mapRegion(regionOrCountry?: string): string {
 // =============================================================================
 
 /**
- * Hook to get all holdings (real + mock)
+ * Hook to get all holdings (real + mock) with loading/error states
  */
 export function useAllHoldings() {
-  const { data: realHoldings, isLoading, error } = useHoldings();
+  const { data: realHoldings, isLoading, error, refetch } = useHoldings();
 
   return useMemo(() => {
     const transformed = realHoldings?.map(transformHolding) || [];
@@ -155,17 +155,18 @@ export function useAllHoldings() {
     return {
       holdings: combined,
       isLoading,
-      error,
+      error: error as Error | null,
       hasRealData: isSupabaseConfigured && transformed.length > 0,
+      refetch,
     };
-  }, [realHoldings, isLoading, error]);
+  }, [realHoldings, isLoading, error, refetch]);
 }
 
 /**
- * Hook to get all brands (real + mock)
+ * Hook to get all brands (real + mock) with loading/error states
  */
 export function useAllBrands() {
-  const { data: realBrands, isLoading, error } = useBrands();
+  const { data: realBrands, isLoading, error, refetch } = useBrands();
 
   return useMemo(() => {
     const transformed = realBrands?.map(transformBrand) || [];
@@ -180,21 +181,22 @@ export function useAllBrands() {
     return {
       brands: combined,
       isLoading,
-      error,
+      error: error as Error | null,
       hasRealData: isSupabaseConfigured && transformed.length > 0,
+      refetch,
     };
-  }, [realBrands, isLoading, error]);
+  }, [realBrands, isLoading, error, refetch]);
 }
 
 /**
- * Hook to get all projects/sites (real + mock)
+ * Hook to get all projects/sites (real + mock) with loading/error states
  */
 export function useAllProjects() {
-  const { data: realSites, isLoading: sitesLoading, error: sitesError } = useSites();
+  const { data: realSites, isLoading: sitesLoading, error: sitesError, refetch: refetchSites } = useSites();
   
   // Get latest telemetry for all sites to populate project data
   const siteIds = realSites?.map(s => s.id) || [];
-  const { data: latestData } = useLatestTelemetry(
+  const { data: latestData, refetch: refetchTelemetry } = useLatestTelemetry(
     siteIds.length > 0 ? { site_id: siteIds[0] } : undefined,
     { enabled: siteIds.length > 0 }
   );
@@ -220,13 +222,19 @@ export function useAllProjects() {
       ...mockProjects.filter(p => !realNames.has(p.name.toLowerCase())),
     ];
 
+    const refetch = () => {
+      refetchSites();
+      refetchTelemetry();
+    };
+
     return {
       projects: combined,
       isLoading: sitesLoading,
-      error: sitesError,
+      error: sitesError as Error | null,
       hasRealData: isSupabaseConfigured && transformed.length > 0,
+      refetch,
     };
-  }, [realSites, latestData, sitesLoading, sitesError]);
+  }, [realSites, latestData, sitesLoading, sitesError, refetchSites, refetchTelemetry]);
 }
 
 /**

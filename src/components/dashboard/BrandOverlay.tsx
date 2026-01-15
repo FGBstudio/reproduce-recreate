@@ -5,7 +5,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
 } from "recharts";
-import { BarChart3, ChevronUp, ChevronDown } from "lucide-react";
+import { BarChart3, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
+import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
@@ -18,8 +19,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const brand = selectedBrand ? getBrandById(selectedBrand) : null;
   const holding = selectedHolding ? getHoldingById(selectedHolding) : null;
   
-  // Use combined real + mock projects
-  const { projects } = useAllProjects();
+  // Use combined real + mock projects with loading state
+  const { projects, isLoading, error, refetch } = useAllProjects();
   
   // Get filtered projects
   const filteredProjects = useMemo(() => {
@@ -85,6 +86,15 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const chartColors = ['hsl(188, 100%, 35%)', 'hsl(338, 50%, 50%)', 'hsl(43, 70%, 50%)', 'hsl(160, 60%, 40%)', 'hsl(280, 50%, 50%)'];
   
   if (!displayEntity || !visible) return null;
+
+  // Show loading skeleton
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
+        <BrandOverlaySkeleton />
+      </div>
+    );
+  }
 
   const showCharts = filteredProjects.length > 1;
 
