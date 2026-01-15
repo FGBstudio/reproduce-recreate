@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { projects, regions, Project, MonitoringType, getBrandsByHolding } from "@/lib/data";
+import { regions, Project, MonitoringType, getBrandsByHolding } from "@/lib/data";
+import { useAllProjects } from "@/hooks/useRealTimeData";
 
 interface MapViewProps {
   currentRegion: string;
@@ -16,24 +17,29 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
+  // Use combined real + mock projects
+  const { projects } = useAllProjects();
+
   // Filter projects by region, monitoring type, holding and brand
-  const visibleProjects = projects.filter(p => {
-    const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
-    const monitoringMatch = activeFilters.length === 0 || 
-      activeFilters.some(filter => p.monitoring.includes(filter));
-    
-    // Holding filter
-    let holdingMatch = true;
-    if (selectedHolding) {
-      const holdingBrands = getBrandsByHolding(selectedHolding);
-      holdingMatch = holdingBrands.some(b => b.id === p.brandId);
-    }
-    
-    // Brand filter
-    const brandMatch = !selectedBrand || p.brandId === selectedBrand;
-    
-    return regionMatch && monitoringMatch && holdingMatch && brandMatch;
-  });
+  const visibleProjects = useMemo(() => {
+    return projects.filter(p => {
+      const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
+      const monitoringMatch = activeFilters.length === 0 || 
+        activeFilters.some(filter => p.monitoring.includes(filter));
+      
+      // Holding filter
+      let holdingMatch = true;
+      if (selectedHolding) {
+        const holdingBrands = getBrandsByHolding(selectedHolding);
+        holdingMatch = holdingBrands.some(b => b.id === p.brandId);
+      }
+      
+      // Brand filter
+      const brandMatch = !selectedBrand || p.brandId === selectedBrand;
+      
+      return regionMatch && monitoringMatch && holdingMatch && brandMatch;
+    });
+  }, [projects, currentRegion, activeFilters, selectedHolding, selectedBrand]);
 
   // Initialize map
   useEffect(() => {

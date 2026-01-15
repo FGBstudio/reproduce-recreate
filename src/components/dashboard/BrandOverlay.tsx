@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { getBrandById, getHoldingById, projects, getBrandsByHolding, Project } from "@/lib/data";
+import { getBrandById, getHoldingById, getBrandsByHolding, Project } from "@/lib/data";
+import { useAllProjects } from "@/hooks/useRealTimeData";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
@@ -17,6 +18,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const brand = selectedBrand ? getBrandById(selectedBrand) : null;
   const holding = selectedHolding ? getHoldingById(selectedHolding) : null;
   
+  // Use combined real + mock projects
+  const { projects } = useAllProjects();
+  
   // Get filtered projects
   const filteredProjects = useMemo(() => {
     if (selectedBrand) {
@@ -26,7 +30,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
       return projects.filter(p => holdingBrands.some(b => b.id === p.brandId));
     }
     return [];
-  }, [selectedBrand, selectedHolding]);
+  }, [selectedBrand, selectedHolding, projects]);
 
   // Chart data for store comparison
   const energyComparisonData = useMemo(() => {

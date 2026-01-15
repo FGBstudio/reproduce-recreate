@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { Zap, Wind, Droplets, Building2, Tag } from "lucide-react";
-import { MonitoringType, holdings, brands, getBrandsByHolding } from "@/lib/data";
+import { MonitoringType, getBrandsByHolding } from "@/lib/data";
+import { useAllHoldings, useAllBrands } from "@/hooks/useRealTimeData";
 import {
   Select,
   SelectContent,
@@ -45,9 +47,15 @@ const RegionNav = ({
   onHoldingChange,
   onBrandChange
 }: RegionNavProps) => {
-  const availableBrands = selectedHolding 
-    ? getBrandsByHolding(selectedHolding) 
-    : brands;
+  // Use combined real + mock data
+  const { holdings } = useAllHoldings();
+  const { brands } = useAllBrands();
+
+  const availableBrands = useMemo(() => {
+    return selectedHolding 
+      ? getBrandsByHolding(selectedHolding) 
+      : brands;
+  }, [selectedHolding, brands]);
 
   return (
     <nav 
