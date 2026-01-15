@@ -3,19 +3,20 @@
 //
 // Query params:
 //   - device_ids: string (required) - Comma-separated device UUIDs
-//   - metrics: string (required) - Comma-separated metric names (e.g., "iaq.co2,iaq.voc")
+//   - metrics: string (required) - Comma-separated metric names (e.g., "iaq.co2,energy.power_kw")
 //   - start: string (required) - ISO 8601 start timestamp
 //   - end: string (required) - ISO 8601 end timestamp  
 //   - bucket: string (optional) - Time bucket: "5m", "15m", "1h", "1d", "1w" (auto-selected if not provided)
+//   - include_computed_power: boolean (optional) - Include computed power from I/V measurements
 //
 // Auto-selects optimal data source based on time range:
-//   - <= 3 days: raw telemetry
-//   - <= 60 days: hourly aggregates
-//   - > 60 days: daily aggregates
+//   - <= 48 hours: raw telemetry
+//   - <= 90 days: hourly aggregates
+//   - > 90 days: daily aggregates
 //
 // Examples:
-//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=iaq.co2&start=2025-01-01&end=2025-01-13"
-//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID1,UUID2&metrics=energy.power_kw&start=2025-01-01T00:00:00Z&end=2025-01-01T12:00:00Z&bucket=15m"
+//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=iaq.co2&start=2025-01-01&end=2025-01-02"
+//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=energy.power_kw&start=2025-01-01&end=2025-01-14&bucket=1h"
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -60,20 +61,21 @@ const autoSelectBucket = (start: Date, end: Date): string => {
   
   if (diffHours <= 6) return '5m'
   if (diffHours <= 24) return '15m'
-  if (diffHours <= 72) return '1h'      // 3 days
-  if (diffHours <= 336) return '1h'     // 14 days  
-  if (diffHours <= 1440) return '1d'    // 60 days
+  if (diffHours <= 48) return '30m'      // 2 days
+  if (diffHours <= 168) return '1h'      // 7 days  
+  if (diffHours <= 720) return '6h'      // 30 days
+  if (diffHours <= 2160) return '1d'     // 90 days
   return '1w'
 }
 
-// Determine data source based on time range
+// Determine data source based on time range (updated thresholds)
 const getOptimalSource = (start: Date, end: Date): 'raw' | 'hourly' | 'daily' => {
   const diffMs = end.getTime() - start.getTime()
-  const diffDays = diffMs / (1000 * 60 * 60 * 24)
+  const diffHours = diffMs / (1000 * 60 * 60)
   
-  if (diffDays <= 3) return 'raw'
-  if (diffDays <= 60) return 'hourly'
-  return 'daily'
+  if (diffHours <= 48) return 'raw'      // <= 2 days: raw
+  if (diffHours <= 2160) return 'hourly' // <= 90 days: hourly
+  return 'daily'                          // > 90 days: daily
 }
 
 Deno.serve(async (req) => {
