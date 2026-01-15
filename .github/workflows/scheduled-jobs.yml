@@ -1,0 +1,65 @@
+name: Scheduled Aggregation Jobs
+
+on:
+  schedule:
+    # Hourly aggregation at minute 5
+    - cron: '5 * * * *'
+    # Daily aggregation at 01:15 UTC
+    - cron: '15 1 * * *'
+  workflow_dispatch:
+    inputs:
+      job_type:
+        description: 'Job type to run'
+        required: true
+        default: 'hourly'
+        type: choice
+        options:
+          - hourly
+          - daily
+          - all
+          - power
+          - purge
+
+jobs:
+  run-aggregation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine job type
+        id: job
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.job_type }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "15 1 * * *" ]; then
+            echo "type=daily" >> $GITHUB_OUTPUT
+          else
+            echo "type=hourly" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run aggregation job
+        run: |
+          echo "Running ${{ steps.job.outputs.type }} job..."
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/scheduled-jobs?job=${{ steps.job.outputs.type }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "Response (HTTP $HTTP_CODE):"
+          echo "$BODY" | jq .
+          
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "Job failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Check if all jobs succeeded
+          SUCCESS=$(echo "$BODY" | jq -r '.success')
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Some jobs failed"
+            exit 1
+          fi
+          
+          echo "✓ Job completed successfully"

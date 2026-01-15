@@ -1,53 +1,94 @@
 # Backend Setup Guide
 
 ## Overview
-This project uses a portable PostgreSQL/Supabase architecture for IoT telemetry data.
+
+This project uses a **DB-centric architecture** where:
+- **MQTT Ingestion**: Simple raw data insert only
+- **Database**: All heavy processing (power calculation, aggregation, retention)
+- **Edge Functions**: Read-only API for dashboard
+
+## Architecture Diagram
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   IoT Devices   │────▶│    Mosquitto    │────▶│  MQTT Ingestion │
+│  (WEEL, PAN12,  │     │     Broker      │     │   (Docker)      │
+│   MSCHN, etc.)  │     │                 │     │   Raw Insert    │
+└─────────────────┘     └─────────────────┘     └────────┬────────┘
+                                                         │
+                                                         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Supabase / PostgreSQL                        │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ mqtt_messages_raw│  │    telemetry     │  │     devices      │  │
+│  │   (audit log)    │  │      (raw)       │  │   (registry)     │  │
+│  └──────────────────┘  └────────┬─────────┘  └──────────────────┘  │
+│                                 │                                   │
+│           ┌─────────────────────┼─────────────────────┐             │
+│           ▼                     ▼                     ▼             │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ compute_power_w  │  │ aggregate_hourly │  │  aggregate_daily │  │
+│  │   (WYE/DELTA)    │  │   (raw → 1h)     │  │   (1h → 1d)      │  │
+│  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘  │
+│           ▼                     ▼                     ▼             │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ energy.power_kw  │  │  telemetry_hourly│  │  telemetry_daily │  │
+│  │  (materialized)  │  │                  │  │                  │  │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                        ┌──────────────────────┐
+                        │    Edge Functions    │
+                        │  /devices /latest    │
+                        │  /timeseries         │
+                        └──────────┬───────────┘
+                                   │
+                                   ▼
+                        ┌──────────────────────┐
+                        │      Dashboard       │
+                        │      (React)         │
+                        └──────────────────────┘
+```
 
 ## Prerequisites
 - [Supabase CLI](https://supabase.com/docs/guides/cli) installed
 - A Supabase project (or local development)
 - Node.js 18+
+- Docker (for MQTT ingestion)
 
 ## 1. Link Supabase Project
 
 ```bash
-# Login to Supabase
 supabase login
-
-# Link to your project
 supabase link --project-ref YOUR_PROJECT_REF
 ```
 
 ## 2. Apply Migrations
 
 Run all migrations in order:
+
 ```bash
-# Core tables (Holdings, Brands, Sites)
+# Get DATABASE_URL from Supabase Dashboard → Settings → Database
+
+# Core tables
 psql $DATABASE_URL -f database/migrations/001_create_holdings_brands_sites.sql
-
-# Devices
 psql $DATABASE_URL -f database/migrations/002_create_devices.sql
-
-# Telemetry (raw, hourly, daily, latest)
 psql $DATABASE_URL -f database/migrations/003_create_telemetry.sql
-
-# Site KPIs
 psql $DATABASE_URL -f database/migrations/004_create_site_kpis.sql
-
-# Events & Alerts
 psql $DATABASE_URL -f database/migrations/005_create_events_alerts.sql
-
-# Water tables
 psql $DATABASE_URL -f database/migrations/006_create_water_tables.sql
-
-# Certifications
 psql $DATABASE_URL -f database/migrations/007_create_certifications.sql
-
-# Helper functions (timeseries, bucketing)
 psql $DATABASE_URL -f database/migrations/008_create_helper_functions.sql
-
-# Aggregation triggers (auto-update latest, hourly/daily cron)
 psql $DATABASE_URL -f database/migrations/009_create_aggregation_triggers.sql
+
+# New: DB-centric processing
+psql $DATABASE_URL -f database/migrations/010_create_raw_mqtt_table.sql
+psql $DATABASE_URL -f database/migrations/011_create_panel_config.sql
+psql $DATABASE_URL -f database/migrations/012_add_site_id_to_telemetry.sql
+psql $DATABASE_URL -f database/migrations/013_create_power_calculation_functions.sql
+psql $DATABASE_URL -f database/migrations/014_create_energy_power_view.sql
+psql $DATABASE_URL -f database/migrations/015_create_downsampling_jobs.sql
 ```
 
 Or via Supabase CLI:
@@ -61,113 +102,169 @@ supabase db push
 supabase functions deploy devices
 supabase functions deploy latest
 supabase functions deploy timeseries
+supabase functions deploy scheduled-jobs
 ```
 
-## 4. Test Endpoints
+## 4. Configure Panel (WYE/DELTA)
 
-### GET /devices
-List devices with optional filters:
+For accurate power calculation, configure your electrical panels:
+
+```sql
+-- Site-wide default (WYE 230V)
+INSERT INTO panel_config (site_id, wiring_type, vln_default, vll_default, pf_default)
+VALUES ('YOUR_SITE_UUID', 'WYE', 230.0, 400.0, 0.95);
+
+-- Device-specific override (DELTA)
+INSERT INTO panel_config (site_id, device_id, wiring_type, vln_default, vll_default, pf_default)
+VALUES ('YOUR_SITE_UUID', 'YOUR_DEVICE_UUID', 'DELTA', 230.0, 400.0, 0.90);
+```
+
+## 5. Set Up Scheduled Jobs
+
+### Option A: Supabase pg_cron (Recommended)
+
+In Supabase Dashboard → SQL Editor:
+
+```sql
+-- Enable pg_cron extension (if not enabled)
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- Hourly jobs (power materialization + aggregation) at minute 5
+SELECT cron.schedule('hourly-jobs', '5 * * * *', 
+  $$SELECT * FROM run_scheduled_jobs()$$
+);
+
+-- Daily jobs (daily aggregation + purge) at 01:15
+SELECT cron.schedule('daily-jobs', '15 1 * * *', 
+  $$SELECT * FROM run_daily_jobs()$$
+);
+
+-- Mark stale devices offline every 5 minutes
+SELECT cron.schedule('mark-stale-offline', '*/5 * * * *', 
+  $$SELECT mark_stale_devices_offline(30)$$
+);
+```
+
+### Option B: GitHub Actions (Alternative)
+
+See `.github/workflows/scheduled-jobs.yml`. Required secrets:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+### Option C: External Cron Script
+
 ```bash
-# All devices (paginated)
-curl "https://YOUR_PROJECT.supabase.co/functions/v1/devices?limit=10" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+cd mqtt-ingestion
 
-# Filter by site
-curl "https://YOUR_PROJECT.supabase.co/functions/v1/devices?site_id=UUID" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
-
-# Filter by type and status
-curl "https://YOUR_PROJECT.supabase.co/functions/v1/devices?type=air_quality&status=online" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+# System cron
+crontab -e
+# Add:
+# 5 * * * * cd /path/to/mqtt-ingestion && node scripts/cron-jobs.js hourly
+# 15 1 * * * cd /path/to/mqtt-ingestion && node scripts/cron-jobs.js daily
 ```
 
-### GET /latest
-Get latest telemetry values:
-```bash
-# All latest values for a site
-curl "https://YOUR_PROJECT.supabase.co/functions/v1/latest?site_id=UUID" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+## 6. MQTT Ingestion Service
 
-# Specific devices and metrics
-curl "https://YOUR_PROJECT.supabase.co/functions/v1/latest?device_ids=UUID1,UUID2&metrics=iaq.co2,iaq.voc" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
-```
-
-### GET /timeseries
-Get time-bucketed telemetry data (auto-selects optimal source):
-```bash
-# Auto bucket selection
-curl "https://YOUR_PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=iaq.co2&start=2025-01-01&end=2025-01-13" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
-
-# Manual bucket selection
-curl "https://YOUR_PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=energy.power_kw&start=2025-01-01T00:00:00Z&end=2025-01-01T12:00:00Z&bucket=15m" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
-```
-
-**Bucket options:** `1m`, `5m`, `15m`, `30m`, `1h`, `6h`, `1d`, `1w`, `1M`
-
-**Auto-source selection:**
-- <= 3 days → raw telemetry
-- <= 60 days → hourly aggregates
-- \> 60 days → daily aggregates
-
-## 5. Environment Variables
-
-Set in Supabase Dashboard → Settings → Edge Functions:
-- `SUPABASE_URL` (auto-set)
-- `SUPABASE_ANON_KEY` (auto-set)
-
-For the frontend, create `.env.local`:
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
-
-## 6. MQTT Ingestion (Separate Service)
-
-The MQTT ingestion runs externally (Docker). See `mqtt-ingestion/README.md`.
-
-Setup:
 ```bash
 cd mqtt-ingestion
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Edit .env with your credentials
 
 docker-compose up -d
 ```
 
-Required environment:
-- `SUPABASE_URL` - Your project URL
-- `SUPABASE_SERVICE_ROLE_KEY` - Service role key (for writes)
-- `MQTT_BROKER` - MQTT broker URL
+### Key Environment Variables
 
-## 7. Scheduled Aggregation (Cron Jobs)
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SUPABASE_URL` | Supabase project URL | Yes |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key | Yes |
+| `MQTT_BROKER_URL` | MQTT broker address | Yes |
+| `MQTT_TOPICS` | Topics to subscribe | Yes |
+| `DEFAULT_SITE_ID` | Site for auto-registered devices | Recommended |
+| `SAVE_RAW_MESSAGES` | Save audit log (true/false) | No (default: true) |
 
-Set up cron jobs via Supabase Dashboard → Database → Cron:
+## 7. Test Endpoints
 
-```sql
--- Hourly aggregation (every hour at :05)
-SELECT cron.schedule('aggregate-hourly', '5 * * * *', 'SELECT aggregate_hourly()');
-
--- Daily aggregation (every day at 00:10)
-SELECT cron.schedule('aggregate-daily', '10 0 * * *', 'SELECT aggregate_daily()');
-
--- Mark stale devices offline (every 5 minutes)
-SELECT cron.schedule('mark-stale-offline', '*/5 * * * *', 'SELECT mark_stale_devices_offline()');
+### GET /devices
+```bash
+curl "https://YOUR_PROJECT.supabase.co/functions/v1/devices?site_id=UUID" \
+  -H "Authorization: Bearer YOUR_ANON_KEY"
 ```
 
-## Metrics Catalog
+### GET /latest
+```bash
+curl "https://YOUR_PROJECT.supabase.co/functions/v1/latest?site_id=UUID&metrics=iaq.co2,energy.power_kw" \
+  -H "Authorization: Bearer YOUR_ANON_KEY"
+```
 
-See `metrics_catalog.md` for standardized metric naming conventions (e.g., `iaq.co2`, `energy.power_kw`).
+### GET /timeseries
+```bash
+# Auto-selects optimal data source based on range:
+# - ≤48h: raw telemetry
+# - ≤90 days: hourly aggregates  
+# - >90 days: daily aggregates
+
+curl "https://YOUR_PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=energy.power_kw&start=2025-01-01&end=2025-01-14" \
+  -H "Authorization: Bearer YOUR_ANON_KEY"
+```
+
+### POST /scheduled-jobs (Manual trigger)
+```bash
+curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/scheduled-jobs?job=hourly" \
+  -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
+```
+
+## 8. Retention Policy
+
+| Data Type | Retention | Location |
+|-----------|-----------|----------|
+| Raw telemetry | 90 days | `telemetry` |
+| Hourly aggregates | 365 days | `telemetry_hourly` |
+| Daily aggregates | Forever | `telemetry_daily` |
+| MQTT audit log | 7 days | `mqtt_messages_raw` |
+
+Adjust in `purge_old_telemetry()` function or when calling:
+```sql
+SELECT * FROM purge_old_telemetry(
+  90,   -- raw retention days
+  365,  -- hourly retention days
+  7     -- mqtt raw retention days
+);
+```
+
+## 9. Power Calculation Logic
+
+The database computes power from I/V measurements:
+
+**WYE (Star) Configuration:**
+```
+Power = PF₁×I₁×V₁ + PF₂×I₂×V₂ + PF₃×I₃×V₃
+```
+
+**DELTA Configuration:**
+Same sum-per-phase calculation (Panoramic style) with voltage derivation:
+```
+V_L-N = V_L-L / √3
+```
+
+**Fallbacks:**
+- Missing voltage → use `vln_default` from `panel_config`
+- Missing PF → use `pf_default` from `panel_config`
+- Placeholder values (e.g., -555555) → automatically excluded
 
 ## Troubleshooting
 
-### Empty responses from /latest or /timeseries
-- Verify devices exist: `SELECT * FROM devices LIMIT 5;`
-- Verify telemetry data: `SELECT * FROM telemetry ORDER BY ts DESC LIMIT 5;`
-- Check metric names match catalog (e.g., `iaq.co2` not `co2`)
+### No power_kw data appearing
+1. Check raw I/V metrics exist: `SELECT * FROM telemetry WHERE metric LIKE 'energy.%' ORDER BY ts DESC LIMIT 10;`
+2. Verify panel_config: `SELECT * FROM panel_config;`
+3. Manually trigger power materialization: `SELECT * FROM materialize_power_metrics();`
 
-### Edge function errors
-- Check function logs in Supabase Dashboard → Edge Functions
-- Verify RLS policies allow SELECT for anon role
+### Aggregation not running
+1. Check cron jobs: `SELECT * FROM cron.job;`
+2. Manual test: `SELECT * FROM run_scheduled_jobs();`
+3. Check job history: `SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;`
+
+### Device not being registered
+1. Ensure `DEFAULT_SITE_ID` is set in mqtt-ingestion `.env`
+2. Check logs: `docker-compose logs -f mqtt-ingestion`
