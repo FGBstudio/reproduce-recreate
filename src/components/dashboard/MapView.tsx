@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { regions, Project, MonitoringType, getBrandsByHolding } from "@/lib/data";
 import { useAllProjects } from "@/hooks/useRealTimeData";
+import { MapLoadingSkeleton } from "./DashboardSkeleton";
 
 interface MapViewProps {
   currentRegion: string;
@@ -17,8 +18,8 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
-  // Use combined real + mock projects
-  const { projects } = useAllProjects();
+  // Use combined real + mock projects with loading state
+  const { projects, isLoading, error, refetch } = useAllProjects();
 
   // Filter projects by region, monitoring type, holding and brand
   const visibleProjects = useMemo(() => {
@@ -152,8 +153,24 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       {/* Overlay gradient for better UI integration - stronger on mobile for nav visibility */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/60 md:from-background/40 via-transparent to-background/40 md:to-background/30" />
       
+      {/* Loading indicator */}
+      {isLoading && <MapLoadingSkeleton />}
+      
+      {/* Error state with retry */}
+      {error && !isLoading && (
+        <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center pointer-events-auto z-[1000]">
+          <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <span className="text-red-400 text-xs">Errore caricamento</span>
+            <button onClick={() => refetch()} className="text-fgb-accent text-xs hover:underline ml-2">
+              Riprova
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Region label - repositioned on mobile */}
-      {currentRegion !== "GLOBAL" && (
+      {currentRegion !== "GLOBAL" && !isLoading && (
         <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none z-[1000]">
           <div className="text-fgb-accent text-xs md:text-sm font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase">
             {regions[currentRegion].name}

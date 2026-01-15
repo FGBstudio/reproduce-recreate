@@ -47,9 +47,9 @@ const RegionNav = ({
   onHoldingChange,
   onBrandChange
 }: RegionNavProps) => {
-  // Use combined real + mock data
-  const { holdings } = useAllHoldings();
-  const { brands } = useAllBrands();
+  // Use combined real + mock data with loading states
+  const { holdings, isLoading: holdingsLoading } = useAllHoldings();
+  const { brands, isLoading: brandsLoading } = useAllBrands();
 
   const availableBrands = useMemo(() => {
     return selectedHolding 

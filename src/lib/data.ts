@@ -2,13 +2,24 @@
  * Region and Project Data for FGB IoT Dashboard
  * 
  * This module exports mock data for development and demo purposes.
+ * 
+ * == REAL DATA INTEGRATION ==
  * For real data integration, use the hooks from '@/hooks/useRealTimeData':
- * - useAllProjects() - Combined real + mock projects
- * - useAllBrands() - Combined real + mock brands  
- * - useAllHoldings() - Combined real + mock holdings
+ * - useAllProjects() - Combined real + mock projects with loading/error states
+ * - useAllBrands() - Combined real + mock brands with loading/error states
+ * - useAllHoldings() - Combined real + mock holdings with loading/error states
+ * 
+ * For real-time telemetry, use hooks from '@/hooks/useRealTimeTelemetry':
+ * - useRealTimeEnergyData(siteId, timePeriod, dateRange) - Energy timeseries
+ * - useRealTimeLatestData(siteId) - Latest sensor readings
+ * - useProjectTelemetry(siteId, timePeriod, dateRange) - Combined telemetry
  * 
  * When Supabase is configured, real data from the database is merged with
  * mock data, with real data taking precedence for matching names.
+ * 
+ * == LOADING STATES ==
+ * All hooks return: { data, isLoading, isError, error, refetch, isRealData }
+ * Use skeleton components from '@/components/dashboard/DashboardSkeleton'
  */
 
 export interface Region {
