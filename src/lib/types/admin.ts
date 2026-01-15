@@ -1,15 +1,31 @@
 // Admin Types for FGB IoT Dashboard
 
-// User roles
+// User roles (matches database app_role enum)
 export type UserRole = 'viewer' | 'editor' | 'admin' | 'superuser';
 
-// User representation
+// Extended user profile (matches profiles table)
+export interface UserProfile {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  display_name?: string;
+  avatar_url?: string;
+  company?: string;
+  job_title?: string;
+  phone?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// User representation with role (for UI/context)
 export interface User {
   id: string;
   email: string;
   name: string;
   role: UserRole;
   avatar?: string;
+  profile?: UserProfile;
 }
 
 // Module configuration
@@ -85,7 +101,7 @@ export interface AdminProject {
   updatedAt: Date;
 }
 
-// User access / membership
+// User access / membership (matches database enums)
 export type ScopeType = 'project' | 'site' | 'region' | 'brand' | 'holding';
 export type Permission = 'view' | 'edit' | 'admin';
 
@@ -96,6 +112,14 @@ export interface UserMembership {
   scopeId: string; // ID of the project/site/brand/holding or region code
   permission: Permission;
   createdAt: Date;
+}
+
+// Database user role record
+export interface UserRoleRecord {
+  id: string;
+  user_id: string;
+  role: UserRole;
+  created_at: string;
 }
 
 // Default module config
@@ -116,3 +140,13 @@ export const defaultProjectModules: ProjectModules = {
   air: { ...defaultModuleConfig },
   water: { ...defaultModuleConfig },
 };
+
+// Auth state for context
+export interface AuthState {
+  user: User | null;
+  profile: UserProfile | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isSuperuser: boolean;
+}
