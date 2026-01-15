@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles } from "lucide-react";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -1139,28 +1139,62 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* Air Quality Overview Card */}
-                    <div ref={airQualityRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
+                    <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
                       <div className="absolute top-4 right-4">
                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                       </div>
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold mb-4`}>
-                        <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-                        LIVE
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold`}>
+                          <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                          LIVE
+                        </div>
+                        <div>
+                          <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
+                            {project.data.aq}
+                          </h3>
+                          <p className="text-gray-500 uppercase tracking-widest text-[10px]">Indoor Air Quality</p>
+                        </div>
                       </div>
-                      <h3 className={`text-4xl font-bold mb-1 tracking-tight ${getAqColor(project.data.aq)}`}>
-                        {project.data.aq}
-                      </h3>
-                      <p className="text-gray-500 uppercase tracking-widest text-xs mb-4">Indoor Air Quality</p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Wind className="w-5 h-5 text-sky-500 mx-auto mb-1" />
-                          <div className="text-xl font-bold text-gray-800">{project.data.co2}</div>
+                          <Wind className="w-4 h-4 text-sky-500 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">{project.data.co2}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppm CO₂</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Thermometer className="w-5 h-5 text-orange-500 mx-auto mb-1" />
-                          <div className="text-xl font-bold text-gray-800">{project.data.temp}°</div>
-                          <div className="text-[9px] text-gray-500 uppercase">Temp</div>
+                          <Activity className="w-4 h-4 text-purple-500 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">85</div>
+                          <div className="text-[9px] text-gray-500 uppercase">ppb TVOC</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Thermometer className="w-4 h-4 text-orange-500 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">{project.data.temp}°</div>
+                          <div className="text-[9px] text-gray-500 uppercase">°C Temp</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Droplets className="w-4 h-4 text-cyan-500 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">48</div>
+                          <div className="text-[9px] text-gray-500 uppercase">% Umidità</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Cloud className="w-4 h-4 text-amber-600 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">12</div>
+                          <div className="text-[9px] text-gray-500 uppercase">µg/m³ PM2.5</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Cloud className="w-4 h-4 text-amber-800 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">28</div>
+                          <div className="text-[9px] text-gray-500 uppercase">µg/m³ PM10</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Gauge className="w-4 h-4 text-red-500 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">0.8</div>
+                          <div className="text-[9px] text-gray-500 uppercase">ppm CO</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-xl text-center">
+                          <Sparkles className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-gray-800">15</div>
+                          <div className="text-[9px] text-gray-500 uppercase">ppb O₃</div>
                         </div>
                       </div>
                     </div>
