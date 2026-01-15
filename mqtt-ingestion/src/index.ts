@@ -4,7 +4,20 @@ import express from 'express';
 import pino from 'pino';
 import { z } from 'zod';
 
-// Logger
+// =============================================================================
+// FGB MQTT Ingestion Service - SIMPLIFIED (Raw Insert Only)
+// =============================================================================
+// 
+// This service performs MINIMAL processing:
+// 1. Receive MQTT messages
+// 2. Save raw JSON to mqtt_messages_raw (audit log)
+// 3. Extract basic fields and insert to telemetry_raw (normalized)
+// 4. Upsert device registry
+//
+// ALL heavy processing (power calculation, aggregation, downsampling) 
+// happens in the DATABASE via SQL functions and scheduled jobs.
+// =============================================================================
+
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
   transport: process.env.NODE_ENV !== 'production' ? {
@@ -21,32 +34,42 @@ const envSchema = z.object({
   MQTT_USERNAME: z.string().optional(),
   MQTT_PASSWORD: z.string().optional(),
   MQTT_TOPICS: z.string().default('fosensor/#,bridge/#,MSCHN/#'),
-  DEFAULT_SITE_ID: z.string().uuid().optional(), // Fallback site for auto-registered devices
+  DEFAULT_SITE_ID: z.string().uuid().optional(),
   BATCH_SIZE: z.string().transform(Number).default('100'),
   BATCH_INTERVAL_MS: z.string().transform(Number).default('5000'),
   PORT: z.string().transform(Number).default('3001'),
   MAX_RETRIES: z.string().transform(Number).default('5'),
   RETRY_BASE_DELAY_MS: z.string().transform(Number).default('1000'),
+  SAVE_RAW_MESSAGES: z.string().transform(v => v === 'true').default('true'),
 });
 
 const env = envSchema.parse(process.env);
 
-// Supabase client with service role key
 const supabase: SupabaseClient = createClient(
   env.SUPABASE_URL,
   env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// ============================================================
+// =============================================================================
 // TYPES
-// ============================================================
+// =============================================================================
+interface RawMessage {
+  received_at: string;
+  broker: string;
+  topic: string;
+  payload: object;
+  device_external_id?: string;
+  source_type?: string;
+}
+
 interface TelemetryPoint {
-  device_id: string; // UUID from devices table
+  device_id: string;
+  site_id?: string;
   ts: string;
   metric: string;
-  value: number;
+  value: number | null;
   unit?: string;
-  quality?: string;
+  labels?: object;
   raw_payload?: object;
 }
 
@@ -61,31 +84,33 @@ interface DeviceInfo {
 
 interface ParseResult {
   device: DeviceInfo;
-  points: Omit<TelemetryPoint, 'device_id'>[];
+  points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[];
+  rawMessage: Omit<RawMessage, 'received_at'>;
 }
 
-// ============================================================
-// CACHES & STATE
-// ============================================================
+// =============================================================================
+// BUFFERS & CACHES
+// =============================================================================
 let telemetryBuffer: TelemetryPoint[] = [];
-const deviceCache: Map<string, string> = new Map(); // externalId:broker -> uuid
+let rawMessageBuffer: RawMessage[] = [];
+const deviceCache: Map<string, { uuid: string; site_id: string }> = new Map();
 let mqttClient: MqttClient | null = null;
 
-// Stats
 const stats = {
   messagesReceived: 0,
   pointsBuffered: 0,
   pointsInserted: 0,
+  rawMessagesInserted: 0,
   insertErrors: 0,
   devicesRegistered: 0,
   lastFlush: new Date().toISOString(),
 };
 
-// ============================================================
-// CANONICAL METRIC MAPPING (from metrics_catalog.md)
-// ============================================================
+// =============================================================================
+// METRIC MAPPING (Canonical Names from metrics_catalog.md)
+// =============================================================================
 const METRIC_MAP: Record<string, { canonical: string; unit: string }> = {
-  // IAQ metrics
+  // IAQ
   'CO2': { canonical: 'iaq.co2', unit: 'ppm' },
   'co2': { canonical: 'iaq.co2', unit: 'ppm' },
   'VOC': { canonical: 'iaq.voc', unit: 'µg/m³' },
@@ -99,8 +124,7 @@ const METRIC_MAP: Record<string, { canonical: string; unit: string }> = {
   'co': { canonical: 'iaq.co', unit: 'ppm' },
   'O3': { canonical: 'iaq.o3', unit: 'ppb' },
   'o3': { canonical: 'iaq.o3', unit: 'ppb' },
-  
-  // Environment metrics
+  // Environment
   'Temp': { canonical: 'env.temperature', unit: '°C' },
   'temp': { canonical: 'env.temperature', unit: '°C' },
   'temperature': { canonical: 'env.temperature', unit: '°C' },
@@ -108,8 +132,7 @@ const METRIC_MAP: Record<string, { canonical: string; unit: string }> = {
   'humidity': { canonical: 'env.humidity', unit: '%' },
   'noise': { canonical: 'env.noise', unit: 'dB' },
   'lux': { canonical: 'env.illuminance', unit: 'lx' },
-  
-  // Energy metrics
+  // Energy - Individual phases (NO power calculation here!)
   'current_A': { canonical: 'energy.current_a', unit: 'A' },
   'current_a': { canonical: 'energy.current_a', unit: 'A' },
   'I1': { canonical: 'energy.current_l1', unit: 'A' },
@@ -118,60 +141,48 @@ const METRIC_MAP: Record<string, { canonical: string; unit: string }> = {
   'V1': { canonical: 'energy.voltage_l1', unit: 'V' },
   'V2': { canonical: 'energy.voltage_l2', unit: 'V' },
   'V3': { canonical: 'energy.voltage_l3', unit: 'V' },
-  'power_w': { canonical: 'energy.power_kw', unit: 'kW' }, // Will transform
+  'PF1': { canonical: 'energy.pf_l1', unit: '' },
+  'PF2': { canonical: 'energy.pf_l2', unit: '' },
+  'PF3': { canonical: 'energy.pf_l3', unit: '' },
+  // Pre-computed power (if source provides it)
+  'power_w': { canonical: 'energy.power_w', unit: 'W' },
   'power_kw': { canonical: 'energy.power_kw', unit: 'kW' },
   'energy_kwh': { canonical: 'energy.active_import_kwh', unit: 'kWh' },
-  
-  // Water metrics
+  // Water
   'flow_rate': { canonical: 'water.flow_rate', unit: 'L/min' },
   'total_volume': { canonical: 'water.consumption', unit: 'm³' },
 };
 
-// ============================================================
-// VALIDATION RANGES (from metrics_catalog.md)
-// ============================================================
-const VALIDATION_RANGES: Record<string, { min: number; max: number }> = {
-  'iaq.co2': { min: 300, max: 10000 },
-  'iaq.voc': { min: 0, max: 30000 },
-  'iaq.pm25': { min: 0, max: 1000 },
-  'iaq.pm10': { min: 0, max: 2000 },
-  'iaq.co': { min: 0, max: 500 },
-  'iaq.o3': { min: 0, max: 1000 },
-  'env.temperature': { min: -40, max: 85 },
-  'env.humidity': { min: 0, max: 100 },
-  'energy.current_a': { min: 0, max: 1000 },
-  'energy.current_l1': { min: 0, max: 1000 },
-  'energy.current_l2': { min: 0, max: 1000 },
-  'energy.current_l3': { min: 0, max: 1000 },
-  'energy.voltage_l1': { min: 0, max: 500 },
-  'energy.voltage_l2': { min: 0, max: 500 },
-  'energy.voltage_l3': { min: 0, max: 500 },
-  'energy.power_kw': { min: 0, max: 10000 },
-};
+// =============================================================================
+// PARSERS - Extract fields, NO calculations
+// =============================================================================
 
-function validateValue(metric: string, value: number): 'good' | 'suspect' | 'bad' {
-  const range = VALIDATION_RANGES[metric];
-  if (!range) return 'good';
-  if (value < range.min || value > range.max) return 'suspect';
-  return 'good';
+function parseTimestamp(ts: string | number | undefined): string {
+  if (!ts) return new Date().toISOString();
+  if (typeof ts === 'number') {
+    const multiplier = ts > 1e12 ? 1 : 1000;
+    return new Date(ts * multiplier).toISOString();
+  }
+  const parsed = new Date(ts.replace(' ', 'T'));
+  return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 }
 
-// ============================================================
-// PARSERS FOR SPECIFIC FORMATS
-// ============================================================
+function isValidValue(val: any): boolean {
+  if (val === null || val === undefined) return false;
+  const num = typeof val === 'string' ? parseFloat(val) : val;
+  if (isNaN(num)) return false;
+  // Detect placeholder values like -555555
+  if (num < -100000 || num > 100000000) return false;
+  return true;
+}
+
+function extractValue(val: any): number | null {
+  if (!isValidValue(val)) return null;
+  return typeof val === 'string' ? parseFloat(val) : val;
+}
 
 /**
- * Parser 1: Air Quality (WEEL/LEED) - fosensor/iaq topic
- * Example payload:
- * {
- *   "Timestamp": "2025-12-31 23:59:49",
- *   "Broker": "cert.gwext.coolprojects.it",
- *   "DeviceID": "******0076",
- *   "MAC": "********DD8A",
- *   "Model": "WEEL",
- *   "VOC": 373, "CO2": 776, "Temp": 21.1, "Humidity": 16.3,
- *   "O3": 20.0, "CO": 0.0, "PM2.5": 0.0, "PM10": 0.0
- * }
+ * Parser: Air Quality (WEEL/LEED) - fosensor/iaq topic
  */
 function parseAirQuality(topic: string, payload: Record<string, any>): ParseResult | null {
   const deviceId = payload.DeviceID || payload.device_id;
@@ -191,45 +202,34 @@ function parseAirQuality(topic: string, payload: Record<string, any>): ParseResu
     mac: payload.MAC,
   };
 
-  const points: Omit<TelemetryPoint, 'device_id'>[] = [];
-  
-  // Map each metric
+  const points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[] = [];
   const metricsToExtract = ['CO2', 'VOC', 'Temp', 'Humidity', 'O3', 'CO', 'PM2.5', 'PM10'];
+  
   for (const key of metricsToExtract) {
-    const value = payload[key];
-    if (value !== undefined && value !== null && typeof value === 'number') {
+    const value = extractValue(payload[key]);
+    if (value !== null) {
       const mapping = METRIC_MAP[key];
       if (mapping) {
-        const quality = validateValue(mapping.canonical, value);
         points.push({
           ts: timestamp,
           metric: mapping.canonical,
           value,
           unit: mapping.unit,
-          quality,
-          raw_payload: payload,
         });
       }
     }
   }
 
-  return points.length > 0 ? { device, points } : null;
+  return points.length > 0 ? {
+    device,
+    points,
+    rawMessage: { broker, topic, payload, device_external_id: deviceId, source_type: 'fosensor' }
+  } : null;
 }
 
 /**
- * Parser 2: Energy Single Phase (PAN12) - bridge/*/slot*/reading topic
- * Example payload:
- * {
- *   "Timestamp": "2025-12-01 00:00:05",
- *   "Broker": "data.hub.fgb-studio.com",
- *   "Topic": "bridge/Milan-office-bridge01/slot0/reading",
- *   "status": 2.0,
- *   "sensor_sn": "******771",
- *   "type": "PAN12",
- *   "ts": 1764543602,
- *   "current_A": 1.582,
- *   "rssi_dBm": -62.0
- * }
+ * Parser: Energy Single Phase (PAN12) - bridge/*/slot*/reading
+ * Saves only raw current - NO power calculation!
  */
 function parseEnergyPAN12(topic: string, payload: Record<string, any>): ParseResult | null {
   const deviceId = payload.sensor_sn || payload.device_id;
@@ -238,7 +238,6 @@ function parseEnergyPAN12(topic: string, payload: Record<string, any>): ParseRes
     return null;
   }
 
-  // Parse timestamp - could be unix epoch or ISO string
   let timestamp: string;
   if (payload.ts && typeof payload.ts === 'number') {
     timestamp = new Date(payload.ts * 1000).toISOString();
@@ -256,37 +255,29 @@ function parseEnergyPAN12(topic: string, payload: Record<string, any>): ParseRes
     rssi: payload.rssi_dBm,
   };
 
-  const points: Omit<TelemetryPoint, 'device_id'>[] = [];
+  const points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[] = [];
   
-  // Current (single phase)
-  if (payload.current_A !== undefined) {
-    const value = parseFloat(payload.current_A);
-    const quality = validateValue('energy.current_a', value);
+  // Only extract current - power_kw will be computed by DB
+  const current = extractValue(payload.current_A);
+  if (current !== null) {
     points.push({
       ts: timestamp,
       metric: 'energy.current_a',
-      value,
+      value: current,
       unit: 'A',
-      quality,
-      raw_payload: payload,
     });
   }
 
-  return points.length > 0 ? { device, points } : null;
+  return points.length > 0 ? {
+    device,
+    points,
+    rawMessage: { broker, topic, payload, device_external_id: deviceId, source_type: 'bridge' }
+  } : null;
 }
 
 /**
- * Parser 3: Energy Three Phase (MSCHN) - MSCHN/misure topic
- * Example payload:
- * {
- *   "Timestamp": "2025-12-03 15:00:01",
- *   "Broker": "cert.gwext.coolprojects.it",
- *   "Topic": "MSCHN/misure",
- *   "I1": "7.18", "I2": "6.99", "I3": "7.55",
- *   "V1": "222.02", "V2": "222.61", "V3": "222.75",
- *   "ID": "********C8CF",
- *   "time": "2025-12-03 22:00:00"
- * }
+ * Parser: Energy Three Phase (MSCHN) - MSCHN/misure
+ * Saves I1,I2,I3,V1,V2,V3 individually - power_kw computed by DB!
  */
 function parseEnergyMSCHN(topic: string, payload: Record<string, any>): ParseResult | null {
   const deviceId = payload.ID || payload.device_id;
@@ -305,126 +296,60 @@ function parseEnergyMSCHN(topic: string, payload: Record<string, any>): ParseRes
     deviceType: 'energy_monitor',
   };
 
-  const points: Omit<TelemetryPoint, 'device_id'>[] = [];
+  const points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[] = [];
   
-  // Three-phase currents
-  for (const phase of ['I1', 'I2', 'I3']) {
-    const rawValue = payload[phase];
-    if (rawValue !== undefined) {
-      const value = typeof rawValue === 'string' ? parseFloat(rawValue) : rawValue;
-      if (!isNaN(value)) {
-        const mapping = METRIC_MAP[phase];
-        const quality = validateValue(mapping?.canonical || 'energy.current_l1', value);
+  // Extract individual phase values - NO power calculation here!
+  const phaseMetrics = ['I1', 'I2', 'I3', 'V1', 'V2', 'V3', 'PF1', 'PF2', 'PF3'];
+  
+  for (const key of phaseMetrics) {
+    const value = extractValue(payload[key]);
+    if (value !== null) {
+      const mapping = METRIC_MAP[key];
+      if (mapping) {
         points.push({
           ts: timestamp,
-          metric: mapping?.canonical || `energy.current_${phase.toLowerCase()}`,
+          metric: mapping.canonical,
           value,
-          unit: 'A',
-          quality,
-          raw_payload: payload,
-        });
-      }
-    }
-  }
-  
-  // Three-phase voltages
-  for (const phase of ['V1', 'V2', 'V3']) {
-    const rawValue = payload[phase];
-    if (rawValue !== undefined) {
-      const value = typeof rawValue === 'string' ? parseFloat(rawValue) : rawValue;
-      if (!isNaN(value)) {
-        const mapping = METRIC_MAP[phase];
-        const quality = validateValue(mapping?.canonical || 'energy.voltage_l1', value);
-        points.push({
-          ts: timestamp,
-          metric: mapping?.canonical || `energy.voltage_${phase.toLowerCase()}`,
-          value,
-          unit: 'V',
-          quality,
-          raw_payload: payload,
+          unit: mapping.unit,
         });
       }
     }
   }
 
-  // Calculate total power if all phases present
-  const i1 = parseFloat(payload.I1);
-  const i2 = parseFloat(payload.I2);
-  const i3 = parseFloat(payload.I3);
-  const v1 = parseFloat(payload.V1);
-  const v2 = parseFloat(payload.V2);
-  const v3 = parseFloat(payload.V3);
-  
-  if (!isNaN(i1) && !isNaN(i2) && !isNaN(i3) && !isNaN(v1) && !isNaN(v2) && !isNaN(v3)) {
-    // Approximate total power (assumes PF=1 for simplicity)
-    const totalPowerW = (i1 * v1) + (i2 * v2) + (i3 * v3);
-    const totalPowerKW = totalPowerW / 1000;
-    const quality = validateValue('energy.power_kw', totalPowerKW);
-    points.push({
-      ts: timestamp,
-      metric: 'energy.power_kw',
-      value: Math.round(totalPowerKW * 1000) / 1000,
-      unit: 'kW',
-      quality,
-      raw_payload: payload,
-    });
-  }
-
-  return points.length > 0 ? { device, points } : null;
-}
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-function parseTimestamp(ts: string | number | undefined): string {
-  if (!ts) return new Date().toISOString();
-  
-  if (typeof ts === 'number') {
-    // Unix timestamp (seconds or milliseconds)
-    const multiplier = ts > 1e12 ? 1 : 1000;
-    return new Date(ts * multiplier).toISOString();
-  }
-  
-  // Try parsing as date string (handles "2025-12-31 23:59:49" format)
-  const parsed = new Date(ts.replace(' ', 'T'));
-  return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+  return points.length > 0 ? {
+    device,
+    points,
+    rawMessage: { broker, topic, payload, device_external_id: deviceId, source_type: 'mschn' }
+  } : null;
 }
 
 function matchTopicPattern(topic: string): 'air_quality' | 'pan12' | 'mschn' | null {
-  // fosensor/iaq or air quality topics
   if (topic.includes('fosensor') || topic.includes('iaq') || topic.includes('air')) {
     return 'air_quality';
   }
-  
-  // bridge/*/slot*/reading pattern for PAN12
   if (/bridge\/[^/]+\/slot\d+\/reading/.test(topic)) {
     return 'pan12';
   }
-  
-  // MSCHN/misure
   if (topic.includes('MSCHN') || topic.includes('mschn')) {
     return 'mschn';
   }
-  
   return null;
 }
 
-// ============================================================
+// =============================================================================
 // DEVICE MANAGEMENT
-// ============================================================
+// =============================================================================
 
-async function upsertDevice(info: DeviceInfo): Promise<string | null> {
+async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: string } | null> {
   const cacheKey = `${info.externalId}:${info.broker}`;
   
   if (deviceCache.has(cacheKey)) {
     return deviceCache.get(cacheKey)!;
   }
 
-  // Try to find existing device
   const { data: existing, error: findError } = await supabase
     .from('devices')
-    .select('id')
+    .select('id, site_id')
     .eq('device_id', info.externalId)
     .eq('broker', info.broker)
     .maybeSingle();
@@ -435,9 +360,10 @@ async function upsertDevice(info: DeviceInfo): Promise<string | null> {
   }
 
   if (existing) {
-    deviceCache.set(cacheKey, existing.id);
+    const result = { uuid: existing.id, site_id: existing.site_id };
+    deviceCache.set(cacheKey, result);
     
-    // Update device info (last_seen, rssi, etc.)
+    // Update device last_seen
     await supabase
       .from('devices')
       .update({
@@ -448,13 +374,13 @@ async function upsertDevice(info: DeviceInfo): Promise<string | null> {
       })
       .eq('id', existing.id);
       
-    return existing.id;
+    return result;
   }
 
-  // Auto-register new device if DEFAULT_SITE_ID is configured
+  // Auto-register new device
   if (!env.DEFAULT_SITE_ID) {
     logger.warn({ deviceId: info.externalId, broker: info.broker }, 
-      'Device not found and DEFAULT_SITE_ID not set - cannot auto-register');
+      'Device not found and DEFAULT_SITE_ID not set');
     return null;
   }
 
@@ -474,7 +400,7 @@ async function upsertDevice(info: DeviceInfo): Promise<string | null> {
       last_seen: new Date().toISOString(),
       name: `${info.model} - ${info.externalId.slice(-4)}`,
     })
-    .select('id')
+    .select('id, site_id')
     .single();
 
   if (insertError) {
@@ -482,20 +408,18 @@ async function upsertDevice(info: DeviceInfo): Promise<string | null> {
     return null;
   }
 
-  deviceCache.set(cacheKey, newDevice.id);
+  const result = { uuid: newDevice.id, site_id: newDevice.site_id };
+  deviceCache.set(cacheKey, result);
   stats.devicesRegistered++;
   
-  return newDevice.id;
+  return result;
 }
 
-// ============================================================
+// =============================================================================
 // BUFFER & FLUSH WITH RETRY
-// ============================================================
+// =============================================================================
 
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  context: string
-): Promise<T | null> {
+async function withRetry<T>(fn: () => Promise<T>, context: string): Promise<T | null> {
   let lastError: Error | null = null;
   
   for (let attempt = 1; attempt <= env.MAX_RETRIES; attempt++) {
@@ -504,13 +428,8 @@ async function withRetry<T>(
     } catch (error) {
       lastError = error as Error;
       const delay = env.RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      logger.warn({ 
-        context, 
-        attempt, 
-        maxRetries: env.MAX_RETRIES, 
-        delay,
-        error: lastError.message 
-      }, 'Operation failed, retrying...');
+      logger.warn({ context, attempt, maxRetries: env.MAX_RETRIES, delay, error: lastError.message }, 
+        'Operation failed, retrying...');
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -519,46 +438,58 @@ async function withRetry<T>(
   return null;
 }
 
-async function flushBuffer(): Promise<void> {
-  if (telemetryBuffer.length === 0) return;
-
-  const batch = telemetryBuffer.splice(0, env.BATCH_SIZE);
+async function flushBuffers(): Promise<void> {
+  const telemetryBatch = telemetryBuffer.splice(0, env.BATCH_SIZE);
+  const rawBatch = rawMessageBuffer.splice(0, env.BATCH_SIZE);
+  
   const startTime = Date.now();
   
-  logger.debug({ count: batch.length }, 'Flushing telemetry batch');
-
-  const result = await withRetry(async () => {
-    const { error } = await supabase
-      .from('telemetry')
-      .insert(batch);
+  // Insert raw messages (audit log)
+  if (rawBatch.length > 0 && env.SAVE_RAW_MESSAGES) {
+    const result = await withRetry(async () => {
+      const { error } = await supabase.from('mqtt_messages_raw').insert(rawBatch);
+      if (error) throw error;
+      return true;
+    }, 'mqtt_raw_insert');
     
-    if (error) throw error;
-    return true;
-  }, 'telemetry_insert');
+    if (result) {
+      stats.rawMessagesInserted += rawBatch.length;
+    }
+  }
+  
+  // Insert telemetry
+  if (telemetryBatch.length > 0) {
+    logger.debug({ count: telemetryBatch.length }, 'Flushing telemetry batch');
 
-  if (result) {
-    stats.pointsInserted += batch.length;
-    stats.lastFlush = new Date().toISOString();
-    logger.info({ 
-      count: batch.length, 
-      durationMs: Date.now() - startTime,
-      remaining: telemetryBuffer.length 
-    }, 'Inserted telemetry batch');
-  } else {
-    stats.insertErrors++;
-    // Re-add failed items to buffer (with limit to prevent memory issues)
-    if (telemetryBuffer.length < 10000) {
-      telemetryBuffer.unshift(...batch);
-      logger.warn({ count: batch.length }, 'Re-queued failed batch');
+    const result = await withRetry(async () => {
+      const { error } = await supabase.from('telemetry').insert(telemetryBatch);
+      if (error) throw error;
+      return true;
+    }, 'telemetry_insert');
+
+    if (result) {
+      stats.pointsInserted += telemetryBatch.length;
+      stats.lastFlush = new Date().toISOString();
+      logger.info({ 
+        count: telemetryBatch.length, 
+        durationMs: Date.now() - startTime,
+        remaining: telemetryBuffer.length 
+      }, 'Inserted telemetry batch');
     } else {
-      logger.error({ dropped: batch.length }, 'Buffer full, dropped failed batch');
+      stats.insertErrors++;
+      if (telemetryBuffer.length < 10000) {
+        telemetryBuffer.unshift(...telemetryBatch);
+        logger.warn({ count: telemetryBatch.length }, 'Re-queued failed batch');
+      } else {
+        logger.error({ dropped: telemetryBatch.length }, 'Buffer full, dropped failed batch');
+      }
     }
   }
 }
 
-// ============================================================
-// MQTT CONNECTION WITH RECONNECT
-// ============================================================
+// =============================================================================
+// MQTT CONNECTION
+// =============================================================================
 
 function connectMqtt(): MqttClient {
   const options: mqtt.IClientOptions = {
@@ -581,7 +512,7 @@ function connectMqtt(): MqttClient {
     
     const topics = env.MQTT_TOPICS.split(',')
       .map(t => t.trim())
-      .filter(t => !t.startsWith('$SYS')); // Exclude system topics
+      .filter(t => !t.startsWith('$SYS'));
     
     topics.forEach(topic => {
       client.subscribe(topic, { qos: 1 }, (err) => {
@@ -595,7 +526,6 @@ function connectMqtt(): MqttClient {
   });
 
   client.on('message', async (topic, payloadBuf) => {
-    // Skip system topics
     if (topic.startsWith('$SYS')) return;
     
     stats.messagesReceived++;
@@ -623,24 +553,29 @@ function connectMqtt(): MqttClient {
       
       if (!result) return;
       
-      // Upsert device and get UUID
-      const deviceUuid = await upsertDevice(result.device);
-      if (!deviceUuid) return;
+      // Upsert device and get UUID + site_id
+      const deviceInfo = await upsertDevice(result.device);
+      if (!deviceInfo) return;
       
-      // Add device UUID to points and buffer
+      // Add raw message to buffer
+      if (env.SAVE_RAW_MESSAGES) {
+        rawMessageBuffer.push({
+          ...result.rawMessage,
+          received_at: new Date().toISOString(),
+        });
+      }
+      
+      // Add telemetry points with device_id and site_id
       const points: TelemetryPoint[] = result.points.map(p => ({
         ...p,
-        device_id: deviceUuid,
+        device_id: deviceInfo.uuid,
+        site_id: deviceInfo.site_id,
       }));
       
       telemetryBuffer.push(...points);
       stats.pointsBuffered += points.length;
       
-      logger.debug({ 
-        topic, 
-        deviceId: result.device.externalId,
-        points: points.length 
-      }, 'Parsed message');
+      logger.debug({ topic, deviceId: result.device.externalId, points: points.length }, 'Parsed message');
       
     } catch (error) {
       logger.error({ 
@@ -651,24 +586,16 @@ function connectMqtt(): MqttClient {
     }
   });
 
-  client.on('error', (err) => {
-    logger.error({ error: err.message }, 'MQTT error');
-  });
-
-  client.on('offline', () => {
-    logger.warn('MQTT client offline, will reconnect...');
-  });
-
-  client.on('reconnect', () => {
-    logger.info('Attempting to reconnect to MQTT...');
-  });
+  client.on('error', (err) => logger.error({ error: err.message }, 'MQTT error'));
+  client.on('offline', () => logger.warn('MQTT client offline, will reconnect...'));
+  client.on('reconnect', () => logger.info('Attempting to reconnect to MQTT...'));
 
   return client;
 }
 
-// ============================================================
+// =============================================================================
 // HEALTH CHECK SERVER
-// ============================================================
+// =============================================================================
 
 function startHealthServer(): void {
   const app = express();
@@ -677,46 +604,32 @@ function startHealthServer(): void {
     const healthy = mqttClient?.connected ?? false;
     res.status(healthy ? 200 : 503).json({
       status: healthy ? 'ok' : 'degraded',
-      mqtt: {
-        connected: mqttClient?.connected ?? false,
-        broker: env.MQTT_BROKER_URL,
-      },
-      buffer: {
-        size: telemetryBuffer.length,
-        maxSize: 10000,
-      },
-      stats: {
-        ...stats,
-        deviceCacheSize: deviceCache.size,
-        uptime: process.uptime(),
-      },
+      mqtt: { connected: mqttClient?.connected ?? false, broker: env.MQTT_BROKER_URL },
+      buffer: { telemetry: telemetryBuffer.length, raw: rawMessageBuffer.length, maxSize: 10000 },
+      stats: { ...stats, deviceCacheSize: deviceCache.size, uptime: process.uptime() },
     });
   });
 
   app.get('/metrics', (req, res) => {
-    // Prometheus-style metrics
     const lines = [
       `# HELP mqtt_messages_received_total Total MQTT messages received`,
       `# TYPE mqtt_messages_received_total counter`,
       `mqtt_messages_received_total ${stats.messagesReceived}`,
-      `# HELP telemetry_points_buffered_total Total telemetry points buffered`,
-      `# TYPE telemetry_points_buffered_total counter`,
-      `telemetry_points_buffered_total ${stats.pointsBuffered}`,
       `# HELP telemetry_points_inserted_total Total telemetry points inserted`,
       `# TYPE telemetry_points_inserted_total counter`,
       `telemetry_points_inserted_total ${stats.pointsInserted}`,
+      `# HELP mqtt_raw_messages_inserted_total Total raw messages inserted`,
+      `# TYPE mqtt_raw_messages_inserted_total counter`,
+      `mqtt_raw_messages_inserted_total ${stats.rawMessagesInserted}`,
       `# HELP telemetry_insert_errors_total Total insert errors`,
       `# TYPE telemetry_insert_errors_total counter`,
       `telemetry_insert_errors_total ${stats.insertErrors}`,
       `# HELP devices_registered_total Devices auto-registered`,
       `# TYPE devices_registered_total counter`,
       `devices_registered_total ${stats.devicesRegistered}`,
-      `# HELP telemetry_buffer_size Current buffer size`,
+      `# HELP telemetry_buffer_size Current telemetry buffer size`,
       `# TYPE telemetry_buffer_size gauge`,
       `telemetry_buffer_size ${telemetryBuffer.length}`,
-      `# HELP device_cache_size Device cache size`,
-      `# TYPE device_cache_size gauge`,
-      `device_cache_size ${deviceCache.size}`,
     ];
     res.type('text/plain').send(lines.join('\n'));
   });
@@ -726,14 +639,15 @@ function startHealthServer(): void {
   });
 }
 
-// ============================================================
+// =============================================================================
 // MAIN
-// ============================================================
+// =============================================================================
 
 async function main(): Promise<void> {
-  logger.info('═══════════════════════════════════════════');
-  logger.info('  FGB MQTT Ingestion Service');
-  logger.info('═══════════════════════════════════════════');
+  logger.info('═══════════════════════════════════════════════════════════════');
+  logger.info('  FGB MQTT Ingestion Service (Simplified - Raw Insert Only)');
+  logger.info('  Power calculation & aggregation handled by DATABASE');
+  logger.info('═══════════════════════════════════════════════════════════════');
 
   // Verify Supabase connection
   const { error } = await supabase.from('devices').select('id').limit(1);
@@ -743,28 +657,18 @@ async function main(): Promise<void> {
   }
   logger.info({ url: env.SUPABASE_URL }, '✓ Connected to Supabase');
 
-  // Start MQTT
   mqttClient = connectMqtt();
-
-  // Start health server
   startHealthServer();
-
-  // Periodic buffer flush
-  setInterval(flushBuffer, env.BATCH_INTERVAL_MS);
+  
+  setInterval(flushBuffers, env.BATCH_INTERVAL_MS);
   logger.info({ intervalMs: env.BATCH_INTERVAL_MS }, 'Buffer flush scheduled');
 
-  // Graceful shutdown
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down...');
-    
-    // Stop accepting new messages
     mqttClient?.end(true);
-    
-    // Flush remaining buffer
-    while (telemetryBuffer.length > 0) {
-      await flushBuffer();
+    while (telemetryBuffer.length > 0 || rawMessageBuffer.length > 0) {
+      await flushBuffers();
     }
-    
     logger.info('Shutdown complete');
     process.exit(0);
   };
