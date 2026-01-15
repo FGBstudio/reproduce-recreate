@@ -442,12 +442,38 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { name: 'Altro', value: 7, color: 'hsl(200, 40%, 80%)' },
   ], []);
 
-  const energyDistributionData = useMemo(() => [
-    { name: 'HVAC', value: 35, color: 'hsl(188, 100%, 19%)' },
-    { name: 'Lighting', value: 28, color: 'hsl(338, 50%, 45%)' },
-    { name: 'Plugs & Loads', value: 18, color: 'hsl(338, 50%, 75%)' },
-    { name: 'Other', value: 12, color: 'hsl(188, 100%, 35%)' },
-  ], []);
+  // Energy distribution with cumulative kWh values based on time period
+  const energyDistributionData = useMemo(() => {
+    // Base annual values
+    const hvacKwh = 42000;
+    const lightingKwh = 33600;
+    const plugsKwh = 21600;
+    const otherKwh = 14400;
+    
+    // Scale factor based on time period
+    let scaleFactor = 1;
+    if (timePeriod === 'today') scaleFactor = 1/365;
+    else if (timePeriod === 'week') scaleFactor = 7/365;
+    else if (timePeriod === 'month') scaleFactor = 1/12;
+    else if (timePeriod === 'year') scaleFactor = 1;
+    else if (dateRange?.from && dateRange?.to) {
+      const diffMs = dateRange.to.getTime() - dateRange.from.getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      scaleFactor = diffDays / 365;
+    }
+    
+    return [
+      { name: 'HVAC', value: 35, kWh: Math.round(hvacKwh * scaleFactor), color: 'hsl(188, 100%, 19%)' },
+      { name: 'Lighting', value: 28, kWh: Math.round(lightingKwh * scaleFactor), color: 'hsl(338, 50%, 45%)' },
+      { name: 'Plugs & Loads', value: 18, kWh: Math.round(plugsKwh * scaleFactor), color: 'hsl(338, 50%, 75%)' },
+      { name: 'Other', value: 12, kWh: Math.round(otherKwh * scaleFactor), color: 'hsl(188, 100%, 35%)' },
+    ];
+  }, [timePeriod, dateRange]);
+
+  // Calculate total cumulative energy
+  const totalCumulativeKwh = useMemo(() => {
+    return energyDistributionData.reduce((sum, item) => sum + item.kWh, 0);
+  }, [energyDistributionData]);
 
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
@@ -542,6 +568,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   };
 
+  // Heatmap legend labels based on qualitative judgments
+  const heatmapLegendLabels = ['Ottimo', 'Buono', 'Moderato', 'Elevato', 'Critico'];
   const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
 
   // Air quality data for export
@@ -818,10 +846,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </ResponsiveContainer>
                     </div>
 
-                    {/* Distribuzione Consumo Energetico */}
+                    {/* Distribuzione del consumo energetico */}
                     <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-3 md:mb-4">
-                        <h3 className="text-base md:text-lg font-bold text-gray-800">Distribuzione Consumo</h3>
+                        <h3 className="text-base md:text-lg font-bold text-gray-800">Distribuzione del consumo energetico</h3>
                         <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-distribution" />
                       </div>
                       <div className="flex items-center gap-4 md:gap-6">
@@ -830,7 +858,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <div key={idx} className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
                               <span className="text-xs md:text-sm text-gray-600 truncate">{item.name}</span>
-                              <span className="text-xs md:text-sm font-semibold text-gray-800 ml-auto">{item.value}%</span>
+                              <span className="text-xs md:text-sm font-semibold text-gray-800 ml-auto">{item.kWh.toLocaleString()} kWh</span>
                             </div>
                           ))}
                         </div>
@@ -845,8 +873,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </PieChart>
                           </ResponsiveContainer>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <Lightbulb className="w-4 h-4 md:w-6 md:h-6 text-fgb-secondary mb-1" />
-                            <span className="text-[10px] md:text-xs text-gray-500">kWh/m²</span>
+                            <span className="text-lg md:text-xl font-bold text-fgb-secondary">{totalCumulativeKwh.toLocaleString()}</span>
+                            <span className="text-[10px] md:text-xs text-gray-500">kWh</span>
                           </div>
                         </div>
                       </div>
@@ -855,16 +883,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* KPI Cards - 2x2 Grid */}
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Consumo Totale</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Densità energetica media annua</p>
                         <p className="text-xl md:text-3xl font-bold text-fgb-secondary">{project.data.total}</p>
                         <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m² / anno</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ 8% vs anno</div>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ 8% vs anno precedente</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Costo Stimato</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Costo Stimato Annuale</p>
                         <p className="text-xl md:text-3xl font-bold text-gray-800">€32,450</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">/ anno</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200</div>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">Consumo × €0.29/kWh</p>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficienza</p>
@@ -957,7 +985,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             {['27-05', '28-05', '29-05', '30-05', '31-05', '01-06', '02-06'].map(d => <span key={d}>{d}</span>)}
                           </div>
                           <div className="flex gap-4 mt-4 text-xs">
-                            {[{ c: 1, l: '0-4.9 kWh' }, { c: 2, l: '4.9-9.8 kWh' }, { c: 3, l: '14.7-19.6 kWh' }, { c: 4, l: '19.6-24.5 kWh' }].map(({ c, l }) => (
+                            {[{ c: 1, l: 'Ottimo' }, { c: 2, l: 'Buono' }, { c: 3, l: 'Moderato' }, { c: 4, l: 'Elevato' }].map(({ c, l }) => (
                               <span key={c} className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[c] }} /> {l}</span>
                             ))}
                           </div>
@@ -1013,7 +1041,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           </ResponsiveContainer>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
                             <span className="text-4xl font-bold text-fgb-secondary">89</span>
-                            <span className="text-xs text-gray-500">kWh/m²</span>
+                            <span className="text-xs text-gray-500">kW</span>
                           </div>
                         </div>
                       </div>

@@ -94,6 +94,16 @@ const ReadingItem = ({ icon, label, value, unit, status = "good" }: ReadingItemP
   );
 };
 
+// Module weights for overall score calculation (80/5/15)
+const MODULE_WEIGHTS = {
+  energy: 0.80,
+  air: 0.05,
+  water: 0.15,
+};
+
+// Mock CO2 equivalent saved value (will be connected to backend later)
+const YEARLY_CO2_SAVED = 12450; // kg CO2 eq
+
 // Overall Performance Card - Full width, prominent
 const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }: {
   status: ModuleStatus;
@@ -102,8 +112,6 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
   airScore: number;
   waterScore: number;
 }) => {
-  const enabledCount = [moduleConfig.energy.enabled, moduleConfig.air.enabled, moduleConfig.water.enabled].filter(Boolean).length;
-  
   return (
     <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
       <CardContent className="p-4 md:p-6">
@@ -128,7 +136,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
             </div>
           </div>
           
-          {/* Right: Score breakdown */}
+          {/* Center: Score and CO2 */}
           <div className="flex items-center gap-6 md:gap-8">
             <div className="text-center">
               <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>
@@ -139,7 +147,19 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
             
             <div className="h-12 w-px bg-gray-200" />
             
-            {/* Module breakdown */}
+            {/* CO2 Equivalent Saved */}
+            <div className="text-center bg-emerald-50 rounded-xl px-4 py-2">
+              <div className="text-2xl md:text-3xl font-bold text-emerald-600">
+                {YEARLY_CO2_SAVED.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">
+                Yearly kg CO₂ eq saved till today
+              </div>
+            </div>
+            
+            <div className="h-12 w-px bg-gray-200" />
+            
+            {/* Module breakdown with weights */}
             <div className="flex gap-4">
               {moduleConfig.energy.enabled && (
                 <div className="text-center">
@@ -147,6 +167,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
                     <Zap className="w-5 h-5 text-amber-600" />
                   </div>
                   <div className="text-sm font-semibold text-gray-800">{energyScore}</div>
+                  <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.energy * 100)}%</div>
                 </div>
               )}
               {moduleConfig.air.enabled && (
@@ -155,6 +176,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
                     <Wind className="w-5 h-5 text-blue-600" />
                   </div>
                   <div className="text-sm font-semibold text-gray-800">{airScore}</div>
+                  <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.air * 100)}%</div>
                 </div>
               )}
               {moduleConfig.water.enabled && (
@@ -163,6 +185,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
                     <Droplet className="w-5 h-5 text-cyan-600" />
                   </div>
                   <div className="text-sm font-semibold text-gray-800">{waterScore}</div>
+                  <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.water * 100)}%</div>
                 </div>
               )}
             </div>
@@ -522,19 +545,32 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   }, [project]);
 
   const overallStatus = useMemo<ModuleStatus>(() => {
-    const enabledModules = [];
-    if (moduleConfig.energy.enabled) enabledModules.push(energyStatus.score);
-    if (moduleConfig.air.enabled) enabledModules.push(airStatus.score);
-    if (moduleConfig.water.enabled) enabledModules.push(waterStatus.score);
+    // Weighted average: Energy 80%, Air 5%, Water 15%
+    let totalWeight = 0;
+    let weightedSum = 0;
     
-    const avgScore = enabledModules.length > 0 
-      ? Math.round(enabledModules.reduce((a, b) => a + b, 0) / enabledModules.length)
+    if (moduleConfig.energy.enabled) {
+      weightedSum += energyStatus.score * MODULE_WEIGHTS.energy;
+      totalWeight += MODULE_WEIGHTS.energy;
+    }
+    if (moduleConfig.air.enabled) {
+      weightedSum += airStatus.score * MODULE_WEIGHTS.air;
+      totalWeight += MODULE_WEIGHTS.air;
+    }
+    if (moduleConfig.water.enabled) {
+      weightedSum += waterStatus.score * MODULE_WEIGHTS.water;
+      totalWeight += MODULE_WEIGHTS.water;
+    }
+    
+    // Normalize the weighted average based on active modules
+    const avgScore = totalWeight > 0 
+      ? Math.round(weightedSum / totalWeight)
       : 0;
     
     return {
       score: avgScore,
       level: getStatusLevel(avgScore),
-      isLive: enabledModules.length > 0,
+      isLive: totalWeight > 0,
     };
   }, [moduleConfig, energyStatus, airStatus, waterStatus]);
 
