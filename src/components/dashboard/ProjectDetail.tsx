@@ -24,6 +24,7 @@ import { ModuleGate } from "@/components/modules/ModuleGate";
 import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
 import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
 import { OverviewSection } from "./OverviewSection";
+import { DataSourceBadge } from "./DataSourceBadge";
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
@@ -829,9 +830,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* Consumo Energetico - Full width */}
                     <div ref={actualVsAvgRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-3 md:mb-4">
-                        <div>
-                          <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Energetico</h3>
-                          <p className="text-[10px] md:text-xs text-gray-500">Confronto con previsione e media</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Energetico</h3>
+                            <p className="text-[10px] md:text-xs text-gray-500">Confronto con previsione e media</p>
+                          </div>
+                          <DataSourceBadge isRealData={isRealTimeData} isLoading={realTimeEnergy.isLoading} />
                         </div>
                         <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData as unknown as Record<string, unknown>[]} filename="energy-consumption" onExpand={() => setFullscreenChart('actualVsAvg')} />
                       </div>

@@ -4,6 +4,7 @@ import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Ga
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
+import { DataSourceBadge } from "./DataSourceBadge";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -106,12 +107,13 @@ const MODULE_WEIGHTS = {
 const YEARLY_CO2_SAVED = 12450; // kg CO2 eq
 
 // Overall Performance Card - Full width, prominent
-const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }: {
+const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData }: {
   status: ModuleStatus;
   moduleConfig: { energy: { enabled: boolean }; air: { enabled: boolean }; water: { enabled: boolean } };
   energyScore: number;
   airScore: number;
   waterScore: number;
+  isRealData: boolean;
 }) => {
   return (
     <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
@@ -127,6 +129,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
                 <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
                   {status.isLive ? "LIVE" : "Offline"}
                 </Badge>
+                <DataSourceBadge isRealData={isRealData} size="sm" />
               </div>
               <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>
                 {status.level}
@@ -649,6 +652,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           energyScore={energyStatus.score}
           airScore={airStatus.score}
           waterScore={waterStatus.score}
+          isRealData={liveData.isRealData}
         />
         
         {/* Three detail cards below */}

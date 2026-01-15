@@ -133,7 +133,8 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop",
     data: { hvac: 32, light: 46, total: 89, co2: 420, temp: 22, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air", "water"],
-    brandId: "gucci"
+    brandId: "gucci",
+    siteId: "s-gucci-florence" // Maps to Gucci Garden Firenze in seed data
   },
   { 
     id: 2, 
@@ -145,7 +146,8 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1920&h=1080&fit=crop",
     data: { hvac: 40, light: 35, total: 95, co2: 500, temp: 21, alerts: 1, aq: "MODERATE" },
     monitoring: ["energy", "air"],
-    brandId: "lv"
+    brandId: "lv",
+    siteId: "s-dior-paris" // Maps to Dior Paris in seed data (closest match)
   },
   { 
     id: 6, 
@@ -157,7 +159,8 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
     data: { hvac: 38, light: 42, total: 92, co2: 480, temp: 21, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air", "water"],
-    brandId: "cartier"
+    brandId: "cartier",
+    siteId: "s-dior-london" // Maps to Dior London in seed data
   },
   // Americas
   { 
@@ -170,7 +173,8 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1920&h=1080&fit=crop",
     data: { hvac: 55, light: 50, total: 120, co2: 600, temp: 20, alerts: 2, aq: "MODERATE" },
     monitoring: ["energy", "water"],
-    brandId: "dior"
+    brandId: "dior",
+    siteId: "s-dior-nyc" // Maps to Dior New York in seed data
   },
   { 
     id: 7, 
@@ -183,6 +187,7 @@ export const projects: Project[] = [
     data: { hvac: 48, light: 38, total: 98, co2: 520, temp: 23, alerts: 1, aq: "GOOD" },
     monitoring: ["energy", "air"],
     brandId: "ysl"
+    // No siteId - will use mock data only
   },
   // APAC
   { 
@@ -195,7 +200,8 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
     data: { hvac: 25, light: 30, total: 65, co2: 380, temp: 23, alerts: 0, aq: "EXCELLENT" },
     monitoring: ["energy", "air", "water"],
-    brandId: "bottega"
+    brandId: "bottega",
+    siteId: "s-fendi-tokyo" // Maps to Fendi Tokyo in seed data
   },
   { 
     id: 8, 
@@ -207,7 +213,8 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop",
     data: { hvac: 30, light: 28, total: 68, co2: 400, temp: 22, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air"],
-    brandId: "iwc"
+    brandId: "iwc",
+    siteId: "s-gucci-shanghai" // Maps to Gucci Shanghai in seed data
   },
   // MEA
   { 
@@ -220,7 +227,8 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
     data: { hvac: 75, light: 42, total: 130, co2: 550, temp: 19, alerts: 3, aq: "POOR" },
     monitoring: ["energy"],
-    brandId: "fendi"
+    brandId: "fendi",
+    siteId: "s-fendi-dubai" // Maps to Fendi Dubai in seed data
   }
 ];
 
