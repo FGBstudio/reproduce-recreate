@@ -1,0 +1,313 @@
+/**
+ * Hooks for fetching real-time project and site data with React Query
+ * Falls back to mock data when Supabase is not configured
+ */
+
+import { useMemo } from 'react';
+import { 
+  useSites, 
+  useBrands, 
+  useHoldings, 
+  useDevices,
+  useLatestTelemetry,
+  ApiSite,
+  ApiBrand,
+  ApiHolding,
+} from '@/lib/api';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { 
+  Project, 
+  Brand, 
+  Holding, 
+  ProjectData, 
+  MonitoringType,
+  projects as mockProjects,
+  brands as mockBrands,
+  holdings as mockHoldings,
+} from '@/lib/data';
+
+// =============================================================================
+// Transformation Helpers
+// =============================================================================
+
+/**
+ * Convert API holding to frontend Holding type
+ */
+function transformHolding(apiHolding: ApiHolding): Holding {
+  return {
+    id: apiHolding.id,
+    name: apiHolding.name,
+    logo: apiHolding.logo_url || 'https://via.placeholder.com/128?text=' + encodeURIComponent(apiHolding.name.substring(0, 2)),
+  };
+}
+
+/**
+ * Convert API brand to frontend Brand type
+ */
+function transformBrand(apiBrand: ApiBrand): Brand {
+  return {
+    id: apiBrand.id,
+    name: apiBrand.name,
+    holdingId: apiBrand.holding_id,
+    logo: apiBrand.logo_url || 'https://via.placeholder.com/128?text=' + encodeURIComponent(apiBrand.name.substring(0, 2)),
+  };
+}
+
+/**
+ * Convert API site to frontend Project type
+ * Sites from DB are given negative IDs to distinguish from mock projects
+ */
+function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): Project {
+  // Calculate ProjectData from latest telemetry or use defaults
+  const data: ProjectData = {
+    hvac: latestData?.['energy.hvac_kw'] ?? Math.round(20 + Math.random() * 40),
+    light: latestData?.['energy.lighting_kw'] ?? Math.round(15 + Math.random() * 35),
+    total: latestData?.['energy.power_kw'] ?? Math.round(50 + Math.random() * 80),
+    co2: latestData?.['iaq.co2'] ?? Math.round(350 + Math.random() * 300),
+    temp: latestData?.['env.temperature'] ?? Math.round(19 + Math.random() * 6),
+    alerts: 0, // Would come from events table
+    aq: calculateAqIndex(latestData?.['iaq.co2']),
+  };
+
+  // Map monitoring_types from DB to frontend MonitoringType
+  const monitoring: MonitoringType[] = (apiSite.monitoring_types || [])
+    .filter((t): t is MonitoringType => ['energy', 'air', 'water'].includes(t));
+
+  // Map region from DB (or derive from country)
+  const region = mapRegion(apiSite.region || apiSite.country);
+
+  return {
+    id: -parseInt(apiSite.id.replace(/-/g, '').substring(0, 8), 16), // Negative ID for real data
+    name: apiSite.name,
+    region,
+    lat: apiSite.lat ?? 0,
+    lng: apiSite.lng ?? 0,
+    address: [apiSite.city, apiSite.country].filter(Boolean).join(', ') || apiSite.address || '',
+    img: apiSite.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop',
+    data,
+    monitoring: monitoring.length > 0 ? monitoring : ['energy'],
+    brandId: apiSite.brand_id,
+    // Store original site_id for API calls
+    _siteId: apiSite.id,
+  } as Project & { _siteId: string };
+}
+
+/**
+ * Calculate AQ index from CO2 level
+ */
+function calculateAqIndex(co2?: number): string {
+  if (!co2) return 'GOOD';
+  if (co2 < 600) return 'EXCELLENT';
+  if (co2 < 800) return 'GOOD';
+  if (co2 < 1000) return 'MODERATE';
+  if (co2 < 1500) return 'POOR';
+  return 'CRITICAL';
+}
+
+/**
+ * Map country/region string to dashboard region code
+ */
+function mapRegion(regionOrCountry?: string): string {
+  if (!regionOrCountry) return 'EU';
+  
+  const lower = regionOrCountry.toLowerCase();
+  
+  // Europe
+  if (['italy', 'france', 'uk', 'germany', 'spain', 'eu', 'europe'].some(c => lower.includes(c))) {
+    return 'EU';
+  }
+  // Americas
+  if (['usa', 'canada', 'mexico', 'brazil', 'america', 'amer'].some(c => lower.includes(c))) {
+    return 'AMER';
+  }
+  // Asia Pacific
+  if (['japan', 'china', 'korea', 'australia', 'singapore', 'hong kong', 'asia', 'apac'].some(c => lower.includes(c))) {
+    return 'APAC';
+  }
+  // Middle East & Africa
+  if (['uae', 'dubai', 'saudi', 'africa', 'mea', 'middle east'].some(c => lower.includes(c))) {
+    return 'MEA';
+  }
+  
+  return 'EU';
+}
+
+// =============================================================================
+// Combined Data Hooks
+// =============================================================================
+
+/**
+ * Hook to get all holdings (real + mock)
+ */
+export function useAllHoldings() {
+  const { data: realHoldings, isLoading, error } = useHoldings();
+
+  return useMemo(() => {
+    const transformed = realHoldings?.map(transformHolding) || [];
+    
+    // Combine real holdings with mock holdings (avoiding duplicates by name)
+    const realNames = new Set(transformed.map(h => h.name.toLowerCase()));
+    const combined = [
+      ...transformed,
+      ...mockHoldings.filter(h => !realNames.has(h.name.toLowerCase())),
+    ];
+
+    return {
+      holdings: combined,
+      isLoading,
+      error,
+      hasRealData: isSupabaseConfigured && transformed.length > 0,
+    };
+  }, [realHoldings, isLoading, error]);
+}
+
+/**
+ * Hook to get all brands (real + mock)
+ */
+export function useAllBrands() {
+  const { data: realBrands, isLoading, error } = useBrands();
+
+  return useMemo(() => {
+    const transformed = realBrands?.map(transformBrand) || [];
+    
+    // Combine real brands with mock brands
+    const realNames = new Set(transformed.map(b => b.name.toLowerCase()));
+    const combined = [
+      ...transformed,
+      ...mockBrands.filter(b => !realNames.has(b.name.toLowerCase())),
+    ];
+
+    return {
+      brands: combined,
+      isLoading,
+      error,
+      hasRealData: isSupabaseConfigured && transformed.length > 0,
+    };
+  }, [realBrands, isLoading, error]);
+}
+
+/**
+ * Hook to get all projects/sites (real + mock)
+ */
+export function useAllProjects() {
+  const { data: realSites, isLoading: sitesLoading, error: sitesError } = useSites();
+  
+  // Get latest telemetry for all sites to populate project data
+  const siteIds = realSites?.map(s => s.id) || [];
+  const { data: latestData } = useLatestTelemetry(
+    siteIds.length > 0 ? { site_id: siteIds[0] } : undefined,
+    { enabled: siteIds.length > 0 }
+  );
+
+  return useMemo(() => {
+    // Build a lookup of latest values by device
+    const latestByDevice: Record<string, Record<string, number>> = {};
+    if (latestData?.data) {
+      Object.entries(latestData.data).forEach(([deviceId, metrics]) => {
+        latestByDevice[deviceId] = {};
+        metrics.forEach(m => {
+          latestByDevice[deviceId][m.metric] = m.value;
+        });
+      });
+    }
+
+    const transformed = realSites?.map(site => transformSite(site)) || [];
+    
+    // Combine real sites with mock projects
+    const realNames = new Set(transformed.map(p => p.name.toLowerCase()));
+    const combined = [
+      ...transformed,
+      ...mockProjects.filter(p => !realNames.has(p.name.toLowerCase())),
+    ];
+
+    return {
+      projects: combined,
+      isLoading: sitesLoading,
+      error: sitesError,
+      hasRealData: isSupabaseConfigured && transformed.length > 0,
+    };
+  }, [realSites, latestData, sitesLoading, sitesError]);
+}
+
+/**
+ * Hook to get devices for a specific site
+ */
+export function useSiteDevices(siteId?: string) {
+  const { data, isLoading, error } = useDevices(
+    siteId ? { site_id: siteId } : undefined,
+    { enabled: !!siteId }
+  );
+
+  return {
+    devices: data?.data || [],
+    total: data?.meta.total || 0,
+    isLoading,
+    error,
+  };
+}
+
+/**
+ * Hook to get latest telemetry for a specific site
+ */
+export function useSiteLatestTelemetry(siteId?: string) {
+  const { data, isLoading, error, refetch } = useLatestTelemetry(
+    siteId ? { site_id: siteId } : undefined,
+    { enabled: !!siteId }
+  );
+
+  return useMemo(() => {
+    // Flatten and aggregate metrics across all devices
+    const aggregated: Record<string, { value: number; count: number; unit?: string }> = {};
+    
+    if (data?.data) {
+      Object.values(data.data).forEach(deviceMetrics => {
+        deviceMetrics.forEach(m => {
+          if (!aggregated[m.metric]) {
+            aggregated[m.metric] = { value: 0, count: 0, unit: m.unit };
+          }
+          aggregated[m.metric].value += m.value;
+          aggregated[m.metric].count += 1;
+        });
+      });
+    }
+
+    // Calculate averages for certain metrics
+    const result: Record<string, number> = {};
+    Object.entries(aggregated).forEach(([metric, agg]) => {
+      // Sum for energy metrics, average for others
+      if (metric.startsWith('energy.')) {
+        result[metric] = agg.value;
+      } else {
+        result[metric] = agg.count > 0 ? agg.value / agg.count : 0;
+      }
+    });
+
+    return {
+      metrics: result,
+      raw: data?.data || {},
+      isLoading,
+      error,
+      refetch,
+    };
+  }, [data, isLoading, error, refetch]);
+}
+
+// =============================================================================
+// Helper to get site ID from Project
+// =============================================================================
+
+/**
+ * Extract the real site_id from a Project (if it's a real project)
+ */
+export function getProjectSiteId(project: Project): string | undefined {
+  // Check if it's a real project with _siteId attached
+  const extended = project as Project & { _siteId?: string };
+  return extended._siteId;
+}
+
+/**
+ * Check if a project is from real data
+ */
+export function isRealProject(project: Project): boolean {
+  return project.id < 0; // Real projects have negative IDs
+}

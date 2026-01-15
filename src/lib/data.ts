@@ -1,4 +1,15 @@
-// Region and Project Data for FGB IoT Dashboard
+/**
+ * Region and Project Data for FGB IoT Dashboard
+ * 
+ * This module exports mock data for development and demo purposes.
+ * For real data integration, use the hooks from '@/hooks/useRealTimeData':
+ * - useAllProjects() - Combined real + mock projects
+ * - useAllBrands() - Combined real + mock brands  
+ * - useAllHoldings() - Combined real + mock holdings
+ * 
+ * When Supabase is configured, real data from the database is merged with
+ * mock data, with real data taking precedence for matching names.
+ */
 
 export interface Region {
   center: { lat: number; lng: number };
