@@ -17,6 +17,7 @@ import {
   useWaterData,
   getPeriodLabel 
 } from "@/hooks/useTimeFilteredData";
+import { useRealTimeEnergyData, useProjectTelemetry } from "@/hooks/useRealTimeTelemetry";
 import { generatePdfReport } from "./PdfReportGenerator";
 import { Button } from "@/components/ui/button";
 import { ModuleGate } from "@/components/modules/ModuleGate";
@@ -173,12 +174,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const touchEndX = useRef<number | null>(null);
   const minSwipeDistance = 50;
   
-  // Dynamic data based on time period - only fetch if module is enabled
-  const filteredEnergyData = useEnergyData(timePeriod, dateRange);
+  // Dynamic data based on time period - use real-time data if available, otherwise mock
+  // Fetch real-time telemetry for this project's site
+  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange);
+  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange);
+  
+  // Use real data if available, otherwise fall back to mock generators
+  const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : useEnergyData(timePeriod, dateRange);
   const filteredDeviceData = useDeviceData(timePeriod, dateRange);
   const filteredCO2Data = useCO2Data(timePeriod, dateRange);
   const filteredWaterData = useWaterData(timePeriod, dateRange);
   const periodLabel = getPeriodLabel(timePeriod, dateRange);
+  
+  // Real-time indicator for charts
+  const isRealTimeData = realTimeEnergy.isRealData || projectTelemetry.isRealData;
   
   // Different total slides based on dashboard
   const getTotalSlides = () => {
@@ -591,9 +600,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         dateRange,
         data: {
           energy: {
-            consumption: filteredEnergyData as Record<string, unknown>[],
-            devices: filteredDeviceData as Record<string, unknown>[],
-            co2: filteredCO2Data as Record<string, unknown>[],
+            consumption: filteredEnergyData as unknown as Record<string, unknown>[],
+            devices: filteredDeviceData as unknown as Record<string, unknown>[],
+            co2: filteredCO2Data as unknown as Record<string, unknown>[],
           },
           water: {
             consumption: filteredWaterData as Record<string, unknown>[],
@@ -824,7 +833,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Energetico</h3>
                           <p className="text-[10px] md:text-xs text-gray-500">Confronto con previsione e media</p>
                         </div>
-                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData} filename="energy-consumption" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData as unknown as Record<string, unknown>[]} filename="energy-consumption" onExpand={() => setFullscreenChart('actualVsAvg')} />
                       </div>
                       <ResponsiveContainer width="100%" height={180} className="md:!h-[280px]">
                         <AreaChart data={filteredEnergyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -1001,7 +1010,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={actualVsAvgRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Actual vs Average</h3>
-                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData} filename="actual-vs-average" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData as unknown as Record<string, unknown>[]} filename="actual-vs-average" onExpand={() => setFullscreenChart('actualVsAvg')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={filteredEnergyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>

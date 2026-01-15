@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { Project } from "@/lib/data";
-import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal } from "lucide-react";
+import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -206,15 +207,37 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore }
   );
 };
 
-// Energy Card with detailed readings
-const EnergyCard = ({ status, enabled, onClick }: { status: ModuleStatus; enabled: boolean; onClick?: () => void }) => {
-  // Mock latest readings
-  const readings = {
-    hvac: { value: 45.2, status: "good" as const },
-    lighting: { value: 12.8, status: "good" as const },
-    plugs: { value: 8.5, status: "warning" as const },
-    other: { value: 3.2, status: "good" as const },
-  };
+// Energy Card with detailed readings - connected to real-time data
+const EnergyCard = ({ status, enabled, onClick, liveData }: { 
+  status: ModuleStatus; 
+  enabled: boolean; 
+  onClick?: () => void;
+  liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
+}) => {
+  // Use real-time data if available, otherwise use mock
+  const readings = useMemo(() => {
+    if (liveData?.metrics) {
+      const hvacValue = liveData.metrics['energy.hvac_kw'] || 22.5;
+      const lightingValue = liveData.metrics['energy.lighting_kw'] || 12.8;
+      const plugsValue = liveData.metrics['energy.plugs_kw'] || 8.5;
+      const totalPower = liveData.metrics['energy.power_kw'];
+      const otherValue = totalPower ? Math.max(0, totalPower - hvacValue - lightingValue - plugsValue) : 3.2;
+      
+      return {
+        hvac: { value: hvacValue, status: hvacValue > 30 ? "warning" as const : "good" as const },
+        lighting: { value: lightingValue, status: lightingValue > 20 ? "warning" as const : "good" as const },
+        plugs: { value: plugsValue, status: plugsValue > 12 ? "warning" as const : "good" as const },
+        other: { value: otherValue, status: "good" as const },
+      };
+    }
+    return {
+      hvac: { value: 22.5, status: "good" as const },
+      lighting: { value: 12.8, status: "good" as const },
+      plugs: { value: 8.5, status: "warning" as const },
+      other: { value: 3.2, status: "good" as const },
+    };
+  }, [liveData]);
+  
   const totalKwh = Object.values(readings).reduce((sum, r) => sum + r.value, 0);
 
   if (!enabled) {
@@ -305,19 +328,35 @@ const EnergyCard = ({ status, enabled, onClick }: { status: ModuleStatus; enable
   );
 };
 
-// Air Quality Card with all monitored parameters
-const AirCard = ({ status, enabled, project, onClick }: { status: ModuleStatus; enabled: boolean; project: Project; onClick?: () => void }) => {
-  // All monitored air quality parameters
-  const readings = {
-    co2: { value: project.data.co2 || 520, unit: "ppm", status: project.data.co2 < 600 ? "good" as const : project.data.co2 < 800 ? "warning" as const : "critical" as const },
-    tvoc: { value: 85, unit: "ppb", status: "good" as const },
-    pm25: { value: 12, unit: "µg/m³", status: "good" as const },
-    pm10: { value: 28, unit: "µg/m³", status: "warning" as const },
-    temp: { value: 22.5, unit: "°C", status: "good" as const },
-    humidity: { value: 48, unit: "%", status: "good" as const },
-    co: { value: 0.8, unit: "ppm", status: "good" as const },
-    o3: { value: 15, unit: "ppb", status: "good" as const },
-  };
+// Air Quality Card with all monitored parameters - connected to real-time data
+const AirCard = ({ status, enabled, project, onClick, liveData }: { 
+  status: ModuleStatus; 
+  enabled: boolean; 
+  project: Project; 
+  onClick?: () => void;
+  liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
+}) => {
+  // Use real-time data if available
+  const readings = useMemo(() => {
+    const m = liveData?.metrics || {};
+    const co2Val = m['iaq.co2'] || project.data.co2 || 520;
+    const tvocVal = m['iaq.tvoc'] || 85;
+    const pm25Val = m['iaq.pm25'] || 12;
+    const pm10Val = m['iaq.pm10'] || 28;
+    const tempVal = m['env.temperature'] || 22.5;
+    const humidityVal = m['env.humidity'] || 48;
+    
+    return {
+      co2: { value: co2Val, unit: "ppm", status: co2Val < 600 ? "good" as const : co2Val < 800 ? "warning" as const : "critical" as const },
+      tvoc: { value: tvocVal, unit: "ppb", status: tvocVal < 200 ? "good" as const : tvocVal < 400 ? "warning" as const : "critical" as const },
+      pm25: { value: pm25Val, unit: "µg/m³", status: pm25Val < 15 ? "good" as const : pm25Val < 25 ? "warning" as const : "critical" as const },
+      pm10: { value: pm10Val, unit: "µg/m³", status: pm10Val < 25 ? "good" as const : pm10Val < 50 ? "warning" as const : "critical" as const },
+      temp: { value: tempVal, unit: "°C", status: tempVal > 18 && tempVal < 26 ? "good" as const : "warning" as const },
+      humidity: { value: humidityVal, unit: "%", status: humidityVal > 30 && humidityVal < 60 ? "good" as const : "warning" as const },
+      co: { value: m['iaq.co'] || 0.8, unit: "ppm", status: "good" as const },
+      o3: { value: m['iaq.o3'] || 15, unit: "ppb", status: "good" as const },
+    };
+  }, [liveData, project.data.co2]);
 
   if (!enabled) {
     return (
@@ -426,14 +465,25 @@ const AirCard = ({ status, enabled, project, onClick }: { status: ModuleStatus; 
   );
 };
 
-// Water Card with detailed readings
-const WaterCard = ({ status, enabled, onClick }: { status: ModuleStatus; enabled: boolean; onClick?: () => void }) => {
-  const readings = {
-    dailyConsumption: 1456,
-    vsBaseline: -8,
-    activeLeaks: 0,
-    efficiency: 92,
-  };
+// Water Card with detailed readings - connected to real-time data
+const WaterCard = ({ status, enabled, onClick, liveData }: { 
+  status: ModuleStatus; 
+  enabled: boolean; 
+  onClick?: () => void;
+  liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
+}) => {
+  const readings = useMemo(() => {
+    const m = liveData?.metrics || {};
+    const totalLiters = m['water.total_liters'] || 1456;
+    const flowRate = m['water.flow_rate'] || 0;
+    
+    return {
+      dailyConsumption: Math.round(totalLiters),
+      vsBaseline: -8,
+      activeLeaks: flowRate > 0.5 && flowRate < 1 ? 1 : 0,
+      efficiency: 92,
+    };
+  }, [liveData]);
 
   if (!enabled) {
     return (
@@ -509,19 +559,26 @@ const WaterCard = ({ status, enabled, onClick }: { status: ModuleStatus; enabled
 };
 
 export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewSectionProps) => {
-  // Calculate status for each module based on project data
+  // Fetch real-time telemetry data for this site
+  const liveData = useRealTimeLatestData(project.siteId);
+  
+  // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
-    const efficiency = project.data.hvac || 85;
+    // Use real-time power data if available
+    const powerKw = liveData.metrics['energy.power_kw'];
+    const efficiency = powerKw ? Math.min(100, Math.max(0, 100 - (powerKw / 100) * 20)) : (project.data.hvac || 85);
     const score = Math.min(100, Math.max(0, efficiency));
     return {
       score,
       level: getStatusLevel(score),
-      isLive: true,
+      isLive: liveData.isRealData,
+      lastUpdate: liveData.isRealData ? new Date().toISOString() : undefined,
     };
-  }, [project]);
+  }, [project, liveData]);
 
   const airStatus = useMemo<ModuleStatus>(() => {
-    const co2 = project.data.co2 || 500;
+    // Use real-time CO2 data if available
+    const co2 = liveData.metrics['iaq.co2'] || project.data.co2 || 500;
     const co2Score = Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100));
     const aqMultiplier = project.data.aq === "EXCELLENT" ? 1 : 
                           project.data.aq === "GOOD" ? 0.9 : 
@@ -530,19 +587,21 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
     return {
       score,
       level: getStatusLevel(score),
-      isLive: true,
+      isLive: liveData.isRealData,
     };
-  }, [project]);
+  }, [project, liveData]);
 
   const waterStatus = useMemo<ModuleStatus>(() => {
-    const efficiency = 70 + Math.random() * 25;
+    // Use real-time water data if available
+    const flowRate = liveData.metrics['water.flow_rate'] || 0;
+    const efficiency = flowRate > 0 ? 85 : (70 + Math.random() * 25);
     const score = Math.round(efficiency);
     return {
       score,
       level: getStatusLevel(score),
-      isLive: true,
+      isLive: liveData.isRealData && flowRate > 0,
     };
-  }, [project]);
+  }, [project, liveData]);
 
   const overallStatus = useMemo<ModuleStatus>(() => {
     // Weighted average: Energy 80%, Air 5%, Water 15%
@@ -597,17 +656,20 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           status={energyStatus} 
           enabled={moduleConfig.energy.enabled} 
           onClick={moduleConfig.energy.enabled ? () => handleCardClick("energy") : undefined}
+          liveData={liveData}
         />
         <AirCard 
           status={airStatus} 
           enabled={moduleConfig.air.enabled} 
           project={project}
           onClick={moduleConfig.air.enabled ? () => handleCardClick("air") : undefined}
+          liveData={liveData}
         />
         <WaterCard 
           status={waterStatus} 
           enabled={moduleConfig.water.enabled}
           onClick={moduleConfig.water.enabled ? () => handleCardClick("water") : undefined}
+          liveData={liveData}
         />
       </div>
     </div>
