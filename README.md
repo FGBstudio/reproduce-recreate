@@ -59,6 +59,64 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase (PostgreSQL + Edge Functions)
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────────┐
+│   IoT Sensors   │────▶│   MQTT Broker   │────▶│  Ingestion Service  │
+│ (Energy/Air/H2O)│     │ data.hub.fgb    │     │  (Docker/Node.js)   │
+└─────────────────┘     └─────────────────┘     └──────────┬──────────┘
+                                                           │
+                                                           ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────────┐
+│    Frontend     │◀────│  Edge Functions │◀────│      Supabase       │
+│   (React/Vite)  │     │  (devices/ts)   │     │    PostgreSQL       │
+└─────────────────┘     └─────────────────┘     └─────────────────────┘
+```
+
+## MQTT Ingestion Service
+
+Il servizio di ingestion è completamente indipendente da Lovable e può essere deployato su qualsiasi server Docker.
+
+### Quick Start
+
+```bash
+# 1. Vai nella cartella del servizio
+cd services/mqtt-ingestion
+
+# 2. Copia e configura le variabili d'ambiente
+cp .env.example .env
+# Modifica .env con le tue credenziali Supabase e MQTT
+
+# 3. Avvia con Docker
+docker-compose up -d
+
+# 4. Verifica che funzioni
+curl http://localhost:3001/health
+```
+
+### Verifica Dati in Supabase
+
+```sql
+-- Raw messages (audit log)
+SELECT * FROM mqtt_messages_raw ORDER BY received_at DESC LIMIT 10;
+
+-- Telemetry normalizzata
+SELECT ts, metric, value, unit, labels 
+FROM telemetry ORDER BY ts DESC LIMIT 20;
+```
+
+Per documentazione completa: [`services/mqtt-ingestion/README.md`](services/mqtt-ingestion/README.md)
+
+## Backend Setup
+
+Vedi [`BACKEND_SETUP.md`](BACKEND_SETUP.md) per:
+- Configurazione Supabase
+- Applicazione migrazioni database
+- Deploy Edge Functions
+- Scheduled jobs per aggregazione
 
 ## How can I deploy this project?
 
