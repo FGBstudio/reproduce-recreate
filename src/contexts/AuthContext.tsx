@@ -5,6 +5,7 @@ import { User, UserRole, UserProfile, AuthState } from '@/lib/types/admin';
 
 interface AuthContextType extends AuthState {
   users: User[];
+  session: Session | null;
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
   signup: (email: string, password: string, metadata?: { display_name?: string; company?: string }) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
@@ -250,6 +251,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       user,
       profile,
       users,
+      session,
       isLoading,
       isAuthenticated,
       isAdmin,
