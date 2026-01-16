@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  mqtt-ingestion:
+    build: .
+    container_name: fgb-mqtt-ingestion
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - MQTT_URL=${MQTT_URL:-mqtt://data.hub.fgb-studio.com}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USERNAME=${MQTT_USERNAME}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+      - MQTT_TOPICS=${MQTT_TOPICS:-bridge/+/+/reading,bridge/+/status,fosensor/iaq,MSCHN/misure}
+      - DEFAULT_SITE_ID=${DEFAULT_SITE_ID:-}
+      - BATCH_SIZE=${BATCH_SIZE:-100}
+      - BATCH_INTERVAL_MS=${BATCH_INTERVAL_MS:-5000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=3001
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
