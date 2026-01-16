@@ -10,6 +10,7 @@ import { SitesManager } from '@/components/admin/SitesManager';
 import { ProjectsManager } from '@/components/admin/ProjectsManager';
 import { UserAccessManager } from '@/components/admin/UserAccessManager';
 import { UsersManager } from '@/components/admin/UsersManager';
+import { RolesManager } from '@/components/admin/RolesManager';
 import { HierarchyView } from '@/components/admin/HierarchyView';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminAuthGate } from '@/components/admin/AdminAuthGate';
@@ -59,7 +60,7 @@ const Admin = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             {/* Tab navigation */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
-              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 gap-1 bg-transparent h-auto p-0">
+              <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9 gap-1 bg-transparent h-auto p-0">
                 <TabsTrigger 
                   value="dashboard" 
                   className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
@@ -108,6 +109,13 @@ const Admin = () => {
                 >
                   <UserCog className="w-4 h-4" />
                   <span className="hidden lg:inline">Utenti</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="roles" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden lg:inline">Ruoli</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="access" 
@@ -168,6 +176,11 @@ const Admin = () => {
                 onUpdateUser={updateUser}
                 onDeleteUser={deleteUser}
               />
+            </TabsContent>
+
+            {/* Roles Tab */}
+            <TabsContent value="roles">
+              <RolesManager />
             </TabsContent>
             
             {/* Access Tab */}
