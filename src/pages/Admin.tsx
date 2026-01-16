@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard, Cpu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { RolesManager } from '@/components/admin/RolesManager';
 import { HierarchyView } from '@/components/admin/HierarchyView';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminAuthGate } from '@/components/admin/AdminAuthGate';
+import { DevicesManager } from '@/components/admin/DevicesManager';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ const Admin = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             {/* Tab navigation */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
-              <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9 gap-1 bg-transparent h-auto p-0">
+              <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 gap-1 bg-transparent h-auto p-0">
                 <TabsTrigger 
                   value="dashboard" 
                   className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
@@ -102,6 +103,13 @@ const Admin = () => {
                 >
                   <FolderKanban className="w-4 h-4" />
                   <span className="hidden lg:inline">Projects</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="devices" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <Cpu className="w-4 h-4" />
+                  <span className="hidden lg:inline">Devices</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="users" 
@@ -166,6 +174,11 @@ const Admin = () => {
             {/* Projects Tab */}
             <TabsContent value="projects">
               <ProjectsManager />
+            </TabsContent>
+
+            {/* Devices Tab */}
+            <TabsContent value="devices">
+              <DevicesManager />
             </TabsContent>
 
             {/* Users Tab */}
