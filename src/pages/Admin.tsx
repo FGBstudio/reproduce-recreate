@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard, Cpu } from 'lucide-react';
+import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard, Cpu, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { BrandsManager } from '@/components/admin/BrandsManager';
 import { SitesManager } from '@/components/admin/SitesManager';
 import { ProjectsManager } from '@/components/admin/ProjectsManager';
 import { UserAccessManager } from '@/components/admin/UserAccessManager';
+import { ClientUsersManager } from '@/components/admin/ClientUsersManager';
 import { UsersManager } from '@/components/admin/UsersManager';
 import { RolesManager } from '@/components/admin/RolesManager';
 import { HierarchyView } from '@/components/admin/HierarchyView';
@@ -61,7 +62,7 @@ const Admin = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             {/* Tab navigation */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
-              <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 gap-1 bg-transparent h-auto p-0">
+              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-11 gap-1 bg-transparent h-auto p-0">
                 <TabsTrigger 
                   value="dashboard" 
                   className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
@@ -124,6 +125,13 @@ const Admin = () => {
                 >
                   <Shield className="w-4 h-4" />
                   <span className="hidden lg:inline">Ruoli</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="client-users" 
+                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="hidden lg:inline">Client</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="access" 
@@ -194,6 +202,11 @@ const Admin = () => {
             {/* Roles Tab */}
             <TabsContent value="roles">
               <RolesManager />
+            </TabsContent>
+
+            {/* Client Users Tab */}
+            <TabsContent value="client-users">
+              <ClientUsersManager />
             </TabsContent>
             
             {/* Access Tab */}
