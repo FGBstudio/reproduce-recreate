@@ -28,15 +28,22 @@ export const HoldingsManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingHolding) {
-      updateHolding(editingHolding.id, formData);
-    } else {
-      addHolding(formData);
+    setIsSubmitting(true);
+    try {
+      if (editingHolding) {
+        await updateHolding(editingHolding.id, formData);
+      } else {
+        await addHolding(formData);
+      }
+      setIsDialogOpen(false);
+      setFormData({ name: '', logo: '' });
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
-    setFormData({ name: '', logo: '' });
   };
 
   return (
