@@ -1,23 +1,17 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 // Environment variables for Supabase connection
+// NOTE: On static hosts (e.g. GitHub Pages) these are baked at build-time.
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Create a dummy client for type safety when not configured
-const createDummyClient = (): SupabaseClient => {
-  // This will never actually be called if isSupabaseConfigured is false
-  // All functions check isSupabaseConfigured before using supabase
-  return {} as SupabaseClient;
-};
-
-// Create Supabase client
-export const supabase: SupabaseClient = isSupabaseConfigured
+// Create Supabase client (or null if not configured)
+export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : createDummyClient();
+  : null;
 
 // Helper to check if we should use real data or mock
 export const useRealData = isSupabaseConfigured;
