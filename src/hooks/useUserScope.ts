@@ -40,7 +40,14 @@ export const useUserScope = (): UserScopeInfo => {
   });
 
   const fetchUserScope = useCallback(async () => {
-    if (!user || authLoading) {
+    // Still loading auth
+    if (authLoading) {
+      return;
+    }
+
+    // No authenticated user - default to USER_FGB (guest view)
+    if (!user) {
+      setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
       return;
     }
 
