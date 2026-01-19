@@ -55,19 +55,21 @@ const Index = () => {
             const holding = holdings.find(h => h.id === brand?.holdingId);
             
             // Create a Project object from the site data
+            // Use a hash of the UUID to create a numeric ID for compatibility
+            const numericId = site.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            
             const project: Project = {
-              id: site.id,
+              id: numericId,
               name: site.name,
-              country: site.country,
-              city: site.city,
-              region: site.region as any,
+              region: site.region || 'EU',
               lat: parseFloat(String(site.lat)) || 0,
               lng: parseFloat(String(site.lng)) || 0,
-              brand: brand?.name || 'Unknown',
-              holding: holding?.name || 'Unknown',
-              monitoringTypes: ['energy', 'air', 'water'],
-              status: 'active',
-              backgroundImage: site.imageUrl,
+              address: `${site.address || ''}, ${site.city || ''}, ${site.country || ''}`,
+              img: site.imageUrl || '',
+              data: { hvac: 0, light: 0, total: 0, co2: 0, temp: 0, alerts: 0, aq: 'GOOD' },
+              monitoring: ['energy', 'air', 'water'],
+              brandId: brand?.id || '',
+              siteId: site.id, // Keep UUID reference for real-time data
             };
             
             setSelectedProject(project);
