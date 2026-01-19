@@ -7,20 +7,20 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Create Supabase client - always create it if configured
-let _supabase: SupabaseClient | null = null;
+// Create a dummy client for type safety when not configured
+const createDummyClient = (): SupabaseClient => {
+  // This will never actually be called if isSupabaseConfigured is false
+  // All functions check isSupabaseConfigured before using supabase
+  return {} as SupabaseClient;
+};
 
-if (isSupabaseConfigured) {
-  _supabase = createClient(supabaseUrl, supabaseAnonKey);
-}
-
-export const supabase = _supabase!;
+// Create Supabase client
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createDummyClient();
 
 // Helper to check if we should use real data or mock
 export const useRealData = isSupabaseConfigured;
-
-// Log configuration status for debugging
-console.log('[Supabase] Configured:', isSupabaseConfigured, '| URL:', supabaseUrl ? 'SET' : 'MISSING');
 
 // Types for database tables
 export interface DbHolding {
