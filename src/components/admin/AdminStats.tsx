@@ -1,13 +1,54 @@
-import { Building2, Tag, MapPin, FolderKanban, Users, Zap, Wind, Droplet, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Building2, Tag, MapPin, FolderKanban, Users, Zap, Wind, Droplet, TrendingUp, AlertTriangle, Cpu, Inbox } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { User } from '@/lib/types/admin';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+
+const INBOX_SITE_ID = '00000000-0000-0000-0000-000000000003';
 
 interface AdminStatsProps {
   users: User[];
 }
 
 export const AdminStats = ({ users }: AdminStatsProps) => {
-  const { holdings, brands, sites, projects, memberships } = useAdminData();
+  const { holdings, brands, sites, projects, memberships, loading } = useAdminData();
+  const [deviceStats, setDeviceStats] = useState({ total: 0, inbox: 0, online: 0 });
+
+  // Fetch device counts
+  useEffect(() => {
+    const fetchDeviceStats = async () => {
+      if (!isSupabaseConfigured || !supabase) return;
+      
+      try {
+        // Total devices
+        const { count: totalCount } = await supabase
+          .from('devices')
+          .select('*', { count: 'exact', head: true });
+        
+        // Inbox devices
+        const { count: inboxCount } = await supabase
+          .from('devices')
+          .select('*', { count: 'exact', head: true })
+          .eq('site_id', INBOX_SITE_ID);
+        
+        // Online devices
+        const { count: onlineCount } = await supabase
+          .from('devices')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'online');
+        
+        setDeviceStats({
+          total: totalCount || 0,
+          inbox: inboxCount || 0,
+          online: onlineCount || 0,
+        });
+      } catch (error) {
+        console.error('Error fetching device stats:', error);
+      }
+    };
+
+    fetchDeviceStats();
+  }, []);
 
   // Calculate module stats
   const moduleStats = projects.reduce(
@@ -48,6 +89,13 @@ export const AdminStats = ({ users }: AdminStatsProps) => {
       value: projects.length, 
       sublabel: `${activeProjects} attivi`,
       color: 'bg-green-100 text-green-700' 
+    },
+    { 
+      icon: Cpu, 
+      label: 'Devices', 
+      value: deviceStats.total, 
+      sublabel: `${deviceStats.online} online`,
+      color: 'bg-cyan-100 text-cyan-700' 
     },
     { 
       icon: Users, 

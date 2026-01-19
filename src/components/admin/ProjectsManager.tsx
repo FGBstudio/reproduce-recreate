@@ -67,14 +67,21 @@ export const ProjectsManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingProject) {
-      updateProject(editingProject.id, formData);
-    } else {
-      addProject(formData);
+    setIsSubmitting(true);
+    try {
+      if (editingProject) {
+        await updateProject(editingProject.id, formData);
+      } else {
+        await addProject(formData);
+      }
+      setIsDialogOpen(false);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
   };
 
   const toggleCertification = (cert: CertificationType) => {

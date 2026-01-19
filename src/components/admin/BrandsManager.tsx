@@ -29,14 +29,21 @@ export const BrandsManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingBrand) {
-      updateBrand(editingBrand.id, formData);
-    } else {
-      addBrand(formData);
+    setIsSubmitting(true);
+    try {
+      if (editingBrand) {
+        await updateBrand(editingBrand.id, formData);
+      } else {
+        await addBrand(formData);
+      }
+      setIsDialogOpen(false);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
   };
 
   const getHoldingName = (holdingId: string) => {

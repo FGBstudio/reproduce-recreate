@@ -63,14 +63,21 @@ export const SitesManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingSite) {
-      updateSite(editingSite.id, formData);
-    } else {
-      addSite(formData);
+    setIsSubmitting(true);
+    try {
+      if (editingSite) {
+        await updateSite(editingSite.id, formData);
+      } else {
+        await addSite(formData);
+      }
+      setIsDialogOpen(false);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
   };
 
   const getBrandName = (brandId: string) => brands.find(b => b.id === brandId)?.name || 'N/A';
