@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-// RIMOSSO: import { ScrollArea } ... crea problemi di layout nei dialog
+// RIMOSSO: ScrollArea per evitare conflitti di layout
 import { supabase } from '@/lib/supabase';
 
 const regions: { value: RegionCode; label: string }[] = [
@@ -88,10 +88,11 @@ export const SitesManager = () => {
     // Genera un nome file sicuro
     const fileExt = file.name.split('.').pop();
     const fileName = `cover.${fileExt}`;
-    const pathId = editingSite ? siteIdOrTempId : `new/${Date.now()}`; // Usa timestamp invece di randomUUID per compatibilità
+    // Usa un timestamp per evitare collisioni se non abbiamo ancora l'ID
+    const pathId = editingSite ? siteIdOrTempId : `new/${Date.now()}`; 
     const filePath = `sites/${pathId}/${fileName}`;
 
-    console.log("Inizio upload su path:", filePath);
+    console.log("Tentativo upload su:", filePath);
 
     // Upload
     const { error: uploadError } = await supabase.storage
@@ -108,6 +109,7 @@ export const SitesManager = () => {
       .from('project-assets')
       .getPublicUrl(filePath);
 
+    // Aggiungi timestamp per evitare la cache del browser
     return `${publicUrl}?t=${Date.now()}`;
   };
 
@@ -120,6 +122,7 @@ export const SitesManager = () => {
       let finalImageUrl = formData.imageUrl;
 
       if (selectedFile) {
+        // Se c'è un file, caricalo prima
         finalImageUrl = await uploadImageToSupabase(selectedFile, editingSite ? editingSite.id : 'temp');
       }
 
@@ -136,8 +139,8 @@ export const SitesManager = () => {
       
       setIsDialogOpen(false);
     } catch (error: any) {
-      console.error("Errore critico durante il salvataggio:", error);
-      // Feedback VISIVO per l'utente
+      console.error("Errore critico:", error);
+      // Feedback VISIVO per l'utente in caso di errore
       alert(`Errore durante il salvataggio: ${error.message || error}`);
     } finally {
       setIsSubmitting(false);
@@ -168,7 +171,7 @@ export const SitesManager = () => {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-              <form onSubmit={handleSubmit} className="flex flex-col h-full">
+              <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
                 <DialogHeader>
                   <DialogTitle>{editingSite ? 'Modifica Site' : 'Nuovo Site'}</DialogTitle>
                   <DialogDescription>
@@ -176,7 +179,7 @@ export const SitesManager = () => {
                   </DialogDescription>
                 </DialogHeader>
                 
-                {/* --- FIX SCORRIMENTO: Usa div con overflow invece di ScrollArea --- */}
+                {/* --- FIX SCORRIMENTO: Usa div con overflow-y-auto invece di ScrollArea --- */}
                 <div className="flex-1 overflow-y-auto pr-2 my-4">
                   <div className="grid gap-4 py-2">
                     
@@ -185,7 +188,7 @@ export const SitesManager = () => {
                       <Label>Immagine di Copertina</Label>
                       <div className="flex items-start gap-4">
                         <div 
-                          className="relative w-40 h-24 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer hover:border-fgb-secondary transition-colors group bg-white"
+                          className="relative w-40 h-24 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer hover:border-fgb-secondary transition-colors group bg-white shrink-0"
                           onClick={() => fileInputRef.current?.click()}
                         >
                           {previewUrl ? (
@@ -204,7 +207,7 @@ export const SitesManager = () => {
                         </div>
 
                         <div className="flex flex-col gap-2 text-sm text-slate-500 flex-1">
-                          <p>JPG, PNG, WEBP. Se vuoto, usa pattern brand.</p>
+                          <p>Formati: JPG, PNG, WEBP.<br/>Se vuoto, verrà usato il pattern del brand.</p>
                           {previewUrl && (
                             <Button 
                               type="button" 
@@ -368,7 +371,7 @@ export const SitesManager = () => {
         </div>
       </CardHeader>
       
-      {/* Resto della tabella identico a prima */}
+      {/* Tabella visualizzazione Sites */}
       <CardContent>
         <Table>
           <TableHeader>
