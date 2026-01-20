@@ -2,6 +2,8 @@ import { Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserAccountDropdown } from "./UserAccountDropdown";
+import brandImg from "@/assets/brand-white.png";
+
 
 interface HeaderProps {
   userName?: string;
@@ -21,16 +23,12 @@ const Header = ({ userName = "Maria Rossi" }: HeaderProps) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 md:px-8 py-3 md:py-5">
       {/* Logo */}
-      <div className="flex items-center gap-2 md:gap-3">
-        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-fgb-light flex items-center justify-center border-2 border-fgb-accent shadow-lg">
-          <span className="text-foreground font-bold text-base md:text-lg">F</span>
-        </div>
-        <div>
-          <span className="text-lg md:text-xl font-bold tracking-wider text-foreground">FGB</span>
-          <span className="hidden md:inline text-xs text-muted-foreground ml-2 tracking-widest uppercase">
-            IoT Command Center
-          </span>
-        </div>
+      <div className="flex items-center">
+        <img
+          src={brandImg}
+          alt="FGB"
+          className="h-8 md:h-10 w-auto"
+        />
       </div>
 
       {/* User Avatar & Admin */}
