@@ -8,6 +8,8 @@ import {
   UserMembership,
   defaultProjectModules,
   ModuleConfig,
+  ProjectModules,
+  CertificationType,
 } from '@/lib/types/admin';
 import { toast } from 'sonner';
 
@@ -86,6 +88,47 @@ const mockProjects: AdminProject[] = [
 
 // System site ID for inbox
 const INBOX_SITE_ID = '00000000-0000-0000-0000-000000000003';
+
+// LocalStorage key for project configs (modules, certifications, status)
+const PROJECT_CONFIGS_KEY = 'fgb_project_configs';
+
+interface ProjectConfigStorage {
+  [siteId: string]: {
+    name?: string;
+    status?: string;
+    modules?: ProjectModules;
+    certifications?: CertificationType[];
+  };
+}
+
+const loadProjectConfigs = (): ProjectConfigStorage => {
+  try {
+    const saved = localStorage.getItem(PROJECT_CONFIGS_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveProjectConfig = (siteId: string, config: ProjectConfigStorage[string]) => {
+  try {
+    const existing = loadProjectConfigs();
+    existing[siteId] = { ...existing[siteId], ...config };
+    localStorage.setItem(PROJECT_CONFIGS_KEY, JSON.stringify(existing));
+  } catch (e) {
+    console.warn('Failed to save project config to localStorage', e);
+  }
+};
+
+const deleteProjectConfig = (siteId: string) => {
+  try {
+    const existing = loadProjectConfigs();
+    delete existing[siteId];
+    localStorage.setItem(PROJECT_CONFIGS_KEY, JSON.stringify(existing));
+  } catch (e) {
+    console.warn('Failed to delete project config from localStorage', e);
+  }
+};
 
 export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
   const [holdings, setHoldings] = useState<AdminHolding[]>([]);
@@ -171,43 +214,24 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       }));
       setSites(mappedSites);
 
-      // Fetch site configs (projects)
-      const { data: configsData, error: configsError } = await supabase
-        .from('site_config')
-        .select('*, sites!inner(name)')
-        .order('created_at');
+      // Projects are derived from sites (no separate site_config table needed)
+      // Load saved project configs from localStorage as supplement
+      const savedConfigs = loadProjectConfigs();
       
-      if (configsError && configsError.code !== 'PGRST116') {
-        // Table might not exist yet, use sites as projects
-        console.warn('site_config table not found, using sites as projects');
-      }
-      
-      if (configsData) {
-        const mappedProjects: AdminProject[] = configsData.map(c => ({
-          id: c.id,
-          siteId: c.site_id,
-          name: c.display_name || (c.sites as any)?.name || 'Unknown',
-          status: c.status || 'active',
-          modules: c.modules || defaultProjectModules,
-          certifications: c.certifications || [],
-          createdAt: new Date(c.created_at),
-          updatedAt: new Date(c.updated_at),
-        }));
-        setProjects(mappedProjects);
-      } else {
-        // Fallback: create projects from sites
-        const siteProjects: AdminProject[] = mappedSites.map(s => ({
-          id: `proj-${s.id}`,
+      const siteProjects: AdminProject[] = mappedSites.map(s => {
+        const savedConfig = savedConfigs[s.id];
+        return {
+          id: s.id, // Use site.id directly as project id
           siteId: s.id,
-          name: s.name,
-          status: 'active',
-          modules: { ...defaultProjectModules },
-          certifications: [],
+          name: savedConfig?.name || s.name,
+          status: (savedConfig?.status as 'active' | 'inactive' | 'pending') || 'active',
+          modules: savedConfig?.modules || { ...defaultProjectModules },
+          certifications: (savedConfig?.certifications as CertificationType[]) || [],
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
-        }));
-        setProjects(siteProjects);
-      }
+        };
+      });
+      setProjects(siteProjects);
 
       // Fetch memberships
       const { data: membershipsData, error: membershipsError } = await supabase
@@ -526,99 +550,91 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Projects CRUD (using site_config table)
+  // Projects CRUD (projects are derived from sites, configs stored in localStorage)
+  // Note: "Adding a project" here means configuring an existing site with modules/certifications
   const addProject = useCallback(async (data: Omit<AdminProject, 'id' | 'createdAt' | 'updatedAt'>): Promise<AdminProject | null> => {
-    if (!isSupabaseConfigured || !supabase) {
-      const newProject: AdminProject = { ...data, id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date() };
-      setProjects(prev => [...prev, newProject]);
-      return newProject;
-    }
-
-    try {
-      const { data: inserted, error } = await supabase
-        .from('site_config')
-        .insert({ 
-          site_id: data.siteId,
-          display_name: data.name,
-          status: data.status || 'active',
-          modules: data.modules,
-          certifications: data.certifications,
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      const newProject: AdminProject = {
-        id: inserted.id,
-        siteId: inserted.site_id,
-        name: inserted.display_name || data.name,
-        status: inserted.status || 'active',
-        modules: inserted.modules || defaultProjectModules,
-        certifications: inserted.certifications || [],
-        createdAt: new Date(inserted.created_at),
-        updatedAt: new Date(inserted.updated_at),
-      };
-      setProjects(prev => [...prev, newProject]);
-      toast.success('Progetto creato con successo');
-      return newProject;
-    } catch (error: any) {
-      console.error('Error adding project:', error);
-      toast.error(`Errore: ${error.message}`);
+    // Projects are tied to sites - we just save the config
+    const siteId = data.siteId;
+    const site = sites.find(s => s.id === siteId);
+    
+    if (!site) {
+      toast.error('Site non trovato');
       return null;
     }
-  }, []);
+    
+    // Save config to localStorage
+    saveProjectConfig(siteId, {
+      name: data.name,
+      status: data.status,
+      modules: data.modules,
+      certifications: data.certifications,
+    });
+    
+    const newProject: AdminProject = {
+      id: siteId, // Use site ID as project ID
+      siteId: siteId,
+      name: data.name || site.name,
+      status: data.status || 'active',
+      modules: data.modules || { ...defaultProjectModules },
+      certifications: data.certifications || [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    setProjects(prev => {
+      // Replace if exists, otherwise add
+      const exists = prev.find(p => p.siteId === siteId);
+      if (exists) {
+        return prev.map(p => p.siteId === siteId ? newProject : p);
+      }
+      return [...prev, newProject];
+    });
+    
+    toast.success('Progetto configurato con successo');
+    return newProject;
+  }, [sites]);
 
   const updateProject = useCallback(async (id: string, data: Partial<AdminProject>) => {
-    if (!isSupabaseConfigured || !supabase) {
-      setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data, updatedAt: new Date() } : p));
+    // Find project by id (which is the siteId)
+    const project = projects.find(p => p.id === id);
+    if (!project) {
+      toast.error('Progetto non trovato');
       return;
     }
-
-    try {
-      const updateData: Record<string, any> = {};
-      if (data.name !== undefined) updateData.display_name = data.name;
-      if (data.siteId !== undefined) updateData.site_id = data.siteId;
-      if (data.status !== undefined) updateData.status = data.status;
-      if (data.modules !== undefined) updateData.modules = data.modules;
-      if (data.certifications !== undefined) updateData.certifications = data.certifications;
-      
-      const { error } = await supabase
-        .from('site_config')
-        .update(updateData)
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data, updatedAt: new Date() } : p));
-      toast.success('Progetto aggiornato');
-    } catch (error: any) {
-      console.error('Error updating project:', error);
-      toast.error(`Errore: ${error.message}`);
-    }
-  }, []);
+    
+    // Update localStorage config
+    saveProjectConfig(id, {
+      name: data.name,
+      status: data.status,
+      modules: data.modules,
+      certifications: data.certifications,
+    });
+    
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data, updatedAt: new Date() } : p));
+    toast.success('Progetto aggiornato');
+  }, [projects]);
 
   const deleteProject = useCallback(async (id: string) => {
-    if (!isSupabaseConfigured || !supabase) {
-      setProjects(prev => prev.filter(p => p.id !== id));
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('site_config')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
+    // Delete config from localStorage (site itself remains)
+    deleteProjectConfig(id);
+    
+    // Reset project to defaults (don't remove, just reset)
+    const site = sites.find(s => s.id === id);
+    if (site) {
+      setProjects(prev => prev.map(p => p.id === id ? {
+        ...p,
+        name: site.name,
+        status: 'active',
+        modules: { ...defaultProjectModules },
+        certifications: [],
+        updatedAt: new Date(),
+      } : p));
+      toast.success('Configurazione progetto resettata');
+    } else {
       setProjects(prev => prev.filter(p => p.id !== id));
       toast.success('Progetto eliminato');
-    } catch (error: any) {
-      console.error('Error deleting project:', error);
-      toast.error(`Errore: ${error.message}`);
     }
-  }, []);
+  }, [sites]);
 
   // Memberships CRUD
   const addMembership = useCallback(async (data: Omit<UserMembership, 'id' | 'createdAt'>): Promise<UserMembership | null> => {
