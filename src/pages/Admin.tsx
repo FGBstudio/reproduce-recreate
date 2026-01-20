@@ -22,11 +22,19 @@ const Admin = () => {
   const { user, users, addUser, updateUser, deleteUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // QUESTA è la "magia" per la barra dedicata:
+  // - flex-1: occupa tutto lo spazio verticale disponibile
+  // - overflow-y-auto: se il contenuto è troppo lungo, metti QUI la scrollbar
+  // - h-full: forza l'altezza massima
+  const contentTabClass = "flex-1 overflow-y-auto h-full p-1 pb-32"; 
+
   return (
     <AdminAuthGate>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        {/* Header */}
-        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      {/* 1. Blocchiamo l'altezza della pagina a quella dello schermo (h-screen) */}
+      <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
+        
+        {/* Header fisso (non scrolla) */}
+        <header className="flex-shrink-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-4">
@@ -57,96 +65,56 @@ const Admin = () => {
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            {/* Tab navigation */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
+        {/* Container principale (si adatta allo spazio rimasto) */}
+        <main className="flex-1 flex flex-col overflow-hidden w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          
+          {/* Tabs container: anche lui deve essere flex verticale per spingere giù il contenuto */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full space-y-4">
+            
+            {/* Menu Tab Fisso in alto */}
+            <div className="flex-shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
               <TabsList className="grid w-full grid-cols-6 lg:grid-cols-11 gap-1 bg-transparent h-auto p-0">
-                <TabsTrigger 
-                  value="dashboard" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span className="hidden lg:inline">Dashboard</span>
+                <TabsTrigger value="dashboard" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <LayoutDashboard className="w-4 h-4" /> <span className="hidden lg:inline">Dashboard</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="hierarchy" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <GitBranch className="w-4 h-4" />
-                  <span className="hidden lg:inline">Gerarchia</span>
+                <TabsTrigger value="hierarchy" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <GitBranch className="w-4 h-4" /> <span className="hidden lg:inline">Gerarchia</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="holdings" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <Building2 className="w-4 h-4" />
-                  <span className="hidden lg:inline">Holdings</span>
+                <TabsTrigger value="holdings" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <Building2 className="w-4 h-4" /> <span className="hidden lg:inline">Holdings</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="brands" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <Tag className="w-4 h-4" />
-                  <span className="hidden lg:inline">Brands</span>
+                <TabsTrigger value="brands" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <Tag className="w-4 h-4" /> <span className="hidden lg:inline">Brands</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="sites" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <MapPin className="w-4 h-4" />
-                  <span className="hidden lg:inline">Sites</span>
+                <TabsTrigger value="sites" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <MapPin className="w-4 h-4" /> <span className="hidden lg:inline">Sites</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="projects" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <FolderKanban className="w-4 h-4" />
-                  <span className="hidden lg:inline">Projects</span>
+                <TabsTrigger value="projects" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <FolderKanban className="w-4 h-4" /> <span className="hidden lg:inline">Projects</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="devices" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <Cpu className="w-4 h-4" />
-                  <span className="hidden lg:inline">Devices</span>
+                <TabsTrigger value="devices" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <Cpu className="w-4 h-4" /> <span className="hidden lg:inline">Devices</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="users" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <UserCog className="w-4 h-4" />
-                  <span className="hidden lg:inline">Utenti</span>
+                <TabsTrigger value="users" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <UserCog className="w-4 h-4" /> <span className="hidden lg:inline">Utenti</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="roles" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <Shield className="w-4 h-4" />
-                  <span className="hidden lg:inline">Ruoli</span>
+                <TabsTrigger value="roles" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <Shield className="w-4 h-4" /> <span className="hidden lg:inline">Ruoli</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="client-users" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span className="hidden lg:inline">Client</span>
+                <TabsTrigger value="client-users" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <UserPlus className="w-4 h-4" /> <span className="hidden lg:inline">Client</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="access" 
-                  className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5"
-                >
-                  <Users className="w-4 h-4" />
-                  <span className="hidden lg:inline">Accessi</span>
+                <TabsTrigger value="access" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <Users className="w-4 h-4" /> <span className="hidden lg:inline">Accessi</span>
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            {/* Dashboard Tab */}
-            <TabsContent value="dashboard" className="space-y-6">
+            {/* Aree Scrollabili con Barra Dedicata */}
+            
+            <TabsContent value="dashboard" className={contentTabClass}>
               <AdminStats users={users} />
-              <div className="grid lg:grid-cols-2 gap-6">
+              <div className="grid lg:grid-cols-2 gap-6 mt-6">
                 <HierarchyView />
                 <div className="space-y-6">
                   <UsersManager 
@@ -159,38 +127,31 @@ const Admin = () => {
               </div>
             </TabsContent>
 
-            {/* Hierarchy Tab */}
-            <TabsContent value="hierarchy">
+            <TabsContent value="hierarchy" className={contentTabClass}>
               <HierarchyView />
             </TabsContent>
 
-            {/* Holdings Tab */}
-            <TabsContent value="holdings">
+            <TabsContent value="holdings" className={contentTabClass}>
               <HoldingsManager />
             </TabsContent>
             
-            {/* Brands Tab */}
-            <TabsContent value="brands">
+            <TabsContent value="brands" className={contentTabClass}>
               <BrandsManager />
             </TabsContent>
             
-            {/* Sites Tab */}
-            <TabsContent value="sites">
+            <TabsContent value="sites" className={contentTabClass}>
               <SitesManager />
             </TabsContent>
             
-            {/* Projects Tab */}
-            <TabsContent value="projects">
+            <TabsContent value="projects" className={contentTabClass}>
               <ProjectsManager />
             </TabsContent>
 
-            {/* Devices Tab */}
-            <TabsContent value="devices">
+            <TabsContent value="devices" className={contentTabClass}>
               <DevicesManager />
             </TabsContent>
 
-            {/* Users Tab */}
-            <TabsContent value="users">
+            <TabsContent value="users" className={contentTabClass}>
               <UsersManager 
                 users={users}
                 onAddUser={addUser}
@@ -199,18 +160,15 @@ const Admin = () => {
               />
             </TabsContent>
 
-            {/* Roles Tab */}
-            <TabsContent value="roles">
+            <TabsContent value="roles" className={contentTabClass}>
               <RolesManager />
             </TabsContent>
 
-            {/* Client Users Tab */}
-            <TabsContent value="client-users">
+            <TabsContent value="client-users" className={contentTabClass}>
               <ClientUsersManager />
             </TabsContent>
             
-            {/* Access Tab */}
-            <TabsContent value="access">
+            <TabsContent value="access" className={contentTabClass}>
               <UserAccessManager />
             </TabsContent>
           </Tabs>
