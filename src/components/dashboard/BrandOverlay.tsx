@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { getBrandById, getHoldingById, getBrandsByHolding, Project } from "@/lib/data";
-import { useAllProjects } from "@/hooks/useRealTimeData";
+// 1. IMPORTIAMO GLI HOOK PER I DATI REALI
+import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
+import { getBrandsByHolding } from "@/lib/data"; // Questo può rimanere per logica statica ausiliaria se serve, ma useremo dati reali
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
 } from "recharts";
-import { BarChart3, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
+import { BarChart3, ChevronUp, ChevronDown } from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 
 interface BrandOverlayProps {
@@ -16,22 +17,35 @@ interface BrandOverlayProps {
 
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
   const [chartsExpanded, setChartsExpanded] = useState(false);
-  const brand = selectedBrand ? getBrandById(selectedBrand) : null;
-  const holding = selectedHolding ? getHoldingById(selectedHolding) : null;
-  
-  // Use combined real + mock projects with loading state
-  const { projects, isLoading, error, refetch } = useAllProjects();
+
+  // 2. RECUPERIAMO LE LISTE COMPLETE (REALI + DEMO)
+  const { brands } = useAllBrands();
+  const { holdings } = useAllHoldings();
+  const { projects, isLoading } = useAllProjects();
+
+  // 3. TROVIAMO L'ENTITÀ SELEZIONATA NELLE LISTE REALI
+  const brand = useMemo(() => 
+    selectedBrand ? brands.find(b => b.id === selectedBrand) : null
+  , [selectedBrand, brands]);
+
+  const holding = useMemo(() => 
+    selectedHolding ? holdings.find(h => h.id === selectedHolding) : null
+  , [selectedHolding, holdings]);
   
   // Get filtered projects
   const filteredProjects = useMemo(() => {
     if (selectedBrand) {
       return projects.filter(p => p.brandId === selectedBrand);
     } else if (selectedHolding) {
-      const holdingBrands = getBrandsByHolding(selectedHolding);
-      return projects.filter(p => holdingBrands.some(b => b.id === p.brandId));
+      // Troviamo tutti i brand di questa holding usando i dati REALI
+      const holdingBrandIds = brands
+        .filter(b => b.holdingId === selectedHolding)
+        .map(b => b.id);
+      
+      return projects.filter(p => holdingBrandIds.includes(p.brandId));
     }
     return [];
-  }, [selectedBrand, selectedHolding, projects]);
+  }, [selectedBrand, selectedHolding, projects, brands]);
 
   // Chart data for store comparison
   const energyComparisonData = useMemo(() => {
@@ -58,8 +72,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const radarData = useMemo(() => {
     if (filteredProjects.length === 0) return [];
     
-    const maxEnergy = Math.max(...filteredProjects.map(p => p.data.total));
-    const maxCo2 = Math.max(...filteredProjects.map(p => p.data.co2));
+    const maxEnergy = Math.max(...filteredProjects.map(p => p.data.total)) || 100;
+    const maxCo2 = Math.max(...filteredProjects.map(p => p.data.co2)) || 1000;
     
     return [
       { metric: 'Energy', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.total / maxEnergy) * 100])) },
@@ -105,19 +119,26 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         {/* Left: Logo & Stats */}
         <div className="flex flex-col items-center gap-3 md:gap-6">
           {/* Brand/Holding Logo */}
-          <div className="relative">
+          <div className="relative pointer-events-auto">
             <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full scale-150" />
             <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/20 shadow-2xl">
-              <img 
-                src={displayEntity.logo} 
-                alt={displayEntity.name}
-                className="h-12 md:h-20 w-auto object-contain filter brightness-0 invert opacity-90"
-              />
+              {displayEntity.logo ? (
+                <img 
+                  src={displayEntity.logo} 
+                  alt={displayEntity.name}
+                  className="h-12 md:h-20 w-auto object-contain filter brightness-0 invert opacity-90"
+                />
+              ) : (
+                // Fallback testuale se manca il logo
+                <div className="h-12 md:h-20 w-32 flex items-center justify-center text-white font-bold text-xl">
+                  {displayEntity.name.substring(0, 2).toUpperCase()}
+                </div>
+              )}
             </div>
           </div>
           
           {/* Stats Cards */}
-          <div className="glass-panel rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px]">
+          <div className="glass-panel rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px] pointer-events-auto">
             <div className="text-center mb-2 md:mb-3">
               <h3 className="text-base md:text-lg font-semibold text-foreground">{displayEntity.name}</h3>
               <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
@@ -150,7 +171,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {showCharts && (
               <button
                 onClick={() => setChartsExpanded(!chartsExpanded)}
-                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg border border-white/20 text-xs font-medium transition-all pointer-events-auto"
+                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg border border-white/20 text-xs font-medium transition-all pointer-events-auto mt-2"
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
