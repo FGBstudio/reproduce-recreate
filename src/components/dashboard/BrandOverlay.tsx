@@ -149,19 +149,19 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
             
             <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-slate-800">{stats.projectCount}</div>
                 <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Stores</div>
               </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-slate-800">{stats.totalEnergy}</div>
                 <div className="text-[8px] md:text-[9px] uppercase text-slate-500">kWh</div>
               </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-slate-800">{stats.avgCo2}</div>
                 <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Avg CO₂</div>
               </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className={`text-base md:text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                   {stats.totalAlerts}
                 </div>
