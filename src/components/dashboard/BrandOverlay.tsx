@@ -110,7 +110,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   // backdrop-blur-xl = Sfocatura forte dietro
   // border-white/40 = Bordo bianco semitrasparente per definizione
   // shadow-lg = Ombra morbida per stacco
-  const glassPanelClass ="relative overflow-hidden backdrop-blur-3xl border border-white/15 shadow-2xl bg-white/10 after:content-[''] after:absolute after:inset-0 after:bg-white/30 after:pointer-events-none"
+  const glassPanelClass =
+  "relative overflow-hidden border border-white/15 bg-black/60 backdrop-blur-2xl shadow-2xl";
 
 
   return (
@@ -143,30 +144,30 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           {/* Stats Cards Container */}
           <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px] pointer-events-auto`}>
             <div className="text-center mb-2 md:mb-3">
-              <h3 className="text-base md:text-lg font-semibold text-slate-800">{displayEntity.name}</h3>
-              <p className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider">
+              <h3 className="text-base md:text-lg font-semibold text-foreground">{displayEntity.name}</h3>
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
                 {brand ? 'Brand Overview' : 'Holding Overview'}
               </p>
             </div>
             
             <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-slate-800">{stats.projectCount}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Stores</div>
+                <div className="text-base md:text-xl font-bold text-foreground">{stats.projectCount}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Stores</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-slate-800">{stats.totalEnergy}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">kWh</div>
+                <div className="text-base md:text-xl font-bold text-foreground">{stats.totalEnergy}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kWh</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-slate-800">{stats.avgCo2}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Avg CO₂</div>
+                <div className="text-base md:text-xl font-bold text-foreground">{stats.avgCo2}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className={`text-base md:text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                   {stats.totalAlerts}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Alerts</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Alerts</div>
               </div>
             </div>
             
@@ -188,7 +189,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           <div className={`flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full ${chartsExpanded ? 'grid' : 'hidden'} md:grid`}>
             {/* Energy Comparison */}
             <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4`}>
-              <h4 className="text-xs md:text-sm font-semibold text-slate-800 mb-2 md:mb-3">Energy Consumption (kWh)</h4>
+              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Energy Consumption (kWh)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
@@ -221,7 +222,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
             {/* CO2 Comparison */}
             <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4`}>
-              <h4 className="text-xs md:text-sm font-semibold text-slate-800 mb-2 md:mb-3">Air Quality (CO₂ ppm)</h4>
+              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Air Quality (CO₂ ppm)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
@@ -252,7 +253,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
             {/* Radar Chart */}
             <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4 md:col-span-2`}>
-              <h4 className="text-xs md:text-sm font-semibold text-slate-800 mb-2 md:mb-3">Store Performance</h4>
+              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Store Performance</h4>
               <ResponsiveContainer width="100%" height={160} className="md:hidden">
                 <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                   <PolarGrid stroke="rgba(0,0,0,0.1)" />
