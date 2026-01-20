@@ -110,7 +110,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   // backdrop-blur-xl = Sfocatura forte dietro
   // border-white/40 = Bordo bianco semitrasparente per definizione
   // shadow-lg = Ombra morbida per stacco
-  const glassPanelClass = "glass-panel";
+  const glassPanelClass ="relative overflow-hidden backdrop-blur-3xl border border-white/15 shadow-2xl bg-white/10 after:content-[''] after:absolute after:inset-0 after:bg-white/30 after:pointer-events-none"
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
