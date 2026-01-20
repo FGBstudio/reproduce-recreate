@@ -86,7 +86,13 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
     lat: apiSite.lat ?? 0,
     lng: apiSite.lng ?? 0,
     address: [apiSite.city, apiSite.country].filter(Boolean).join(', ') || apiSite.address || '',
-    img: apiSite.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop',
+    
+    // --- MODIFICA APPLICATA QUI ---
+    // Rimosso il fallback su Unsplash. Se l'immagine manca, è undefined.
+    // Questo permette al componente ProjectDetail di attivare il pattern del brand.
+    img: apiSite.image_url || undefined,
+    // ------------------------------
+
     data,
     monitoring: monitoring.length > 0 ? monitoring : ['energy'],
     brandId: apiSite.brand_id,
