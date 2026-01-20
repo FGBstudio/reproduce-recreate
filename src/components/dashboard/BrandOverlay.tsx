@@ -91,7 +91,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   
   const displayEntity = brand || holding;
   const storeNames = filteredProjects.map(p => p.name.split(' ').slice(-1)[0]);
-  const chartColors = ['hsl(188, 100%, 35%)', 'hsl(338, 50%, 50%)', 'hsl(43, 70%, 50%)', 'hsl(160, 60%, 40%)', 'hsl(280, 50%, 50%)'];
+  // Colori grafici ottimizzati per sfondo scuro
+  const chartColors = ['hsl(188, 100%, 45%)', 'hsl(338, 70%, 60%)', 'hsl(43, 90%, 60%)', 'hsl(160, 70%, 50%)', 'hsl(280, 70%, 60%)'];
   
   if (!displayEntity || !visible) return null;
 
@@ -105,12 +106,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   const showCharts = filteredProjects.length > 1;
 
-  // STILE VETRO SATINATO CHIARO (Opaco e leggibile)
-  // bg-white/80 = Bianco all'80% (molto coprente ma luminoso)
-  // backdrop-blur-xl = Sfocatura forte dietro
-  // border-white/40 = Bordo bianco semitrasparente per definizione
-  // shadow-lg = Ombra morbida per stacco
-  const glassPanelClass = "bg-white/80 backdrop-blur-xl border border-white/40 shadow-lg";
+  // Usa la stessa classe di RegionOverlay per coerenza visiva
+  const panelClass = "glass-panel p-4 md:p-6 rounded-2xl pointer-events-auto border border-white/10 shadow-2xl backdrop-blur-xl bg-black/60";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
@@ -120,19 +117,20 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         <div className="flex flex-col items-center gap-3 md:gap-6">
           {/* Brand/Holding Logo Container */}
           <div className="relative pointer-events-auto">
-            {/* Glow effect bianco diffuso */}
-            <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full scale-110" />
+            {/* Glow effect ridotto */}
+            <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-110" />
             
-            <div className={`relative ${glassPanelClass} rounded-2xl md:rounded-3xl p-4 md:p-6`}>
+            {/* Logo Box - Usa stile coerente */}
+            <div className="relative bg-white/5 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/10 shadow-2xl">
               {displayEntity.logo ? (
                 <img 
                   src={displayEntity.logo} 
                   alt={displayEntity.name}
-                  // Rimosso filtro 'invert' per visualizzare i loghi originali su sfondo chiaro
-                  className="h-12 md:h-20 w-auto object-contain opacity-90"
+                  // Filtro invert per rendere i loghi scuri visibili su sfondo scuro (bianchi)
+                  className="h-12 md:h-20 w-auto object-contain filter brightness-0 invert opacity-90"
                 />
               ) : (
-                <div className="h-12 md:h-20 w-32 flex items-center justify-center text-slate-800 font-bold text-xl">
+                <div className="h-12 md:h-20 w-32 flex items-center justify-center text-white font-bold text-xl">
                   {displayEntity.name.substring(0, 2).toUpperCase()}
                 </div>
               )}
@@ -140,39 +138,39 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           </div>
           
           {/* Stats Cards Container */}
-          <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px] pointer-events-auto`}>
+          <div className={`${panelClass} min-w-[220px] md:min-w-[280px]`}>
             <div className="text-center mb-2 md:mb-3">
-              <h3 className="text-base md:text-lg font-semibold text-slate-800">{displayEntity.name}</h3>
-              <p className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider">
+              <h3 className="text-base md:text-lg font-semibold text-white">{displayEntity.name}</h3>
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
                 {brand ? 'Brand Overview' : 'Holding Overview'}
               </p>
             </div>
             
             <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
-                <div className="text-base md:text-xl font-bold text-slate-800">{stats.projectCount}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Stores</div>
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className="text-base md:text-xl font-bold text-white">{stats.projectCount}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Stores</div>
               </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
-                <div className="text-base md:text-xl font-bold text-slate-800">{stats.totalEnergy}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">kWh</div>
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className="text-base md:text-xl font-bold text-white">{stats.totalEnergy}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kWh</div>
               </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
-                <div className="text-base md:text-xl font-bold text-slate-800">{stats.avgCo2}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Avg CO₂</div>
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className="text-base md:text-xl font-bold text-white">{stats.avgCo2}</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
               </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/40 border border-white/20">
-                <div className={`text-base md:text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
+                <div className={`text-base md:text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                   {stats.totalAlerts}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-slate-500">Alerts</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Alerts</div>
               </div>
             </div>
             
             {showCharts && (
               <button
                 onClick={() => setChartsExpanded(!chartsExpanded)}
-                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/50 hover:bg-white/70 backdrop-blur-md rounded-lg border border-white/30 text-xs font-medium transition-all pointer-events-auto mt-2 text-slate-700"
+                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-2 text-white"
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
@@ -186,17 +184,17 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         {showCharts && (
           <div className={`flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full ${chartsExpanded ? 'grid' : 'hidden'} md:grid`}>
             {/* Energy Comparison */}
-            <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4`}>
-              <h4 className="text-xs md:text-sm font-semibold text-slate-800 mb-2 md:mb-3">Energy Consumption (kWh)</h4>
+            <div className={`${panelClass} p-2.5 md:p-4`}>
+              <h4 className="text-xs md:text-sm font-semibold text-white mb-2 md:mb-3">Energy Consumption (kWh)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', fontSize: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: 10 }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
                   />
                   <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
@@ -204,13 +202,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               </ResponsiveContainer>
               <ResponsiveContainer width="100%" height={180} className="hidden md:block">
                 <BarChart data={energyComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
                   />
                   <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
@@ -219,30 +217,30 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
 
             {/* CO2 Comparison */}
-            <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4`}>
-              <h4 className="text-xs md:text-sm font-semibold text-slate-800 mb-2 md:mb-3">Air Quality (CO₂ ppm)</h4>
+            <div className={`${panelClass} p-2.5 md:p-4`}>
+              <h4 className="text-xs md:text-sm font-semibold text-white mb-2 md:mb-3">Air Quality (CO₂ ppm)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', fontSize: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: 10 }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
                   />
                   <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               <ResponsiveContainer width="100%" height={180} className="hidden md:block">
                 <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    labelStyle={{ color: '#fff' }}
+                    itemStyle={{ color: '#94a3b8' }}
                   />
                   <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -250,13 +248,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
 
             {/* Radar Chart */}
-            <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4 md:col-span-2`}>
-              <h4 className="text-xs md:text-sm font-semibold text-slate-800 mb-2 md:mb-3">Store Performance</h4>
+            <div className={`${panelClass} p-2.5 md:p-4 md:col-span-2`}>
+              <h4 className="text-xs md:text-sm font-semibold text-white mb-2 md:mb-3">Store Performance</h4>
               <ResponsiveContainer width="100%" height={160} className="md:hidden">
                 <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                  <PolarGrid stroke="rgba(0,0,0,0.1)" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 8 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 7 }} />
+                  <PolarGrid stroke="rgba(255,255,255,0.15)" />
+                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 8 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 7 }} />
                   {storeNames.map((name, idx) => (
                     <Radar 
                       key={name} 
@@ -273,8 +271,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               </ResponsiveContainer>
               <ResponsiveContainer width="100%" height={220} className="hidden md:block">
                 <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
-                  <PolarGrid stroke="rgba(0,0,0,0.15)" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 11 }} />
+                  <PolarGrid stroke="rgba(255,255,255,0.15)" />
+                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 9 }} />
                   {storeNames.map((name, idx) => (
                     <Radar 
