@@ -120,8 +120,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         <div className="flex flex-col items-center gap-3 md:gap-6">
           {/* Brand/Holding Logo */}
           <div className="relative pointer-events-auto">
-            <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full scale-150" />
-            <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/20 shadow-2xl">
+            <div className="absolute inset-0 bg-white/60 blur-3xl rounded-full scale-150" />
+            <div className="relative bg-white/60 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/20 shadow-2xl">
               {displayEntity.logo ? (
                 <img 
                   src={displayEntity.logo} 
