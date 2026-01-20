@@ -27,7 +27,7 @@ const Header = ({ userName = "Maria Rossi" }: HeaderProps) => {
         <img
           src={brandImg}
           alt="FGB"
-          className="h-8 md:h-10 w-auto"
+          className="h-12 md:h-16 w-auto"
         />
       </div>
 
