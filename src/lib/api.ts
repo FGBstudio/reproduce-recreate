@@ -3,7 +3,7 @@
  * Provides typed fetch functions and React Query hooks for dashboard data
  */
 
-import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // =============================================================================
@@ -400,4 +400,23 @@ export function useHoldings(
     staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
   });
+}
+
+/**
+ * Hook to invalidate all admin data caches
+ * Call this after creating/updating/deleting sites, brands, or holdings
+ */
+export function useInvalidateAdminData() {
+  const queryClient = useQueryClient();
+  
+  return {
+    invalidateSites: () => queryClient.invalidateQueries({ queryKey: queryKeys.sites() }),
+    invalidateBrands: () => queryClient.invalidateQueries({ queryKey: queryKeys.brands() }),
+    invalidateHoldings: () => queryClient.invalidateQueries({ queryKey: queryKeys.holdings() }),
+    invalidateAll: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sites() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.brands() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.holdings() });
+    },
+  };
 }

@@ -76,8 +76,11 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
   // Map region from DB (or derive from country)
   const region = mapRegion(apiSite.region || apiSite.country);
 
+  // Generate a unique numeric ID from UUID for legacy compatibility
+  const numericId = apiSite.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
   return {
-    id: -parseInt(apiSite.id.replace(/-/g, '').substring(0, 8), 16), // Negative ID for real data
+    id: -numericId, // Negative ID for real data
     name: apiSite.name,
     region,
     lat: apiSite.lat ?? 0,
@@ -87,9 +90,8 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
     data,
     monitoring: monitoring.length > 0 ? monitoring : ['energy'],
     brandId: apiSite.brand_id,
-    // Store original site_id for API calls
-    _siteId: apiSite.id,
-  } as Project & { _siteId: string };
+    siteId: apiSite.id, // Store original site_id for API calls and telemetry
+  };
 }
 
 /**
@@ -308,9 +310,8 @@ export function useSiteLatestTelemetry(siteId?: string) {
  * Extract the real site_id from a Project (if it's a real project)
  */
 export function getProjectSiteId(project: Project): string | undefined {
-  // Check if it's a real project with _siteId attached
-  const extended = project as Project & { _siteId?: string };
-  return extended._siteId;
+  // Use siteId field directly (set for both real DB projects and some mock projects)
+  return project.siteId;
 }
 
 /**

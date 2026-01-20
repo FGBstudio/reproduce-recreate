@@ -1,8 +1,8 @@
 import { useEffect, useRef, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { regions, Project, MonitoringType, getBrandsByHolding } from "@/lib/data";
-import { useAllProjects } from "@/hooks/useRealTimeData";
+import { regions, Project, MonitoringType } from "@/lib/data";
+import { useAllProjects, useAllBrands } from "@/hooks/useRealTimeData";
 import { MapLoadingSkeleton } from "./DashboardSkeleton";
 
 interface MapViewProps {
@@ -18,8 +18,9 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
-  // Use combined real + mock projects with loading state
+  // Use combined real + mock projects and brands with loading state
   const { projects, isLoading, error, refetch } = useAllProjects();
+  const { brands } = useAllBrands();
 
   // Filter projects by region, monitoring type, holding and brand
   const visibleProjects = useMemo(() => {
@@ -28,10 +29,10 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       const monitoringMatch = activeFilters.length === 0 || 
         activeFilters.some(filter => p.monitoring.includes(filter));
       
-      // Holding filter
+      // Holding filter - use real brands from hook
       let holdingMatch = true;
       if (selectedHolding) {
-        const holdingBrands = getBrandsByHolding(selectedHolding);
+        const holdingBrands = brands.filter(b => b.holdingId === selectedHolding);
         holdingMatch = holdingBrands.some(b => b.id === p.brandId);
       }
       
@@ -40,7 +41,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       
       return regionMatch && monitoringMatch && holdingMatch && brandMatch;
     });
-  }, [projects, currentRegion, activeFilters, selectedHolding, selectedBrand]);
+  }, [projects, brands, currentRegion, activeFilters, selectedHolding, selectedBrand]);
 
   // Initialize map
   useEffect(() => {
