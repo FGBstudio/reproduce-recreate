@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, MapPin, Tag, Globe, Upload, Loader2, ImageIcon, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2 } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { AdminSite, RegionCode } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// RIMOSSO: import { ScrollArea } ... crea problemi di layout nei dialog
 import { supabase } from '@/lib/supabase';
 
 const regions: { value: RegionCode; label: string }[] = [
@@ -45,6 +45,7 @@ export const SitesManager = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOpenCreate = () => {
     setEditingSite(null);
@@ -74,40 +75,41 @@ export const SitesManager = () => {
     setIsDialogOpen(true);
   };
 
-  // Gestione selezione file
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
-      // Crea un URL locale per l'anteprima immediata
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
     }
   };
 
-  // Funzione di upload su Supabase Storage
   const uploadImageToSupabase = async (file: File, siteIdOrTempId: string | number): Promise<string> => {
+    // Genera un nome file sicuro
     const fileExt = file.name.split('.').pop();
-    // Se stiamo creando un nuovo site usiamo 'new', altrimenti l'ID del site
-    // Questo mantiene la struttura ordinata: sites/123/cover.jpg
-    const pathId = editingSite ? siteIdOrTempId : `new/${crypto.randomUUID()}`; 
-    const filePath = `sites/${pathId}/cover.${fileExt}`;
+    const fileName = `cover.${fileExt}`;
+    const pathId = editingSite ? siteIdOrTempId : `new/${Date.now()}`; // Usa timestamp invece di randomUUID per compatibilità
+    const filePath = `sites/${pathId}/${fileName}`;
 
+    console.log("Inizio upload su path:", filePath);
+
+    // Upload
     const { error: uploadError } = await supabase.storage
       .from('project-assets')
       .upload(filePath, file, { upsert: true });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error("Errore Upload Supabase:", uploadError);
+      throw new Error(`Errore caricamento immagine: ${uploadError.message}`);
+    }
 
+    // Get URL
     const { data: { publicUrl } } = supabase.storage
       .from('project-assets')
       .getPublicUrl(filePath);
 
-    // Aggiungiamo timestamp per evitare caching aggressivo del browser se sovrascriviamo
-    return `${publicUrl}?t=${new Date().getTime()}`;
+    return `${publicUrl}?t=${Date.now()}`;
   };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,19 +119,15 @@ export const SitesManager = () => {
     try {
       let finalImageUrl = formData.imageUrl;
 
-      // 1. Se c'è un file selezionato, caricalo prima
       if (selectedFile) {
-        // Se stiamo modificando, usiamo l'ID del sito, altrimenti un placeholder che genererà un percorso 'new/uuid'
         finalImageUrl = await uploadImageToSupabase(selectedFile, editingSite ? editingSite.id : 'temp');
       }
 
-      // 2. Prepara i dati finali
       const dataToSave = {
         ...formData,
         imageUrl: finalImageUrl
       };
 
-      // 3. Salva nel DB
       if (editingSite) {
         await updateSite(editingSite.id, dataToSave);
       } else {
@@ -137,9 +135,10 @@ export const SitesManager = () => {
       }
       
       setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Errore durante il salvataggio:", error);
-      // Qui potresti aggiungere un toast di errore
+    } catch (error: any) {
+      console.error("Errore critico durante il salvataggio:", error);
+      // Feedback VISIVO per l'utente
+      alert(`Errore durante il salvataggio: ${error.message || error}`);
     } finally {
       setIsSubmitting(false);
       setIsUploading(false);
@@ -168,24 +167,25 @@ export const SitesManager = () => {
                 Nuovo Site
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh]">
-              <form onSubmit={handleSubmit}>
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+              <form onSubmit={handleSubmit} className="flex flex-col h-full">
                 <DialogHeader>
                   <DialogTitle>{editingSite ? 'Modifica Site' : 'Nuovo Site'}</DialogTitle>
                   <DialogDescription>
                     {editingSite ? 'Modifica i dati del site' : 'Inserisci i dati del nuovo site'}
                   </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="max-h-[60vh] pr-4">
-                  <div className="grid gap-4 py-4">
+                
+                {/* --- FIX SCORRIMENTO: Usa div con overflow invece di ScrollArea --- */}
+                <div className="flex-1 overflow-y-auto pr-2 my-4">
+                  <div className="grid gap-4 py-2">
                     
                     {/* SEZIONE IMMAGINE */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 p-4 border rounded-lg bg-slate-50/50">
                       <Label>Immagine di Copertina</Label>
                       <div className="flex items-start gap-4">
-                        {/* Area Anteprima / Click to Upload */}
                         <div 
-                          className="relative w-40 h-24 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer hover:border-fgb-secondary transition-colors group bg-slate-50"
+                          className="relative w-40 h-24 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer hover:border-fgb-secondary transition-colors group bg-white"
                           onClick={() => fileInputRef.current?.click()}
                         >
                           {previewUrl ? (
@@ -203,18 +203,14 @@ export const SitesManager = () => {
                           )}
                         </div>
 
-                        {/* Controlli aggiuntivi immagine */}
                         <div className="flex flex-col gap-2 text-sm text-slate-500 flex-1">
-                          <p>
-                            Formati supportati: JPG, PNG, WEBP. <br/>
-                            Se lasci vuoto, verrà usato il pattern del brand.
-                          </p>
+                          <p>JPG, PNG, WEBP. Se vuoto, usa pattern brand.</p>
                           {previewUrl && (
                             <Button 
                               type="button" 
                               variant="outline" 
                               size="sm" 
-                              className="w-fit text-red-500 hover:text-red-600"
+                              className="w-fit text-red-500 hover:text-red-600 h-8"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedFile(null);
@@ -223,7 +219,7 @@ export const SitesManager = () => {
                                 if (fileInputRef.current) fileInputRef.current.value = '';
                               }}
                             >
-                              <X className="w-3 h-3 mr-2" /> Rimuovi Immagine
+                              <X className="w-3 h-3 mr-2" /> Rimuovi
                             </Button>
                           )}
                         </div>
@@ -238,7 +234,6 @@ export const SitesManager = () => {
                       </div>
                     </div>
 
-                    {/* RESTO DEL FORM (Invariato nella logica, solo layout) */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label>Brand *</Label>
@@ -273,6 +268,7 @@ export const SitesManager = () => {
                         </Select>
                       </div>
                     </div>
+
                     <div className="grid gap-2">
                       <Label>Nome Site *</Label>
                       <Input
@@ -282,6 +278,7 @@ export const SitesManager = () => {
                         required
                       />
                     </div>
+                    
                     <div className="grid gap-2">
                       <Label>Indirizzo</Label>
                       <Input
@@ -290,6 +287,7 @@ export const SitesManager = () => {
                         placeholder="Via/Street"
                       />
                     </div>
+                    
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label>Città *</Label>
@@ -308,6 +306,7 @@ export const SitesManager = () => {
                         />
                       </div>
                     </div>
+
                     <div className="grid grid-cols-3 gap-4">
                       <div className="grid gap-2">
                         <Label>Latitudine</Label>
@@ -336,19 +335,19 @@ export const SitesManager = () => {
                         />
                       </div>
                     </div>
+                    
                     <div className="grid gap-2">
-                      <div className="grid gap-2">
-                        <Label>Timezone</Label>
-                        <Input
-                          value={formData.timezone}
-                          onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                          placeholder="Europe/Rome"
-                        />
-                      </div>
+                      <Label>Timezone</Label>
+                      <Input
+                        value={formData.timezone}
+                        onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                        placeholder="Europe/Rome"
+                      />
                     </div>
                   </div>
-                </ScrollArea>
-                <DialogFooter className="mt-4">
+                </div>
+
+                <DialogFooter className="mt-auto border-t pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
                     Annulla
                   </Button>
@@ -368,6 +367,8 @@ export const SitesManager = () => {
           </Dialog>
         </div>
       </CardHeader>
+      
+      {/* Resto della tabella identico a prima */}
       <CardContent>
         <Table>
           <TableHeader>
@@ -388,7 +389,6 @@ export const SitesManager = () => {
                 <TableRow key={site.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
-                      {/* Avatar/Thumbnail del sito */}
                       <div className="w-8 h-8 rounded bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200">
                         {site.imageUrl ? (
                           <img src={site.imageUrl} alt="" className="w-full h-full object-cover" />
