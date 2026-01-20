@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { queryKeys } from '@/lib/api';
 import {
   AdminHolding,
   AdminBrand,
@@ -131,12 +133,20 @@ const deleteProjectConfig = (siteId: string) => {
 };
 
 export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
+  const queryClient = useQueryClient();
   const [holdings, setHoldings] = useState<AdminHolding[]>([]);
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [sites, setSites] = useState<AdminSite[]>([]);
   const [projects, setProjects] = useState<AdminProject[]>([]);
   const [memberships, setMemberships] = useState<UserMembership[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Helper to invalidate API caches so map updates
+  const invalidateApiCaches = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.sites() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.brands() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.holdings() });
+  }, [queryClient]);
 
   // Fetch all data from Supabase
   const fetchAllData = useCallback(async () => {
@@ -482,6 +492,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
         updatedAt: new Date(inserted.updated_at),
       };
       setSites(prev => [...prev, newSite]);
+      invalidateApiCaches(); // Refresh map data
       toast.success('Site creato con successo');
       return newSite;
     } catch (error: any) {
@@ -489,7 +500,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       toast.error(`Errore: ${error.message}`);
       return null;
     }
-  }, []);
+  }, [invalidateApiCaches]);
 
   const updateSite = useCallback(async (id: string, data: Partial<AdminSite>) => {
     if (!isSupabaseConfigured || !supabase) {
@@ -519,12 +530,13 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
       
       setSites(prev => prev.map(s => s.id === id ? { ...s, ...data, updatedAt: new Date() } : s));
+      invalidateApiCaches(); // Refresh map data
       toast.success('Site aggiornato');
     } catch (error: any) {
       console.error('Error updating site:', error);
       toast.error(`Errore: ${error.message}`);
     }
-  }, []);
+  }, [invalidateApiCaches]);
 
   const deleteSite = useCallback(async (id: string) => {
     if (!isSupabaseConfigured || !supabase) {
@@ -543,12 +555,13 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       
       setSites(prev => prev.filter(s => s.id !== id));
       setProjects(prev => prev.filter(p => p.siteId !== id));
+      invalidateApiCaches(); // Refresh map data
       toast.success('Site eliminato');
     } catch (error: any) {
       console.error('Error deleting site:', error);
       toast.error(`Errore: ${error.message}`);
     }
-  }, []);
+  }, [invalidateApiCaches]);
 
   // Projects CRUD (projects are derived from sites, configs stored in localStorage)
   // Note: "Adding a project" here means configuring an existing site with modules/certifications
