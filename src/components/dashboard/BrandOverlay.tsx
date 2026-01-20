@@ -105,10 +105,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   const showCharts = filteredProjects.length > 1;
 
-  // Stile unificato basato su RegionOverlay
-  // 'glass-panel' fornisce lo sfondo base
-  // I box interni usano 'bg-white/5 border-white/10'
-  const containerClass = "glass-panel p-4 md:p-6 rounded-2xl pointer-events-auto";
+  // DEFINIZIONE STILE "DARK GLASS" OPACO
+  // bg-slate-900/90: Sfondo scurissimo al 90% opacità (molto coprente)
+  // border-white/10: Bordo sottile chiaro per stacco
+  // backdrop-blur-xl: Sfocatura
+  const containerClass = "bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-2xl p-4 md:p-6 rounded-2xl pointer-events-auto text-white";
+  
+  // Box interni più chiari ma sempre su base scura
   const innerCardClass = "bg-white/5 border border-white/10 rounded-xl";
 
   return (
@@ -119,19 +122,18 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         <div className="flex flex-col items-center gap-3 md:gap-6">
           {/* Brand/Holding Logo Container */}
           <div className="relative pointer-events-auto">
-            {/* Glow effect soft */}
+            {/* Glow effect ridotto */}
             <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-150" />
             
-            <div className={`${containerClass} flex items-center justify-center`}>
+            <div className={`${containerClass} flex items-center justify-center !p-8`}>
               {displayEntity.logo ? (
                 <img 
                   src={displayEntity.logo} 
                   alt={displayEntity.name}
-                  // Filtro invert per loghi scuri su sfondo scuro, rimuovere se i loghi sono già bianchi
-                  className="h-12 md:h-20 w-auto object-contain filter brightness-0 invert opacity-90"
+                  className="h-16 md:h-24 w-auto object-contain filter brightness-0 invert opacity-90"
                 />
               ) : (
-                <div className="h-12 md:h-20 w-32 flex items-center justify-center text-foreground font-bold text-xl">
+                <div className="h-16 md:h-24 w-32 flex items-center justify-center text-white font-bold text-2xl">
                   {displayEntity.name.substring(0, 2).toUpperCase()}
                 </div>
               )}
@@ -141,37 +143,37 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           {/* Stats Cards Container */}
           <div className={`${containerClass} min-w-[220px] md:min-w-[280px]`}>
             <div className="text-center mb-4">
-              <h3 className="text-xl font-serif text-foreground mb-1">{displayEntity.name}</h3>
-              <div className="text-xs text-fgb-accent uppercase tracking-widest text-muted-foreground">
+              <h3 className="text-xl font-serif text-white mb-1">{displayEntity.name}</h3>
+              <div className="text-xs text-slate-400 uppercase tracking-widest">
                 {brand ? 'Brand Overview' : 'Holding Overview'}
               </div>
             </div>
             
             <div className="grid grid-cols-2 gap-2">
               <div className={`${innerCardClass} p-3 text-center`}>
-                <div className="text-xl font-bold text-foreground">{stats.projectCount}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">Stores</div>
+                <div className="text-xl font-bold text-white">{stats.projectCount}</div>
+                <div className="text-[10px] uppercase text-slate-400">Stores</div>
               </div>
               <div className={`${innerCardClass} p-3 text-center`}>
-                <div className="text-xl font-bold text-foreground">{stats.totalEnergy}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">kWh</div>
+                <div className="text-xl font-bold text-white">{stats.totalEnergy}</div>
+                <div className="text-[10px] uppercase text-slate-400">kWh</div>
               </div>
               <div className={`${innerCardClass} p-3 text-center`}>
-                <div className="text-xl font-bold text-foreground">{stats.avgCo2}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">Avg CO₂</div>
+                <div className="text-xl font-bold text-white">{stats.avgCo2}</div>
+                <div className="text-[10px] uppercase text-slate-400">Avg CO₂</div>
               </div>
               <div className={`${innerCardClass} p-3 text-center`}>
                 <div className={`text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                   {stats.totalAlerts}
                 </div>
-                <div className="text-[10px] uppercase text-muted-foreground">Alerts</div>
+                <div className="text-[10px] uppercase text-slate-400">Alerts</div>
               </div>
             </div>
             
             {showCharts && (
               <button
                 onClick={() => setChartsExpanded(!chartsExpanded)}
-                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-foreground"
+                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-white"
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
@@ -186,7 +188,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           <div className={`flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full ${chartsExpanded ? 'grid' : 'hidden'} md:grid`}>
             {/* Energy Comparison */}
             <div className={containerClass}>
-              <h4 className="text-sm font-medium text-muted-foreground mb-4">Energy Consumption (kWh)</h4>
+              <h4 className="text-sm font-medium text-slate-300 mb-4">Energy Consumption (kWh)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -219,7 +221,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
             {/* CO2 Comparison */}
             <div className={containerClass}>
-              <h4 className="text-sm font-medium text-muted-foreground mb-4">Air Quality (CO₂ ppm)</h4>
+              <h4 className="text-sm font-medium text-slate-300 mb-4">Air Quality (CO₂ ppm)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -250,7 +252,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
             {/* Radar Chart */}
             <div className={`${containerClass} md:col-span-2`}>
-              <h4 className="text-sm font-medium text-muted-foreground mb-4">Store Performance</h4>
+              <h4 className="text-sm font-medium text-slate-300 mb-4">Store Performance</h4>
               <ResponsiveContainer width="100%" height={160} className="md:hidden">
                 <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                   <PolarGrid stroke="rgba(255,255,255,0.15)" />
