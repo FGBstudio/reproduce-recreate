@@ -1,302 +1,173 @@
-import { useMemo, useState } from "react";
-// Import hooks per i dati reali
-import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
-} from "recharts";
-import { BarChart3, ChevronUp, ChevronDown } from "lucide-react";
-import { BrandOverlaySkeleton } from "./DashboardSkeleton";
+import { regions } from "@/lib/data";
 
-interface BrandOverlayProps {
-  selectedBrand: string | null;
-  selectedHolding: string | null;
+
+
+interface RegionOverlayProps {
+
+  currentRegion: string;
+
   visible?: boolean;
+
 }
 
-const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
-  const [chartsExpanded, setChartsExpanded] = useState(false);
 
-  // 1. RECUPERIAMO LE LISTE COMPLETE (REALI + DEMO)
-  const { brands } = useAllBrands();
-  const { holdings } = useAllHoldings();
-  const { projects, isLoading } = useAllProjects();
 
-  // 2. TROVIAMO L'ENTITÀ SELEZIONATA NELLE LISTE REALI
-  const brand = useMemo(() => 
-    selectedBrand ? brands.find(b => b.id === selectedBrand) : null
-  , [selectedBrand, brands]);
+const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) => {
 
-  const holding = useMemo(() => 
-    selectedHolding ? holdings.find(h => h.id === selectedHolding) : null
-  , [selectedHolding, holdings]);
+  const region = regions[currentRegion];
+
   
-  // Get filtered projects
-  const filteredProjects = useMemo(() => {
-    if (selectedBrand) {
-      return projects.filter(p => p.brandId === selectedBrand);
-    } else if (selectedHolding) {
-      const holdingBrandIds = brands
-        .filter(b => b.holdingId === selectedHolding)
-        .map(b => b.id);
-      return projects.filter(p => holdingBrandIds.includes(p.brandId));
-    }
-    return [];
-  }, [selectedBrand, selectedHolding, projects, brands]);
 
-  // Chart data setup
-  const energyComparisonData = useMemo(() => {
-    return filteredProjects.map(p => ({
-      name: p.name.split(' ').slice(-1)[0],
-      fullName: p.name,
-      hvac: p.data.hvac,
-      light: p.data.light,
-      total: p.data.total
-    }));
-  }, [filteredProjects]);
+  if (currentRegion === "GLOBAL" || !region?.kpi) return null;
 
-  const airQualityComparisonData = useMemo(() => {
-    return filteredProjects.map(p => ({
-      name: p.name.split(' ').slice(-1)[0],
-      fullName: p.name,
-      co2: p.data.co2,
-      temp: p.data.temp,
-      alerts: p.data.alerts
-    }));
-  }, [filteredProjects]);
 
-  const radarData = useMemo(() => {
-    if (filteredProjects.length === 0) return [];
-    const maxEnergy = Math.max(...filteredProjects.map(p => p.data.total)) || 100;
-    const maxCo2 = Math.max(...filteredProjects.map(p => p.data.co2)) || 1000;
-    
-    return [
-      { metric: 'Energy', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.total / maxEnergy) * 100])) },
-      { metric: 'HVAC', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.hvac / (maxEnergy * 0.6)) * 100])) },
-      { metric: 'Lighting', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.light / (maxEnergy * 0.5)) * 100])) },
-      { metric: 'CO₂', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.co2 / maxCo2) * 100])) },
-      { metric: 'Temp', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.temp / 30) * 100])) },
-    ];
-  }, [filteredProjects]);
 
-  const stats = useMemo(() => {
-    const totalEnergy = filteredProjects.reduce((sum, p) => sum + p.data.total, 0);
-    const avgCo2 = filteredProjects.length 
-      ? Math.round(filteredProjects.reduce((sum, p) => sum + p.data.co2, 0) / filteredProjects.length)
-      : 0;
-    const totalAlerts = filteredProjects.reduce((sum, p) => sum + p.data.alerts, 0);
-    
-    return { projectCount: filteredProjects.length, totalEnergy, avgCo2, totalAlerts };
-  }, [filteredProjects]);
-  
-  const displayEntity = brand || holding;
-  const storeNames = filteredProjects.map(p => p.name.split(' ').slice(-1)[0]);
-  const chartColors = ['hsl(188, 100%, 35%)', 'hsl(338, 50%, 50%)', 'hsl(43, 70%, 50%)', 'hsl(160, 60%, 40%)', 'hsl(280, 50%, 50%)'];
-  
-  if (!displayEntity || !visible) return null;
+  const aqColorClass = {
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
-        <BrandOverlaySkeleton />
-      </div>
-    );
-  }
+    EXCELLENT: "text-emerald-400",
 
-  const showCharts = filteredProjects.length > 1;
+    GOOD: "text-emerald-400",
 
-  // DEFINIZIONE STILE "DARK GLASS" OPACO
-  // bg-slate-900/90: Sfondo scurissimo al 90% opacità (molto coprente)
-  // border-white/10: Bordo sottile chiaro per stacco
-  // backdrop-blur-xl: Sfocatura
-  const containerClass = "bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-2xl p-4 md:p-6 rounded-2xl pointer-events-auto text-white";
-  
-  // Box interni più chiari ma sempre su base scura
-  const innerCardClass = "bg-white/5 border border-white/10 rounded-xl";
+    MODERATE: "text-yellow-400",
+
+    POOR: "text-rose-400",
+
+  }[region.kpi.aq] || "text-muted-foreground";
+
+
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
-      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-3 md:gap-6 animate-fade-in max-w-6xl w-full max-h-full overflow-y-auto">
-        
-        {/* Left: Logo & Stats */}
-        <div className="flex flex-col items-center gap-3 md:gap-6">
-          {/* Brand/Holding Logo Container */}
-          <div className="relative pointer-events-auto">
-            {/* Glow effect ridotto */}
-            <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-150" />
-            
-            <div className={`${containerClass} flex items-center justify-center !p-8`}>
-              {displayEntity.logo ? (
-                <img 
-                  src={displayEntity.logo} 
-                  alt={displayEntity.name}
-                  className="h-16 md:h-24 w-auto object-contain filter brightness-0 invert opacity-90"
-                />
-              ) : (
-                <div className="h-16 md:h-24 w-32 flex items-center justify-center text-white font-bold text-2xl">
-                  {displayEntity.name.substring(0, 2).toUpperCase()}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Stats Cards Container */}
-          <div className={`${containerClass} min-w-[220px] md:min-w-[280px]`}>
-            <div className="text-center mb-4">
-              <h3 className="text-xl font-serif text-white mb-1">{displayEntity.name}</h3>
-              <div className="text-xs text-slate-400 uppercase tracking-widest">
-                {brand ? 'Brand Overview' : 'Holding Overview'}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <div className={`${innerCardClass} p-3 text-center`}>
-                <div className="text-xl font-bold text-white">{stats.projectCount}</div>
-                <div className="text-[10px] uppercase text-slate-400">Stores</div>
-              </div>
-              <div className={`${innerCardClass} p-3 text-center`}>
-                <div className="text-xl font-bold text-white">{stats.totalEnergy}</div>
-                <div className="text-[10px] uppercase text-slate-400">kWh</div>
-              </div>
-              <div className={`${innerCardClass} p-3 text-center`}>
-                <div className="text-xl font-bold text-white">{stats.avgCo2}</div>
-                <div className="text-[10px] uppercase text-slate-400">Avg CO₂</div>
-              </div>
-              <div className={`${innerCardClass} p-3 text-center`}>
-                <div className={`text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {stats.totalAlerts}
-                </div>
-                <div className="text-[10px] uppercase text-slate-400">Alerts</div>
-              </div>
-            </div>
-            
-            {showCharts && (
-              <button
-                onClick={() => setChartsExpanded(!chartsExpanded)}
-                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-white"
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
-                {chartsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-            )}
-          </div>
+
+    <div 
+
+      className={`fixed top-24 left-8 z-30 w-80 pointer-events-none transition-all duration-500 ${
+
+        visible 
+
+          ? "opacity-100 translate-x-0" 
+
+          : "opacity-0 -translate-x-10"
+
+      }`}
+
+    >
+
+      <div className="glass-panel p-6 rounded-2xl pointer-events-auto">
+
+        <h2 className="text-3xl font-serif text-foreground mb-1">{region.name}</h2>
+
+        <div className="text-xs text-fgb-accent uppercase tracking-widest mb-6">
+
+          Regional Performance
+
         </div>
 
-        {/* Comparison Charts */}
-        {showCharts && (
-          <div className={`flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full ${chartsExpanded ? 'grid' : 'hidden'} md:grid`}>
-            {/* Energy Comparison */}
-            <div className={containerClass}>
-              <h4 className="text-sm font-medium text-slate-300 mb-4">Energy Consumption (kWh)</h4>
-              <ResponsiveContainer width="100%" height={120} className="md:hidden">
-                <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: 10 }}
-                    labelStyle={{ color: '#fff' }}
-                    itemStyle={{ color: '#94a3b8' }}
-                  />
-                  <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={180} className="hidden md:block">
-                <BarChart data={energyComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                    labelStyle={{ color: '#fff' }}
-                    itemStyle={{ color: '#94a3b8' }}
-                  />
-                  <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+
+
+        {/* KPI Aggregations */}
+
+        <div className="space-y-4">
+
+          <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+
+            <div className="flex justify-between items-end mb-1">
+
+              <span className="text-sm text-muted-foreground">Avg. Energy Intensity</span>
+
+              <span className="text-xl font-bold text-foreground">
+
+                {region.kpi.intensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
+
+              </span>
+
             </div>
 
-            {/* CO2 Comparison */}
-            <div className={containerClass}>
-              <h4 className="text-sm font-medium text-slate-300 mb-4">Air Quality (CO₂ ppm)</h4>
-              <ResponsiveContainer width="100%" height={120} className="md:hidden">
-                <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 8 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: 10 }}
-                    labelStyle={{ color: '#fff' }}
-                    itemStyle={{ color: '#94a3b8' }}
-                  />
-                  <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={180} className="hidden md:block">
-                <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                    labelStyle={{ color: '#fff' }}
-                    itemStyle={{ color: '#94a3b8' }}
-                  />
-                  <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
+
+              <div 
+
+                className="bg-emerald-400 h-full transition-all duration-700"
+
+                style={{ width: `${Math.min(region.kpi.intensity, 100)}%` }}
+
+              />
+
             </div>
 
-            {/* Radar Chart */}
-            <div className={`${containerClass} md:col-span-2`}>
-              <h4 className="text-sm font-medium text-slate-300 mb-4">Store Performance</h4>
-              <ResponsiveContainer width="100%" height={160} className="md:hidden">
-                <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                  <PolarGrid stroke="rgba(255,255,255,0.15)" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 8 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 7 }} />
-                  {storeNames.map((name, idx) => (
-                    <Radar 
-                      key={name} 
-                      name={name} 
-                      dataKey={name} 
-                      stroke={chartColors[idx % chartColors.length]} 
-                      fill={chartColors[idx % chartColors.length]} 
-                      fillOpacity={0.2}
-                      strokeWidth={1.5}
-                    />
-                  ))}
-                  <Legend wrapperStyle={{ fontSize: 9, color: '#94a3b8' }} iconType="circle" iconSize={6} />
-                </RadarChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={220} className="hidden md:block">
-                <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
-                  <PolarGrid stroke="rgba(255,255,255,0.15)" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 9 }} />
-                  {storeNames.map((name, idx) => (
-                    <Radar 
-                      key={name} 
-                      name={name} 
-                      dataKey={name} 
-                      stroke={chartColors[idx % chartColors.length]} 
-                      fill={chartColors[idx % chartColors.length]} 
-                      fillOpacity={0.2}
-                      strokeWidth={2}
-                    />
-                  ))}
-                  <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} iconType="circle" />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
           </div>
-        )}
+
+
+
+          <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+
+            <div className="flex justify-between items-end mb-1">
+
+              <span className="text-sm text-muted-foreground">Air Quality Score</span>
+
+              <span className={`text-xl font-bold ${aqColorClass}`}>{region.kpi.aq}</span>
+
+            </div>
+
+            <div className="flex gap-1 mt-2">
+
+              <span className={`h-2 flex-1 rounded-sm ${region.kpi.aq === "EXCELLENT" || region.kpi.aq === "GOOD" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
+
+              <span className={`h-2 flex-1 rounded-sm ${region.kpi.aq === "EXCELLENT" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
+
+              <span className="h-2 flex-1 rounded-sm bg-emerald-500/30" />
+
+            </div>
+
+          </div>
+
+
+
+          <div className="grid grid-cols-2 gap-3 mt-4">
+
+            <div className="text-center p-3 rounded-lg bg-white/5">
+
+              <div className="text-2xl font-bold text-foreground">{region.kpi.online}</div>
+
+              <div className="text-[10px] uppercase text-muted-foreground">Active Sites</div>
+
+            </div>
+
+            <div className="text-center p-3 rounded-lg bg-white/5">
+
+              <div className={`text-2xl font-bold ${region.kpi.critical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+
+                {region.kpi.critical}
+
+              </div>
+
+              <div className="text-[10px] uppercase text-muted-foreground">Critical Alerts</div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <div className="mt-6 pt-4 border-t border-white/10 text-center">
+
+          <p className="text-xs text-muted-foreground italic">
+
+            Select a pin on the map to view project details.
+
+          </p>
+
+        </div>
+
       </div>
+
     </div>
+
   );
+
 };
 
-export default BrandOverlay;
+
+
+export default RegionOverlay;
