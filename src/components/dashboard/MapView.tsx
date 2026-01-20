@@ -49,9 +49,17 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
 
     map.current = L.map(mapContainer.current, {
       center: [20, 30],
-      zoom: 2,
+      zoom: 3, // Ti consiglio di partire da 3 per evitare che sia troppo piccola all'inizio
       zoomControl: false,
       attributionControl: false,
+      // --- MODIFICHE QUI SOTTO ---
+      minZoom: 2, // 1. Impedisce di fare zoom out oltre questo livello (evita che la mappa diventi minuscola)
+      maxBounds: [ // 2. Definisce i confini del mondo (Sud-Ovest, Nord-Est)
+        [-90, -180], 
+        [90, 180]
+      ],
+      maxBoundsViscosity: 1.0, // 3. Rende i confini "solidi" (senza effetto elastico)
+      worldCopyJump: true, // Opzionale: se scorri orizzontalmente, il mondo si ripete all'infinito invece di finire
     });
 
     // Dark themed OpenStreetMap tiles (CartoDB Dark Matter - free)
