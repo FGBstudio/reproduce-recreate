@@ -120,8 +120,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         <div className="flex flex-col items-center gap-3 md:gap-6">
           {/* Brand/Holding Logo */}
           <div className="relative pointer-events-auto">
-            <div className="absolute inset-0 bg-white/60 blur-3xl rounded-full scale-150" />
-            <div className="relative bg-white/60 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/20 shadow-2xl">
+            <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full scale-150" />
+            <div className="relative bg-slate-950/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/10 shadow-2xl">
               {displayEntity.logo ? (
                 <img 
                   src={displayEntity.logo} 
@@ -138,7 +138,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           </div>
           
           {/* Stats Cards */}
-          <div className="glass-panel rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px] pointer-events-auto">
+          <div className="bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px] pointer-events-auto shadow-xl">
             <div className="text-center mb-2 md:mb-3">
               <h3 className="text-base md:text-lg font-semibold text-foreground">{displayEntity.name}</h3>
               <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
