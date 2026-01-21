@@ -105,10 +105,6 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   const showCharts = filteredProjects.length > 1;
 
-  // STILE VETRO SATINATO - stesso effetto di prima, ma con blur più forte
-  // (aumenta la sfocatura della mappa sotto senza cambiare il colore percepito)
-  const glassPanelClass =
-    "relative overflow-hidden border border-white/15 bg-black/30 backdrop-blur-[3000px] backdrop-saturate-200 shadow-2xl";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
@@ -121,7 +117,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {/* Glow effect bianco diffuso */}
             <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-110" />
             
-            <div className={`relative ${glassPanelClass} rounded-2xl md:rounded-3xl p-4 md:p-6`}>
+            <div className="glass-panel relative rounded-2xl md:rounded-3xl p-4 md:p-6">
               {displayEntity.logo ? (
                 <img 
                   src={displayEntity.logo} 
@@ -138,7 +134,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           </div>
           
           {/* Stats Cards Container */}
-          <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px] pointer-events-auto`}>
+          <div className="glass-panel rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px] pointer-events-auto">
             <div className="text-center mb-2 md:mb-3">
               <h3 className="text-base md:text-lg font-semibold text-foreground">{displayEntity.name}</h3>
               <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
@@ -184,7 +180,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         {showCharts && (
           <div className={`flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full ${chartsExpanded ? 'grid' : 'hidden'} md:grid`}>
             {/* Energy Comparison */}
-            <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4`}>
+            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
               <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Energy Consumption (kWh)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
