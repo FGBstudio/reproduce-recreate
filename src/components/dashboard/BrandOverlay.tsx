@@ -213,7 +213,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
 
             {/* CO2 Comparison */}
-            <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4`}>
+            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
               <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Air Quality (CO₂ ppm)</h4>
               <ResponsiveContainer width="100%" height={120} className="md:hidden">
                 <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
@@ -244,7 +244,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
 
             {/* Radar Chart */}
-            <div className={`${glassPanelClass} rounded-xl md:rounded-2xl p-2.5 md:p-4 md:col-span-2`}>
+            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4 md:col-span-2">
               <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Store Performance</h4>
               <ResponsiveContainer width="100%" height={160} className="md:hidden">
                 <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
