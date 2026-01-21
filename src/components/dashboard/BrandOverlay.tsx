@@ -108,7 +108,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   // STILE VETRO SATINATO - stesso effetto di prima, ma con blur più forte
   // (aumenta la sfocatura della mappa sotto senza cambiare il colore percepito)
   const glassPanelClass =
-    "relative overflow-hidden border border-white/15 bg-black/60 backdrop-blur-[60px] backdrop-saturate-500 shadow-3xl";
+    "relative overflow-hidden border border-white/15 bg-black/50 backdrop-blur-[2px] backdrop-saturate-500 shadow-3xl";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
@@ -119,7 +119,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           {/* Brand/Holding Logo Container */}
           <div className="relative pointer-events-auto">
             {/* Glow effect bianco diffuso */}
-            <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full scale-110" />
+            <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-110" />
             
             <div className={`relative ${glassPanelClass} rounded-2xl md:rounded-3xl p-4 md:p-6`}>
               {displayEntity.logo ? (
