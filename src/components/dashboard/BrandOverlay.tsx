@@ -105,14 +105,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   const showCharts = filteredProjects.length > 1;
 
-  // STILE VETRO SATINATO CHIARO (Opaco e leggibile)
-  // bg-white/80 = Bianco all'80% (molto coprente ma luminoso)
-  // backdrop-blur-xl = Sfocatura forte dietro
-  // border-white/40 = Bordo bianco semitrasparente per definizione
-  // shadow-lg = Ombra morbida per stacco
-  const glassPanelClass =
-  "relative overflow-hidden border border-white/15 bg-black/60 backdrop-blur-2xl shadow-2xl";
-
+  // STILE VETRO SATINATO - usa lo stesso effetto glass-panel del design system
+  const glassPanelClass = "glass-panel relative overflow-hidden";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
