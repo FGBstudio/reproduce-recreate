@@ -108,7 +108,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   // STILE VETRO SATINATO - stesso effetto di prima, ma con blur più forte
   // (aumenta la sfocatura della mappa sotto senza cambiare il colore percepito)
   const glassPanelClass =
-    "relative overflow-hidden border border-white/15 bg-black/50 backdrop-blur-[300px] backdrop-saturate-200 shadow-3xl";
+    "relative overflow-hidden border border-white/15 bg-black/30 backdrop-blur-[3000px] backdrop-saturate-200 shadow-2xl";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
