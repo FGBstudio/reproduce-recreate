@@ -300,7 +300,7 @@ const EnergyCard = ({ status, enabled, onClick, liveData }: {
           <ReadingItem 
             icon={<Fan className="w-3.5 h-3.5" />}
             label="HVAC"
-            value={readings.hvac.value.toString()}
+            value={readings.hvac.value.toFixed(1)}
             unit="kW"
             status={readings.hvac.status}
           />
