@@ -15,7 +15,10 @@ interface BrandOverlayProps {
 }
 
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
+  // Stato per la visibilità su Mobile (default chiuso)
   const [chartsExpanded, setChartsExpanded] = useState(false);
+  // Stato per la visibilità su Desktop (default aperto)
+  const [isDesktopVisible, setIsDesktopVisible] = useState(true);
 
   // 1. RECUPERIAMO LE LISTE COMPLETE (REALI + DEMO)
   const { brands } = useAllBrands();
@@ -105,7 +108,6 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   const showCharts = filteredProjects.length > 1;
 
-
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
       <div className="flex flex-col lg:flex-row items-center lg:items-start gap-3 md:gap-6 animate-fade-in max-w-6xl w-full max-h-full overflow-y-auto">
@@ -164,21 +166,38 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             </div>
             
             {showCharts && (
-              <button
-                onClick={() => setChartsExpanded(!chartsExpanded)}
-                className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/50 hover:bg-white/70 backdrop-blur-md rounded-lg border border-white/30 text-xs font-medium transition-all pointer-events-auto mt-2 text-slate-700"
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
-                {chartsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
+              <>
+                {/* Pulsante Mobile */}
+                <button
+                  onClick={() => setChartsExpanded(!chartsExpanded)}
+                  className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/50 hover:bg-white/70 backdrop-blur-md rounded-lg border border-white/30 text-xs font-medium transition-all pointer-events-auto mt-2 text-slate-700"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
+                  {chartsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+
+                {/* Pulsante Desktop (Nuovo) */}
+                <button
+                  onClick={() => setIsDesktopVisible(!isDesktopVisible)}
+                  className="hidden md:flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-muted-foreground hover:text-foreground"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>{isDesktopVisible ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
+                  {isDesktopVisible ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </>
             )}
           </div>
         </div>
 
         {/* Comparison Charts */}
         {showCharts && (
-          <div className={`flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full ${chartsExpanded ? 'grid' : 'hidden'} md:grid`}>
+          <div className={`
+            flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full 
+            ${chartsExpanded ? 'grid' : 'hidden'} 
+            md:${isDesktopVisible ? 'grid' : 'hidden'}
+          `}>
             {/* Energy Comparison */}
             <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
               <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Energy Consumption (kWh)</h4>
