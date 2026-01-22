@@ -307,21 +307,21 @@ const EnergyCard = ({ status, enabled, onClick, liveData }: {
           <ReadingItem 
             icon={<Lightbulb className="w-3.5 h-3.5" />}
             label="Lighting"
-            value={readings.lighting.value.toString()}
+            value={readings.lighting.value.toFixed(1)}
             unit="kW"
             status={readings.lighting.status}
           />
           <ReadingItem 
             icon={<Plug className="w-3.5 h-3.5" />}
             label="Plugs & Loads"
-            value={readings.plugs.value.toString()}
+            value={readings.plugs.value.toFixed(1)}
             unit="kW"
             status={readings.plugs.status}
           />
           <ReadingItem 
             icon={<MoreHorizontal className="w-3.5 h-3.5" />}
             label="Other"
-            value={readings.other.value.toString()}
+            value={readings.other.value.toFixed(1)}
             unit="kW"
             status={readings.other.status}
           />
@@ -408,56 +408,56 @@ const AirCard = ({ status, enabled, project, onClick, liveData }: {
             <ReadingItem 
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="CO₂"
-              value={readings.co2.value.toString()}
+              value={readings.co2.value.toFixed(1)}
               unit={readings.co2.unit}
               status={readings.co2.status}
             />
             <ReadingItem 
               icon={<Wind className="w-3.5 h-3.5" />}
               label="TVOC"
-              value={readings.tvoc.value.toString()}
+              value={readings.tvoc.value.toFixed(1)}
               unit={readings.tvoc.unit}
               status={readings.tvoc.status}
             />
             <ReadingItem 
               icon={<Activity className="w-3.5 h-3.5" />}
               label="PM2.5"
-              value={readings.pm25.value.toString()}
+              value={readings.pm25.value.toFixed(1)}
               unit={readings.pm25.unit}
               status={readings.pm25.status}
             />
             <ReadingItem 
               icon={<Activity className="w-3.5 h-3.5" />}
               label="PM10"
-              value={readings.pm10.value.toString()}
+              value={readings.pm10.value.toFixed(1)}
               unit={readings.pm10.unit}
               status={readings.pm10.status}
             />
             <ReadingItem 
               icon={<Thermometer className="w-3.5 h-3.5" />}
               label="Temp"
-              value={readings.temp.value.toString()}
+              value={readings.temp.value.toFixed(1)}
               unit={readings.temp.unit}
               status={readings.temp.status}
             />
             <ReadingItem 
               icon={<Droplet className="w-3.5 h-3.5" />}
               label="Humidity"
-              value={readings.humidity.value.toString()}
+              value={readings.humidity.value.toFixed(1)}
               unit={readings.humidity.unit}
               status={readings.humidity.status}
             />
             <ReadingItem 
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="CO"
-              value={readings.co.value.toString()}
+              value={readings.co.value.toFixed(1)}
               unit={readings.co.unit}
               status={readings.co.status}
             />
             <ReadingItem 
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="O₃"
-              value={readings.o3.value.toString()}
+              value={readings.o3.value.toFixed(1)}
               unit={readings.o3.unit}
               status={readings.o3.status}
             />
