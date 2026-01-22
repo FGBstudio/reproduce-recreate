@@ -224,17 +224,13 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         }
         .marker-dot {
           position: relative;
-          width: 28px;
-          height: 28px;
-          background: hsl(188, 100%, 19%);
-          border: 2px solid hsl(50, 100%, 94%);
-          border-radius: 50%;
+          width: 100%;   /* Adatta al contenitore */
+          height: 100%;  /* Adatta al contenitore */
           display: flex;
           align-items: center;
           justify-content: center;
-          color: hsl(50, 100%, 94%);
-          box-shadow: 0 0 20px rgba(0, 77, 97, 0.6);
-          transition: all 0.3s ease;
+          /* Rimosso background, border, box-shadow */
+          transition: transform 0.3s ease;
           cursor: pointer;
         }
         @media (min-width: 768px) {
@@ -254,9 +250,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
           }
         }
         .marker-container:hover .marker-dot {
-          background: hsl(43, 49%, 57%);
-          transform: scale(1.25);
-          box-shadow: 0 0 40px rgba(192, 160, 98, 0.7);
+          transform: scale(1.1);
         }
         
         /* Custom popup styles */
