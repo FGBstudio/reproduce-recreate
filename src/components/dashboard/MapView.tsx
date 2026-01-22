@@ -110,7 +110,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
             <div class="marker-pulse"></div>
             <div class="marker-dot">
               <img 
-                src="/marker-pin.png" 
+                src="/marker.png" 
                 alt="marker" 
                 style="width: 60%; height: 60%; object-fit: contain;"
               />
