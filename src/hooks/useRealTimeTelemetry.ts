@@ -193,11 +193,11 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
 
   switch (timePeriod) {
     case "today": {
-      const hours = eachHourOfInterval({ start: startOfDay(now), end:(now) });
+      const hours = eachHourOfInterval({ start: startOfDay(now), end: now });
       return hours.map((hour, i) => generatePoint(format(hour, "HH:mm"), i));
     }
     case "week": {
-      const days = eachDayOfInterval({ start: subDays(now, 6), end: (now) });
+      const days = eachDayOfInterval({ start: subDays(now, 6), end: now });
       return days.map((day, i) => ({
         ...generatePoint(format(day, "EEE", { locale: it }), i),
         actual: Math.round(400 + seededRandom(i * 19) * 300),
@@ -206,7 +206,7 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
       }));
     }
     case "month": {
-      const weeks = eachWeekOfInterval({ start: subWeeks(now, 3), end: (now) }, { weekStartsOn: 1 });
+      const weeks = eachWeekOfInterval({ start: subWeeks(now, 3), end: now }, { weekStartsOn: 1 });
       return weeks.map((week, i) => ({
         ...generatePoint(`Sett ${i + 1}`, i),
         actual: Math.round(2000 + seededRandom(i * 41) * 1500),
@@ -215,7 +215,7 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
       }));
     }
     case "year": {
-      const months = eachMonthOfInterval({ start: startOfYear(now), end: (now) });
+      const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
       return months.map((month, i) => ({
         ...generatePoint(format(month, "MMM", { locale: it }), i),
         actual: Math.round(8000 + seededRandom(i * 59) * 4000),
