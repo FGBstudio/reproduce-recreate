@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Zap, Wind, Droplets, Building2, Tag } from "lucide-react";
-import { MonitoringType, getBrandsByHolding } from "@/lib/data";
+import { MonitoringType } from "@/lib/data";
 import { useAllHoldings, useAllBrands } from "@/hooks/useRealTimeData";
 import {
   Select,
@@ -18,8 +18,8 @@ interface RegionNavProps {
   onFilterToggle: (filter: MonitoringType) => void;
   selectedHolding: string | null;
   selectedBrand: string | null;
-  onHoldingChange: (holdingId: string | null) => void;
-  onBrandChange: (brandId: string | null) => void;
+  onHoldingChange?: (holdingId: string | null) => void;
+  onBrandChange?: (brandId: string | null) => void;
 }
 
 const regionButtons = [
@@ -51,10 +51,13 @@ const RegionNav = ({
   const { holdings, isLoading: holdingsLoading } = useAllHoldings();
   const { brands, isLoading: brandsLoading } = useAllBrands();
 
+  // Cascading filter: when a holding is selected, only show brands that belong to it
   const availableBrands = useMemo(() => {
-    return selectedHolding 
-      ? getBrandsByHolding(selectedHolding) 
-      : brands;
+    if (!selectedHolding) {
+      return brands;
+    }
+    // Filter brands by the selected holding's ID
+    return brands.filter(b => b.holdingId === selectedHolding);
   }, [selectedHolding, brands]);
 
   return (
@@ -72,9 +75,11 @@ const RegionNav = ({
             <Select 
               value={selectedHolding || "all"} 
               onValueChange={(val) => {
-                onHoldingChange(val === "all" ? null : val);
-                onBrandChange(null);
+                onHoldingChange?.(val === "all" ? null : val);
+                // Clear brand selection when holding changes (cascading)
+                onBrandChange?.(null);
               }}
+              disabled={!onHoldingChange}
             >
               <SelectTrigger className="w-[80px] h-6 border-0 bg-transparent text-xs focus:ring-0 px-1">
                 <SelectValue placeholder="Holdings" />
@@ -92,7 +97,8 @@ const RegionNav = ({
             <Tag className="w-3.5 h-3.5 text-muted-foreground" />
             <Select 
               value={selectedBrand || "all"} 
-              onValueChange={(val) => onBrandChange(val === "all" ? null : val)}
+              onValueChange={(val) => onBrandChange?.(val === "all" ? null : val)}
+              disabled={!onBrandChange}
             >
               <SelectTrigger className="w-[80px] h-6 border-0 bg-transparent text-xs focus:ring-0 px-1">
                 <SelectValue placeholder="Brands" />
@@ -154,9 +160,11 @@ const RegionNav = ({
           <Select 
             value={selectedHolding || "all"} 
             onValueChange={(val) => {
-              onHoldingChange(val === "all" ? null : val);
-              onBrandChange(null);
+              onHoldingChange?.(val === "all" ? null : val);
+              // Clear brand selection when holding changes (cascading)
+              onBrandChange?.(null);
             }}
+            disabled={!onHoldingChange}
           >
             <SelectTrigger className="w-[120px] h-8 border-0 bg-transparent text-sm focus:ring-0">
               <SelectValue placeholder="All Holdings" />
@@ -174,7 +182,8 @@ const RegionNav = ({
           <Tag className="w-4 h-4 text-muted-foreground" />
           <Select 
             value={selectedBrand || "all"} 
-            onValueChange={(val) => onBrandChange(val === "all" ? null : val)}
+            onValueChange={(val) => onBrandChange?.(val === "all" ? null : val)}
+            disabled={!onBrandChange}
           >
             <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent text-sm focus:ring-0">
               <SelectValue placeholder="All Brands" />
