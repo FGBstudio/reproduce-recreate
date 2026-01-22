@@ -135,7 +135,7 @@ export const useDeviceData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
 
     switch (timePeriod) {
       case "today": {
-        const hours = eachHourOfInterval({ start: startOfDay(now), end: endOfDay(now) });
+        const hours = eachHourOfInterval({ start: startOfDay(now), end: now });
         return hours.map((hour, i) => generateDataPoint(format(hour, "HH:mm"), i, 0.05));
       }
       case "week": {
