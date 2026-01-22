@@ -25,7 +25,7 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
         // Hourly data for today
         const hours = eachHourOfInterval({
           start: startOfDay(now),
-          end: now
+          end: endOfDay(now)
         });
         return hours.map((hour, i) => ({
           label: format(hour, "HH:mm"),
@@ -135,7 +135,7 @@ export const useDeviceData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
 
     switch (timePeriod) {
       case "today": {
-        const hours = eachHourOfInterval({ start: startOfDay(now), end: now });
+        const hours = eachHourOfInterval({ start: startOfDay(now), end: endOfDay(now) });
         return hours.map((hour, i) => generateDataPoint(format(hour, "HH:mm"), i, 0.05));
       }
       case "week": {
@@ -187,7 +187,7 @@ export const useCO2Data = (timePeriod: TimePeriod, dateRange?: DateRange) => {
 
     switch (timePeriod) {
       case "today": {
-        const hours = eachHourOfInterval({ start: startOfDay(now), end: now });
+        const hours = eachHourOfInterval({ start: startOfDay(now), end: endOfDay(now) });
         return hours.map((hour, i) => generateDataPoint(format(hour, "HH:mm"), i));
       }
       case "week": {
@@ -237,7 +237,7 @@ export const useWaterData = (timePeriod: TimePeriod, dateRange?: DateRange) => {
 
     switch (timePeriod) {
       case "today": {
-        const hours = eachHourOfInterval({ start: startOfDay(now), end: now });
+        const hours = eachHourOfInterval({ start: startOfDay(now), end: endOfDay(now) });
         return hours.map((hour, i) => generateDataPoint(format(hour, "HH:mm"), i, 0.02));
       }
       case "week": {
