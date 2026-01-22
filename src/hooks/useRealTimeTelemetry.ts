@@ -72,7 +72,6 @@ function getTimeRangeParams(timePeriod: TimePeriod, dateRange?: DateRange) {
   switch (timePeriod) {
     case "today":
       start = startOfDay(now);
-      end = endOfDay(now);
       bucket = "1h";
       break;
     case "week":
