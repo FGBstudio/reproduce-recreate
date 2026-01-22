@@ -197,7 +197,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       }));
       setBrands(mappedBrands);
 
-      // Fetch sites (exclude inbox)
+      // Fetch sites (exclude inbox) - include module columns
       const { data: sitesData, error: sitesError } = await supabase
         .from('sites')
         .select('*')
@@ -224,21 +224,51 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       }));
       setSites(mappedSites);
 
-      // Projects are derived from sites (no separate site_config table needed)
-      // Load saved project configs from localStorage as supplement
+      // Projects are derived from sites
+      // Module configuration now comes from sites table (auto-enabled by device assignment trigger)
+      // localStorage is used as fallback/override for manual configurations
       const savedConfigs = loadProjectConfigs();
       
-      const siteProjects: AdminProject[] = mappedSites.map(s => {
+      const siteProjects: AdminProject[] = (sitesData || []).map(s => {
         const savedConfig = savedConfigs[s.id];
+        
+        // Build modules from DB columns (primary source) with localStorage override
+        const dbModules: ProjectModules = {
+          energy: {
+            ...defaultProjectModules.energy,
+            enabled: s.module_energy_enabled ?? false,
+            showDemo: s.module_energy_show_demo ?? false,
+          },
+          air: {
+            ...defaultProjectModules.air,
+            enabled: s.module_air_enabled ?? false,
+            showDemo: s.module_air_show_demo ?? false,
+          },
+          water: {
+            ...defaultProjectModules.water,
+            enabled: s.module_water_enabled ?? false,
+            showDemo: s.module_water_show_demo ?? false,
+          },
+        };
+        
+        // If localStorage has module overrides, merge them (localStorage wins for manual config)
+        const finalModules = savedConfig?.modules 
+          ? {
+              energy: { ...dbModules.energy, ...savedConfig.modules.energy },
+              air: { ...dbModules.air, ...savedConfig.modules.air },
+              water: { ...dbModules.water, ...savedConfig.modules.water },
+            }
+          : dbModules;
+        
         return {
-          id: s.id, // Use site.id directly as project id
+          id: s.id,
           siteId: s.id,
           name: savedConfig?.name || s.name,
           status: (savedConfig?.status as 'active' | 'inactive' | 'pending') || 'active',
-          modules: savedConfig?.modules || { ...defaultProjectModules },
+          modules: finalModules,
           certifications: (savedConfig?.certifications as CertificationType[]) || [],
-          createdAt: s.createdAt,
-          updatedAt: s.updatedAt,
+          createdAt: new Date(s.created_at),
+          updatedAt: new Date(s.updated_at),
         };
       });
       setProjects(siteProjects);
