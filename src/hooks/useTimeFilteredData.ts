@@ -25,7 +25,7 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
         // Hourly data for today
         const hours = eachHourOfInterval({
           start: startOfDay(now),
-          end: endOfDay(now)
+          end: now
         });
         return hours.map((hour, i) => ({
           label: format(hour, "HH:mm"),
