@@ -107,18 +107,17 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         className: "custom-marker",
         html: `
           <div class="marker-container">
-            <div class="marker-pulse"></div>
-            <div class="marker-dot">
+            <div class="marker-dot" style="background: transparent; border: none; box-shadow: none; border-radius: 0;">
               <img 
                 src="/marker.png" 
                 alt="marker" 
-                style="width: 60%; height: 60%; object-fit: contain;"
+                style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));"
               />
             </div>
           </div>
         `,
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
+        iconSize: [48, 48], // Regola queste dimensioni se il tuo PNG appare troppo grande o piccolo
+        iconAnchor: [24, 48], // [X, Y] - [24, 48] ancora il punto in basso al centro (ideale per i Pin)
       });
     };
 
