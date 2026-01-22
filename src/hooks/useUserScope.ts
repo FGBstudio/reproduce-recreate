@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { brands as mockBrands } from '@/lib/data';
 
 // Client role types (mapped from user_memberships)
 export type ClientRole = 
@@ -67,14 +68,39 @@ export const useUserScope = (): UserScopeInfo => {
       return;
     }
 
+    // --- HELPER PER LOGICA EMAIL (Fallback) ---
+    const checkEmailForBrandScope = () => {
+      const email = user.email?.toLowerCase() || '';
+      const matchedBrand = mockBrands.find(b => 
+        email.includes(b.id) || email.includes(b.name.toLowerCase())
+      );
+
+      if (matchedBrand) {
+        setScopeInfo({
+          clientRole: 'ADMIN_BRAND',
+          holdingId: matchedBrand.holdingId,
+          brandId: matchedBrand.id,
+          siteId: null,
+          projectId: null,
+          accessibleHoldingIds: [matchedBrand.holdingId],
+          accessibleBrandIds: [matchedBrand.id],
+          accessibleSiteIds: [],
+          isLoading: false,
+        });
+        return true;
+      }
+      return false;
+    };
+
     if (!isSupabaseConfigured) {
-      // Mock mode - treat as FGB user
-      setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
+      if (!checkEmailForBrandScope()) {
+        setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
+      }
       return;
     }
 
+    // --- REAL DB MODE ---
     try {
-      // Fetch user memberships
       const { data: memberships, error } = await supabase
         .from('user_memberships')
         .select('scope_type, scope_id, permission')
@@ -83,8 +109,10 @@ export const useUserScope = (): UserScopeInfo => {
       if (error) throw error;
 
       if (!memberships || memberships.length === 0) {
-        // No memberships = FGB user without specific scope
-        setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
+        // Fallback email se non ci sono membership nel DB
+        if (!checkEmailForBrandScope()) {
+          setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
+        }
         return;
       }
 
@@ -93,28 +121,33 @@ export const useUserScope = (): UserScopeInfo => {
       const brandMemberships = memberships.filter(m => m.scope_type === 'brand');
       const siteMemberships = memberships.filter(m => m.scope_type === 'site');
 
-      // Determine highest privilege role
       let clientRole: ClientRole = 'USER_FGB';
       let holdingId: string | null = null;
       let brandId: string | null = null;
       let siteId: string | null = null;
       let projectId: string | null = null;
 
-      // Priority: ADMIN_HOLDING > ADMIN_BRAND > STORE_USER
-      const adminHolding = holdingMemberships.find(m => m.permission === 'admin');
-      if (adminHolding) {
+      // --- LOGICA MODIFICATA QUI SOTTO ---
+      // Accettiamo sia 'admin' che 'view' (o altro). Diamo priorità ad 'admin' se esiste.
+      
+      // 1. Check Holding
+      const activeHoldingMembership = holdingMemberships.find(m => m.permission === 'admin') || holdingMemberships[0];
+      
+      if (activeHoldingMembership) {
         clientRole = 'ADMIN_HOLDING';
-        holdingId = adminHolding.scope_id;
+        holdingId = activeHoldingMembership.scope_id;
       } else {
-        const adminBrand = brandMemberships.find(m => m.permission === 'admin');
-        if (adminBrand) {
-          clientRole = 'ADMIN_BRAND';
-          brandId = adminBrand.scope_id;
+        // 2. Check Brand (Ora accetta anche chi ha solo "view")
+        const activeBrandMembership = brandMemberships.find(m => m.permission === 'admin') || brandMemberships[0];
+        
+        if (activeBrandMembership) {
+          clientRole = 'ADMIN_BRAND'; // Usiamo questo ruolo per definire lo scope Brand, indipendentemente dal permesso
+          brandId = activeBrandMembership.scope_id;
         } else if (siteMemberships.length > 0) {
+          // 3. Check Site
           clientRole = 'STORE_USER';
           siteId = siteMemberships[0].scope_id;
           
-          // Fetch project ID for this site
           const { data: siteConfig } = await supabase
             .from('site_config')
             .select('id')
@@ -138,9 +171,12 @@ export const useUserScope = (): UserScopeInfo => {
         accessibleSiteIds: siteMemberships.map(m => m.scope_id),
         isLoading: false,
       });
+
     } catch (error) {
       console.error('Error fetching user scope:', error);
-      setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
+      if (!checkEmailForBrandScope()) {
+        setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
+      }
     }
   }, [user, isAdmin, authLoading]);
 
