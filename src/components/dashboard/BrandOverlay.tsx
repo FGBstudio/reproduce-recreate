@@ -124,7 +124,6 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                 <img 
                   src={displayEntity.logo} 
                   alt={displayEntity.name}
-                  // Rimosso filtro 'invert' per visualizzare i loghi originali su sfondo chiaro
                   className="h-12 md:h-20 w-auto object-contain opacity-90"
                 />
               ) : (
@@ -177,7 +176,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                   {chartsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
 
-                {/* Pulsante Desktop (Nuovo) */}
+                {/* Pulsante Desktop */}
                 <button
                   onClick={() => setIsDesktopVisible(!isDesktopVisible)}
                   className="hidden md:flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-muted-foreground hover:text-foreground"
@@ -196,7 +195,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           <div className={`
             flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full 
             ${chartsExpanded ? 'grid' : 'hidden'} 
-            md:${isDesktopVisible ? 'grid' : 'hidden'}
+            ${isDesktopVisible ? 'md:grid' : 'md:hidden'} 
           `}>
             {/* Energy Comparison */}
             <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
