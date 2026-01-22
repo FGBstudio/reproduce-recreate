@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useAdminData } from '@/contexts/AdminDataContext';
 import { format } from 'date-fns';
 
 // Constants
@@ -71,6 +72,7 @@ const statusConfig: Record<string, { color: string; icon: React.ReactNode }> = {
 
 export const DevicesManager = () => {
   const { toast } = useToast();
+  const { refreshData: refreshAdminData } = useAdminData();
   const [devices, setDevices] = useState<Device[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
@@ -271,10 +273,14 @@ export const DevicesManager = () => {
 
         toast({
           title: 'Dispositivi spostati',
-          description: `${selectedDevices.size} dispositivo/i spostato/i con successo`,
+          description: `${selectedDevices.size} dispositivo/i spostato/i con successo. Moduli attivati automaticamente.`,
         });
 
+        // Refresh devices list
         await fetchData();
+        
+        // Refresh admin data to pick up auto-enabled modules
+        await refreshAdminData();
       }
 
       setSelectedDevices(new Set());
