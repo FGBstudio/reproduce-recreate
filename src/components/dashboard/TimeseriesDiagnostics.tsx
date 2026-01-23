@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import type { ApiTimeseriesPoint, ApiTimeseriesResponse } from "@/lib/api";
+import type { ApiLatestResponse, ApiTimeseriesPoint, ApiTimeseriesResponse } from "@/lib/api";
 
 type TimeseriesParams = {
   device_ids: string[];
@@ -15,6 +15,12 @@ type TimeseriesParams = {
   start: string;
   end: string;
   bucket?: string;
+};
+
+type LatestParams = {
+  site_id?: string;
+  device_ids?: string[];
+  metrics?: string[];
 };
 
 type Props = {
@@ -25,6 +31,14 @@ type Props = {
     UseQueryResult<ApiTimeseriesResponse | null>,
     "data" | "status" | "fetchStatus" | "isFetching" | "isLoading" | "isError" | "error"
   >;
+  latest?: {
+    enabled: boolean;
+    params: LatestParams;
+    query: Pick<
+      UseQueryResult<ApiLatestResponse | null>,
+      "data" | "status" | "fetchStatus" | "isFetching" | "isLoading" | "isError" | "error"
+    >;
+  };
 };
 
 function formatIso(iso: string) {
@@ -38,7 +52,7 @@ function safeIsoFromBucket(p: ApiTimeseriesPoint) {
   return p.ts_bucket;
 }
 
-export function TimeseriesDiagnostics({ title = "Diagnostica timeseries", enabled, params, query }: Props) {
+export function TimeseriesDiagnostics({ title = "Diagnostica timeseries", enabled, params, query, latest }: Props) {
   const [open, setOpen] = useState(true);
 
   const points = (query.data?.data ?? []) as ApiTimeseriesPoint[];
@@ -86,6 +100,7 @@ export function TimeseriesDiagnostics({ title = "Diagnostica timeseries", enable
       {!query.isError && enabled && query.status === "success" && stats.pointCount === 0 ? (
         <Badge variant="destructive">0 punti</Badge>
       ) : null}
+      {latest?.enabled ? <Badge variant="outline">latest: {latest.query.status}</Badge> : null}
     </div>
   );
 
@@ -164,6 +179,58 @@ export function TimeseriesDiagnostics({ title = "Diagnostica timeseries", enable
             </div>
 
             <Separator className="my-4" />
+
+            {latest?.enabled ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Latest (snapshot)</div>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div>
+                        status: <span className="font-mono">{latest.query.status}</span>
+                        {latest.query.isFetching ? <span className="ml-2">(fetching…)</span> : null}
+                      </div>
+                      <div>
+                        device_ids: <span className="font-mono">{latest.params.device_ids?.length ?? 0}</span>
+                      </div>
+                      <div>
+                        metrics richieste: <span className="font-mono">{latest.params.metrics?.length ?? 0}</span>
+                      </div>
+                      <div>
+                        righe: <span className="font-mono">{latest.query.data?.meta?.metric_count ?? 0}</span>
+                      </div>
+                      <div>
+                        device_count: <span className="font-mono">{latest.query.data?.meta?.device_count ?? 0}</span>
+                      </div>
+                      <div className="break-all">
+                        metriche presenti:{" "}
+                        <span className="font-mono">
+                          {latest.query.data?.data
+                            ? Array.from(
+                                new Set(
+                                  Object.values(latest.query.data.data)
+                                    .flat()
+                                    .map((m) => m.metric)
+                                )
+                              )
+                                .slice(0, 20)
+                                .join(", ") || "—"
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Errori</div>
+                    <div className="text-xs text-muted-foreground break-words">
+                      {latest.query.isError ? String(latest.query.error) : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+              </>
+            ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
