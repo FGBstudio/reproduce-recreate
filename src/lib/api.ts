@@ -15,6 +15,9 @@ function normalizeMetric(metric: string): string {
   if (metric.includes('.')) {
     // normalize legacy alias
     if (metric === 'iaq.tvoc') return 'iaq.voc';
+    // dotted legacy env keys seen in some firmwares
+    if (metric === 'env.temp') return 'env.temperature';
+    if (metric === 'env.hum') return 'env.humidity';
     return metric;
   }
 
@@ -64,9 +67,10 @@ function toDbMetricCandidates(canonical: string): string[] {
 
   const short = canonical.split('.').pop()!;
   // env.temperature historically stored as 'temp'
-  if (canonical === 'env.temperature') return [canonical, 'temp', 'temperature', 'temp_c'];
-  if (canonical === 'env.humidity') return [canonical, 'humidity', 'hum', 'humidity_rh'];
-  if (canonical === 'iaq.voc') return [canonical, 'voc', 'tvoc'];
+  if (canonical === 'env.temperature') return [canonical, 'env.temp', 'temp', 'temperature', 'temp_c'];
+  if (canonical === 'env.humidity') return [canonical, 'env.hum', 'humidity', 'hum', 'humidity_rh'];
+  // Some DBs stored the canonical dotted alias 'iaq.tvoc'
+  if (canonical === 'iaq.voc') return [canonical, 'iaq.tvoc', 'voc', 'tvoc'];
   if (canonical === 'iaq.co2') return [canonical, 'co2', 'CO2'];
   if (canonical === 'iaq.pm25') return [canonical, 'pm25', 'PM2.5', 'pm2_5'];
   if (canonical === 'iaq.pm10') return [canonical, 'pm10', 'PM10'];

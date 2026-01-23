@@ -65,6 +65,12 @@ const getLiveBadgeColor = (isLive: boolean) => {
     : "bg-gray-400 text-white";
 };
 
+const formatMaybe = (value: number | undefined, digits = 1) =>
+  typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
+
+const formatMaybeInt = (value: number | undefined) =>
+  typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "—";
+
 // Reading item component for detailed metrics
 interface ReadingItemProps {
   icon: React.ReactNode;
@@ -219,29 +225,38 @@ const EnergyCard = ({ status, enabled, onClick, liveData }: {
 }) => {
   // Use real-time data if available, otherwise use mock
   const readings = useMemo(() => {
-    if (liveData?.metrics) {
-      const hvacValue = liveData.metrics['energy.hvac_kw'] || 22.5;
-      const lightingValue = liveData.metrics['energy.lighting_kw'] || 12.8;
-      const plugsValue = liveData.metrics['energy.plugs_kw'] || 8.5;
-      const totalPower = liveData.metrics['energy.power_kw'];
-      const otherValue = totalPower ? Math.max(0, totalPower - hvacValue - lightingValue - plugsValue) : 3.2;
-      
-      return {
-        hvac: { value: hvacValue, status: hvacValue > 30 ? "warning" as const : "good" as const },
-        lighting: { value: lightingValue, status: lightingValue > 20 ? "warning" as const : "good" as const },
-        plugs: { value: plugsValue, status: plugsValue > 12 ? "warning" as const : "good" as const },
-        other: { value: otherValue, status: "good" as const },
-      };
-    }
+    const isReal = !!liveData?.isRealData;
+    const m = isReal ? liveData!.metrics : {};
+
+    const totalPower = isReal ? m['energy.power_kw'] : undefined;
+    const hvacValue = isReal ? m['energy.hvac_kw'] : undefined;
+    const lightingValue = isReal ? m['energy.lighting_kw'] : undefined;
+    const plugsValue = isReal ? m['energy.plugs_kw'] : undefined;
+    const otherValue =
+      typeof totalPower === 'number' &&
+      typeof hvacValue === 'number' &&
+      typeof lightingValue === 'number' &&
+      typeof plugsValue === 'number'
+        ? Math.max(0, totalPower - hvacValue - lightingValue - plugsValue)
+        : undefined;
+
     return {
-      hvac: { value: 22.5, status: "good" as const },
-      lighting: { value: 12.8, status: "good" as const },
-      plugs: { value: 8.5, status: "warning" as const },
-      other: { value: 3.2, status: "good" as const },
+      totalPower,
+      hvac: {
+        value: hvacValue,
+        status: typeof hvacValue === 'number' && hvacValue > 30 ? "warning" as const : "good" as const,
+      },
+      lighting: {
+        value: lightingValue,
+        status: typeof lightingValue === 'number' && lightingValue > 20 ? "warning" as const : "good" as const,
+      },
+      plugs: {
+        value: plugsValue,
+        status: typeof plugsValue === 'number' && plugsValue > 12 ? "warning" as const : "good" as const,
+      },
+      other: { value: otherValue, status: "good" as const },
     };
   }, [liveData]);
-  
-  const totalKwh = Object.values(readings).reduce((sum, r) => sum + r.value, 0);
 
   if (!enabled) {
     return (
@@ -288,7 +303,7 @@ const EnergyCard = ({ status, enabled, onClick, liveData }: {
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">Consumo Attuale</span>
             <div className="flex items-center gap-1">
-              <span className="text-2xl font-bold text-gray-800">{totalKwh.toFixed(1)}</span>
+              <span className="text-2xl font-bold text-gray-800">{formatMaybe(readings.totalPower, 1)}</span>
               <span className="text-sm text-gray-500">kW</span>
             </div>
           </div>
@@ -300,28 +315,28 @@ const EnergyCard = ({ status, enabled, onClick, liveData }: {
           <ReadingItem 
             icon={<Fan className="w-3.5 h-3.5" />}
             label="HVAC"
-            value={readings.hvac.value.toFixed(1)}
+            value={formatMaybe(readings.hvac.value, 1)}
             unit="kW"
             status={readings.hvac.status}
           />
           <ReadingItem 
             icon={<Lightbulb className="w-3.5 h-3.5" />}
             label="Lighting"
-            value={readings.lighting.value.toFixed(1)}
+            value={formatMaybe(readings.lighting.value, 1)}
             unit="kW"
             status={readings.lighting.status}
           />
           <ReadingItem 
             icon={<Plug className="w-3.5 h-3.5" />}
             label="Plugs & Loads"
-            value={readings.plugs.value.toFixed(1)}
+            value={formatMaybe(readings.plugs.value, 1)}
             unit="kW"
             status={readings.plugs.status}
           />
           <ReadingItem 
             icon={<MoreHorizontal className="w-3.5 h-3.5" />}
             label="Other"
-            value={readings.other.value.toFixed(1)}
+            value={formatMaybe(readings.other.value, 1)}
             unit="kW"
             status={readings.other.status}
           />
@@ -341,27 +356,30 @@ const AirCard = ({ status, enabled, project, onClick, liveData }: {
 }) => {
   // Use real-time data if available
   const readings = useMemo(() => {
-    const m = liveData?.metrics || {};
-    const co2Val = m['iaq.co2'] || project.data.co2 || 520;
+    const isReal = !!liveData?.isRealData;
+    const m = isReal ? liveData!.metrics : {};
+    const co2Val = isReal ? m['iaq.co2'] : undefined;
     // DB normalizes TVOC as iaq.voc
-    const tvocVal = m['iaq.voc'] || 85;
-    const pm25Val = m['iaq.pm25'] || 12;
-    const pm10Val = m['iaq.pm10'] || 28;
-    const tempVal = m['env.temperature'] || 22.5;
-    const humidityVal = m['env.humidity'] || 48;
+    const tvocVal = isReal ? m['iaq.voc'] : undefined;
+    const pm25Val = isReal ? m['iaq.pm25'] : undefined;
+    const pm10Val = isReal ? m['iaq.pm10'] : undefined;
+    const tempVal = isReal ? m['env.temperature'] : undefined;
+    const humidityVal = isReal ? m['env.humidity'] : undefined;
+    const coVal = isReal ? m['iaq.co'] : undefined;
+    const o3Val = isReal ? m['iaq.o3'] : undefined;
     
     return {
-      co2: { value: co2Val, unit: "ppm", status: co2Val < 600 ? "good" as const : co2Val < 800 ? "warning" as const : "critical" as const },
+      co2: { value: co2Val, unit: "ppm", status: typeof co2Val === 'number' ? (co2Val < 600 ? "good" as const : co2Val < 800 ? "warning" as const : "critical" as const) : "good" as const },
       // Keep label 'TVOC' in UI, metric key is iaq.voc
-      tvoc: { value: tvocVal, unit: "ppb", status: tvocVal < 200 ? "good" as const : tvocVal < 400 ? "warning" as const : "critical" as const },
-      pm25: { value: pm25Val, unit: "µg/m³", status: pm25Val < 15 ? "good" as const : pm25Val < 25 ? "warning" as const : "critical" as const },
-      pm10: { value: pm10Val, unit: "µg/m³", status: pm10Val < 25 ? "good" as const : pm10Val < 50 ? "warning" as const : "critical" as const },
-      temp: { value: tempVal, unit: "°C", status: tempVal > 18 && tempVal < 26 ? "good" as const : "warning" as const },
-      humidity: { value: humidityVal, unit: "%", status: humidityVal > 30 && humidityVal < 60 ? "good" as const : "warning" as const },
-      co: { value: m['iaq.co'] || 0.8, unit: "ppm", status: "good" as const },
-      o3: { value: m['iaq.o3'] || 15, unit: "ppb", status: "good" as const },
+      tvoc: { value: tvocVal, unit: "ppb", status: typeof tvocVal === 'number' ? (tvocVal < 200 ? "good" as const : tvocVal < 400 ? "warning" as const : "critical" as const) : "good" as const },
+      pm25: { value: pm25Val, unit: "µg/m³", status: typeof pm25Val === 'number' ? (pm25Val < 15 ? "good" as const : pm25Val < 25 ? "warning" as const : "critical" as const) : "good" as const },
+      pm10: { value: pm10Val, unit: "µg/m³", status: typeof pm10Val === 'number' ? (pm10Val < 25 ? "good" as const : pm10Val < 50 ? "warning" as const : "critical" as const) : "good" as const },
+      temp: { value: tempVal, unit: "°C", status: typeof tempVal === 'number' ? (tempVal > 18 && tempVal < 26 ? "good" as const : "warning" as const) : "good" as const },
+      humidity: { value: humidityVal, unit: "%", status: typeof humidityVal === 'number' ? (humidityVal > 30 && humidityVal < 60 ? "good" as const : "warning" as const) : "good" as const },
+      co: { value: coVal, unit: "ppm", status: "good" as const },
+      o3: { value: o3Val, unit: "ppb", status: "good" as const },
     };
-  }, [liveData, project.data.co2]);
+  }, [liveData]);
 
   if (!enabled) {
     return (
@@ -410,56 +428,56 @@ const AirCard = ({ status, enabled, project, onClick, liveData }: {
             <ReadingItem 
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="CO₂"
-              value={readings.co2.value.toFixed(1)}
+              value={formatMaybe(readings.co2.value, 0)}
               unit={readings.co2.unit}
               status={readings.co2.status}
             />
             <ReadingItem 
               icon={<Wind className="w-3.5 h-3.5" />}
               label="TVOC"
-              value={readings.tvoc.value.toFixed(1)}
+              value={formatMaybe(readings.tvoc.value, 0)}
               unit={readings.tvoc.unit}
               status={readings.tvoc.status}
             />
             <ReadingItem 
               icon={<Activity className="w-3.5 h-3.5" />}
               label="PM2.5"
-              value={readings.pm25.value.toFixed(1)}
+              value={formatMaybe(readings.pm25.value, 1)}
               unit={readings.pm25.unit}
               status={readings.pm25.status}
             />
             <ReadingItem 
               icon={<Activity className="w-3.5 h-3.5" />}
               label="PM10"
-              value={readings.pm10.value.toFixed(1)}
+              value={formatMaybe(readings.pm10.value, 1)}
               unit={readings.pm10.unit}
               status={readings.pm10.status}
             />
             <ReadingItem 
               icon={<Thermometer className="w-3.5 h-3.5" />}
               label="Temp"
-              value={readings.temp.value.toFixed(1)}
+              value={formatMaybe(readings.temp.value, 1)}
               unit={readings.temp.unit}
               status={readings.temp.status}
             />
             <ReadingItem 
               icon={<Droplet className="w-3.5 h-3.5" />}
               label="Humidity"
-              value={readings.humidity.value.toFixed(1)}
+              value={formatMaybe(readings.humidity.value, 0)}
               unit={readings.humidity.unit}
               status={readings.humidity.status}
             />
             <ReadingItem 
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="CO"
-              value={readings.co.value.toFixed(1)}
+              value={formatMaybe(readings.co.value, 2)}
               unit={readings.co.unit}
               status={readings.co.status}
             />
             <ReadingItem 
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="O₃"
-              value={readings.o3.value.toFixed(1)}
+              value={formatMaybe(readings.o3.value, 0)}
               unit={readings.o3.unit}
               status={readings.o3.status}
             />
@@ -478,15 +496,16 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
 }) => {
   const readings = useMemo(() => {
-    const m = liveData?.metrics || {};
-    const totalLiters = m['water.total_liters'] || 1456;
-    const flowRate = m['water.flow_rate'] || 0;
+    const isReal = !!liveData?.isRealData;
+    const m = isReal ? liveData!.metrics : {};
+    const totalLiters = isReal ? m['water.total_liters'] : undefined;
+    const flowRate = isReal ? m['water.flow_rate'] : undefined;
     
     return {
-      dailyConsumption: Math.round(totalLiters),
-      vsBaseline: -8,
-      activeLeaks: flowRate > 0.5 && flowRate < 1 ? 1 : 0,
-      efficiency: 92,
+      dailyConsumption: typeof totalLiters === 'number' ? Math.round(totalLiters) : undefined,
+      vsBaseline: undefined as number | undefined,
+      activeLeaks: typeof flowRate === 'number' && flowRate > 0.5 && flowRate < 1 ? 1 : (typeof flowRate === 'number' ? 0 : undefined),
+      efficiency: undefined as number | undefined,
     };
   }, [liveData]);
 
@@ -533,13 +552,13 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
         {/* Main metrics */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-white/60 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-gray-800">{readings.dailyConsumption}</div>
+            <div className="text-2xl font-bold text-gray-800">{formatMaybeInt(readings.dailyConsumption)}</div>
             <div className="text-[10px] text-gray-500">L/giorno</div>
           </div>
           <div className="bg-white/60 rounded-lg p-3 text-center">
             <div className="flex items-center justify-center gap-1 text-emerald-600">
               <TrendingDown className="w-4 h-4" />
-              <span className="text-xl font-bold">{readings.vsBaseline}%</span>
+              <span className="text-xl font-bold">{readings.vsBaseline == null ? '—' : `${readings.vsBaseline}%`}</span>
             </div>
             <div className="text-[10px] text-gray-500">vs baseline</div>
           </div>
@@ -549,12 +568,12 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
         <div className="bg-white/40 rounded-lg p-3">
           <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
             <span className="text-xs text-gray-600">Efficienza</span>
-            <span className="text-sm font-semibold text-emerald-600">{readings.efficiency}%</span>
+            <span className="text-sm font-semibold text-emerald-600">{readings.efficiency == null ? '—' : `${readings.efficiency}%`}</span>
           </div>
           <div className="flex items-center justify-between py-1.5">
             <span className="text-xs text-gray-600">Perdite Attive</span>
-            <span className={`text-sm font-semibold ${readings.activeLeaks === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {readings.activeLeaks}
+            <span className={`text-sm font-semibold ${readings.activeLeaks === 0 ? 'text-emerald-600' : readings.activeLeaks == null ? 'text-gray-500' : 'text-red-600'}`}>
+              {readings.activeLeaks == null ? '—' : readings.activeLeaks}
             </span>
           </div>
         </div>
@@ -569,43 +588,40 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   
   // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
-    // Use real-time power data if available
-    const powerKw = liveData.metrics['energy.power_kw'];
-    const efficiency = powerKw ? Math.min(100, Math.max(0, 100 - (powerKw / 100) * 20)) : (project.data.hvac || 85);
+    const powerKw = liveData.isRealData ? liveData.metrics['energy.power_kw'] : undefined;
+    if (typeof powerKw !== 'number') {
+      return { score: 0, level: getStatusLevel(0), isLive: false };
+    }
+
+    const efficiency = Math.min(100, Math.max(0, 100 - (powerKw / 100) * 20));
     const score = Math.min(100, Math.max(0, efficiency));
     return {
       score,
       level: getStatusLevel(score),
-      isLive: liveData.isRealData,
-      lastUpdate: liveData.isRealData ? new Date().toISOString() : undefined,
+      isLive: true,
+      lastUpdate: new Date().toISOString(),
     };
   }, [project, liveData]);
 
   const airStatus = useMemo<ModuleStatus>(() => {
-    // Use real-time CO2 data if available
-    const co2 = liveData.metrics['iaq.co2'] || project.data.co2 || 500;
+    const co2 = liveData.isRealData ? liveData.metrics['iaq.co2'] : undefined;
+    if (typeof co2 !== 'number') {
+      return { score: 0, level: getStatusLevel(0), isLive: false };
+    }
+
     const co2Score = Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100));
-    const aqMultiplier = project.data.aq === "EXCELLENT" ? 1 : 
-                          project.data.aq === "GOOD" ? 0.9 : 
-                          project.data.aq === "MODERATE" ? 0.7 : 0.5;
-    const score = Math.round(co2Score * aqMultiplier);
-    return {
-      score,
-      level: getStatusLevel(score),
-      isLive: liveData.isRealData,
-    };
+    const score = Math.round(co2Score);
+    return { score, level: getStatusLevel(score), isLive: true };
   }, [project, liveData]);
 
   const waterStatus = useMemo<ModuleStatus>(() => {
-    // Use real-time water data if available
-    const flowRate = liveData.metrics['water.flow_rate'] || 0;
-    const efficiency = flowRate > 0 ? 85 : (70 + Math.random() * 25);
-    const score = Math.round(efficiency);
-    return {
-      score,
-      level: getStatusLevel(score),
-      isLive: liveData.isRealData && flowRate > 0,
-    };
+    const flowRate = liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined;
+    if (typeof flowRate !== 'number') {
+      return { score: 0, level: getStatusLevel(0), isLive: false };
+    }
+
+    const score = flowRate > 0 ? 85 : 60;
+    return { score, level: getStatusLevel(score), isLive: flowRate > 0 };
   }, [project, liveData]);
 
   const overallStatus = useMemo<ModuleStatus>(() => {
