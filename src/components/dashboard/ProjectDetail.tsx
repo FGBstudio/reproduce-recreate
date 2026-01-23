@@ -281,7 +281,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const airMetrics = useMemo(
     () => [
       "iaq.co2",
-      "iaq.tvoc",
+      // DB stores VOC as 'iaq.voc' (canonical 'iaq.tvoc' maps to 'voc')
+      "iaq.voc",
       "env.temperature",
       "env.humidity",
       "iaq.pm25",
@@ -613,7 +614,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   const tvocMultiSeries = useMemo(() => {
     if (!isSupabaseConfigured) return tvocHistoryData;
-    const data = buildSeriesByMetric("iaq.tvoc", 500);
+    const data = buildSeriesByMetric("iaq.voc", 500);
     return data.length ? data : tvocHistoryData;
   }, [buildSeriesByMetric, tvocHistoryData]);
 
