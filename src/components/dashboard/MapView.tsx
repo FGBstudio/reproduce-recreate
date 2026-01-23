@@ -116,8 +116,8 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
             </div>
           </div>
         `,
-        iconSize: [48, 48],
-        iconAnchor: [24, 48],
+        iconSize: [64, 64],
+        iconAnchor: [32, 64],
       });
     };
 
@@ -193,25 +193,28 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         .custom-marker {
           background: transparent;
           border: none;
+          display: flex !important;
+          align-items: flex-end !important;
+          justify-content: center !important;
         }
         .marker-container {
           position: relative;
-          width: 36px;
-          height: 36px;
+          width: 48px;
+          height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
         @media (min-width: 768px) {
           .marker-container {
-            width: 48px;
-            height: 48px;
+            width: 64px;
+            height: 64px;
           }
         }
         .marker-pulse {
           position: absolute;
-          width: 36px;
-          height: 36px;
+          width: 48px;
+          height: 48px;
           background: hsl(188, 100%, 19%, 0.3);
           border-radius: 50%;
           animation: pulse-ring 2s ease-out infinite;
