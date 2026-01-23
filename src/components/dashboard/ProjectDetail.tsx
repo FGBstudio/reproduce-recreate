@@ -281,7 +281,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const airMetrics = useMemo(
     () => [
       "iaq.co2",
-      "iaq.tvoc",
+      "iaq.voc",
       "env.temperature",
       "env.humidity",
       "iaq.pm25",
