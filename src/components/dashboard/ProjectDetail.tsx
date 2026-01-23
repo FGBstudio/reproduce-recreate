@@ -2600,6 +2600,316 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       </div>
       
       {/* Modals are already included inside the component structure above via ChartFullscreenModal calls */}
+      {/* ============================================================================== */}
+      {/* MODALS PER I GRAFICI A SCHERMO INTERO                                          */}
+      {/* Incolla questo blocco prima dell'ultimo </div> di chiusura del componente      */}
+      {/* ============================================================================== */}
+
+      {/* ENERGY: Actual vs Average */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'actualVsAvg'}
+        onClose={() => setFullscreenChart(null)}
+        title="Consumo Energetico - Dettaglio"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <AreaChart data={filteredEnergyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="energyGradientFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Area type="monotone" dataKey="actual" stroke="hsl(188, 100%, 35%)" strokeWidth={3} fill="url(#energyGradientFS)" name="Attuale" />
+            <Line type="monotone" dataKey="expected" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Previsto" />
+            <Line type="monotone" dataKey="average" stroke="hsl(0, 0%, 60%)" strokeWidth={2} strokeDasharray="3 3" dot={false} name="Media" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Heatmap */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'heatmap'}
+        onClose={() => setFullscreenChart(null)}
+        title="Heatmap Consumi"
+      >
+        <div className="flex flex-col h-full justify-center">
+          <div className="flex gap-4 h-[500px]">
+            <div className="text-sm text-gray-500 flex flex-col justify-between py-1 font-medium">
+              {Array.from({ length: 24 }, (_, i) => (
+                <div key={i}>{String(i).padStart(2, '0')}:00</div>
+              ))}
+            </div>
+            <div className="flex-1 flex flex-col">
+              <div className="flex-1 grid grid-cols-7 gap-1">
+                {heatmapData.flat().map((val, idx) => (
+                  <div key={idx} className="rounded-sm hover:opacity-80 transition-opacity" style={{ backgroundColor: heatmapColors[val] }} title={`Livello: ${val}`} />
+                ))}
+              </div>
+              <div className="flex justify-between text-sm text-gray-500 mt-4 font-medium px-2">
+                {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => <span key={d}>{d}</span>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Device Consumption */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'deviceCons'}
+        onClose={() => setFullscreenChart(null)}
+        title="Consumo per Dispositivo"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={filteredDeviceData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
+            <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Illuminazione" />
+            <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Prese" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* AIR: CO2 Trend */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'co2Trend'}
+        onClose={() => setFullscreenChart(null)}
+        title={`CO₂ Trend (${periodLabel})`}
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <LineChart data={co2MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            {selectedAirDevices.map((d) => (
+              <Line
+                key={d.id}
+                type="monotone"
+                dataKey={`d_${d.id.replace(/-/g, "")}`}
+                stroke={airColorById.get(d.id)}
+                strokeWidth={3}
+                dot={false}
+                name={airDeviceLabelById.get(d.id) || d.id}
+              />
+            ))}
+            <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* AIR: TVOC Trend */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'tvocTrend'}
+        onClose={() => setFullscreenChart(null)}
+        title={`TVOC Trend (${periodLabel})`}
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <LineChart data={tvocMultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            {selectedAirDevices.map((d) => (
+              <Line
+                key={d.id}
+                type="monotone"
+                dataKey={`d_${d.id.replace(/-/g, "")}`}
+                stroke={airColorById.get(d.id)}
+                strokeWidth={3}
+                dot={false}
+                name={airDeviceLabelById.get(d.id) || d.id}
+              />
+            ))}
+            <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* AIR: Temp & Humidity */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'tempHumidity'}
+        onClose={() => setFullscreenChart(null)}
+        title={`Temperatura & Umidità (${periodLabel})`}
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis yAxisId="temp" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
+            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 100]} label={{ value: '%HR', angle: 90, position: 'insideRight' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            {selectedAirDevices.map((d) => (
+              <Line
+                key={`${d.id}-temp`}
+                yAxisId="temp"
+                type="monotone"
+                dataKey={`d_${d.id.replace(/-/g, "")}_temp`}
+                stroke={airColorById.get(d.id)}
+                strokeWidth={3}
+                dot={false}
+                name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`}
+              />
+            ))}
+            {selectedAirDevices.map((d) => (
+              <Line
+                key={`${d.id}-hum`}
+                yAxisId="humidity"
+                type="monotone"
+                dataKey={`d_${d.id.replace(/-/g, "")}_hum`}
+                stroke={airColorById.get(d.id)}
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                dot={false}
+                name={`${airDeviceLabelById.get(d.id) || d.id} · Umidità`}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* AIR: PM2.5 */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'pm25'}
+        onClose={() => setFullscreenChart(null)}
+        title="Particolato PM2.5"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={pm25Data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Bar dataKey="indoor" fill="hsl(188, 100%, 35%)" name="Indoor" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="outdoor" fill="hsl(188, 100%, 60%)" name="Outdoor" radius={[4, 4, 0, 0]} />
+            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* AIR: PM10 */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'pm10'}
+        onClose={() => setFullscreenChart(null)}
+        title="Particolato PM10"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={pm10Data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Bar dataKey="indoor" fill="hsl(338, 50%, 45%)" name="Indoor" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="outdoor" fill="hsl(338, 50%, 70%)" name="Outdoor" radius={[4, 4, 0, 0]} />
+            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* AIR: CO & O3 */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'coO3'}
+        onClose={() => setFullscreenChart(null)}
+        title="Monossido di Carbonio (CO) & Ozono (O₃)"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <LineChart data={coO3MultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis yAxisId="co" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
+            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            {selectedAirDevices.map((d) => (
+              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={3} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
+            ))}
+            {selectedAirDevices.map((d) => (
+              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={2} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* WATER: Consumption */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'waterConsumption'}
+        onClose={() => setFullscreenChart(null)}
+        title="Consumo Idrico"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <AreaChart data={filteredWaterData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="waterGradientFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(200, 80%, 50%)" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="hsl(200, 80%, 50%)" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Area type="monotone" dataKey="consumption" stroke="hsl(200, 80%, 50%)" strokeWidth={3} fill="url(#waterGradientFS)" name="Consumo Attuale" />
+            <Line type="monotone" dataKey="target" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
+            <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={2} strokeDasharray="3 3" dot={false} name="Anno Precedente" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* WATER: Trend */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'waterTrend'}
+        onClose={() => setFullscreenChart(null)}
+        title="Trend Consumo Giornaliero"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={waterDailyTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <Tooltip {...tooltipStyle} />
+            <Bar dataKey="consumption" name="Consumo">
+              {waterDailyTrendData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.peak ? 'hsl(200, 80%, 40%)' : 'hsl(200, 60%, 60%)'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* WATER: Quality */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'waterQuality'}
+        onClose={() => setFullscreenChart(null)}
+        title="Parametri Qualità Acqua"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <LineChart data={waterQualityData} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis yAxisId="ph" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[6, 9]} label={{ value: 'pH', angle: -90, position: 'insideLeft' }} />
+            <YAxis yAxisId="other" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'mg/L / NTU', angle: 90, position: 'insideRight' }} />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Line yAxisId="ph" type="monotone" dataKey="ph" stroke="hsl(200, 80%, 50%)" strokeWidth={3} dot={false} name="pH" />
+            <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2} dot={false} name="Torbidità" />
+            <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={false} name="Cloro" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
     </div>
   );
 };
