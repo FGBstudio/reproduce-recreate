@@ -344,38 +344,106 @@ export async function fetchTimeseriesApi(params: {
 
   const metricFilter = expandMetricFilter(params.metrics) || params.metrics;
 
-  // Use raw 'telemetry' table for immediate data availability
-  const { data, error } = await supabase
-    .from('telemetry')
-    .select('ts, device_id, metric, value')
-    .in('device_id', params.device_ids)
-    .in('metric', metricFilter)
-    .gte('ts', params.start)
-    .lte('ts', params.end)
-    .order('ts', { ascending: true });
+  // Choose the best source table based on requested bucket.
+  // NOTE: The dashboard already computes bucket (1h/1d/1M). Here we just route to the matching table.
+  const bucket = params.bucket;
+  const useHourly = bucket === '1h';
+  const useDaily = bucket === '1d' || bucket === '1M';
+
+  const startDate = new Date(params.start);
+  const endDate = new Date(params.end);
+  const startDay = startDate.toISOString().slice(0, 10);
+  const endDay = endDate.toISOString().slice(0, 10);
+
+  let data: any[] | null = null;
+  let error: any = null;
+
+  if (useHourly) {
+    const resp = await supabase
+      .from('telemetry_hourly')
+      .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
+      .in('device_id', params.device_ids)
+      .in('metric', metricFilter)
+      .gte('ts_hour', params.start)
+      .lte('ts_hour', params.end)
+      .order('ts_hour', { ascending: true });
+    data = resp.data as any;
+    error = resp.error;
+  } else if (useDaily) {
+    // telemetry_daily.ts_day is DATE, so filter by YYYY-MM-DD
+    const resp = await supabase
+      .from('telemetry_daily')
+      .select('ts_day, device_id, metric, value_avg, value_min, value_max, sample_count')
+      .in('device_id', params.device_ids)
+      .in('metric', metricFilter)
+      .gte('ts_day', startDay)
+      .lte('ts_day', endDay)
+      .order('ts_day', { ascending: true });
+    data = resp.data as any;
+    error = resp.error;
+  } else {
+    // Raw fallback
+    const resp = await supabase
+      .from('telemetry')
+      .select('ts, device_id, metric, value')
+      .in('device_id', params.device_ids)
+      .in('metric', metricFilter)
+      .gte('ts', params.start)
+      .lte('ts', params.end)
+      .order('ts', { ascending: true });
+    data = resp.data as any;
+    error = resp.error;
+  }
 
   if (error) {
     console.error('Direct DB Timeseries fetch error:', error);
     return null;
   }
 
-  // Map raw data to ApiTimeseriesPoint format
-  // We use raw 'value' for avg/min/max since we are bypassing aggregation for now
-  const formattedData: ApiTimeseriesPoint[] = (data || []).map((row: any) => ({
-    ts_bucket: row.ts,
-    device_id: row.device_id,
-    metric: normalizeMetric(row.metric),
-    value_avg: row.value,
-    value_min: row.value,
-    value_max: row.value,
-    sample_count: 1
-  }));
+  // Map data to ApiTimeseriesPoint format
+  const formattedData: ApiTimeseriesPoint[] = (data || []).map((row: any) => {
+    if (useHourly) {
+      return {
+        ts_bucket: row.ts_hour,
+        device_id: row.device_id,
+        metric: normalizeMetric(row.metric),
+        value_avg: row.value_avg ?? 0,
+        value_min: row.value_min ?? row.value_avg ?? 0,
+        value_max: row.value_max ?? row.value_avg ?? 0,
+        sample_count: row.sample_count ?? 0,
+      };
+    }
+    if (useDaily) {
+      // DATE -> ISO timestamp (midnight UTC) for consistent parsing in UI
+      const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
+      return {
+        ts_bucket: dayIso,
+        device_id: row.device_id,
+        metric: normalizeMetric(row.metric),
+        value_avg: row.value_avg ?? 0,
+        value_min: row.value_min ?? row.value_avg ?? 0,
+        value_max: row.value_max ?? row.value_avg ?? 0,
+        sample_count: row.sample_count ?? 0,
+      };
+    }
+
+    // Raw
+    return {
+      ts_bucket: row.ts,
+      device_id: row.device_id,
+      metric: normalizeMetric(row.metric),
+      value_avg: row.value,
+      value_min: row.value,
+      value_max: row.value,
+      sample_count: 1,
+    };
+  });
 
   return {
     data: formattedData,
     meta: {
       bucket: params.bucket || 'raw',
-      source: 'database_direct',
+      source: useHourly ? 'telemetry_hourly' : useDaily ? 'telemetry_daily' : 'telemetry',
       start: params.start,
       end: params.end,
       point_count: formattedData.length
