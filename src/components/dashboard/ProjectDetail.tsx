@@ -193,7 +193,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Air module: multi-device selection (per ambiente/location)
   // ---------------------------------------------------------------------------
   const { data: airDevicesResp } = useDevices(
-    project?.siteId ? { site_id: project.siteId, type: "air_quality" } : undefined,
+    project?.siteId ? { site_id: project.siteId, device_type: "air_quality" } : undefined,
     { enabled: !!project?.siteId }
   );
   const airDevices = airDevicesResp?.data ?? [];
