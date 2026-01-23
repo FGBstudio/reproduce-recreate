@@ -134,8 +134,8 @@ export async function fetchDevicesApi(params?: {
     .select('*', { count: 'exact' });
 
   // 2. Apply filters
-  //if (params?.site_id) {
-  //  query = query.eq('site_id', params.site_id);
+  if (params?.site_id) {
+    query = query.eq('site_id', params.site_id);
   }
   
   // FIX: Check both parameter names and map to the correct DB column 'device_type'
