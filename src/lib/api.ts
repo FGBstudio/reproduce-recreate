@@ -7,6 +7,61 @@ import { useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // =============================================================================
+// Metric normalization (DB may store short names for backward compatibility)
+// =============================================================================
+
+function normalizeMetric(metric: string): string {
+  // Canonical -> canonical
+  if (metric.includes('.')) {
+    // normalize legacy alias
+    if (metric === 'iaq.tvoc') return 'iaq.voc';
+    return metric;
+  }
+
+  // Short DB names -> canonical
+  switch (metric) {
+    case 'co2':
+      return 'iaq.co2';
+    case 'voc':
+      return 'iaq.voc';
+    case 'pm25':
+      return 'iaq.pm25';
+    case 'pm10':
+      return 'iaq.pm10';
+    case 'co':
+      return 'iaq.co';
+    case 'o3':
+      return 'iaq.o3';
+    case 'temp':
+      return 'env.temperature';
+    case 'humidity':
+      return 'env.humidity';
+    default:
+      return metric;
+  }
+}
+
+function toDbMetricCandidates(canonical: string): string[] {
+  // allow querying both canonical and legacy-short values
+  if (!canonical) return [];
+  if (canonical === 'iaq.tvoc') canonical = 'iaq.voc';
+  if (!canonical.includes('.')) return [canonical];
+
+  const short = canonical.split('.').pop()!;
+  // env.temperature historically stored as 'temp'
+  if (canonical === 'env.temperature') return [canonical, 'temp'];
+  if (canonical === 'env.humidity') return [canonical, 'humidity'];
+  return [canonical, short];
+}
+
+function expandMetricFilter(metrics?: string[]): string[] | undefined {
+  if (!metrics || metrics.length === 0) return undefined;
+  const out = new Set<string>();
+  metrics.forEach((m) => toDbMetricCandidates(m).forEach((x) => out.add(x)));
+  return Array.from(out);
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -188,17 +243,33 @@ export async function fetchLatestApi(params?: {
 }): Promise<ApiLatestResponse | null> {
   if (!supabase) return null;
 
-  let query = supabase.from('telemetry_latest').select('*');
+  // IMPORTANT:
+  // telemetry_latest (migration 003) does NOT include site_id. Filter by site via join on devices.
+  let query = supabase
+    .from('telemetry_latest')
+    .select(
+      `
+        device_id,
+        metric,
+        value,
+        unit,
+        ts,
+        quality,
+        devices!inner(site_id)
+      `
+    );
 
   // Filters
   if (params?.site_id) {
-    query = query.eq('site_id', params.site_id);
+    query = query.eq('devices.site_id', params.site_id);
   }
   if (params?.device_ids && params.device_ids.length > 0) {
     query = query.in('device_id', params.device_ids);
   }
-  if (params?.metrics && params.metrics.length > 0) {
-    query = query.in('metric', params.metrics);
+
+  const metricFilter = expandMetricFilter(params?.metrics);
+  if (metricFilter && metricFilter.length > 0) {
+    query = query.in('metric', metricFilter);
   }
 
   const { data, error } = await query;
@@ -217,7 +288,7 @@ export async function fetchLatestApi(params?: {
     }
     groupedData[row.device_id].push({
       device_id: row.device_id,
-      metric: row.metric,
+      metric: normalizeMetric(row.metric),
       value: row.value,
       unit: row.unit,
       ts: row.ts,
@@ -246,12 +317,14 @@ export async function fetchTimeseriesApi(params: {
 }): Promise<ApiTimeseriesResponse | null> {
   if (!supabase) return null;
 
+  const metricFilter = expandMetricFilter(params.metrics) || params.metrics;
+
   // Use raw 'telemetry' table for immediate data availability
   const { data, error } = await supabase
     .from('telemetry')
     .select('ts, device_id, metric, value')
     .in('device_id', params.device_ids)
-    .in('metric', params.metrics)
+    .in('metric', metricFilter)
     .gte('ts', params.start)
     .lte('ts', params.end)
     .order('ts', { ascending: true });
@@ -266,7 +339,7 @@ export async function fetchTimeseriesApi(params: {
   const formattedData: ApiTimeseriesPoint[] = (data || []).map((row: any) => ({
     ts_bucket: row.ts,
     device_id: row.device_id,
-    metric: row.metric,
+    metric: normalizeMetric(row.metric),
     value_avg: row.value,
     value_min: row.value,
     value_max: row.value,

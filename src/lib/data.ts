@@ -169,7 +169,7 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
     data: { hvac: 48, light: 38, total: 98, co2: 520, temp: 23, alerts: 1, aq: "GOOD" },
     monitoring: ["energy", "air"],
-    brandId: "fgb"
+    brandId: "fgb",
     // No siteId - will use mock data only
   },
   // APAC
