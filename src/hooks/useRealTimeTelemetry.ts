@@ -369,7 +369,8 @@ export function useRealTimeLatestData(siteId: string | undefined) {
       'energy.hvac_kw': 22.5 + Math.random() * 5,
       'energy.lighting_kw': 12.8 + Math.random() * 3,
       'iaq.co2': 520 + Math.random() * 100,
-      'iaq.tvoc': 85 + Math.random() * 30,
+      // DB normalizes TVOC as iaq.voc
+      'iaq.voc': 85 + Math.random() * 30,
       'env.temperature': 22.5 + Math.random() * 2,
       'env.humidity': 48 + Math.random() * 10,
     };

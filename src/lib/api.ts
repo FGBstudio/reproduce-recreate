@@ -20,9 +20,14 @@ function normalizeMetric(metric: string): string {
 
   // Short DB names -> canonical
   switch (metric) {
+    // IAQ
     case 'co2':
       return 'iaq.co2';
+    case 'CO2':
+      return 'iaq.co2';
     case 'voc':
+      return 'iaq.voc';
+    case 'tvoc':
       return 'iaq.voc';
     case 'pm25':
       return 'iaq.pm25';
@@ -32,9 +37,19 @@ function normalizeMetric(metric: string): string {
       return 'iaq.co';
     case 'o3':
       return 'iaq.o3';
+
+    // ENV
     case 'temp':
       return 'env.temperature';
+    case 'temperature':
+      return 'env.temperature';
+    case 'temp_c':
+      return 'env.temperature';
     case 'humidity':
+      return 'env.humidity';
+    case 'hum':
+      return 'env.humidity';
+    case 'humidity_rh':
       return 'env.humidity';
     default:
       return metric;
@@ -49,8 +64,14 @@ function toDbMetricCandidates(canonical: string): string[] {
 
   const short = canonical.split('.').pop()!;
   // env.temperature historically stored as 'temp'
-  if (canonical === 'env.temperature') return [canonical, 'temp'];
-  if (canonical === 'env.humidity') return [canonical, 'humidity'];
+  if (canonical === 'env.temperature') return [canonical, 'temp', 'temperature', 'temp_c'];
+  if (canonical === 'env.humidity') return [canonical, 'humidity', 'hum', 'humidity_rh'];
+  if (canonical === 'iaq.voc') return [canonical, 'voc', 'tvoc'];
+  if (canonical === 'iaq.co2') return [canonical, 'co2', 'CO2'];
+  if (canonical === 'iaq.pm25') return [canonical, 'pm25', 'PM2.5', 'pm2_5'];
+  if (canonical === 'iaq.pm10') return [canonical, 'pm10', 'PM10'];
+  if (canonical === 'iaq.co') return [canonical, 'co', 'CO'];
+  if (canonical === 'iaq.o3') return [canonical, 'o3', 'O3'];
   return [canonical, short];
 }
 
