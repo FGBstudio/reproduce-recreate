@@ -139,7 +139,7 @@ export async function fetchDevicesApi(params?: {
 
   const searchParams = new URLSearchParams();
   if (params?.site_id) searchParams.set('site_id', params.site_id);
-  if (params?.type) searchParams.set('type', params.type);
+  if (params?.type) searchParams.set('device_type', params.type);
   if (params?.status) searchParams.set('status', params.status);
   if (params?.model) searchParams.set('model', params.model);
   if (params?.limit) searchParams.set('limit', params.limit.toString());
