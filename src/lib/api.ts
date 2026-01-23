@@ -1,5 +1,5 @@
 /**
- * Centralized API layer for Supabase Edge Functions
+ * Centralized API layer for Supabase (Direct DB Access)
  * Provides typed fetch functions and React Query hooks for dashboard data
  */
 
@@ -110,25 +110,17 @@ export interface ApiHolding {
 }
 
 // =============================================================================
-// API Base URL
-// =============================================================================
-
-const getApiBaseUrl = (): string | null => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (!supabaseUrl) return null;
-  return `${supabaseUrl}/functions/v1`;
-};
-
-// =============================================================================
-// Fetch Functions (raw API calls)
+// Fetch Functions (DIRECT DB ACCESS)
 // =============================================================================
 
 /**
- * Fetch devices with optional filtering
+ * Fetch devices directly from Supabase DB
+ * Handles both 'type' and 'device_type' parameters to avoid confusion
  */
 export async function fetchDevicesApi(params?: {
   site_id?: string;
-  type?: string;
+  type?: string;        // Legacy param name from frontend
+  device_type?: string; // Correct DB column name
   status?: string;
   model?: string;
   limit?: number;
@@ -136,33 +128,38 @@ export async function fetchDevicesApi(params?: {
 }): Promise<ApiDevicesResponse | null> {
   if (!supabase) return null;
 
-  // 1. Costruiamo la query diretta al DB
+  // 1. Build query
   let query = supabase
     .from('devices')
     .select('*', { count: 'exact' });
 
-  // 2. Applichiamo i filtri (Mappando i nomi corretti!)
+  // 2. Apply filters
   if (params?.site_id) {
     query = query.eq('site_id', params.site_id);
   }
   
-  if (params?.type) {
-    // QUI RISOLVIAMO IL PROBLEMA: Il frontend passa 'type', noi chiediamo al DB 'device_type'
-    query = query.eq('device_type', params.type);
+  // FIX: Check both parameter names and map to the correct DB column 'device_type'
+  const typeFilter = params?.device_type || params?.type;
+  if (typeFilter) {
+    query = query.eq('device_type', typeFilter);
   }
 
   if (params?.status) {
     query = query.eq('status', params.status);
   }
 
-  // Paginazione
+  if (params?.model) {
+    query = query.eq('model', params.model);
+  }
+
+  // Pagination
   const limit = params?.limit || 100;
   const from = params?.offset || 0;
   const to = from + limit - 1;
   
   query = query.range(from, to);
 
-  // 3. Eseguiamo la query
+  // 3. Execute
   const { data, error, count } = await query;
 
   if (error) {
@@ -170,9 +167,8 @@ export async function fetchDevicesApi(params?: {
     return null;
   }
 
-  // 4. Formattiamo la risposta come se la aspetta il frontend
   return {
-    data: (data as any[]) || [], // Cast necessario per TypeScript
+    data: (data as any[]) || [],
     meta: {
       total: count || 0,
       limit: limit,
@@ -183,41 +179,63 @@ export async function fetchDevicesApi(params?: {
 }
 
 /**
- * Fetch latest telemetry values
+ * Fetch latest telemetry directly from 'telemetry_latest' table
  */
 export async function fetchLatestApi(params?: {
   site_id?: string;
   device_ids?: string[];
   metrics?: string[];
 }): Promise<ApiLatestResponse | null> {
-  const baseUrl = getApiBaseUrl();
-  if (!baseUrl || !supabase) return null;
+  if (!supabase) return null;
 
-  const searchParams = new URLSearchParams();
-  if (params?.site_id) searchParams.set('site_id', params.site_id);
-  if (params?.device_ids?.length) searchParams.set('device_ids', params.device_ids.join(','));
-  if (params?.metrics?.length) searchParams.set('metrics', params.metrics.join(','));
+  let query = supabase.from('telemetry_latest').select('*');
 
-  const url = `${baseUrl}/latest?${searchParams.toString()}`;
-  
-  const { data: { session } } = await supabase.auth.getSession();
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-  });
+  // Filters
+  if (params?.site_id) {
+    query = query.eq('site_id', params.site_id);
+  }
+  if (params?.device_ids && params.device_ids.length > 0) {
+    query = query.in('device_id', params.device_ids);
+  }
+  if (params?.metrics && params.metrics.length > 0) {
+    query = query.in('metric', params.metrics);
+  }
 
-  if (!response.ok) {
-    console.error('Latest API error:', response.status, await response.text());
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Direct DB Latest fetch error:', error);
     return null;
   }
 
-  return response.json();
+  // Transform flat list to Record<device_id, metrics[]>
+  const groupedData: Record<string, ApiLatestTelemetry[]> = {};
+  
+  (data || []).forEach((row: any) => {
+    if (!groupedData[row.device_id]) {
+      groupedData[row.device_id] = [];
+    }
+    groupedData[row.device_id].push({
+      device_id: row.device_id,
+      metric: row.metric,
+      value: row.value,
+      unit: row.unit,
+      ts: row.ts,
+      quality: row.quality
+    });
+  });
+
+  return {
+    data: groupedData,
+    meta: {
+      device_count: Object.keys(groupedData).length,
+      metric_count: (data || []).length,
+    },
+  };
 }
 
 /**
- * Fetch time-series telemetry data
+ * Fetch time-series telemetry data directly from 'telemetry' table
  */
 export async function fetchTimeseriesApi(params: {
   device_ids: string[];
@@ -226,32 +244,45 @@ export async function fetchTimeseriesApi(params: {
   end: string;
   bucket?: string;
 }): Promise<ApiTimeseriesResponse | null> {
-  const baseUrl = getApiBaseUrl();
-  if (!baseUrl || !supabase) return null;
+  if (!supabase) return null;
 
-  const searchParams = new URLSearchParams();
-  searchParams.set('device_ids', params.device_ids.join(','));
-  searchParams.set('metrics', params.metrics.join(','));
-  searchParams.set('start', params.start);
-  searchParams.set('end', params.end);
-  if (params.bucket) searchParams.set('bucket', params.bucket);
+  // Use raw 'telemetry' table for immediate data availability
+  const { data, error } = await supabase
+    .from('telemetry')
+    .select('ts, device_id, metric, value')
+    .in('device_id', params.device_ids)
+    .in('metric', params.metrics)
+    .gte('ts', params.start)
+    .lte('ts', params.end)
+    .order('ts', { ascending: true });
 
-  const url = `${baseUrl}/timeseries?${searchParams.toString()}`;
-  
-  const { data: { session } } = await supabase.auth.getSession();
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-  });
-
-  if (!response.ok) {
-    console.error('Timeseries API error:', response.status, await response.text());
+  if (error) {
+    console.error('Direct DB Timeseries fetch error:', error);
     return null;
   }
 
-  return response.json();
+  // Map raw data to ApiTimeseriesPoint format
+  // We use raw 'value' for avg/min/max since we are bypassing aggregation for now
+  const formattedData: ApiTimeseriesPoint[] = (data || []).map((row: any) => ({
+    ts_bucket: row.ts,
+    device_id: row.device_id,
+    metric: row.metric,
+    value_avg: row.value,
+    value_min: row.value,
+    value_max: row.value,
+    sample_count: 1
+  }));
+
+  return {
+    data: formattedData,
+    meta: {
+      bucket: params.bucket || 'raw',
+      source: 'database_direct',
+      start: params.start,
+      end: params.end,
+      point_count: formattedData.length
+    }
+  };
 }
 
 /**
