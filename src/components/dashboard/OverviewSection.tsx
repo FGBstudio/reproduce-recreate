@@ -343,7 +343,8 @@ const AirCard = ({ status, enabled, project, onClick, liveData }: {
   const readings = useMemo(() => {
     const m = liveData?.metrics || {};
     const co2Val = m['iaq.co2'] || project.data.co2 || 520;
-    const tvocVal = m['iaq.tvoc'] || 85;
+    // DB normalizes TVOC as iaq.voc
+    const tvocVal = m['iaq.voc'] || 85;
     const pm25Val = m['iaq.pm25'] || 12;
     const pm10Val = m['iaq.pm10'] || 28;
     const tempVal = m['env.temperature'] || 22.5;
@@ -351,6 +352,7 @@ const AirCard = ({ status, enabled, project, onClick, liveData }: {
     
     return {
       co2: { value: co2Val, unit: "ppm", status: co2Val < 600 ? "good" as const : co2Val < 800 ? "warning" as const : "critical" as const },
+      // Keep label 'TVOC' in UI, metric key is iaq.voc
       tvoc: { value: tvocVal, unit: "ppb", status: tvocVal < 200 ? "good" as const : tvocVal < 400 ? "warning" as const : "critical" as const },
       pm25: { value: pm25Val, unit: "µg/m³", status: pm25Val < 15 ? "good" as const : pm25Val < 25 ? "warning" as const : "critical" as const },
       pm10: { value: pm10Val, unit: "µg/m³", status: pm10Val < 25 ? "good" as const : pm10Val < 50 ? "warning" as const : "critical" as const },
