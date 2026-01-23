@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent } from "react";
+import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
@@ -28,6 +28,9 @@ import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
 import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
 import { OverviewSection } from "./OverviewSection";
 import { DataSourceBadge } from "./DataSourceBadge";
+import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
+import { useDevices, useLatestTelemetry, useTimeseries } from "@/lib/api";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
@@ -185,6 +188,230 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Fetch real-time telemetry for this project's site
   const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange);
   const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange);
+
+  // ---------------------------------------------------------------------------
+  // Air module: multi-device selection (per ambiente/location)
+  // ---------------------------------------------------------------------------
+  const { data: airDevicesResp } = useDevices(
+    project?.siteId ? { site_id: project.siteId, type: "air_quality" } : undefined,
+    { enabled: !!project?.siteId }
+  );
+  const airDevices = airDevicesResp?.data ?? [];
+  const airDeviceIds = useMemo(() => airDevices.map((d) => d.id), [airDevices]);
+
+  const [selectedAirDeviceIds, setSelectedAirDeviceIds] = useState<string[]>([]);
+
+  // Default: all air devices selected (and reset when project changes)
+  useEffect(() => {
+    setSelectedAirDeviceIds(airDeviceIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.siteId, airDeviceIds.join(",")]);
+
+  const selectedAirDevices = useMemo(
+    () => airDevices.filter((d) => selectedAirDeviceIds.includes(d.id)),
+    [airDevices, selectedAirDeviceIds]
+  );
+
+  const airDeviceLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    airDevices.forEach((d) => {
+      map.set(d.id, d.location || d.name || d.device_id || d.id);
+    });
+    return map;
+  }, [airDevices]);
+
+  const airColorById = useMemo(() => {
+    const palette = [
+      "hsl(var(--secondary))",
+      "hsl(var(--primary))",
+      "hsl(var(--emerald))",
+      "hsl(var(--rose))",
+      "hsl(var(--muted-foreground))",
+    ];
+    const map = new Map<string, string>();
+    airDeviceIds.forEach((id, idx) => map.set(id, palette[idx % palette.length]));
+    return map;
+  }, [airDeviceIds]);
+
+  const getTimeRangeParams = useCallback((tp: TimePeriod, dr?: DateRange) => {
+    const now = new Date();
+    let start: Date;
+    let end: Date = now;
+    let bucket: string;
+
+    switch (tp) {
+      case "today":
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        bucket = "1h";
+        break;
+      case "week":
+        start = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+        bucket = "1d";
+        break;
+      case "month":
+        start = new Date(now.getTime() - 21 * 24 * 60 * 60 * 1000);
+        bucket = "1d";
+        break;
+      case "year":
+        start = new Date(now.getFullYear(), 0, 1);
+        bucket = "1M";
+        break;
+      case "custom":
+        if (!dr) {
+          start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          bucket = "1d";
+        } else {
+          start = dr.from;
+          end = dr.to;
+          const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysDiff <= 1) bucket = "1h";
+          else if (daysDiff <= 90) bucket = "1d";
+          else bucket = "1M";
+        }
+        break;
+      default:
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        bucket = "1d";
+    }
+
+    return { start, end, bucket };
+  }, []);
+
+  const { start: airStart, end: airEnd, bucket: airBucket } = getTimeRangeParams(timePeriod, dateRange);
+  const airMetrics = useMemo(
+    () => [
+      "iaq.co2",
+      "iaq.tvoc",
+      "env.temperature",
+      "env.humidity",
+      "iaq.pm25",
+      "iaq.pm10",
+      "iaq.co",
+      "iaq.o3",
+    ],
+    []
+  );
+
+  const { data: airTimeseriesResp } = useTimeseries(
+    {
+      device_ids: selectedAirDeviceIds,
+      metrics: airMetrics,
+      start: airStart.toISOString(),
+      end: airEnd.toISOString(),
+      bucket: airBucket,
+    },
+    {
+      enabled: isSupabaseConfigured && selectedAirDeviceIds.length > 0,
+    }
+  );
+
+  const { data: airLatestResp } = useLatestTelemetry(
+    selectedAirDeviceIds.length
+      ? {
+          device_ids: selectedAirDeviceIds,
+          metrics: airMetrics,
+        }
+      : undefined,
+    {
+      enabled: isSupabaseConfigured && selectedAirDeviceIds.length > 0,
+    }
+  );
+
+  const airLatestByMetric = useMemo(() => {
+    // average across selected devices
+    const out: Record<string, number> = {};
+    if (!airLatestResp?.data) return out;
+
+    const sum: Record<string, { total: number; count: number }> = {};
+    Object.values(airLatestResp.data).forEach((deviceMetrics) => {
+      deviceMetrics.forEach((m) => {
+        if (!sum[m.metric]) sum[m.metric] = { total: 0, count: 0 };
+        sum[m.metric].total += m.value;
+        sum[m.metric].count += 1;
+      });
+    });
+
+    Object.entries(sum).forEach(([metric, { total, count }]) => {
+      out[metric] = count ? total / count : 0;
+    });
+
+    return out;
+  }, [airLatestResp]);
+
+  const buildSeriesByMetric = useCallback(
+    (metric: string, limitValue?: number) => {
+      // shape: { time: string, limit?: number, d_<id>: number }
+      const keyOf = (id: string) => `d_${id.replace(/-/g, "")}`;
+      const labelOf = (ts: Date) => {
+        // keep this lightweight; aligns to the same logic used elsewhere in telemetry hooks
+        const pad = (n: number) => String(n).padStart(2, "0");
+        if (timePeriod === "today") return `${pad(ts.getHours())}:00`;
+        if (timePeriod === "week") return ts.toLocaleDateString("it-IT", { weekday: "short" });
+        if (timePeriod === "year") return ts.toLocaleDateString("it-IT", { month: "short" });
+        return ts.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+      };
+
+      const points = airTimeseriesResp?.data ?? [];
+      const filtered = points.filter((p) => p.metric === metric);
+      if (filtered.length === 0) return [] as Array<Record<string, unknown>>;
+
+      const map = new Map<string, Record<string, unknown>>();
+      filtered.forEach((p) => {
+        const t = labelOf(new Date(p.ts_bucket));
+        if (!map.has(t)) map.set(t, { time: t });
+        map.get(t)![keyOf(p.device_id)] = p.value_avg;
+        if (typeof limitValue === "number") map.get(t)!.limit = limitValue;
+      });
+
+      return Array.from(map.values());
+    },
+    [airTimeseriesResp, timePeriod]
+  );
+
+  const co2MultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return co2HistoryData;
+    const data = buildSeriesByMetric("iaq.co2", 1000);
+    return data.length ? data : co2HistoryData;
+  }, [buildSeriesByMetric, co2HistoryData]);
+
+  const tvocMultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return tvocHistoryData;
+    const data = buildSeriesByMetric("iaq.tvoc", 500);
+    return data.length ? data : tvocHistoryData;
+  }, [buildSeriesByMetric, tvocHistoryData]);
+
+  const tempHumidityMultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return tempHumidityData;
+    const temp = buildSeriesByMetric("env.temperature");
+    const hum = buildSeriesByMetric("env.humidity");
+    // merge by time
+    const byTime = new Map<string, Record<string, unknown>>();
+    [...temp, ...hum].forEach((row) => {
+      const t = String(row.time);
+      if (!byTime.has(t)) byTime.set(t, { time: t });
+      Object.entries(row).forEach(([k, v]) => {
+        if (k !== "time") byTime.get(t)![k] = v;
+      });
+    });
+    const merged = Array.from(byTime.values());
+    return merged.length ? merged : tempHumidityData;
+  }, [buildSeriesByMetric, tempHumidityData]);
+
+  const coO3MultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return coO3Data;
+    const co = buildSeriesByMetric("iaq.co");
+    const o3 = buildSeriesByMetric("iaq.o3");
+    const byTime = new Map<string, Record<string, unknown>>();
+    [...co, ...o3].forEach((row) => {
+      const t = String(row.time);
+      if (!byTime.has(t)) byTime.set(t, { time: t });
+      Object.entries(row).forEach(([k, v]) => {
+        if (k !== "time") byTime.get(t)![k] = v;
+      });
+    });
+    const merged = Array.from(byTime.values());
+    return merged.length ? merged : coO3Data;
+  }, [buildSeriesByMetric, coO3Data]);
   
   // Use real data if available, otherwise fall back to mock generators
   const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : useEnergyData(timePeriod, dateRange);
@@ -1191,6 +1418,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="absolute top-4 right-4">
                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                       </div>
+                      <div className="absolute top-4 left-4">
+                        <AirDeviceSelector
+                          devices={airDevices}
+                          selectedIds={selectedAirDeviceIds}
+                          onChange={setSelectedAirDeviceIds}
+                        />
+                      </div>
                       <div className="flex items-center gap-4 mb-4">
                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold`}>
                           <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
@@ -1206,22 +1440,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Wind className="w-4 h-4 text-sky-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{project.data.co2}</div>
+                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["iaq.co2"] ?? project.data.co2)}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppm CO₂</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Activity className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">85</div>
+                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["iaq.tvoc"] ?? 85)}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppb TVOC</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Thermometer className="w-4 h-4 text-orange-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{project.data.temp}°</div>
+                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["env.temperature"] ?? project.data.temp)}°</div>
                           <div className="text-[9px] text-gray-500 uppercase">°C Temp</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Droplets className="w-4 h-4 text-cyan-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">48</div>
+                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["env.humidity"] ?? 48)}</div>
                           <div className="text-[9px] text-gray-500 uppercase">% Umidità</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
@@ -1250,67 +1484,100 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* CO2 Trend Chart */}
                     <div ref={co2TrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">CO₂ Trend (24h)</h3>
-                        <ExportButtons chartRef={co2TrendRef} data={co2HistoryData} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
+                        <h3 className="text-lg font-bold text-gray-800">CO₂ Trend ({periodLabel})</h3>
+                        <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
                       <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={co2HistoryData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <defs>
-                            <linearGradient id="co2Gradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4} />
-                              <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.05} />
-                            </linearGradient>
-                          </defs>
+                        <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
-                          <Area type="monotone" dataKey="co2" stroke="hsl(188, 100%, 35%)" strokeWidth={2.5} fill="url(#co2Gradient)" name="CO₂" />
-                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
-                        </AreaChart>
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={d.id}
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.5}
+                              dot={false}
+                              name={airDeviceLabelById.get(d.id) || d.id}
+                            />
+                          ))}
+                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
 
                     {/* TVOC Trend Chart */}
                     <div ref={tvocTrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">TVOC Trend (24h)</h3>
-                        <ExportButtons chartRef={tvocTrendRef} data={tvocHistoryData} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
+                        <h3 className="text-lg font-bold text-gray-800">TVOC Trend ({periodLabel})</h3>
+                        <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
                       <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={tvocHistoryData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <defs>
-                            <linearGradient id="tvocGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(280, 60%, 50%)" stopOpacity={0.4} />
-                              <stop offset="95%" stopColor="hsl(280, 60%, 50%)" stopOpacity={0.05} />
-                            </linearGradient>
-                          </defs>
+                        <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
-                          <Area type="monotone" dataKey="tvoc" stroke="hsl(280, 60%, 50%)" strokeWidth={2.5} fill="url(#tvocGradient)" name="TVOC" />
-                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
-                        </AreaChart>
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={d.id}
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.5}
+                              dot={false}
+                              name={airDeviceLabelById.get(d.id) || d.id}
+                            />
+                          ))}
+                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
 
                     {/* Temperature & Humidity Chart - Full Width */}
                     <div ref={tempHumidityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Temperatura & Umidità Relativa (24h)</h3>
-                        <ExportButtons chartRef={tempHumidityRef} data={tempHumidityData} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
+                        <h3 className="text-lg font-bold text-gray-800">Temperatura & Umidità Relativa ({periodLabel})</h3>
+                        <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={tempHumidityData} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                        <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis yAxisId="temp" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Line yAxisId="temp" type="monotone" dataKey="temp" stroke="#f97316" strokeWidth={2.5} dot={{ fill: '#f97316', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Temperatura (°C)" />
-                          <Line yAxisId="humidity" type="monotone" dataKey="humidity" stroke="#06b6d4" strokeWidth={2.5} dot={{ fill: '#06b6d4', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Umidità (%)" />
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={`${d.id}-temp`}
+                              yAxisId="temp"
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.25}
+                              dot={false}
+                              name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`}
+                            />
+                          ))}
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={`${d.id}-hum`}
+                              yAxisId="humidity"
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.25}
+                              strokeDasharray="4 4"
+                              dot={false}
+                              name={`${airDeviceLabelById.get(d.id) || d.id} · Umidità`}
+                            />
+                          ))}
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -1410,18 +1677,41 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <h3 className="text-lg font-bold text-gray-800">Monossido di Carbonio (CO) & Ozono (O₃)</h3>
                           <p className="text-xs text-gray-500">Trend giornaliero</p>
                         </div>
-                        <ExportButtons chartRef={coO3Ref} data={coO3Data} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
+                        <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
                       <ResponsiveContainer width="100%" height={280}>
-                        <LineChart data={coO3Data} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                        <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis yAxisId="co" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Line yAxisId="co" type="monotone" dataKey="co" stroke="#ef4444" strokeWidth={2.5} dot={{ fill: '#ef4444', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="CO (ppm)" />
-                          <Line yAxisId="o3" type="monotone" dataKey="o3" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: '#8b5cf6', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="O₃ (ppb)" />
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={`${d.id}-co`}
+                              yAxisId="co"
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.25}
+                              dot={false}
+                              name={`${airDeviceLabelById.get(d.id) || d.id} · CO`}
+                            />
+                          ))}
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={`${d.id}-o3`}
+                              yAxisId="o3"
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.25}
+                              strokeDasharray="4 4"
+                              dot={false}
+                              name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`}
+                            />
+                          ))}
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
