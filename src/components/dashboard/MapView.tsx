@@ -116,8 +116,8 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
             </div>
           </div>
         `,
-        iconSize: [64, 64],
-        iconAnchor: [32, 64],
+        iconSize: [58, 58],
+        iconAnchor: [32, 32],
       });
     };
 
@@ -207,8 +207,8 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         }
         @media (min-width: 768px) {
           .marker-container {
-            width: 64px;
-            height: 64px;
+            width: 58px;
+            height: 58px;
           }
         }
         .marker-pulse {
