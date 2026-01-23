@@ -613,7 +613,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   const tvocMultiSeries = useMemo(() => {
     if (!isSupabaseConfigured) return tvocHistoryData;
-    const data = buildSeriesByMetric("iaq.tvoc", 500);
+    const data = buildSeriesByMetric("iaq.voc", 500);
     return data.length ? data : tvocHistoryData;
   }, [buildSeriesByMetric, tvocHistoryData]);
 
@@ -1459,7 +1459,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Activity className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["iaq.tvoc"] ?? 85)}</div>
+                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["iaq.voc"] ?? 85)}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppb TVOC</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
