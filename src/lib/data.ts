@@ -1,23 +1,18 @@
 /**
  * Region and Project Data for FGB IoT Dashboard
- * 
- * This module exports mock data for development and demo purposes.
- * 
- * == REAL DATA INTEGRATION ==
+ * * This module exports mock data for development and demo purposes.
+ * * == REAL DATA INTEGRATION ==
  * For real data integration, use the hooks from '@/hooks/useRealTimeData':
  * - useAllProjects() - Combined real + mock projects with loading/error states
  * - useAllBrands() - Combined real + mock brands with loading/error states
  * - useAllHoldings() - Combined real + mock holdings with loading/error states
- * 
- * For real-time telemetry, use hooks from '@/hooks/useRealTimeTelemetry':
+ * * For real-time telemetry, use hooks from '@/hooks/useRealTimeTelemetry':
  * - useRealTimeEnergyData(siteId, timePeriod, dateRange) - Energy timeseries
  * - useRealTimeLatestData(siteId) - Latest sensor readings
  * - useProjectTelemetry(siteId, timePeriod, dateRange) - Combined telemetry
- * 
- * When Supabase is configured, real data from the database is merged with
+ * * When Supabase is configured, real data from the database is merged with
  * mock data, with real data taking precedence for matching names.
- * 
- * == LOADING STATES ==
+ * * == LOADING STATES ==
  * All hooks return: { data, isLoading, isError, error, refetch, isRealData }
  * Use skeleton components from '@/components/dashboard/DashboardSkeleton'
  */
@@ -74,23 +69,11 @@ export interface Project {
 }
 
 export const holdings: Holding[] = [
-  { id: "kering", name: "Kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Kering_Logo.svg/512px-Kering_Logo.svg.png" },
-  { id: "lvmh", name: "LVMH", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/LVMH_logo.svg/512px-LVMH_logo.svg.png" },
-  { id: "richemont", name: "Richemont", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Richemont.svg/512px-Richemont.svg.png" },
+  { id: "fgb-holding", name: "FGB Holding", logo: "/green.png" },
 ];
 
 export const brands: Brand[] = [
-  // Kering
-  { id: "gucci", name: "Gucci", holdingId: "kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" },
-  { id: "bottega", name: "Bottega Veneta", holdingId: "kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Bottega_Veneta_Logo.svg/512px-Bottega_Veneta_Logo.svg.png" },
-  { id: "ysl", name: "Saint Laurent", holdingId: "kering", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Yves_Saint_Laurent_Logo.svg/512px-Yves_Saint_Laurent_Logo.svg.png" },
-  // LVMH
-  { id: "lv", name: "Louis Vuitton", holdingId: "lvmh", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Louis_Vuitton_logo_and_wordmark.svg/512px-Louis_Vuitton_logo_and_wordmark.svg.png" },
-  { id: "dior", name: "Dior", holdingId: "lvmh", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Dior_Logo.svg/512px-Dior_Logo.svg.png" },
-  { id: "fendi", name: "Fendi", holdingId: "lvmh", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Fendi_logo.svg/512px-Fendi_logo.svg.png" },
-  // Richemont
-  { id: "cartier", name: "Cartier", holdingId: "richemont", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Cartier_Logo.svg/512px-Cartier_Logo.svg.png" },
-  { id: "iwc", name: "IWC", holdingId: "richemont", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/IWC_Schaffhausen_logo.svg/512px-IWC_Schaffhausen_logo.svg.png" },
+  { id: "fgb", name: "FGB", holdingId: "fgb-holding", logo: "/green.png" },
 ];
 
 export const regions: Record<string, Region> = {
@@ -125,7 +108,7 @@ export const projects: Project[] = [
   // Europe
   { 
     id: 1, 
-    name: "Gucci Milan Flagship", 
+    name: "FGB Milan Showroom", 
     region: "EU", 
     lat: 45.4642, 
     lng: 9.1900, 
@@ -133,12 +116,12 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop",
     data: { hvac: 32, light: 46, total: 89, co2: 420, temp: 22, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air", "water"],
-    brandId: "gucci",
+    brandId: "fgb",
     siteId: "s-gucci-florence" // Maps to Gucci Garden Firenze in seed data
   },
   { 
     id: 2, 
-    name: "Louis Vuitton Paris", 
+    name: "FGB Paris Office", 
     region: "EU", 
     lat: 48.8566, 
     lng: 2.3522, 
@@ -146,12 +129,12 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1920&h=1080&fit=crop",
     data: { hvac: 40, light: 35, total: 95, co2: 500, temp: 21, alerts: 1, aq: "MODERATE" },
     monitoring: ["energy", "air"],
-    brandId: "lv",
+    brandId: "fgb",
     siteId: "s-dior-paris" // Maps to Dior Paris in seed data (closest match)
   },
   { 
     id: 6, 
-    name: "Cartier London", 
+    name: "FGB London Headquarter", 
     region: "EU", 
     lat: 51.5074, 
     lng: -0.1278, 
@@ -159,13 +142,13 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
     data: { hvac: 38, light: 42, total: 92, co2: 480, temp: 21, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air", "water"],
-    brandId: "cartier",
+    brandId: "fgb",
     siteId: "s-dior-london" // Maps to Dior London in seed data
   },
   // Americas
   { 
     id: 3, 
-    name: "Dior NY Soho", 
+    name: "FGB NY Soho Office", 
     region: "AMER", 
     lat: 40.7128, 
     lng: -74.0060, 
@@ -173,12 +156,12 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1920&h=1080&fit=crop",
     data: { hvac: 55, light: 50, total: 120, co2: 600, temp: 20, alerts: 2, aq: "MODERATE" },
     monitoring: ["energy", "water"],
-    brandId: "dior",
+    brandId: "fgb",
     siteId: "s-dior-nyc" // Maps to Dior New York in seed data
   },
   { 
     id: 7, 
-    name: "Saint Laurent LA", 
+    name: "FGB LA Office", 
     region: "AMER", 
     lat: 34.0522, 
     lng: -118.2437, 
@@ -186,13 +169,13 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
     data: { hvac: 48, light: 38, total: 98, co2: 520, temp: 23, alerts: 1, aq: "GOOD" },
     monitoring: ["energy", "air"],
-    brandId: "ysl"
+    brandId: "fgb"
     // No siteId - will use mock data only
   },
   // APAC
   { 
     id: 4, 
-    name: "Bottega Veneta Tokyo", 
+    name: "FGB Tokyo Office", 
     region: "APAC", 
     lat: 35.6762, 
     lng: 139.6503, 
@@ -200,12 +183,12 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
     data: { hvac: 25, light: 30, total: 65, co2: 380, temp: 23, alerts: 0, aq: "EXCELLENT" },
     monitoring: ["energy", "air", "water"],
-    brandId: "bottega",
+    brandId: "fgb",
     siteId: "s-fendi-tokyo" // Maps to Fendi Tokyo in seed data
   },
   { 
     id: 8, 
-    name: "IWC Hong Kong", 
+    name: "FGB Shanghai Office", 
     region: "APAC", 
     lat: 22.3193, 
     lng: 114.1694, 
@@ -213,13 +196,13 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop",
     data: { hvac: 30, light: 28, total: 68, co2: 400, temp: 22, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air"],
-    brandId: "iwc",
+    brandId: "fgb",
     siteId: "s-gucci-shanghai" // Maps to Gucci Shanghai in seed data
   },
   // MEA
   { 
     id: 5, 
-    name: "Fendi Dubai Mall", 
+    name: "FGB Dubai Office", 
     region: "MEA", 
     lat: 25.1972, 
     lng: 55.2744, 
@@ -227,7 +210,7 @@ export const projects: Project[] = [
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
     data: { hvac: 75, light: 42, total: 130, co2: 550, temp: 19, alerts: 3, aq: "POOR" },
     monitoring: ["energy"],
-    brandId: "fendi",
+    brandId: "fgb",
     siteId: "s-fendi-dubai" // Maps to Fendi Dubai in seed data
   }
 ];
