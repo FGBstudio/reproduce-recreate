@@ -22,6 +22,55 @@ const Index = () => {
   const { clientRole, holdingId, brandId, siteId, isLoading: scopeLoading } = useUserScope();
   const { sites, brands, holdings } = useAdminData();
 
+  // --- NUOVA FUNZIONE: GeoIP Detection ---
+  useEffect(() => {
+    // Eseguiamo solo se siamo ancora su GLOBAL e abbiamo finito di caricare i permessi
+    if (currentRegion === "GLOBAL" && !scopeLoading) {
+      const detectUserRegion = async () => {
+        try {
+          // Usiamo ipapi.co (free tier, no key required per bassi volumi)
+          const response = await fetch('https://ipapi.co/json/');
+          const data = await response.json();
+          
+          if (data && data.country_code) {
+            const country = data.country_code.toUpperCase();
+            let regionToSet = "GLOBAL";
+
+            // Mappatura Nazione -> Regione Dashboard
+            // EU
+            if (['IT', 'FR', 'DE', 'ES', 'GB', 'CH', 'NL', 'BE', 'AT', 'SE', 'NO', 'DK'].includes(country)) {
+              regionToSet = "EU";
+            }
+            // AMER
+            else if (['US', 'CA', 'MX', 'BR', 'AR', 'CL', 'CO'].includes(country)) {
+              regionToSet = "AMER";
+            }
+            // APAC
+            else if (['CN', 'JP', 'KR', 'AU', 'NZ', 'SG', 'IN', 'TH', 'VN'].includes(country)) {
+              regionToSet = "APAC";
+            }
+            // MEA
+            else if (['AE', 'SA', 'QA', 'ZA', 'EG', 'TR'].includes(country)) {
+              regionToSet = "MEA";
+            }
+
+            // Aggiorna la regione solo se ne abbiamo trovata una specifica
+            if (regionToSet !== "GLOBAL") {
+              console.log(`GeoIP: User located in ${country}, switching to ${regionToSet}`);
+              setCurrentRegion(regionToSet);
+            }
+          }
+        } catch (error) {
+          console.warn("GeoIP detection failed or blocked:", error);
+          // Fallback silenzioso: rimane su GLOBAL
+        }
+      };
+
+      detectUserRegion();
+    }
+  }, [scopeLoading]); // Dipendenza solo da scopeLoading per eseguire una volta sola all'avvio reale
+  // ---------------------------------------
+
   // Auto-apply filters based on user role
   useEffect(() => {
     if (scopeLoading) return;
@@ -74,6 +123,12 @@ const Index = () => {
             
             setSelectedProject(project);
             setAutoOpenProject(true);
+
+            // --- MODIFICA: Forza la regione del progetto per lo Store User ---
+            if (project.region) {
+              setCurrentRegion(project.region);
+            }
+            // ---------------------------------------------------------------
           }
         }
         break;
