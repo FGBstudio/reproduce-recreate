@@ -363,22 +363,11 @@ export function useRealTimeLatestData(siteId: string | undefined) {
       });
     }
 
-    // Provide mock defaults if no real data
-    const defaults = {
-      'energy.power_kw': 45.2 + Math.random() * 10,
-      'energy.hvac_kw': 22.5 + Math.random() * 5,
-      'energy.lighting_kw': 12.8 + Math.random() * 3,
-      'iaq.co2': 520 + Math.random() * 100,
-      // DB normalizes TVOC as iaq.voc
-      'iaq.voc': 85 + Math.random() * 30,
-      'env.temperature': 22.5 + Math.random() * 2,
-      'env.humidity': 48 + Math.random() * 10,
-    };
-
     const hasRealData = Object.keys(metrics).length > 0;
 
     return {
-      metrics: hasRealData ? metrics : defaults,
+      // IMPORTANT: no fake defaults. If real data is missing, return empty metrics.
+      metrics: hasRealData ? metrics : {},
       isLoading,
       isError,
       error: error as Error | null,

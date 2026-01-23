@@ -1460,37 +1460,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Activity className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["iaq.tvoc"] ?? 85)}</div>
+                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.voc"] == null ? "—" : Math.round(airLatestByMetric["iaq.voc"])}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppb TVOC</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Thermometer className="w-4 h-4 text-orange-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["env.temperature"] ?? project.data.temp)}°</div>
+                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["env.temperature"] == null ? "—" : `${Math.round(airLatestByMetric["env.temperature"])}` }°</div>
                           <div className="text-[9px] text-gray-500 uppercase">°C Temp</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Droplets className="w-4 h-4 text-cyan-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["env.humidity"] ?? 48)}</div>
+                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["env.humidity"] == null ? "—" : Math.round(airLatestByMetric["env.humidity"])}</div>
                           <div className="text-[9px] text-gray-500 uppercase">% Umidità</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Cloud className="w-4 h-4 text-amber-600 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">12</div>
+                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.pm25"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm25"])}</div>
                           <div className="text-[9px] text-gray-500 uppercase">µg/m³ PM2.5</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Cloud className="w-4 h-4 text-amber-800 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">28</div>
+                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.pm10"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm10"])}</div>
                           <div className="text-[9px] text-gray-500 uppercase">µg/m³ PM10</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Gauge className="w-4 h-4 text-red-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">0.8</div>
+                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.co"] == null ? "—" : airLatestByMetric["iaq.co"].toFixed(2)}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppm CO</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Sparkles className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">15</div>
+                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.o3"] == null ? "—" : Math.round(airLatestByMetric["iaq.o3"])}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppb O₃</div>
                         </div>
                       </div>
