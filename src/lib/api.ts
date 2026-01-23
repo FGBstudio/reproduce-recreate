@@ -344,6 +344,73 @@ export async function fetchTimeseriesApi(params: {
 
   const metricFilter = expandMetricFilter(params.metrics) || params.metrics;
 
+  const aggregateRaw = (
+    rawRows: Array<{ ts: string; device_id: string; metric: string; value: number }>,
+    bucket: '1h' | '1d' | '1M'
+  ): ApiTimeseriesPoint[] => {
+    // Group by (bucket_ts, device_id, metric) and compute avg/min/max/count.
+    const bucketIso = (tsIso: string) => {
+      const d = new Date(tsIso);
+      if (Number.isNaN(d.getTime())) return tsIso;
+
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const h = String(d.getUTCHours()).padStart(2, '0');
+
+      if (bucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
+      if (bucket === '1M') return `${y}-${m}-01T00:00:00.000Z`;
+      return `${y}-${m}-${day}T00:00:00.000Z`;
+    };
+
+    type Agg = {
+      ts_bucket: string;
+      device_id: string;
+      metric: string;
+      sum: number;
+      min: number;
+      max: number;
+      count: number;
+    };
+
+    const map = new Map<string, Agg>();
+
+    for (const r of rawRows) {
+      const ts_bucket = bucketIso(r.ts);
+      const metric = normalizeMetric(r.metric);
+      const key = `${ts_bucket}|${r.device_id}|${metric}`;
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, {
+          ts_bucket,
+          device_id: r.device_id,
+          metric,
+          sum: r.value,
+          min: r.value,
+          max: r.value,
+          count: 1,
+        });
+      } else {
+        prev.sum += r.value;
+        prev.count += 1;
+        if (r.value < prev.min) prev.min = r.value;
+        if (r.value > prev.max) prev.max = r.value;
+      }
+    }
+
+    return Array.from(map.values())
+      .map((a) => ({
+        ts_bucket: a.ts_bucket,
+        device_id: a.device_id,
+        metric: a.metric,
+        value_avg: a.count ? a.sum / a.count : 0,
+        value_min: a.min,
+        value_max: a.max,
+        sample_count: a.count,
+      }))
+      .sort((a, b) => (a.ts_bucket < b.ts_bucket ? -1 : a.ts_bucket > b.ts_bucket ? 1 : 0));
+  };
+
   // Choose the best source table based on requested bucket.
   // NOTE: The dashboard already computes bucket (1h/1d/1M). Here we just route to the matching table.
   const bucket = params.bucket;
@@ -398,6 +465,46 @@ export async function fetchTimeseriesApi(params: {
   if (error) {
     console.error('Direct DB Timeseries fetch error:', error);
     return null;
+  }
+
+  // IMPORTANT RELIABILITY FIX:
+  // Many environments ingest raw telemetry but don't have the hourly/daily aggregation jobs enabled.
+  // In that case telemetry_hourly/telemetry_daily will legitimately return 0 rows.
+  // When that happens, we fall back to raw telemetry and aggregate client-side to the requested bucket.
+  const hasNoRows = !data || data.length === 0;
+  if (hasNoRows && (useHourly || useDaily) && params.bucket) {
+    const rawResp = await supabase
+      .from('telemetry')
+      .select('ts, device_id, metric, value')
+      .in('device_id', params.device_ids)
+      .in('metric', metricFilter)
+      .gte('ts', params.start)
+      .lte('ts', params.end)
+      // avoid accidental tiny defaults if PostgREST limit is configured
+      .limit(50000)
+      .order('ts', { ascending: true });
+
+    if (rawResp.error) {
+      console.error('Direct DB Timeseries raw fallback error:', rawResp.error);
+      return null;
+    }
+
+    const bucket = (params.bucket === '1h' || params.bucket === '1d' || params.bucket === '1M')
+      ? params.bucket
+      : '1d';
+
+    const aggregated = aggregateRaw((rawResp.data as any[]) || [], bucket);
+
+    return {
+      data: aggregated,
+      meta: {
+        bucket: params.bucket,
+        source: 'telemetry(raw->client_agg)',
+        start: params.start,
+        end: params.end,
+        point_count: aggregated.length,
+      },
+    };
   }
 
   // Map data to ApiTimeseriesPoint format
