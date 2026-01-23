@@ -35,7 +35,10 @@ export function AirDeviceSelector({ devices, selectedIds, onChange }: Props) {
           {title}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72">
+      <DropdownMenuContent
+        align="end"
+        className="w-72 z-50 bg-popover text-popover-foreground shadow-md"
+      >
         <DropdownMenuLabel>Seleziona dispositivi (Ambiente)</DropdownMenuLabel>
         <DropdownMenuSeparator />
 

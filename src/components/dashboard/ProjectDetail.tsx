@@ -339,9 +339,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [airLatestResp]);
 
   const buildSeriesByMetric = useCallback(
-    (metric: string, limitValue?: number) => {
-      // shape: { time: string, limit?: number, d_<id>: number }
-      const keyOf = (id: string) => `d_${id.replace(/-/g, "")}`;
+    (metric: string, limitValue?: number, keySuffix?: string) => {
+      // shape: { time: string, limit?: number, d_<id>[_suffix]: number }
+      const keyOf = (id: string) => {
+        const base = `d_${id.replace(/-/g, "")}`;
+        return keySuffix ? `${base}_${keySuffix}` : base;
+      };
       const labelOf = (ts: Date) => {
         // keep this lightweight; aligns to the same logic used elsewhere in telemetry hooks
         const pad = (n: number) => String(n).padStart(2, "0");
@@ -367,51 +370,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     },
     [airTimeseriesResp, timePeriod]
   );
-
-  const co2MultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return co2HistoryData;
-    const data = buildSeriesByMetric("iaq.co2", 1000);
-    return data.length ? data : co2HistoryData;
-  }, [buildSeriesByMetric, co2HistoryData]);
-
-  const tvocMultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return tvocHistoryData;
-    const data = buildSeriesByMetric("iaq.tvoc", 500);
-    return data.length ? data : tvocHistoryData;
-  }, [buildSeriesByMetric, tvocHistoryData]);
-
-  const tempHumidityMultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return tempHumidityData;
-    const temp = buildSeriesByMetric("env.temperature");
-    const hum = buildSeriesByMetric("env.humidity");
-    // merge by time
-    const byTime = new Map<string, Record<string, unknown>>();
-    [...temp, ...hum].forEach((row) => {
-      const t = String(row.time);
-      if (!byTime.has(t)) byTime.set(t, { time: t });
-      Object.entries(row).forEach(([k, v]) => {
-        if (k !== "time") byTime.get(t)![k] = v;
-      });
-    });
-    const merged = Array.from(byTime.values());
-    return merged.length ? merged : tempHumidityData;
-  }, [buildSeriesByMetric, tempHumidityData]);
-
-  const coO3MultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return coO3Data;
-    const co = buildSeriesByMetric("iaq.co");
-    const o3 = buildSeriesByMetric("iaq.o3");
-    const byTime = new Map<string, Record<string, unknown>>();
-    [...co, ...o3].forEach((row) => {
-      const t = String(row.time);
-      if (!byTime.has(t)) byTime.set(t, { time: t });
-      Object.entries(row).forEach(([k, v]) => {
-        if (k !== "time") byTime.get(t)![k] = v;
-      });
-    });
-    const merged = Array.from(byTime.values());
-    return merged.length ? merged : coO3Data;
-  }, [buildSeriesByMetric, coO3Data]);
   
   // Use real data if available, otherwise fall back to mock generators
   const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : useEnergyData(timePeriod, dateRange);
@@ -642,6 +600,62 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { time: '16:00', co: 1.1, o3: 38 },
     { time: '20:00', co: 0.7, o3: 20 },
   ], []);
+
+  // ---------------------------------------------------------------------------
+  // Air module: multi-device series (real data with fallback to mocks)
+  // NOTE: Must be declared AFTER mock datasets to avoid TS "used before declaration".
+  // ---------------------------------------------------------------------------
+  const co2MultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return co2HistoryData;
+    const data = buildSeriesByMetric("iaq.co2", 1000);
+    return data.length ? data : co2HistoryData;
+  }, [buildSeriesByMetric, co2HistoryData]);
+
+  const tvocMultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return tvocHistoryData;
+    const data = buildSeriesByMetric("iaq.tvoc", 500);
+    return data.length ? data : tvocHistoryData;
+  }, [buildSeriesByMetric, tvocHistoryData]);
+
+  const tempHumidityMultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return tempHumidityData;
+
+    // Use different keys so temp & humidity don't overwrite each other
+    const temp = buildSeriesByMetric("env.temperature", undefined, "temp");
+    const hum = buildSeriesByMetric("env.humidity", undefined, "hum");
+
+    const byTime = new Map<string, Record<string, unknown>>();
+    [...temp, ...hum].forEach((row) => {
+      const t = String(row.time);
+      if (!byTime.has(t)) byTime.set(t, { time: t });
+      Object.entries(row).forEach(([k, v]) => {
+        if (k !== "time") byTime.get(t)![k] = v;
+      });
+    });
+
+    const merged = Array.from(byTime.values());
+    return merged.length ? merged : tempHumidityData;
+  }, [buildSeriesByMetric, tempHumidityData]);
+
+  const coO3MultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return coO3Data;
+
+    // Use different keys so CO & O3 don't overwrite each other
+    const co = buildSeriesByMetric("iaq.co", undefined, "co");
+    const o3 = buildSeriesByMetric("iaq.o3", undefined, "o3");
+
+    const byTime = new Map<string, Record<string, unknown>>();
+    [...co, ...o3].forEach((row) => {
+      const t = String(row.time);
+      if (!byTime.has(t)) byTime.set(t, { time: t });
+      Object.entries(row).forEach(([k, v]) => {
+        if (k !== "time") byTime.get(t)![k] = v;
+      });
+    });
+
+    const merged = Array.from(byTime.values());
+    return merged.length ? merged : coO3Data;
+  }, [buildSeriesByMetric, coO3Data]);
 
   // Water dashboard data
   const waterConsumptionData = useMemo(() => [
@@ -1558,7 +1572,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               key={`${d.id}-temp`}
                               yAxisId="temp"
                               type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              dataKey={`d_${d.id.replace(/-/g, "")}_temp`}
                               stroke={airColorById.get(d.id)}
                               strokeWidth={2.25}
                               dot={false}
@@ -1570,7 +1584,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               key={`${d.id}-hum`}
                               yAxisId="humidity"
                               type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              dataKey={`d_${d.id.replace(/-/g, "")}_hum`}
                               stroke={airColorById.get(d.id)}
                               strokeWidth={2.25}
                               strokeDasharray="4 4"
@@ -1692,7 +1706,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               key={`${d.id}-co`}
                               yAxisId="co"
                               type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              dataKey={`d_${d.id.replace(/-/g, "")}_co`}
                               stroke={airColorById.get(d.id)}
                               strokeWidth={2.25}
                               dot={false}
@@ -1704,7 +1718,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               key={`${d.id}-o3`}
                               yAxisId="o3"
                               type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              dataKey={`d_${d.id.replace(/-/g, "")}_o3`}
                               stroke={airColorById.get(d.id)}
                               strokeWidth={2.25}
                               strokeDasharray="4 4"
