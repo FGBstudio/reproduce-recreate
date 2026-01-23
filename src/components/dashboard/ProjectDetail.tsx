@@ -278,7 +278,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return { start, end, bucket };
   }, []);
 
-  const { start: airStart, end: airEnd, bucket: airBucket } = getTimeRangeParams(timePeriod, dateRange);
+  // IMPORTANT: stabilizza start/end/bucket.
+  // Prima airEnd era ricalcolato ad ogni render (end = new Date()) => queryKey sempre diversa => refetch infinito.
+  const timeRange = useMemo(
+    () => getTimeRangeParams(timePeriod, dateRange),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getTimeRangeParams, timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]
+  );
+
+  const { start: airStart, end: airEnd, bucket: airBucket } = timeRange;
+
+  // Devices (all) for Energy timeseries
+  const { data: siteDevicesResp } = useDevices(
+    project?.siteId ? { site_id: project.siteId } : undefined,
+    { enabled: !!project?.siteId }
+  );
+  const siteDeviceIds = useMemo(() => (siteDevicesResp?.data ?? []).map((d) => d.id), [siteDevicesResp]);
   const airMetrics = useMemo(
     () => [
       "iaq.co2",
@@ -307,6 +322,34 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   );
   const airTimeseriesResp = airTimeseriesQuery.data;
+
+  // Energy timeseries (single query for all Energy charts)
+  const energyMetrics = useMemo(
+    () => [
+      'energy.power_kw',
+      'energy.hvac_kw',
+      'energy.lighting_kw',
+      'energy.plugs_kw',
+      // optional
+      'energy.co2_kg',
+      'env.temperature',
+    ],
+    []
+  );
+
+  const energyTimeseriesQuery = useTimeseries(
+    {
+      device_ids: siteDeviceIds,
+      metrics: energyMetrics,
+      start: timeRange.start.toISOString(),
+      end: timeRange.end.toISOString(),
+      bucket: timeRange.bucket,
+    },
+    {
+      enabled: isSupabaseConfigured && siteDeviceIds.length > 0,
+    }
+  );
+  const energyTimeseriesResp = energyTimeseriesQuery.data;
 
   const { data: airLatestResp } = useLatestTelemetry(
     selectedAirDeviceIds.length
@@ -659,6 +702,176 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const merged = Array.from(byTime.values());
     return merged.length ? merged : coO3Data;
   }, [buildSeriesByMetric, coO3Data]);
+
+  const pm25MultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return pm25Data as any;
+    const data = buildSeriesByMetric('iaq.pm25', 25);
+    return data.length ? data : (pm25Data as any);
+  }, [buildSeriesByMetric, pm25Data]);
+
+  const pm10MultiSeries = useMemo(() => {
+    if (!isSupabaseConfigured) return pm10Data as any;
+    const data = buildSeriesByMetric('iaq.pm10', 50);
+    return data.length ? data : (pm10Data as any);
+  }, [buildSeriesByMetric, pm10Data]);
+
+  // ---------------------------------------------------------------------------
+  // Energy module: build real series from a single timeseries query
+  // ---------------------------------------------------------------------------
+  const bucketHours = useMemo(() => {
+    if (timeRange.bucket === '1h') return 1;
+    if (timeRange.bucket === '1d') return 24;
+    if (timeRange.bucket === '1M') return 24 * 30;
+    return 1;
+  }, [timeRange.bucket]);
+
+  const buildEnergySeriesSum = useCallback(
+    (metric: string) => {
+      const points = energyTimeseriesResp?.data ?? [];
+      const filtered = points.filter((p) => p.metric === metric);
+      if (filtered.length === 0) return [] as Array<Record<string, unknown>>;
+
+      const labelOf = (ts: Date) => {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        if (timePeriod === 'today') return `${pad(ts.getHours())}:00`;
+        if (timePeriod === 'week') return ts.toLocaleDateString('it-IT', { weekday: 'short' });
+        if (timePeriod === 'year') return ts.toLocaleDateString('it-IT', { month: 'short' });
+        return ts.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+      };
+
+      const byLabel = new Map<string, number>();
+      filtered.forEach((p) => {
+        const label = labelOf(new Date(p.ts_bucket));
+        byLabel.set(label, (byLabel.get(label) ?? 0) + (p.value_avg ?? 0));
+      });
+
+      return Array.from(byLabel.entries()).map(([label, value]) => ({ label, value }));
+    },
+    [energyTimeseriesResp, timePeriod]
+  );
+
+  const energyTrendLiveData = useMemo(() => {
+    if (!isSupabaseConfigured) return trendData;
+
+    const general = buildEnergySeriesSum('energy.power_kw');
+    const hvac = buildEnergySeriesSum('energy.hvac_kw');
+    const lights = buildEnergySeriesSum('energy.lighting_kw');
+    const plugs = buildEnergySeriesSum('energy.plugs_kw');
+
+    const map = new Map<string, Record<string, unknown>>();
+    const merge = (rows: Array<Record<string, unknown>>, key: string) => {
+      rows.forEach((r) => {
+        const label = String(r.label);
+        if (!map.has(label)) map.set(label, { day: label });
+        map.get(label)![key] = r.value;
+      });
+    };
+
+    merge(general as any, 'general');
+    merge(hvac as any, 'hvac');
+    merge(lights as any, 'lights');
+    merge(plugs as any, 'plugs');
+
+    const out = Array.from(map.values());
+    return out.length ? out : trendData;
+  }, [buildEnergySeriesSum, isSupabaseConfigured, trendData]);
+
+  const energyDeviceConsumptionLiveData = useMemo(() => {
+    if (!isSupabaseConfigured) return filteredDeviceData;
+
+    // Convert avg kW to approximate kWh per bucket (keep chart units in kWh)
+    const hvac = buildEnergySeriesSum('energy.hvac_kw');
+    const lighting = buildEnergySeriesSum('energy.lighting_kw');
+    const plugs = buildEnergySeriesSum('energy.plugs_kw');
+
+    const map = new Map<string, Record<string, unknown>>();
+    const merge = (rows: Array<Record<string, unknown>>, key: string) => {
+      rows.forEach((r) => {
+        const label = String(r.label);
+        if (!map.has(label)) map.set(label, { label });
+        map.get(label)![key] = (Number(r.value) || 0) * bucketHours;
+      });
+    };
+
+    merge(hvac as any, 'hvac');
+    merge(lighting as any, 'lighting');
+    merge(plugs as any, 'plugs');
+
+    const out = Array.from(map.values());
+    return out.length ? out : filteredDeviceData;
+  }, [bucketHours, buildEnergySeriesSum, filteredDeviceData, isSupabaseConfigured]);
+
+  const energyCarbonLiveData = useMemo(() => {
+    if (!isSupabaseConfigured) return carbonData;
+
+    // Prefer energy.co2_kg if present; otherwise estimate from kWh
+    const co2 = buildEnergySeriesSum('energy.co2_kg');
+    const hvac = buildEnergySeriesSum('energy.hvac_kw');
+    const lighting = buildEnergySeriesSum('energy.lighting_kw');
+    const plugs = buildEnergySeriesSum('energy.plugs_kw');
+
+    const map = new Map<string, Record<string, unknown>>();
+    const ensure = (label: string) => {
+      if (!map.has(label)) map.set(label, { week: label });
+      return map.get(label)!;
+    };
+
+    co2.forEach((r: any) => {
+      const obj = ensure(String(r.label));
+      obj.co2 = r.value;
+    });
+
+    const defaultKgPerKwh = 0.233;
+    const addKwh = (rows: any[], key: string) => {
+      rows.forEach((r) => {
+        const obj = ensure(String(r.label));
+        obj[key] = (Number(r.value) || 0) * bucketHours;
+      });
+    };
+    addKwh(hvac as any, 'hvac_kwh');
+    addKwh(lighting as any, 'lighting_kwh');
+    addKwh(plugs as any, 'plugs_kwh');
+
+    Array.from(map.values()).forEach((row) => {
+      if (row.co2 == null) {
+        const totalKwh =
+          (Number(row.hvac_kwh) || 0) + (Number(row.lighting_kwh) || 0) + (Number(row.plugs_kwh) || 0);
+        row.co2 = totalKwh * defaultKgPerKwh;
+      }
+    });
+
+    const out = Array.from(map.values()).map((r: any) => ({
+      week: r.week,
+      june: 0,
+      july: Number(r.co2) || 0,
+      august: 0,
+      september: 0,
+    }));
+
+    return out.length ? out : carbonData;
+  }, [bucketHours, buildEnergySeriesSum, carbonData, isSupabaseConfigured]);
+
+  const energyOutdoorLiveData = useMemo(() => {
+    if (!isSupabaseConfigured) return outdoorData;
+
+    const hvac = buildEnergySeriesSum('energy.hvac_kw');
+    const temp = buildEnergySeriesSum('env.temperature');
+
+    const map = new Map<string, Record<string, unknown>>();
+    hvac.forEach((r: any) => {
+      const label = String(r.label);
+      if (!map.has(label)) map.set(label, { day: label });
+      map.get(label)!.hvacOffice = r.value;
+    });
+    temp.forEach((r: any) => {
+      const label = String(r.label);
+      if (!map.has(label)) map.set(label, { day: label });
+      map.get(label)!.temperature = r.value;
+    });
+
+    const out = Array.from(map.values());
+    return out.length ? out : outdoorData;
+  }, [buildEnergySeriesSum, isSupabaseConfigured, outdoorData]);
 
   // Water dashboard data
   const waterConsumptionData = useMemo(() => [
@@ -1341,10 +1554,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Consumo Dispositivi</h3>
-                        <ExportButtons chartRef={deviceConsRef} data={filteredDeviceData} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
+                        <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                       </div>
                       <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={filteredDeviceData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <BarChart data={energyDeviceConsumptionLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v/1000}k`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
@@ -1365,10 +1578,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Carbon Footprint</h3>
-                        <ExportButtons chartRef={carbonRef} data={carbonData} filename="carbon-footprint" onExpand={() => setFullscreenChart('carbon')} />
+                        <ExportButtons chartRef={carbonRef} data={energyCarbonLiveData as any} filename="carbon-footprint" onExpand={() => setFullscreenChart('carbon')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={carbonData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <BarChart data={energyCarbonLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="week" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
@@ -1384,10 +1597,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Energy Trend Over Time</h3>
-                        <ExportButtons chartRef={trendRef} data={trendData} filename="energy-trend" onExpand={() => setFullscreenChart('trend')} />
+                        <ExportButtons chartRef={trendRef} data={energyTrendLiveData as any} filename="energy-trend" onExpand={() => setFullscreenChart('trend')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={trendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <AreaChart data={energyTrendLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
@@ -1403,10 +1616,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Energy vs outdoor condition</h3>
-                        <ExportButtons chartRef={outdoorRef} data={outdoorData} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
+                        <ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={outdoorData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
@@ -1626,19 +1839,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <h3 className="text-lg font-bold text-gray-800">PM2.5 - Particolato Fine</h3>
                           <p className="text-xs text-gray-500">Indoor vs Outdoor (settimanale)</p>
                         </div>
-                        <ExportButtons chartRef={pm25Ref} data={pm25Data} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
+                        <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
                       <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={pm25Data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Bar dataKey="indoor" fill="hsl(188, 100%, 35%)" name="Indoor" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="outdoor" fill="hsl(188, 100%, 60%)" name="Outdoor" radius={[4, 4, 0, 0]} />
-                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
-                        </BarChart>
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={d.id}
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.25}
+                              dot={false}
+                              name={airDeviceLabelById.get(d.id) || d.id}
+                            />
+                          ))}
+                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                        </LineChart>
                       </ResponsiveContainer>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                         <span className="w-3 h-0.5 bg-red-500 rounded" />
@@ -1653,19 +1875,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <h3 className="text-lg font-bold text-gray-800">PM10 - Particolato Grossolano</h3>
                           <p className="text-xs text-gray-500">Indoor vs Outdoor (settimanale)</p>
                         </div>
-                        <ExportButtons chartRef={pm10Ref} data={pm10Data} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
+                        <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
                       <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={pm10Data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Bar dataKey="indoor" fill="hsl(338, 50%, 45%)" name="Indoor" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="outdoor" fill="hsl(338, 50%, 70%)" name="Outdoor" radius={[4, 4, 0, 0]} />
-                          <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
-                        </BarChart>
+                          {selectedAirDevices.map((d) => (
+                            <Line
+                              key={d.id}
+                              type="monotone"
+                              dataKey={`d_${d.id.replace(/-/g, "")}`}
+                              stroke={airColorById.get(d.id)}
+                              strokeWidth={2.25}
+                              dot={false}
+                              name={airDeviceLabelById.get(d.id) || d.id}
+                            />
+                          ))}
+                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                        </LineChart>
                       </ResponsiveContainer>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                         <span className="w-3 h-0.5 bg-red-500 rounded" />
