@@ -55,21 +55,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         console.error('Error fetching profile:', profileError);
       }
 
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', supabaseUser.id)
-        .order('role')
-        .limit(1)
-        .single();
+      // Fetch role (prefer SECURITY DEFINER function to avoid RLS visibility issues)
+      let userRole: UserRole = 'viewer';
+      try {
+        const { data: roleValue, error: roleRpcError } = await supabase.rpc('get_user_role', {
+          _user_id: supabaseUser.id,
+        });
 
-      if (roleError && roleError.code !== 'PGRST116') {
-        console.error('Error fetching role:', roleError);
+        if (roleRpcError) {
+          // Fall back to direct select (older DBs / missing RPC)
+          const { data: roleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', supabaseUser.id)
+            .limit(1)
+            .maybeSingle();
+
+          if (roleError && roleError.code !== 'PGRST116') {
+            console.error('Error fetching role (fallback):', roleError);
+          }
+
+          userRole = (roleData?.role as UserRole) || 'viewer';
+        } else {
+          userRole = (roleValue as UserRole) || 'viewer';
+        }
+      } catch (e) {
+        console.error('Error resolving role:', e);
       }
 
       const userProfile: UserProfile | null = profileData || null;
-      const userRole: UserRole = (roleData?.role as UserRole) || 'viewer';
 
       setProfile(userProfile);
       setUser({
