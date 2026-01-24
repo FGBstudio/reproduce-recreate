@@ -199,8 +199,8 @@ export interface ApiHolding {
  */
 export async function fetchDevicesApi(params?: {
   site_id?: string;
-  type?: string;        // Legacy param name from frontend
-  device_type?: string; // Correct DB column name
+  type?: string | string[];        // Legacy param name from frontend
+  device_type?: string | string[]; // Correct DB column name (supports multi-type)
   status?: string;
   model?: string;
   limit?: number;
@@ -219,9 +219,14 @@ export async function fetchDevicesApi(params?: {
   }
   
   // FIX: Check both parameter names and map to the correct DB column 'device_type'
-  const typeFilter = params?.device_type || params?.type;
+  // Supports single value or array of values.
+  const typeFilter = params?.device_type ?? params?.type;
   if (typeFilter) {
-    query = query.eq('device_type', typeFilter);
+    if (Array.isArray(typeFilter)) {
+      query = query.in('device_type', typeFilter);
+    } else {
+      query = query.eq('device_type', typeFilter);
+    }
   }
 
   if (params?.status) {
