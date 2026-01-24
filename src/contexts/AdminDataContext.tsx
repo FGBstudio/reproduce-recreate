@@ -91,46 +91,9 @@ const mockProjects: AdminProject[] = [
 // System site ID for inbox
 const INBOX_SITE_ID = '00000000-0000-0000-0000-000000000003';
 
-// LocalStorage key for project configs (modules, certifications, status)
-const PROJECT_CONFIGS_KEY = 'fgb_project_configs';
-
-interface ProjectConfigStorage {
-  [siteId: string]: {
-    name?: string;
-    status?: string;
-    modules?: ProjectModules;
-    certifications?: CertificationType[];
-  };
-}
-
-const loadProjectConfigs = (): ProjectConfigStorage => {
-  try {
-    const saved = localStorage.getItem(PROJECT_CONFIGS_KEY);
-    return saved ? JSON.parse(saved) : {};
-  } catch {
-    return {};
-  }
-};
-
-const saveProjectConfig = (siteId: string, config: ProjectConfigStorage[string]) => {
-  try {
-    const existing = loadProjectConfigs();
-    existing[siteId] = { ...existing[siteId], ...config };
-    localStorage.setItem(PROJECT_CONFIGS_KEY, JSON.stringify(existing));
-  } catch (e) {
-    console.warn('Failed to save project config to localStorage', e);
-  }
-};
-
-const deleteProjectConfig = (siteId: string) => {
-  try {
-    const existing = loadProjectConfigs();
-    delete existing[siteId];
-    localStorage.setItem(PROJECT_CONFIGS_KEY, JSON.stringify(existing));
-  } catch (e) {
-    console.warn('Failed to delete project config from localStorage', e);
-  }
-};
+// Note: localStorage for project configs has been REMOVED
+// All module configuration is now persisted in the sites table (DB is source of truth)
+// This ensures consistency across devices for the same user account
 
 export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
@@ -225,15 +188,12 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       setSites(mappedSites);
 
       // Projects are derived from sites
-      // Module configuration now comes from sites table (auto-enabled by device assignment trigger)
-      // localStorage is used as fallback/override for manual configurations
-      const savedConfigs = loadProjectConfigs();
+      // Module configuration comes ONLY from sites table (DB is source of truth)
+      // No localStorage override - ensures consistency across devices
       
       const siteProjects: AdminProject[] = (sitesData || []).map(s => {
-        const savedConfig = savedConfigs[s.id];
-        
-        // Build modules from DB columns (primary source) with localStorage override
-        const dbModules: ProjectModules = {
+        // Build modules directly from DB columns (auto-enabled by device assignment trigger)
+        const modules: ProjectModules = {
           energy: {
             ...defaultProjectModules.energy,
             enabled: s.module_energy_enabled ?? false,
@@ -251,22 +211,13 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
           },
         };
         
-        // If localStorage has module overrides, merge them (localStorage wins for manual config)
-        const finalModules = savedConfig?.modules 
-          ? {
-              energy: { ...dbModules.energy, ...savedConfig.modules.energy },
-              air: { ...dbModules.air, ...savedConfig.modules.air },
-              water: { ...dbModules.water, ...savedConfig.modules.water },
-            }
-          : dbModules;
-        
         return {
           id: s.id,
           siteId: s.id,
-          name: savedConfig?.name || s.name,
-          status: (savedConfig?.status as 'active' | 'inactive' | 'pending') || 'active',
-          modules: finalModules,
-          certifications: (savedConfig?.certifications as CertificationType[]) || [],
+          name: s.name,
+          status: 'active' as const,
+          modules,
+          certifications: [] as CertificationType[],
           createdAt: new Date(s.created_at),
           updatedAt: new Date(s.updated_at),
         };
@@ -593,10 +544,10 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [invalidateApiCaches]);
 
-  // Projects CRUD (projects are derived from sites, configs stored in localStorage)
+  // Projects CRUD (projects are derived from sites, configs stored in DB)
   // Note: "Adding a project" here means configuring an existing site with modules/certifications
   const addProject = useCallback(async (data: Omit<AdminProject, 'id' | 'createdAt' | 'updatedAt'>): Promise<AdminProject | null> => {
-    // Projects are tied to sites - we just save the config
+    // Projects are tied to sites - persist config to DB
     const siteId = data.siteId;
     const site = sites.find(s => s.id === siteId);
     
@@ -605,13 +556,33 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       return null;
     }
     
-    // Save config to localStorage
-    saveProjectConfig(siteId, {
-      name: data.name,
-      status: data.status,
-      modules: data.modules,
-      certifications: data.certifications,
-    });
+    // Persist module config to Supabase sites table (DB is source of truth)
+    if (isSupabaseConfigured && supabase && data.modules) {
+      try {
+        const { error } = await supabase
+          .from('sites')
+          .update({
+            module_energy_enabled: data.modules.energy?.enabled ?? false,
+            module_energy_show_demo: data.modules.energy?.showDemo ?? false,
+            module_air_enabled: data.modules.air?.enabled ?? false,
+            module_air_show_demo: data.modules.air?.showDemo ?? false,
+            module_water_enabled: data.modules.water?.enabled ?? false,
+            module_water_show_demo: data.modules.water?.showDemo ?? false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', siteId);
+        
+        if (error) {
+          console.error('Error saving site modules:', error);
+          toast.error(`Errore salvataggio: ${error.message}`);
+          return null;
+        }
+      } catch (err: any) {
+        console.error('Error adding project:', err);
+        toast.error(`Errore: ${err.message}`);
+        return null;
+      }
+    }
     
     const newProject: AdminProject = {
       id: siteId, // Use site ID as project ID
@@ -645,21 +616,62 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    // Update localStorage config
-    saveProjectConfig(id, {
-      name: data.name,
-      status: data.status,
-      modules: data.modules,
-      certifications: data.certifications,
-    });
+    // Persist module config to Supabase sites table (DB is source of truth)
+    if (isSupabaseConfigured && supabase && data.modules) {
+      try {
+        const { error } = await supabase
+          .from('sites')
+          .update({
+            module_energy_enabled: data.modules.energy?.enabled ?? project.modules.energy.enabled,
+            module_energy_show_demo: data.modules.energy?.showDemo ?? project.modules.energy.showDemo,
+            module_air_enabled: data.modules.air?.enabled ?? project.modules.air.enabled,
+            module_air_show_demo: data.modules.air?.showDemo ?? project.modules.air.showDemo,
+            module_water_enabled: data.modules.water?.enabled ?? project.modules.water.enabled,
+            module_water_show_demo: data.modules.water?.showDemo ?? project.modules.water.showDemo,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+        
+        if (error) {
+          console.error('Error updating site modules:', error);
+          toast.error(`Errore salvataggio: ${error.message}`);
+          return;
+        }
+      } catch (err: any) {
+        console.error('Error updating project:', err);
+        toast.error(`Errore: ${err.message}`);
+        return;
+      }
+    }
     
     setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data, updatedAt: new Date() } : p));
     toast.success('Progetto aggiornato');
   }, [projects]);
 
   const deleteProject = useCallback(async (id: string) => {
-    // Delete config from localStorage (site itself remains)
-    deleteProjectConfig(id);
+    // Reset modules in DB (site itself remains)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('sites')
+          .update({
+            module_energy_enabled: false,
+            module_energy_show_demo: false,
+            module_air_enabled: false,
+            module_air_show_demo: false,
+            module_water_enabled: false,
+            module_water_show_demo: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+        
+        if (error) {
+          console.error('Error resetting site modules:', error);
+        }
+      } catch (err) {
+        console.error('Error deleting project:', err);
+      }
+    }
     
     // Reset project to defaults (don't remove, just reset)
     const site = sites.find(s => s.id === id);
