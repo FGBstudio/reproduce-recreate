@@ -179,6 +179,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // Get module configuration for this project
   const moduleConfig = useProjectModuleConfig(project);
+
+  // Device-type mapping (some DBs contain legacy/specific values like energy_single/energy_three_phase/water)
+  const ENERGY_DEVICE_TYPES = useMemo(
+    () => ["energy_monitor", "energy_single", "energy_three_phase", "hvac", "lighting"],
+    []
+  );
+  const WATER_DEVICE_TYPES = useMemo(() => ["water_meter", "water"], []);
   
   // Touch/swipe handling
   const touchStartX = useRef<number | null>(null);
@@ -293,7 +300,32 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     project?.siteId ? { site_id: project.siteId } : undefined,
     { enabled: !!project?.siteId }
   );
-  const siteDeviceIds = useMemo(() => (siteDevicesResp?.data ?? []).map((d) => d.id), [siteDevicesResp]);
+  const siteDevices = siteDevicesResp?.data ?? [];
+  const siteDeviceIds = useMemo(() => siteDevices.map((d) => d.id), [siteDevices]);
+
+  // If modules are marked disabled in DB but devices exist, infer enablement from device types.
+  // This fixes cases where DB auto-enable triggers didn't fire or legacy device_type values are used.
+  const inferredHasEnergy = useMemo(
+    () => siteDevices.some((d) => ENERGY_DEVICE_TYPES.includes(d.device_type)),
+    [siteDevices, ENERGY_DEVICE_TYPES]
+  );
+  const inferredHasAir = useMemo(
+    () => siteDevices.some((d) => d.device_type === "air_quality"),
+    [siteDevices]
+  );
+  const inferredHasWater = useMemo(
+    () => siteDevices.some((d) => WATER_DEVICE_TYPES.includes(d.device_type)),
+    [siteDevices, WATER_DEVICE_TYPES]
+  );
+
+  const resolvedModuleConfig = useMemo(
+    () => ({
+      energy: { ...moduleConfig.energy, enabled: moduleConfig.energy.enabled || inferredHasEnergy },
+      air: { ...moduleConfig.air, enabled: moduleConfig.air.enabled || inferredHasAir },
+      water: { ...moduleConfig.water, enabled: moduleConfig.water.enabled || inferredHasWater },
+    }),
+    [moduleConfig, inferredHasEnergy, inferredHasAir, inferredHasWater]
+  );
   const airMetrics = useMemo(
     () => [
       "iaq.co2",
@@ -1306,7 +1338,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <div className="w-full flex-shrink-0 overflow-y-auto pb-4">
                 <OverviewSection 
                   project={project} 
-                  moduleConfig={moduleConfig} 
+                  moduleConfig={resolvedModuleConfig} 
                   onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
                 />
               </div>
@@ -1314,7 +1346,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
-              <ModuleGate module="energy" config={moduleConfig.energy} demoContent={<EnergyDemoContent />}>
+              <ModuleGate module="energy" config={resolvedModuleConfig.energy} demoContent={<EnergyDemoContent />}>
                 <>
                 {/* Slide 1: Energy Overview */}
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
@@ -1638,7 +1670,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             
             {/* AIR QUALITY DASHBOARD */}
             {activeDashboard === "air" && (
-              <ModuleGate module="air" config={moduleConfig.air} demoContent={<AirDemoContent />}>
+              <ModuleGate module="air" config={resolvedModuleConfig.air} demoContent={<AirDemoContent />}>
                 <>
                 {/* Slide 1: Overview + CO2 + TVOC */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
@@ -2023,7 +2055,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             
             {/* WATER DASHBOARD */}
             {activeDashboard === "water" && (
-              <ModuleGate module="water" config={moduleConfig.water} demoContent={<WaterDemoContent />}>
+              <ModuleGate module="water" config={resolvedModuleConfig.water} demoContent={<WaterDemoContent />}>
                 <>
                 {/* Slide 1: Consumo idrico & Distribuzione */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
