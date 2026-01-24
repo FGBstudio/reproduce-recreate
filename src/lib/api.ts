@@ -331,7 +331,65 @@ export async function fetchLatestApi(params?: {
 }
 
 /**
- * Fetch time-series telemetry data directly from 'telemetry' table
+ * Smart table routing configuration
+ * Routes queries to the optimal table based on time range duration
+ */
+type TableRoute = 'raw' | 'hourly' | 'daily';
+
+interface TableRouteConfig {
+  table: TableRoute;
+  source: string;
+  tsColumn: string;
+  valueColumn: string;
+  hasMinMax: boolean;
+}
+
+function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
+  const durationMs = endDate.getTime() - startDate.getTime();
+  const durationHours = durationMs / (1000 * 60 * 60);
+  const durationDays = durationHours / 24;
+
+  // ≤24 hours: use raw telemetry (maximum detail)
+  if (durationHours <= 24) {
+    return {
+      table: 'raw',
+      source: 'telemetry',
+      tsColumn: 'ts',
+      valueColumn: 'value',
+      hasMinMax: false,
+    };
+  }
+
+  // >24 hours AND ≤30 days: use hourly aggregates
+  if (durationDays <= 30) {
+    return {
+      table: 'hourly',
+      source: 'telemetry_hourly',
+      tsColumn: 'ts_hour',
+      valueColumn: 'value_avg',
+      hasMinMax: true,
+    };
+  }
+
+  // >30 days: use daily aggregates
+  return {
+    table: 'daily',
+    source: 'telemetry_daily',
+    tsColumn: 'ts_day',
+    valueColumn: 'value_avg',
+    hasMinMax: true,
+  };
+}
+
+/**
+ * Fetch time-series telemetry data with smart table routing
+ * 
+ * Routing logic based on time range duration:
+ * - ≤24 hours: telemetry (raw) → maximum detail
+ * - >24h AND ≤30 days: telemetry_hourly → hourly averages
+ * - >30 days: telemetry_daily → daily averages
+ * 
+ * Includes fallback to raw + client-side aggregation if aggregate tables are empty
  */
 export async function fetchTimeseriesApi(params: {
   device_ids: string[];
@@ -344,11 +402,11 @@ export async function fetchTimeseriesApi(params: {
 
   const metricFilter = expandMetricFilter(params.metrics) || params.metrics;
 
+  // Client-side aggregation for fallback scenarios
   const aggregateRaw = (
     rawRows: Array<{ ts: string; device_id: string; metric: string; value: number }>,
-    bucket: '1h' | '1d' | '1M'
+    targetBucket: '1h' | '1d' | '1M'
   ): ApiTimeseriesPoint[] => {
-    // Group by (bucket_ts, device_id, metric) and compute avg/min/max/count.
     const bucketIso = (tsIso: string) => {
       const d = new Date(tsIso);
       if (Number.isNaN(d.getTime())) return tsIso;
@@ -358,8 +416,8 @@ export async function fetchTimeseriesApi(params: {
       const day = String(d.getUTCDate()).padStart(2, '0');
       const h = String(d.getUTCHours()).padStart(2, '0');
 
-      if (bucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
-      if (bucket === '1M') return `${y}-${m}-01T00:00:00.000Z`;
+      if (targetBucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
+      if (targetBucket === '1M') return `${y}-${m}-01T00:00:00.000Z`;
       return `${y}-${m}-${day}T00:00:00.000Z`;
     };
 
@@ -411,21 +469,20 @@ export async function fetchTimeseriesApi(params: {
       .sort((a, b) => (a.ts_bucket < b.ts_bucket ? -1 : a.ts_bucket > b.ts_bucket ? 1 : 0));
   };
 
-  // Choose the best source table based on requested bucket.
-  // NOTE: The dashboard already computes bucket (1h/1d/1M). Here we just route to the matching table.
-  const bucket = params.bucket;
-  const useHourly = bucket === '1h';
-  const useDaily = bucket === '1d' || bucket === '1M';
-
+  // Parse dates and determine optimal table routing
   const startDate = new Date(params.start);
   const endDate = new Date(params.end);
-  const startDay = startDate.toISOString().slice(0, 10);
+  const route = getTableRoute(startDate, endDate);
+
+  // Prepare date filters
+  const startDay = startDate.toISOString().slice(0, 10); // YYYY-MM-DD for daily table
   const endDay = endDate.toISOString().slice(0, 10);
 
   let data: any[] | null = null;
   let error: any = null;
 
-  if (useHourly) {
+  // Execute query based on route
+  if (route.table === 'hourly') {
     const resp = await supabase
       .from('telemetry_hourly')
       .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
@@ -436,8 +493,7 @@ export async function fetchTimeseriesApi(params: {
       .order('ts_hour', { ascending: true });
     data = resp.data as any;
     error = resp.error;
-  } else if (useDaily) {
-    // telemetry_daily.ts_day is DATE, so filter by YYYY-MM-DD
+  } else if (route.table === 'daily') {
     const resp = await supabase
       .from('telemetry_daily')
       .select('ts_day, device_id, metric, value_avg, value_min, value_max, sample_count')
@@ -449,7 +505,7 @@ export async function fetchTimeseriesApi(params: {
     data = resp.data as any;
     error = resp.error;
   } else {
-    // Raw fallback
+    // Raw telemetry
     const resp = await supabase
       .from('telemetry')
       .select('ts, device_id, metric, value')
@@ -463,16 +519,15 @@ export async function fetchTimeseriesApi(params: {
   }
 
   if (error) {
-    console.error('Direct DB Timeseries fetch error:', error);
+    console.error(`Direct DB Timeseries fetch error (${route.source}):`, error);
     return null;
   }
 
-  // IMPORTANT RELIABILITY FIX:
-  // Many environments ingest raw telemetry but don't have the hourly/daily aggregation jobs enabled.
-  // In that case telemetry_hourly/telemetry_daily will legitimately return 0 rows.
-  // When that happens, we fall back to raw telemetry and aggregate client-side to the requested bucket.
+  // FALLBACK: If aggregate tables return 0 rows, fall back to raw + client-side aggregation
   const hasNoRows = !data || data.length === 0;
-  if (hasNoRows && (useHourly || useDaily) && params.bucket) {
+  if (hasNoRows && route.table !== 'raw') {
+    console.log(`[Timeseries] ${route.source} returned 0 rows, falling back to raw + client-side aggregation`);
+    
     const rawResp = await supabase
       .from('telemetry')
       .select('ts, device_id, metric, value')
@@ -480,7 +535,6 @@ export async function fetchTimeseriesApi(params: {
       .in('metric', metricFilter)
       .gte('ts', params.start)
       .lte('ts', params.end)
-      // avoid accidental tiny defaults if PostgREST limit is configured
       .limit(50000)
       .order('ts', { ascending: true });
 
@@ -489,17 +543,15 @@ export async function fetchTimeseriesApi(params: {
       return null;
     }
 
-    const bucket = (params.bucket === '1h' || params.bucket === '1d' || params.bucket === '1M')
-      ? params.bucket
-      : '1d';
-
-    const aggregated = aggregateRaw((rawResp.data as any[]) || [], bucket);
+    // Determine aggregation bucket based on route
+    const aggBucket: '1h' | '1d' | '1M' = route.table === 'hourly' ? '1h' : '1d';
+    const aggregated = aggregateRaw((rawResp.data as any[]) || [], aggBucket);
 
     return {
       data: aggregated,
       meta: {
-        bucket: params.bucket,
-        source: 'telemetry(raw->client_agg)',
+        bucket: aggBucket,
+        source: `telemetry(raw->client_agg:${aggBucket})`,
         start: params.start,
         end: params.end,
         point_count: aggregated.length,
@@ -507,9 +559,9 @@ export async function fetchTimeseriesApi(params: {
     };
   }
 
-  // Map data to ApiTimeseriesPoint format
+  // Map data to ApiTimeseriesPoint format based on source table
   const formattedData: ApiTimeseriesPoint[] = (data || []).map((row: any) => {
-    if (useHourly) {
+    if (route.table === 'hourly') {
       return {
         ts_bucket: row.ts_hour,
         device_id: row.device_id,
@@ -520,7 +572,8 @@ export async function fetchTimeseriesApi(params: {
         sample_count: row.sample_count ?? 0,
       };
     }
-    if (useDaily) {
+    
+    if (route.table === 'daily') {
       // DATE -> ISO timestamp (midnight UTC) for consistent parsing in UI
       const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
       return {
@@ -534,7 +587,7 @@ export async function fetchTimeseriesApi(params: {
       };
     }
 
-    // Raw
+    // Raw telemetry
     return {
       ts_bucket: row.ts,
       device_id: row.device_id,
@@ -546,15 +599,18 @@ export async function fetchTimeseriesApi(params: {
     };
   });
 
+  // Determine actual bucket for metadata
+  const actualBucket = route.table === 'hourly' ? '1h' : route.table === 'daily' ? '1d' : 'raw';
+
   return {
     data: formattedData,
     meta: {
-      bucket: params.bucket || 'raw',
-      source: useHourly ? 'telemetry_hourly' : useDaily ? 'telemetry_daily' : 'telemetry',
+      bucket: params.bucket || actualBucket,
+      source: route.source,
       start: params.start,
       end: params.end,
-      point_count: formattedData.length
-    }
+      point_count: formattedData.length,
+    },
   };
 }
 
