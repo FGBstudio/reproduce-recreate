@@ -29,7 +29,7 @@ import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/component
 import { OverviewSection } from "./OverviewSection";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
-import { useDevices, useLatestTelemetry, useTimeseries } from "@/lib/api";
+import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest } from "@/lib/api";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { TimeseriesDiagnostics } from "@/components/dashboard/TimeseriesDiagnostics";
 
@@ -369,19 +369,27 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     []
   );
 
-  const energyTimeseriesQuery = useTimeseries(
+  // Use dedicated energy tables for better performance
+  const energyTimeseriesQuery = useEnergyTimeseries(
     {
-      device_ids: siteDeviceIds,
+      site_id: project?.siteId,
+      device_ids: siteDeviceIds.length > 0 ? siteDeviceIds : undefined,
       metrics: energyMetrics,
       start: timeRange.start.toISOString(),
       end: timeRange.end.toISOString(),
       bucket: timeRange.bucket,
     },
     {
-      enabled: isSupabaseConfigured && siteDeviceIds.length > 0,
+      enabled: isSupabaseConfigured && (!!project?.siteId || siteDeviceIds.length > 0),
     }
   );
   const energyTimeseriesResp = energyTimeseriesQuery.data;
+
+  // Also fetch energy latest from dedicated table
+  const { data: energyLatestResp } = useEnergyLatest(
+    project?.siteId ? { site_id: project.siteId } : undefined,
+    { enabled: isSupabaseConfigured && !!project?.siteId }
+  );
 
   const { data: airLatestResp } = useLatestTelemetry(
     selectedAirDeviceIds.length

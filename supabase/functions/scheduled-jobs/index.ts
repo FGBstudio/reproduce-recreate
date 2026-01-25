@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     const startTime = Date.now()
 
     if (jobType === 'hourly' || jobType === 'all') {
-      // Run hourly jobs
+      // Run hourly jobs (general telemetry)
       const { data, error } = await supabase.rpc('run_scheduled_jobs')
       
       if (error) {
@@ -59,16 +59,34 @@ Deno.serve(async (req) => {
       } else {
         results.push({ job: 'hourly', status: 'success', details: data })
       }
+
+      // Run hourly energy aggregation
+      const { data: energyData, error: energyError } = await supabase.rpc('aggregate_energy_hourly')
+      
+      if (energyError) {
+        results.push({ job: 'energy_hourly', status: 'error', details: energyError.message })
+      } else {
+        results.push({ job: 'energy_hourly', status: 'success', details: energyData })
+      }
     }
 
     if (jobType === 'daily' || jobType === 'all') {
-      // Run daily jobs
+      // Run daily jobs (general telemetry)
       const { data, error } = await supabase.rpc('run_daily_jobs')
       
       if (error) {
         results.push({ job: 'daily', status: 'error', details: error.message })
       } else {
         results.push({ job: 'daily', status: 'success', details: data })
+      }
+
+      // Run daily energy aggregation
+      const { data: energyData, error: energyError } = await supabase.rpc('aggregate_energy_daily')
+      
+      if (energyError) {
+        results.push({ job: 'energy_daily', status: 'error', details: energyError.message })
+      } else {
+        results.push({ job: 'energy_daily', status: 'success', details: energyData })
       }
     }
 
