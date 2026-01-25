@@ -620,6 +620,321 @@ export async function fetchTimeseriesApi(params: {
 }
 
 /**
+ * Fetch ENERGY time-series data from dedicated energy tables
+ * Uses energy_telemetry, energy_hourly, energy_daily for better performance
+ * 
+ * Same routing logic as fetchTimeseriesApi but uses energy-specific tables
+ */
+export async function fetchEnergyTimeseriesApi(params: {
+  site_id?: string;
+  device_ids?: string[];
+  metrics: string[];
+  start: string;
+  end: string;
+  bucket?: string;
+}): Promise<ApiTimeseriesResponse | null> {
+  if (!supabase) return null;
+
+  // Energy metrics don't need the same expansion as IAQ
+  const metricFilter = params.metrics;
+
+  // Client-side aggregation for fallback scenarios
+  const aggregateRaw = (
+    rawRows: Array<{ ts: string; device_id: string; metric: string; value: number }>,
+    targetBucket: '1h' | '1d' | '1M'
+  ): ApiTimeseriesPoint[] => {
+    const bucketIso = (tsIso: string) => {
+      const d = new Date(tsIso);
+      if (Number.isNaN(d.getTime())) return tsIso;
+
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const h = String(d.getUTCHours()).padStart(2, '0');
+
+      if (targetBucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
+      if (targetBucket === '1M') return `${y}-${m}-01T00:00:00.000Z`;
+      return `${y}-${m}-${day}T00:00:00.000Z`;
+    };
+
+    type Agg = {
+      ts_bucket: string;
+      device_id: string;
+      metric: string;
+      sum: number;
+      min: number;
+      max: number;
+      count: number;
+    };
+
+    const map = new Map<string, Agg>();
+
+    for (const r of rawRows) {
+      const ts_bucket = bucketIso(r.ts);
+      const key = `${ts_bucket}|${r.device_id}|${r.metric}`;
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, {
+          ts_bucket,
+          device_id: r.device_id,
+          metric: r.metric,
+          sum: r.value,
+          min: r.value,
+          max: r.value,
+          count: 1,
+        });
+      } else {
+        prev.sum += r.value;
+        prev.count += 1;
+        if (r.value < prev.min) prev.min = r.value;
+        if (r.value > prev.max) prev.max = r.value;
+      }
+    }
+
+    return Array.from(map.values())
+      .map((a) => ({
+        ts_bucket: a.ts_bucket,
+        device_id: a.device_id,
+        metric: a.metric,
+        value_avg: a.count ? a.sum / a.count : 0,
+        value_min: a.min,
+        value_max: a.max,
+        sample_count: a.count,
+      }))
+      .sort((a, b) => (a.ts_bucket < b.ts_bucket ? -1 : a.ts_bucket > b.ts_bucket ? 1 : 0));
+  };
+
+  // Parse dates and determine optimal table routing
+  const startDate = new Date(params.start);
+  const endDate = new Date(params.end);
+  const route = getTableRoute(startDate, endDate);
+
+  // Prepare date filters
+  const startDay = startDate.toISOString().slice(0, 10);
+  const endDay = endDate.toISOString().slice(0, 10);
+
+  let data: any[] | null = null;
+  let error: any = null;
+
+  // Build base filter (site_id OR device_ids)
+  const buildQuery = (baseQuery: any) => {
+    if (params.device_ids && params.device_ids.length > 0) {
+      baseQuery = baseQuery.in('device_id', params.device_ids);
+    } else if (params.site_id) {
+      baseQuery = baseQuery.eq('site_id', params.site_id);
+    }
+    return baseQuery.in('metric', metricFilter);
+  };
+
+  // Execute query based on route - use ENERGY-specific tables
+  if (route.table === 'hourly') {
+    let query = supabase
+      .from('energy_hourly')
+      .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
+      .gte('ts_hour', params.start)
+      .lte('ts_hour', params.end)
+      .order('ts_hour', { ascending: true });
+    
+    query = buildQuery(query);
+    const resp = await query;
+    data = resp.data as any;
+    error = resp.error;
+  } else if (route.table === 'daily') {
+    let query = supabase
+      .from('energy_daily')
+      .select('ts_day, device_id, metric, value_avg, value_min, value_max, sample_count')
+      .gte('ts_day', startDay)
+      .lte('ts_day', endDay)
+      .order('ts_day', { ascending: true });
+    
+    query = buildQuery(query);
+    const resp = await query;
+    data = resp.data as any;
+    error = resp.error;
+  } else {
+    // Raw energy telemetry
+    let query = supabase
+      .from('energy_telemetry')
+      .select('ts, device_id, metric, value')
+      .gte('ts', params.start)
+      .lte('ts', params.end)
+      .order('ts', { ascending: true });
+    
+    query = buildQuery(query);
+    const resp = await query;
+    data = resp.data as any;
+    error = resp.error;
+  }
+
+  if (error) {
+    console.error(`Energy Timeseries fetch error (${route.source}):`, error);
+    // Fallback to generic telemetry tables
+    console.log('[Energy] Falling back to generic telemetry tables');
+    return fetchTimeseriesApi({
+      device_ids: params.device_ids || [],
+      metrics: params.metrics,
+      start: params.start,
+      end: params.end,
+      bucket: params.bucket,
+    });
+  }
+
+  // FALLBACK: If energy tables return 0 rows, try raw + client-side aggregation
+  const hasNoRows = !data || data.length === 0;
+  if (hasNoRows && route.table !== 'raw') {
+    console.log(`[Energy] ${route.source} returned 0 rows, trying raw energy_telemetry`);
+    
+    let rawQuery = supabase
+      .from('energy_telemetry')
+      .select('ts, device_id, metric, value')
+      .gte('ts', params.start)
+      .lte('ts', params.end)
+      .limit(50000)
+      .order('ts', { ascending: true });
+
+    rawQuery = buildQuery(rawQuery);
+    const rawResp = await rawQuery;
+
+    if (rawResp.error || !rawResp.data || rawResp.data.length === 0) {
+      // Final fallback: try generic telemetry tables
+      console.log('[Energy] Falling back to generic telemetry tables');
+      return fetchTimeseriesApi({
+        device_ids: params.device_ids || [],
+        metrics: params.metrics,
+        start: params.start,
+        end: params.end,
+        bucket: params.bucket,
+      });
+    }
+
+    // Determine aggregation bucket based on route
+    const aggBucket: '1h' | '1d' | '1M' = route.table === 'hourly' ? '1h' : '1d';
+    const aggregated = aggregateRaw((rawResp.data as any[]) || [], aggBucket);
+
+    return {
+      data: aggregated,
+      meta: {
+        bucket: aggBucket,
+        source: `energy_telemetry(raw->client_agg:${aggBucket})`,
+        start: params.start,
+        end: params.end,
+        point_count: aggregated.length,
+      },
+    };
+  }
+
+  // Map data to ApiTimeseriesPoint format
+  const formattedData: ApiTimeseriesPoint[] = (data || []).map((row: any) => {
+    if (route.table === 'hourly') {
+      return {
+        ts_bucket: row.ts_hour,
+        device_id: row.device_id,
+        metric: row.metric,
+        value_avg: row.value_avg ?? 0,
+        value_min: row.value_min ?? row.value_avg ?? 0,
+        value_max: row.value_max ?? row.value_avg ?? 0,
+        sample_count: row.sample_count ?? 0,
+      };
+    }
+    
+    if (route.table === 'daily') {
+      const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
+      return {
+        ts_bucket: dayIso,
+        device_id: row.device_id,
+        metric: row.metric,
+        value_avg: row.value_avg ?? 0,
+        value_min: row.value_min ?? row.value_avg ?? 0,
+        value_max: row.value_max ?? row.value_avg ?? 0,
+        sample_count: row.sample_count ?? 0,
+      };
+    }
+
+    // Raw telemetry
+    return {
+      ts_bucket: row.ts,
+      device_id: row.device_id,
+      metric: row.metric,
+      value_avg: row.value,
+      value_min: row.value,
+      value_max: row.value,
+      sample_count: 1,
+    };
+  });
+
+  const actualBucket = route.table === 'hourly' ? '1h' : route.table === 'daily' ? '1d' : 'raw';
+
+  return {
+    data: formattedData,
+    meta: {
+      bucket: params.bucket || actualBucket,
+      source: `energy_${route.source}`,
+      start: params.start,
+      end: params.end,
+      point_count: formattedData.length,
+    },
+  };
+}
+
+/**
+ * Fetch latest energy telemetry from dedicated energy_latest table
+ */
+export async function fetchEnergyLatestApi(params?: {
+  site_id?: string;
+  device_ids?: string[];
+  metrics?: string[];
+}): Promise<ApiLatestResponse | null> {
+  if (!supabase) return null;
+
+  let query = supabase
+    .from('energy_latest')
+    .select('device_id, site_id, metric, value, unit, ts, quality');
+
+  if (params?.site_id) {
+    query = query.eq('site_id', params.site_id);
+  }
+  if (params?.device_ids && params.device_ids.length > 0) {
+    query = query.in('device_id', params.device_ids);
+  }
+  if (params?.metrics && params.metrics.length > 0) {
+    query = query.in('metric', params.metrics);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Energy Latest fetch error:', error);
+    // Fallback to generic telemetry_latest
+    return fetchLatestApi(params);
+  }
+
+  // Transform to grouped format
+  const groupedData: Record<string, ApiLatestTelemetry[]> = {};
+  
+  (data || []).forEach((row: any) => {
+    if (!groupedData[row.device_id]) {
+      groupedData[row.device_id] = [];
+    }
+    groupedData[row.device_id].push({
+      device_id: row.device_id,
+      metric: row.metric,
+      value: row.value,
+      unit: row.unit,
+      ts: row.ts,
+      quality: row.quality
+    });
+  });
+
+  return {
+    data: groupedData,
+    meta: {
+      device_count: Object.keys(groupedData).length,
+      metric_count: (data || []).length,
+    },
+  };
+}
+
+/**
  * Fetch sites from database
  */
 export async function fetchSitesApi(): Promise<ApiSite[] | null> {
@@ -687,6 +1002,8 @@ export const queryKeys = {
   devices: (params?: Record<string, unknown>) => ['devices', params] as const,
   latest: (params?: Record<string, unknown>) => ['latest', params] as const,
   timeseries: (params: Record<string, unknown>) => ['timeseries', params] as const,
+  energyTimeseries: (params: Record<string, unknown>) => ['energy-timeseries', params] as const,
+  energyLatest: (params?: Record<string, unknown>) => ['energy-latest', params] as const,
   sites: () => ['sites'] as const,
   brands: () => ['brands'] as const,
   holdings: () => ['holdings'] as const,
@@ -737,6 +1054,43 @@ export function useTimeseries(
     queryFn: () => fetchTimeseriesApi(params),
     enabled: isSupabaseConfigured && params.device_ids.length > 0,
     staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Hook to fetch ENERGY time-series data from dedicated tables
+ * Uses energy_telemetry, energy_hourly, energy_daily for better performance
+ */
+export function useEnergyTimeseries(
+  params: Parameters<typeof fetchEnergyTimeseriesApi>[0],
+  options?: Omit<UseQueryOptions<ApiTimeseriesResponse | null>, 'queryKey' | 'queryFn'>
+) {
+  const hasDevices = params.device_ids && params.device_ids.length > 0;
+  const hasSite = !!params.site_id;
+  
+  return useQuery({
+    queryKey: queryKeys.energyTimeseries(params),
+    queryFn: () => fetchEnergyTimeseriesApi(params),
+    enabled: isSupabaseConfigured && (hasDevices || hasSite),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Hook to fetch latest energy telemetry from dedicated table
+ */
+export function useEnergyLatest(
+  params?: Parameters<typeof fetchEnergyLatestApi>[0],
+  options?: Omit<UseQueryOptions<ApiLatestResponse | null>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: queryKeys.energyLatest(params),
+    queryFn: () => fetchEnergyLatestApi(params),
+    enabled: isSupabaseConfigured,
+    staleTime: 10 * 1000,
+    refetchInterval: 30 * 1000,
     ...options,
   });
 }
