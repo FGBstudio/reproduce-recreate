@@ -228,18 +228,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return map;
   }, [airDevices]);
 
+  // FGB brand palette for air quality charts
+  const FGB_PALETTE = useMemo(() => [
+    "#009193", // teal primary
+    "#006367", // teal dark
+    "#911140", // burgundy
+    "#e63f26", // orange-red
+    "#a0d5d6", // teal light
+    "#f8cbcc", // pink light
+  ], []);
+
   const airColorById = useMemo(() => {
-    const palette = [
-      "hsl(var(--secondary))",
-      "hsl(var(--primary))",
-      "hsl(var(--emerald))",
-      "hsl(var(--rose))",
-      "hsl(var(--muted-foreground))",
-    ];
     const map = new Map<string, string>();
-    airDeviceIds.forEach((id, idx) => map.set(id, palette[idx % palette.length]));
+    airDeviceIds.forEach((id, idx) => map.set(id, FGB_PALETTE[idx % FGB_PALETTE.length]));
     return map;
-  }, [airDeviceIds]);
+  }, [airDeviceIds, FGB_PALETTE]);
 
   const getTimeRangeParams = useCallback((tp: TimePeriod, dr?: DateRange) => {
     const now = new Date();
@@ -1790,7 +1793,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name={airDeviceLabelById.get(d.id) || d.id}
                             />
                           ))}
-                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -1819,7 +1822,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name={airDeviceLabelById.get(d.id) || d.id}
                             />
                           ))}
-                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -1877,7 +1880,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">PM2.5 - Particolato Fine</h3>
-                          <p className="text-xs text-gray-500">Indoor vs Outdoor (settimanale)</p>
+                          <p className="text-xs text-gray-500">Trend ({periodLabel})</p>
                         </div>
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
@@ -1899,11 +1902,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name={airDeviceLabelById.get(d.id) || d.id}
                             />
                           ))}
-                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
                         </LineChart>
                       </ResponsiveContainer>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                        <span className="w-3 h-0.5 bg-red-500 rounded" />
+                        <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
                         <span>Limite OMS: 25 μg/m³</span>
                       </div>
                     </div>
@@ -1913,7 +1916,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">PM10 - Particolato Grossolano</h3>
-                          <p className="text-xs text-gray-500">Indoor vs Outdoor (settimanale)</p>
+                          <p className="text-xs text-gray-500">Trend ({periodLabel})</p>
                         </div>
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
@@ -1935,11 +1938,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name={airDeviceLabelById.get(d.id) || d.id}
                             />
                           ))}
-                          <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
                         </LineChart>
                       </ResponsiveContainer>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                        <span className="w-3 h-0.5 bg-red-500 rounded" />
+                        <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
                         <span>Limite OMS: 50 μg/m³</span>
                       </div>
                     </div>
@@ -2742,7 +2745,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 name={airDeviceLabelById.get(d.id) || d.id}
               />
             ))}
-            <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
@@ -2771,7 +2774,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 name={airDeviceLabelById.get(d.id) || d.id}
               />
             ))}
-            <Line type="monotone" dataKey="limit" stroke="hsl(var(--destructive))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
@@ -2823,40 +2826,66 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'pm25'}
         onClose={() => setFullscreenChart(null)}
-        title="Particolato PM2.5"
+        title={`PM2.5 - Particolato Fine (${periodLabel})`}
       >
         <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={pm25Data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <LineChart data={pm25MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
-            <Bar dataKey="indoor" fill="hsl(188, 100%, 35%)" name="Indoor" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="outdoor" fill="hsl(188, 100%, 60%)" name="Outdoor" radius={[4, 4, 0, 0]} />
-            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
-          </BarChart>
+            {selectedAirDevices.map((d) => (
+              <Line
+                key={d.id}
+                type="monotone"
+                dataKey={`d_${d.id.replace(/-/g, "")}`}
+                stroke={airColorById.get(d.id)}
+                strokeWidth={3}
+                dot={false}
+                name={airDeviceLabelById.get(d.id) || d.id}
+              />
+            ))}
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+          </LineChart>
         </ResponsiveContainer>
+        <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+          <span className="w-4 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
+          <span>Limite OMS: 25 μg/m³</span>
+        </div>
       </ChartFullscreenModal>
 
       {/* AIR: PM10 */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'pm10'}
         onClose={() => setFullscreenChart(null)}
-        title="Particolato PM10"
+        title={`PM10 - Particolato Grossolano (${periodLabel})`}
       >
         <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={pm10Data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <LineChart data={pm10MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
-            <Bar dataKey="indoor" fill="hsl(338, 50%, 45%)" name="Indoor" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="outdoor" fill="hsl(338, 50%, 70%)" name="Outdoor" radius={[4, 4, 0, 0]} />
-            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
-          </BarChart>
+            {selectedAirDevices.map((d) => (
+              <Line
+                key={d.id}
+                type="monotone"
+                dataKey={`d_${d.id.replace(/-/g, "")}`}
+                stroke={airColorById.get(d.id)}
+                strokeWidth={3}
+                dot={false}
+                name={airDeviceLabelById.get(d.id) || d.id}
+              />
+            ))}
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+          </LineChart>
         </ResponsiveContainer>
+        <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+          <span className="w-4 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
+          <span>Limite OMS: 50 μg/m³</span>
+        </div>
       </ChartFullscreenModal>
 
       {/* AIR: CO & O3 */}
