@@ -274,12 +274,13 @@ export function useRealTimeEnergyData(
   const { start, end, bucket } = getTimeRangeParams(timePeriod, dateRange);
   
   const { 
-    data: timeseriesData, 
+    data: useEnergyTimeseries, 
     isLoading, 
     isError, 
     error,
     refetch 
   } = useTimeseries({
+    site_id: siteId,
     device_ids: deviceIds,
     metrics: ['energy.power_kw', 'energy.hvac_kw', 'energy.lighting_kw'],
     start: start.toISOString(),
