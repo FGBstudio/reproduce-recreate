@@ -1431,9 +1431,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Densità energetica media annua</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Energy Density</p>
                         <p className="text-xl md:text-3xl font-bold text-fgb-secondary">{project.data.total}</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m² / anno</p>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m²</p>
                         <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ 8% vs anno precedente</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
