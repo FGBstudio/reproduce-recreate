@@ -279,7 +279,7 @@ export function useRealTimeEnergyData(
     isError, 
     error,
     refetch 
-  } = useTimeseries({
+  } = useEnergyTimeseries({
     site_id: siteId,
     device_ids: deviceIds,
     metrics: ['energy.power_kw', 'energy.hvac_kw', 'energy.lighting_kw'],
