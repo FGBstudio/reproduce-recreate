@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { format, subDays, subWeeks, subMonths, eachDayOfInterval, eachHourOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfDay, startOfYear } from "date-fns";
 import { it } from "date-fns/locale";
-import { useTimeseries, ApiTimeseriesPoint, useDevices, useLatestTelemetry } from '@/lib/api';
+import { useTimeseries,useEnergyTimeseries, ApiTimeseriesPoint, useDevices, useLatestTelemetry } from '@/lib/api';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { TimePeriod, DateRange } from '@/hooks/useTimeFilteredData';
 
