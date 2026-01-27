@@ -173,6 +173,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
   
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
@@ -761,6 +762,66 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // ---------------------------------------------------------------------------
   // Energy module: build real series from a single timeseries query
   // ---------------------------------------------------------------------------
+  // --- NUOVO CALCOLO: ENERGY CONSUMPTION OVER TIME ---
+  const energyConsumptionData = useMemo(() => {
+    const rawData = energyTimeseriesResp?.data;
+    if (!rawData || rawData.length === 0) return [];
+
+    // Helper per formattare la data asse X
+    const getLabel = (tsStr: string) => {
+      const date = new Date(tsStr);
+      if (timePeriod === 'today') return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      if (timePeriod === 'week' || timePeriod === 'month') return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+      return date.toLocaleDateString('it-IT', { month: 'short' });
+    };
+
+    const groupedMap = new Map<string, any>();
+
+    rawData.forEach(d => {
+      const ts = d.ts; 
+      if (!groupedMap.has(ts)) {
+        groupedMap.set(ts, { 
+          ts, 
+          label: getLabel(ts), 
+          // Inizializza categorie a 0
+          General: 0, HVAC: 0, Lighting: 0, Plugs: 0 
+        });
+      }
+      const entry = groupedMap.get(ts);
+      const val = Number(d.value) || 0;
+
+      if (energyViewMode === 'category') {
+        // LOGICA CATEGORIE: Mappa le metriche sulle 4 serie richieste
+        if (d.metric === 'energy.power_kw') entry.General += val; 
+        else if (d.metric === 'energy.hvac_kw') entry.HVAC += val;
+        else if (d.metric === 'energy.lighting_kw') entry.Lighting += val;
+        else if (d.metric === 'energy.plugs_kw') entry.Plugs += val;
+      } else {
+        // LOGICA DEVICE: Mappa ogni device ID sulla sua linea
+        // Usiamo solo le metriche di potenza per evitare di mischiare unità (es. temp)
+        if (d.metric.includes('_kw')) {
+           const deviceKey = d.device_id || 'Unknown';
+           entry[deviceKey] = (entry[deviceKey] || 0) + val;
+        }
+      }
+    });
+
+    // Ordina temporalmente
+    return Array.from(groupedMap.values()).sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+  }, [energyTimeseriesResp, timePeriod, energyViewMode]);
+
+  // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
+  const deviceKeys = useMemo(() => {
+    if (energyViewMode !== 'device' || !energyConsumptionData.length) return [];
+    const keys = new Set<string>();
+    energyConsumptionData.forEach(row => {
+      Object.keys(row).forEach(k => {
+        if (k !== 'ts' && k !== 'label' && k !== 'General' && k !== 'HVAC' && k !== 'Lighting' && k !== 'Plugs') keys.add(k);
+      });
+    });
+    return Array.from(keys);
+  }, [energyConsumptionData, energyViewMode]);
+  
   const bucketHours = useMemo(() => {
     if (timeRange.bucket === '1h') return 1;
     if (timeRange.bucket === '1d') return 24;
@@ -1390,34 +1451,81 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 {/* Slide 1: Energy Overview */}
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-                    {/* Consumo Energetico - Full width */}
+                    {/* Energy Consumption Over Time Chart - REPLACED */}
                     <div ref={actualVsAvgRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-3 md:mb-4">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div className="flex items-center gap-2">
                           <div>
-                            <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Energetico</h3>
-                            <p className="text-[10px] md:text-xs text-gray-500">Confronto con previsione e media</p>
+                            {/* TITOLO RINOMINATO */}
+                            <h3 className="text-base md:text-lg font-bold text-gray-800">Energy consumption over time</h3>
+                            <p className="text-[10px] md:text-xs text-gray-500">
+                              {timeRange.bucket === '1d' ? 'Energia Giornaliera (kWh)' : 'Potenza Media (kW)'}
+                            </p>
                           </div>
-                          <DataSourceBadge isRealData={isRealTimeData} isLoading={realTimeEnergy.isLoading} />
+                          <DataSourceBadge isRealData={realTimeEnergy.isRealData} isLoading={realTimeEnergy.isLoading} />
                         </div>
-                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData as unknown as Record<string, unknown>[]} filename="energy-consumption" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                        
+                        {/* TOGGLE: CATEGORIE vs DEVICES */}
+                        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                          <button
+                            onClick={() => setEnergyViewMode('category')}
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                              energyViewMode === 'category' ? 'bg-white shadow text-fgb-secondary' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Categorie
+                          </button>
+                          <button
+                            onClick={() => setEnergyViewMode('device')}
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                              energyViewMode === 'device' ? 'bg-white shadow text-fgb-secondary' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Devices
+                          </button>
+                        </div>
+
+                        <ExportButtons chartRef={actualVsAvgRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('actualVsAvg')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={180} className="md:!h-[280px]">
-                        <AreaChart data={filteredEnergyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+
+                      <ResponsiveContainer width="100%" height={280}>
+                        <AreaChart data={energyConsumptionData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                           <defs>
-                            <linearGradient id="energyGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4}/>
+                            <linearGradient id="colorGeneral" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.3}/>
                               <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0}/>
                             </linearGradient>
                           </defs>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="label" tick={{ ...axisStyle, fontSize: 9 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" />
-                          <YAxis tick={{ ...axisStyle, fontSize: 9 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={35} />
+                          <XAxis dataKey="label" tick={{ ...axisStyle, fontSize: 10 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
+                          <YAxis tick={{ ...axisStyle, fontSize: 10 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={35} />
                           <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 9, fontWeight: 500, paddingTop: 5 }} />
-                          <Area type="monotone" dataKey="actual" stroke="hsl(188, 100%, 35%)" strokeWidth={2} fill="url(#energyGradient)" name="Attuale" />
-                          <Line type="monotone" dataKey="expected" stroke="hsl(150, 60%, 45%)" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Previsto" />
-                          <Line type="monotone" dataKey="average" stroke="hsl(0, 0%, 60%)" strokeWidth={1} strokeDasharray="3 3" dot={false} name="Media" />
+                          <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} />
+
+                          {energyViewMode === 'category' ? (
+                            <>
+                              {/* SERIE CATEGORIE RICHIESTE */}
+                              <Area type="monotone" dataKey="General" stroke="hsl(188, 100%, 35%)" strokeWidth={2} fill="url(#colorGeneral)" name="General (Total)" />
+                              <Line type="monotone" dataKey="HVAC" stroke="hsl(188, 100%, 19%)" strokeWidth={2} dot={false} name="HVAC" />
+                              <Line type="monotone" dataKey="Lighting" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} name="Lights" />
+                              <Line type="monotone" dataKey="Plugs" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} name="Plugs & Loads" />
+                            </>
+                          ) : (
+                            <>
+                              {/* SERIE DEVICE (Dinamiche) */}
+                              {deviceKeys.slice(0, 10).map((key, idx) => (
+                                <Line 
+                                  key={key} 
+                                  type="monotone" 
+                                  dataKey={key} 
+                                  stroke={`hsl(${(idx * 137.5) % 360}, 70%, 50%)`} 
+                                  strokeWidth={1.5} 
+                                  dot={false} 
+                                  name={key.substring(0, 15)} 
+                                />
+                              ))}
+                            </>
+                          )}
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
