@@ -1185,7 +1185,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }, 0);
 
     // 5. Divisione Area sicura
-    const area = Number(project?.area_m2 || project?.area_sqm);
+    const area = Number(project?.area_m2);
     if (!area || isNaN(area) || area <= 0) return totalKWh.toFixed(0); // Ritorna solo totale se area manca
 
     return (totalKWh / area).toFixed(1);

@@ -139,13 +139,22 @@ export interface ApiLatestResponse {
 }
 
 export interface ApiTimeseriesPoint {
-  ts_bucket: string;
+  // Standardized fields (from edge function or normalized)
+  ts?: string;
+  value?: number;
+  // Legacy fields (from raw RPC calls)
+  ts_bucket?: string;
+  ts_hour?: string;
+  ts_day?: string;
+  bucket?: string;
+  value_avg?: number;
+  value_min?: number;
+  value_max?: number;
+  value_sum?: number;
+  sample_count?: number;
+  // Common fields
   device_id: string;
   metric: string;
-  value_avg: number;
-  value_min: number;
-  value_max: number;
-  sample_count: number;
 }
 
 export interface ApiTimeseriesResponse {
