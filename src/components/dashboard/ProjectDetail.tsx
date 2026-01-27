@@ -33,6 +33,24 @@ import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, use
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { TimeseriesDiagnostics } from "@/components/dashboard/TimeseriesDiagnostics";
 
+// --- HELPER UNIVERSALE PER DATE POSTGRES ---
+const parseTimestamp = (ts: any): Date | null => {
+  if (!ts) return null;
+  // Se è già un oggetto Date valido
+  if (ts instanceof Date && !isNaN(ts.getTime())) return ts;
+  
+  // Conversione in stringa e pulizia
+  const str = String(ts).trim();
+  
+  // FIX CRITICO: Sostituisce lo spazio con T per standard ISO (supporto Safari/Firefox/Chrome)
+  // Trasforma "2025-08-01 19:00:00+00" in "2025-08-01T19:00:00+00"
+  const isoStr = str.replace(' ', 'T');
+  
+  const d = new Date(isoStr);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
 
@@ -763,51 +781,70 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Energy module: build real series from a single timeseries query
   // ---------------------------------------------------------------------------
   // --- NUOVO CALCOLO: ENERGY CONSUMPTION OVER TIME ---
+  // --- FIX: ENERGY CONSUMPTION OVER TIME (Data Parsing Corretto) ---
   const energyConsumptionData = useMemo(() => {
     const rawData = energyTimeseriesResp?.data;
-    if (!rawData || rawData.length === 0) return [];
-
-    // Helper per formattare la data asse X
-    const getLabel = (tsStr: string) => {
-      const date = new Date(String(tsStr).replace(' ', 'T'));
-      if (timePeriod === 'today') return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-      if (timePeriod === 'week' || timePeriod === 'month') return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-      return date.toLocaleDateString('it-IT', { month: 'short' });
-    };
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) return [];
 
     const groupedMap = new Map<string, any>();
 
-    rawData.forEach(d => {
-      const ts = d.ts; 
-      if (!groupedMap.has(ts)) {
-        groupedMap.set(ts, { 
-          ts, 
-          label: getLabel(ts), 
-          // Inizializza categorie a 0
+    rawData.forEach((d) => {
+      // 1. Parsing Data Sicuro
+      // Prova tutti i campi possibili (ts, ts_hour, etc.)
+      const rawTs = d.ts || d.ts_hour || d.ts_day || d.bucket;
+      const dateObj = parseTimestamp(rawTs);
+
+      if (!dateObj) {
+        // Se fallisce ancora, saltiamo il punto invece di rompere tutto
+        // console.warn("Skipping invalid date row:", d); 
+        return; 
+      }
+
+      // 2. Creazione Label Asse X
+      const tsKey = dateObj.toISOString(); // Chiave univoca
+      let label = "";
+      
+      if (timePeriod === 'today') {
+        label = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      } else if (timePeriod === 'week' || timePeriod === 'month') {
+        label = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      } else {
+        label = dateObj.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
+      }
+
+      // 3. Inizializzazione Gruppo
+      if (!groupedMap.has(tsKey)) {
+        groupedMap.set(tsKey, { 
+          ts: tsKey,
+          label: label,
+          // Campi base per evitare undefined nel grafico
           General: 0, HVAC: 0, Lighting: 0, Plugs: 0 
         });
       }
-      const entry = groupedMap.get(ts);
-      const val = Number(d.value) || 0;
+      
+      const entry = groupedMap.get(tsKey);
+      const val = Number(d.value);
+      if (isNaN(val)) return; // Salta valori non numerici
 
+      // 4. Assegnazione Valori (Category o Device)
       if (energyViewMode === 'category') {
-        // LOGICA CATEGORIE: Mappa le metriche sulle 4 serie richieste
         if (d.metric === 'energy.power_kw') entry.General += val; 
         else if (d.metric === 'energy.hvac_kw') entry.HVAC += val;
         else if (d.metric === 'energy.lighting_kw') entry.Lighting += val;
         else if (d.metric === 'energy.plugs_kw') entry.Plugs += val;
       } else {
-        // LOGICA DEVICE: Mappa ogni device ID sulla sua linea
-        // Usiamo solo le metriche di potenza per evitare di mischiare unità (es. temp)
-        if (d.metric.includes('_kw')) {
+        // Device view: accetta qualsiasi metrica di potenza
+        if (d.metric && d.metric.includes('_kw')) {
            const deviceKey = d.device_id || 'Unknown';
            entry[deviceKey] = (entry[deviceKey] || 0) + val;
         }
       }
     });
 
-    // Ordina temporalmente
-    return Array.from(groupedMap.values()).sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+    // 5. Ordinamento Finale
+    return Array.from(groupedMap.values()).sort((a, b) => 
+      new Date(a.ts).getTime() - new Date(b.ts).getTime()
+    );
   }, [energyTimeseriesResp, timePeriod, energyViewMode]);
 
   // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
@@ -1113,29 +1150,43 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [energyDistributionData]);
   
   // --- NUOVO CALCOLO: DENSITÀ ENERGETICA MEDIA ---
+  // --- FIX: DENSITÀ ENERGETICA MEDIA (Blindata) ---
   const densityValue = useMemo(() => {
+    // 1. Controllo base esistenza dati
     const data = energyTimeseriesResp?.data;
-    if (!data || data.length === 0) return "---";
+    if (!data || !Array.isArray(data) || data.length === 0) return "---";
 
-    // Filtriamo SOLO il contatore generale (Main)
+    // 2. Filtro solo Main (energy.power_kw)
     const mainData = data.filter(d => d.metric === 'energy.power_kw');
     if (mainData.length === 0) return "---";
 
     let multiplier = 1;
+    
+    // 3. Rilevamento Bucket sicuro
     if (mainData.length > 1) {
-      const t1 = new Date(mainData[0].ts).getTime();
-      const t2 = new Date(mainData[1].ts).getTime();
-      const diffHours = (t2 - t1) / (1000 * 60 * 60);
-
-      // Se diffHours >= 23 (dati Daily), il backend manda già la somma (kWh).
-      // Altrimenti (Hourly/Raw), moltiplichiamo per le ore per ottenere i kWh.
-      if (diffHours < 23) {
-         multiplier = diffHours;
+      const d1 = parseTimestamp(mainData[0].ts || mainData[0].ts_hour || mainData[0].ts_day);
+      const d2 = parseTimestamp(mainData[1].ts || mainData[1].ts_hour || mainData[1].ts_day);
+      
+      if (d1 && d2) {
+        const diffHours = Math.abs(d2.getTime() - d1.getTime()) / (1000 * 60 * 60);
+        // Se < 23h (es. 1h o 15min), è potenza media -> serve moltiplicatore per l'energia
+        if (diffHours < 23) {
+           multiplier = diffHours || 1; // Default a 1 se diff è 0
+        }
+        // Se >= 23h (Daily), è già somma -> multiplier = 1
       }
     }
 
-    const totalKWh = mainData.reduce((acc, curr) => acc + (Number(curr.value) * multiplier), 0);
-    const area = project?.area_m2 || project?.area_sqm || 100;
+    // 4. Somma sicura (evita NaN)
+    const totalKWh = mainData.reduce((acc, curr) => {
+      const val = Number(curr.value);
+      if (isNaN(val)) return acc; // Salta valori non validi
+      return acc + (val * multiplier);
+    }, 0);
+
+    // 5. Divisione Area sicura
+    const area = Number(project?.area_m2 || project?.area_sqm);
+    if (!area || isNaN(area) || area <= 0) return totalKWh.toFixed(0); // Ritorna solo totale se area manca
 
     return (totalKWh / area).toFixed(1);
   }, [energyTimeseriesResp, project]);
