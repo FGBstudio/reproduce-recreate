@@ -274,7 +274,7 @@ export function useRealTimeEnergyData(
   const { start, end, bucket } = getTimeRangeParams(timePeriod, dateRange);
   
   const { 
-    data: useEnergyTimeseries, 
+    data: timeseriesData, 
     isLoading, 
     isError, 
     error,
