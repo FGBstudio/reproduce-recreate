@@ -1463,7 +1463,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <p className="text-xl md:text-3xl font-bold text-fgb-secondary">{densityValue}</p>
                         <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m²</p>
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">nel periodo selezionato</div>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">in the selected period</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Costo Stimato Annuale</p>
