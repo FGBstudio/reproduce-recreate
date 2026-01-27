@@ -66,6 +66,7 @@ export interface Project {
   monitoring: MonitoringType[];
   brandId: string;
   siteId?: string; // UUID reference to sites table for real-time data
+  area_m2?: number; // Area in square meters for energy density calculations
 }
 
 export const holdings: Holding[] = [
