@@ -991,6 +991,34 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return energyDistributionData.reduce((sum, item) => sum + item.kWh, 0);
   }, [energyDistributionData]);
 
+  // --- NUOVO CALCOLO: DENSITÀ ENERGETICA MEDIA ---
+  const densityValue = useMemo(() => {
+    const data = energyTimeseriesResp?.data;
+    if (!data || data.length === 0) return "---";
+
+    // Filtriamo SOLO il contatore generale (Main)
+    const mainData = data.filter(d => d.metric === 'energy.power_kw');
+    if (mainData.length === 0) return "---";
+
+    let multiplier = 1;
+    if (mainData.length > 1) {
+      const t1 = new Date(mainData[0].ts).getTime();
+      const t2 = new Date(mainData[1].ts).getTime();
+      const diffHours = (t2 - t1) / (1000 * 60 * 60);
+
+      // Se diffHours >= 23 (dati Daily), il backend manda già la somma (kWh).
+      // Altrimenti (Hourly/Raw), moltiplichiamo per le ore per ottenere i kWh.
+      if (diffHours < 23) {
+         multiplier = diffHours;
+      }
+    }
+
+    const totalKWh = mainData.reduce((acc, curr) => acc + (Number(curr.value) * multiplier), 0);
+    const area = project?.area_m2 || project?.area_sqm || 100;
+
+    return (totalKWh / area).toFixed(1);
+  }, [energyTimeseriesResp, project]);
+
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -1432,9 +1460,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Energy Density</p>
-                        <p className="text-xl md:text-3xl font-bold text-fgb-secondary">{project.data.total}</p>
+                        <p className="text-xl md:text-3xl font-bold text-fgb-secondary">{densityValue}</p>
                         <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m²</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ 8% vs anno precedente</div>
+                        {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">nel periodo selezionato</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Costo Stimato Annuale</p>
