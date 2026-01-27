@@ -769,7 +769,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     // Helper per formattare la data asse X
     const getLabel = (tsStr: string) => {
-      const date = new Date(tsStr);
+      const date = new Date(String(tsStr).replace(' ', 'T'));
       if (timePeriod === 'today') return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
       if (timePeriod === 'week' || timePeriod === 'month') return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
       return date.toLocaleDateString('it-IT', { month: 'short' });
