@@ -479,12 +479,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     [airTimeseriesResp, timePeriod]
   );
   
-  // Use real data if available, otherwise fall back to mock generators
-  const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : useEnergyData(timePeriod, dateRange);
+  // Always call hooks unconditionally to comply with React rules
+  const mockEnergyData = useEnergyData(timePeriod, dateRange);
   const filteredDeviceData = useDeviceData(timePeriod, dateRange);
   const filteredCO2Data = useCO2Data(timePeriod, dateRange);
   const filteredWaterData = useWaterData(timePeriod, dateRange);
   const periodLabel = getPeriodLabel(timePeriod, dateRange);
+  
+  // Use real data if available, otherwise fall back to mock generators
+  const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : mockEnergyData;
   
   // Real-time indicator for charts
   const isRealTimeData = realTimeEnergy.isRealData || projectTelemetry.isRealData;
@@ -784,7 +787,64 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // --- FIX: ENERGY CONSUMPTION OVER TIME (Data Parsing Corretto) ---
   const energyConsumptionData = useMemo(() => {
     const rawData = energyTimeseriesResp?.data;
-    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) return [];
+    
+    // FALLBACK: Se non ci sono dati reali, usa mock data per la demo
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
+      // Generate mock data based on time period
+      const now = new Date();
+      const mockData: Array<{ts: string; label: string; General: number; HVAC: number; Lighting: number; Plugs: number}> = [];
+      
+      if (timePeriod === 'today') {
+        for (let i = 0; i < 24; i++) {
+          const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), i);
+          mockData.push({
+            ts: date.toISOString(),
+            label: date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+            General: Math.round(30 + Math.random() * 50),
+            HVAC: Math.round(15 + Math.random() * 25),
+            Lighting: Math.round(8 + Math.random() * 12),
+            Plugs: Math.round(5 + Math.random() * 10),
+          });
+        }
+      } else if (timePeriod === 'week') {
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          mockData.push({
+            ts: date.toISOString(),
+            label: date.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit' }),
+            General: Math.round(400 + Math.random() * 300),
+            HVAC: Math.round(200 + Math.random() * 150),
+            Lighting: Math.round(100 + Math.random() * 80),
+            Plugs: Math.round(50 + Math.random() * 50),
+          });
+        }
+      } else if (timePeriod === 'month') {
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          mockData.push({
+            ts: date.toISOString(),
+            label: date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
+            General: Math.round(400 + Math.random() * 300),
+            HVAC: Math.round(200 + Math.random() * 150),
+            Lighting: Math.round(100 + Math.random() * 80),
+            Plugs: Math.round(50 + Math.random() * 50),
+          });
+        }
+      } else { // year
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          mockData.push({
+            ts: date.toISOString(),
+            label: date.toLocaleDateString('it-IT', { month: 'short' }),
+            General: Math.round(8000 + Math.random() * 4000),
+            HVAC: Math.round(4000 + Math.random() * 2000),
+            Lighting: Math.round(2000 + Math.random() * 1000),
+            Plugs: Math.round(1000 + Math.random() * 500),
+          });
+        }
+      }
+      return mockData;
+    }
 
     const groupedMap = new Map<string, any>();
 

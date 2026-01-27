@@ -264,15 +264,17 @@ export function useRealTimeEnergyData(
   timePeriod: TimePeriod,
   dateRange?: DateRange
 ): UseTimeseriesDataResult<EnergyDataPoint> {
-  const { data: devicesData } = useDevices(
-    siteId ? { site_id: siteId } : undefined,
-    { enabled: !!siteId }
-  );
-  const devices = devicesData?.data || [];
-  const deviceIds = devices.map(d => d.id);
+  // Use memoized time range to prevent unnecessary refetches
+  const dateRangeFromTime = dateRange?.from?.getTime() ?? 0;
+  const dateRangeToTime = dateRange?.to?.getTime() ?? 0;
+  const timeRange = useMemo(() => {
+    return getTimeRangeParams(timePeriod, dateRange);
+  }, [timePeriod, dateRange, dateRangeFromTime, dateRangeToTime]);
   
-  const { start, end, bucket } = getTimeRangeParams(timePeriod, dateRange);
+  const { start, end, bucket } = timeRange;
   
+  // Query energy timeseries directly by site_id - no need to fetch devices first
+  // The energy_* tables support site_id filtering directly
   const { 
     data: timeseriesData, 
     isLoading, 
@@ -281,18 +283,17 @@ export function useRealTimeEnergyData(
     refetch 
   } = useEnergyTimeseries({
     site_id: siteId,
-    device_ids: deviceIds,
-    metrics: ['energy.power_kw', 'energy.hvac_kw', 'energy.lighting_kw'],
+    metrics: ['energy.power_kw', 'energy.hvac_kw', 'energy.lighting_kw', 'energy.plugs_kw'],
     start: start.toISOString(),
     end: end.toISOString(),
     bucket,
   }, {
-    enabled: isSupabaseConfigured && deviceIds.length > 0,
+    enabled: isSupabaseConfigured && !!siteId,
   });
 
   return useMemo(() => {
-    // If no Supabase or no devices, use mock data
-    if (!isSupabaseConfigured || deviceIds.length === 0 || !timeseriesData?.data?.length) {
+    // If no Supabase or no site, use mock data
+    if (!isSupabaseConfigured || !siteId) {
       return {
         data: generateMockEnergyData(timePeriod, dateRange),
         isLoading: false,
@@ -303,12 +304,44 @@ export function useRealTimeEnergyData(
       };
     }
 
+    // Still loading
+    if (isLoading) {
+      return {
+        data: [],
+        isLoading: true,
+        isError: false,
+        error: null,
+        isRealData: false,
+        refetch,
+      };
+    }
+
+    // No data returned - use mock fallback
+    if (!timeseriesData?.data?.length) {
+      console.log('[useRealTimeEnergyData] No energy data found, using mock. Meta:', timeseriesData?.meta);
+      return {
+        data: generateMockEnergyData(timePeriod, dateRange),
+        isLoading: false,
+        isError: false,
+        error: null,
+        isRealData: false,
+        refetch,
+      };
+    }
+
     // Transform real data
     const { labels, dataByMetric } = transformTimeseriesData(
       timeseriesData.data,
       timePeriod,
       dateRange
     );
+
+    console.log('[useRealTimeEnergyData] Real data found:', {
+      pointCount: timeseriesData.data.length,
+      source: timeseriesData.meta?.source,
+      labels: labels.length,
+      metrics: Object.keys(dataByMetric),
+    });
 
     const data: EnergyDataPoint[] = labels.map((label, i) => ({
       label,
@@ -319,14 +352,14 @@ export function useRealTimeEnergyData(
 
     return {
       data,
-      isLoading,
+      isLoading: false,
       isError,
       error: error as Error | null,
       isRealData: true,
       lastUpdate: timeseriesData.meta?.end,
       refetch,
     };
-  }, [timeseriesData, deviceIds.length, timePeriod, dateRange, isLoading, isError, error, refetch]);
+  }, [timeseriesData, siteId, timePeriod, dateRange, isLoading, isError, error, refetch]);
 }
 
 /**
