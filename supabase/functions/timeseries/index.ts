@@ -209,24 +209,309 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Auto-select bucket and source
+    // Auto-select bucket
     const bucket = bucketParam || autoSelectBucket(start, end)
-    const source = getOptimalSource(start, end)
     const interval = bucketToInterval(bucket)
 
-    // Call the database function
-    const { data, error } = await supabase.rpc('get_telemetry_timeseries', {
-      p_device_ids: deviceIds,
-      p_metrics: metrics,
-      p_start: start.toISOString(),
-      p_end: end.toISOString(),
-      p_bucket: interval
-    })
+    // 1. DOMAIN DETECTION & DURATION
+    const isEnergyRequest = metrics.some(m => m.startsWith('energy.'))
+    const isWaterRequest = metrics.some(m => m.startsWith('water.'))
+    const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
 
-    if (error) throw error
+    let data: Array<{
+      ts: string
+      device_id: string
+      metric: string
+      value: number
+      value_avg?: number
+      value_min?: number
+      value_max?: number
+      sample_count?: number
+    }> = []
+    let source = 'raw'
+
+    // 2. DYNAMIC TABLE ROUTING
+
+    if (isEnergyRequest) {
+      // ===== ENERGY DOMAIN (energy_*) =====
+      if (diffHours <= 24) {
+        // RAW (≤24h) → energy_telemetry via RPC
+        source = 'raw'
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_energy_timeseries', {
+          p_device_ids: deviceIds,
+          p_metrics: metrics,
+          p_start: start.toISOString(),
+          p_end: end.toISOString(),
+          p_bucket: interval
+        })
+        if (rpcError) {
+          console.error('Energy RPC error, falling back to direct query:', rpcError)
+          // Fallback to direct query
+          const { data: rawData, error: rawError } = await supabase
+            .from('energy_telemetry')
+            .select('ts, value, device_id, metric')
+            .in('device_id', deviceIds)
+            .in('metric', metrics)
+            .gte('ts', start.toISOString())
+            .lte('ts', end.toISOString())
+            .order('ts', { ascending: true })
+          if (rawError) throw rawError
+          data = (rawData || []).map(d => ({
+            ts: d.ts,
+            value: d.value,
+            device_id: d.device_id,
+            metric: d.metric
+          }))
+        } else {
+          data = rpcData || []
+        }
+      } else if (diffHours <= 24 * 30) {
+        // HOURLY (>24h, ≤30d) → energy_hourly
+        source = 'hourly'
+        const { data: hourlyData, error: hourlyError } = await supabase
+          .from('energy_hourly')
+          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
+          .in('device_id', deviceIds)
+          .in('metric', metrics)
+          .gte('ts_hour', start.toISOString())
+          .lte('ts_hour', end.toISOString())
+          .order('ts_hour', { ascending: true })
+
+        if (hourlyError) throw hourlyError
+        data = (hourlyData || []).map(d => ({
+          ts: d.ts_hour,
+          value: d.value_avg,
+          value_avg: d.value_avg,
+          value_min: d.value_min,
+          value_max: d.value_max,
+          sample_count: d.sample_count,
+          device_id: d.device_id,
+          metric: d.metric
+        }))
+      } else {
+        // DAILY (>30d) → energy_daily
+        source = 'daily'
+        const { data: dailyData, error: dailyError } = await supabase
+          .from('energy_daily')
+          .select('ts_day, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
+          .in('device_id', deviceIds)
+          .in('metric', metrics)
+          .gte('ts_day', start.toISOString())
+          .lte('ts_day', end.toISOString())
+          .order('ts_day', { ascending: true })
+
+        if (dailyError) throw dailyError
+        // For energy, use value_sum (kWh totals) for daily aggregation
+        data = (dailyData || []).map(d => ({
+          ts: d.ts_day,
+          value: d.value_sum || d.value_avg,
+          value_avg: d.value_avg,
+          value_min: d.value_min,
+          value_max: d.value_max,
+          sample_count: d.sample_count,
+          device_id: d.device_id,
+          metric: d.metric
+        }))
+      }
+    } else if (isWaterRequest) {
+      // ===== WATER DOMAIN (water_*) - Future support =====
+      if (diffHours <= 24) {
+        source = 'raw'
+        const { data: rawData, error: rawError } = await supabase
+          .from('water_telemetry')
+          .select('ts, value, device_id, metric')
+          .in('device_id', deviceIds)
+          .in('metric', metrics)
+          .gte('ts', start.toISOString())
+          .lte('ts', end.toISOString())
+          .order('ts', { ascending: true })
+        if (rawError) {
+          console.warn('water_telemetry not found, falling back to telemetry:', rawError)
+          // Fallback to standard telemetry
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('telemetry')
+            .select('ts, value, device_id, metric')
+            .in('device_id', deviceIds)
+            .in('metric', metrics)
+            .gte('ts', start.toISOString())
+            .lte('ts', end.toISOString())
+            .order('ts', { ascending: true })
+          if (fallbackError) throw fallbackError
+          data = fallbackData || []
+        } else {
+          data = rawData || []
+        }
+      } else if (diffHours <= 24 * 30) {
+        source = 'hourly'
+        const { data: hourlyData, error: hourlyError } = await supabase
+          .from('water_hourly')
+          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
+          .in('device_id', deviceIds)
+          .in('metric', metrics)
+          .gte('ts_hour', start.toISOString())
+          .lte('ts_hour', end.toISOString())
+          .order('ts_hour', { ascending: true })
+        if (hourlyError) {
+          console.warn('water_hourly not found, falling back to telemetry_hourly')
+          // Fallback
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('telemetry_hourly')
+            .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
+            .in('device_id', deviceIds)
+            .in('metric', metrics)
+            .gte('ts_hour', start.toISOString())
+            .lte('ts_hour', end.toISOString())
+            .order('ts_hour', { ascending: true })
+          if (fallbackError) throw fallbackError
+          data = (fallbackData || []).map(d => ({
+            ts: d.ts_hour,
+            value: d.value_avg,
+            value_avg: d.value_avg,
+            value_min: d.value_min,
+            value_max: d.value_max,
+            sample_count: d.sample_count,
+            device_id: d.device_id,
+            metric: d.metric
+          }))
+        } else {
+          data = (hourlyData || []).map(d => ({
+            ts: d.ts_hour,
+            value: d.value_avg,
+            value_avg: d.value_avg,
+            value_min: d.value_min,
+            value_max: d.value_max,
+            sample_count: d.sample_count,
+            device_id: d.device_id,
+            metric: d.metric
+          }))
+        }
+      } else {
+        source = 'daily'
+        const { data: dailyData, error: dailyError } = await supabase
+          .from('water_daily')
+          .select('ts_day, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
+          .in('device_id', deviceIds)
+          .in('metric', metrics)
+          .gte('ts_day', start.toISOString())
+          .lte('ts_day', end.toISOString())
+          .order('ts_day', { ascending: true })
+        if (dailyError) {
+          console.warn('water_daily not found, falling back to telemetry_daily')
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('telemetry_daily')
+            .select('ts_day, value_avg, value_min, value_max, sample_count, device_id, metric')
+            .in('device_id', deviceIds)
+            .in('metric', metrics)
+            .gte('ts_day', start.toISOString())
+            .lte('ts_day', end.toISOString())
+            .order('ts_day', { ascending: true })
+          if (fallbackError) throw fallbackError
+          data = (fallbackData || []).map(d => ({
+            ts: d.ts_day,
+            value: d.value_avg,
+            value_avg: d.value_avg,
+            value_min: d.value_min,
+            value_max: d.value_max,
+            sample_count: d.sample_count,
+            device_id: d.device_id,
+            metric: d.metric
+          }))
+        } else {
+          // For water, use value_sum (liters totals) for daily
+          data = (dailyData || []).map(d => ({
+            ts: d.ts_day,
+            value: d.value_sum || d.value_avg,
+            value_avg: d.value_avg,
+            value_min: d.value_min,
+            value_max: d.value_max,
+            sample_count: d.sample_count,
+            device_id: d.device_id,
+            metric: d.metric
+          }))
+        }
+      }
+    } else {
+      // ===== AIR / STANDARD DOMAIN (telemetry_*) =====
+      if (diffHours <= 24) {
+        // RAW (≤24h) → telemetry via RPC
+        source = 'raw'
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_telemetry_timeseries', {
+          p_device_ids: deviceIds,
+          p_metrics: metrics,
+          p_start: start.toISOString(),
+          p_end: end.toISOString(),
+          p_bucket: interval
+        })
+        if (rpcError) {
+          console.error('Telemetry RPC error, falling back to direct query:', rpcError)
+          const { data: rawData, error: rawError } = await supabase
+            .from('telemetry')
+            .select('ts, value, device_id, metric')
+            .in('device_id', deviceIds)
+            .in('metric', metrics)
+            .gte('ts', start.toISOString())
+            .lte('ts', end.toISOString())
+            .order('ts', { ascending: true })
+          if (rawError) throw rawError
+          data = rawData || []
+        } else {
+          data = rpcData || []
+        }
+      } else if (diffHours <= 24 * 30) {
+        // HOURLY (>24h, ≤30d) → telemetry_hourly
+        source = 'hourly'
+        const { data: hourlyData, error: hourlyError } = await supabase
+          .from('telemetry_hourly')
+          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
+          .in('device_id', deviceIds)
+          .in('metric', metrics)
+          .gte('ts_hour', start.toISOString())
+          .lte('ts_hour', end.toISOString())
+          .order('ts_hour', { ascending: true })
+
+        if (hourlyError) throw hourlyError
+        data = (hourlyData || []).map(d => ({
+          ts: d.ts_hour,
+          value: d.value_avg,
+          value_avg: d.value_avg,
+          value_min: d.value_min,
+          value_max: d.value_max,
+          sample_count: d.sample_count,
+          device_id: d.device_id,
+          metric: d.metric
+        }))
+      } else {
+        // DAILY (>30d) → telemetry_daily
+        source = 'daily'
+        const { data: dailyData, error: dailyError } = await supabase
+          .from('telemetry_daily')
+          .select('ts_day, value_avg, value_min, value_max, sample_count, device_id, metric')
+          .in('device_id', deviceIds)
+          .in('metric', metrics)
+          .gte('ts_day', start.toISOString())
+          .lte('ts_day', end.toISOString())
+          .order('ts_day', { ascending: true })
+
+        if (dailyError) throw dailyError
+        // For air quality, use value_avg (averages) for daily aggregation
+        data = (dailyData || []).map(d => ({
+          ts: d.ts_day,
+          value: d.value_avg,
+          value_avg: d.value_avg,
+          value_min: d.value_min,
+          value_max: d.value_max,
+          sample_count: d.sample_count,
+          device_id: d.device_id,
+          metric: d.metric
+        }))
+      }
+    }
+
+    // Determine domain for metadata
+    const domain = isEnergyRequest ? 'energy' : isWaterRequest ? 'water' : 'air'
 
     return new Response(JSON.stringify({ 
-      data: data || [],
+      data,
       meta: {
         device_ids: deviceIds,
         metrics,
@@ -235,7 +520,8 @@ Deno.serve(async (req) => {
         bucket,
         bucket_interval: interval,
         source,
-        point_count: data?.length || 0
+        point_count: data.length,
+        domain
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
