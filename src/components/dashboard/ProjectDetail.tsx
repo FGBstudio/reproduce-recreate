@@ -81,6 +81,25 @@ const tooltipStyle = {
   labelStyle: { color: '#64748b', fontWeight: 600, marginBottom: 4 }
 };
 
+/**
+ * Domain helper: keeps Recharts autoscaling but adds padding, and avoids [0,0]
+ * (which can make lines appear “invisible” on small charts).
+ */
+const autoDomainWithPadding: [(dataMin: number) => number, (dataMax: number) => number] = [
+  (dataMin: number) => {
+    if (!Number.isFinite(dataMin)) return 0;
+    if (dataMin === 0) return 0;
+    // Expand downward slightly
+    return dataMin < 0 ? dataMin * 1.05 : dataMin * 0.95;
+  },
+  (dataMax: number) => {
+    if (!Number.isFinite(dataMax)) return 1;
+    if (dataMax === 0) return 1;
+    // Expand upward slightly
+    return dataMax < 0 ? dataMax * 0.95 : dataMax * 1.05;
+  },
+];
+
 // Export utilities
 const exportAsImage = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
   if (!ref.current) return;
@@ -1671,7 +1690,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           </defs>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="label" tick={{ ...axisStyle, fontSize: 10 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
-                          <YAxis tick={{ ...axisStyle, fontSize: 10 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={35} domain={['auto', 'auto']} />
+                          <YAxis
+                            tick={{ ...axisStyle, fontSize: 10 }}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            width={35}
+                            domain={autoDomainWithPadding}
+                          />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} />
 
@@ -1869,7 +1894,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <LineChart data={filteredEnergyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={['auto', 'auto']} tickFormatter={(v) => `${v}`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis
+                            tick={axisStyle}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={autoDomainWithPadding}
+                            tickFormatter={(v) => `${v}`}
+                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
+                          />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 3 }} activeDot={{ r: 5 }} name="Attuale" />
@@ -1917,7 +1949,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <BarChart data={energyDeviceConsumptionLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={['auto', 'auto']} tickFormatter={(v) => `${v/1000}k`} label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis
+                            tick={axisStyle}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={autoDomainWithPadding}
+                            tickFormatter={(v) => `${v / 1000}k`}
+                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
+                          />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
@@ -1941,7 +1980,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <BarChart data={energyCarbonLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="week" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }} />
+                          <YAxis
+                            tick={{ ...axisStyle, fontSize: 12 }}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={autoDomainWithPadding}
+                            label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }}
+                          />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
                           <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" radius={[6, 6, 0, 0]} />
@@ -1960,7 +2005,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <AreaChart data={energyTrendLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis
+                            tick={axisStyle}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={autoDomainWithPadding}
+                            label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
+                          />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.7} name="General" />
@@ -1979,7 +2030,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis
+                            tick={axisStyle}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={autoDomainWithPadding}
+                            label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
+                          />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }} name="HVAC Office" />
@@ -2969,21 +3026,48 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title="Consumo Energetico - Dettaglio"
       >
         <ResponsiveContainer width="100%" height={500}>
-          <AreaChart data={filteredEnergyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <AreaChart data={energyConsumptionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="energyGradientFS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.4}/>
-                <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0}/>
+              <linearGradient id="colorGeneralFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={['auto', 'auto']} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={autoDomainWithPadding} />
             <Tooltip {...tooltipStyle} />
             <Legend />
-            <Area type="monotone" dataKey="actual" stroke="hsl(188, 100%, 35%)" strokeWidth={3} fill="url(#energyGradientFS)" name="Attuale" />
-            <Line type="monotone" dataKey="expected" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Previsto" />
-            <Line type="monotone" dataKey="average" stroke="hsl(0, 0%, 60%)" strokeWidth={2} strokeDasharray="3 3" dot={false} name="Media" />
+
+            {energyViewMode === 'category' ? (
+              <>
+                <Area
+                  type="monotone"
+                  dataKey="General"
+                  stroke="hsl(188, 100%, 35%)"
+                  strokeWidth={3}
+                  fill="url(#colorGeneralFS)"
+                  name="General (Total)"
+                />
+                <Line type="monotone" dataKey="HVAC" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={false} name="HVAC" />
+                <Line type="monotone" dataKey="Lighting" stroke="hsl(338, 50%, 45%)" strokeWidth={2.5} dot={false} name="Lights" />
+                <Line type="monotone" dataKey="Plugs" stroke="hsl(338, 50%, 75%)" strokeWidth={2.5} dot={false} name="Plugs & Loads" />
+              </>
+            ) : (
+              <>
+                {deviceKeys.slice(0, 10).map((key, idx) => (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    stroke={`hsl(${(idx * 137.5) % 360}, 70%, 50%)`}
+                    strokeWidth={2}
+                    dot={false}
+                    name={key.substring(0, 18)}
+                  />
+                ))}
+              </>
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
@@ -3025,7 +3109,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           <BarChart data={filteredDeviceData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={['auto', 'auto']} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={autoDomainWithPadding} />
             <Tooltip {...tooltipStyle} />
             <Legend />
             <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
