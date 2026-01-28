@@ -870,7 +870,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     rawData.forEach((d) => {
       // 1. Parsing Data Sicuro
       // Prova tutti i campi possibili (ts, ts_hour, etc.)
-      const rawTs = d.ts || d.ts_hour || d.ts_day || d.bucket;
+      const rawTs = d.ts || d.ts_hour || d.ts_day || d.day_local || d.day_utc || d.bucket;
       const dateObj = parseTimestamp(rawTs);
 
       if (!dateObj) {
