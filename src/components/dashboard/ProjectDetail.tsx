@@ -883,8 +883,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       }
       
       const entry = groupedMap.get(tsKey);
-      const val = Number(d.value);
-      if (isNaN(val)) return; // Salta valori non numerici
+      // Handle multiple value formats from API (standardized, avg, sum)
+      const rawVal = d.value ?? d.value_avg ?? d.value_sum ?? 0;
+      const val = Number(rawVal);
+      if (isNaN(val) || val === 0) return; // Salta valori non numerici o zero
 
       // 4. Assegnazione Valori (Category o Device)
       if (energyViewMode === 'category') {
