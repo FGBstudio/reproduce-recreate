@@ -7,7 +7,7 @@ import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati re
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
 import html2canvas from "html2canvas";
 import { createPortal } from "react-dom";
