@@ -3172,7 +3172,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="absolute top-4 right-4">
                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                       </div>
-                     <div className="absolute top-4 left-4">
+                     <div className="absolute top-4 left-4 left-1/3 -translate-x-1/3 z-10">
                         <AirDeviceSelector
                           devices={airDevices}
                           selectedIds={selectedAirDeviceIds}
