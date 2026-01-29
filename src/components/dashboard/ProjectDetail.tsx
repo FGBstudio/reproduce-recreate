@@ -1177,38 +1177,32 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   
   // --- NUOVO CALCOLO: DENSITÀ ENERGETICA MEDIA ---
   // --- FIX: DENSITÀ ENERGETICA MEDIA (Logica Somma Pura / Area) ---
+  // --- FIX: DENSITÀ ENERGETICA (Variabile: ENERGIA, Operazione: SOMMA) ---
   const densityValue = useMemo(() => {
-    // 1. Validazione Dati e Area
     const data = energyTimeseriesResp?.data;
-    const area = Number(project?.area_m2); // Usa area_m2 come definito nel tipo Project
+    const area = Number(project?.area_m2 || project?.area_sqm);
 
-    // Se mancano dati o l'area non è valida, restituisci placeholder
     if (!data || !Array.isArray(data) || data.length === 0 || !area || area <= 0) {
       return "----";
     }
 
-    // 2. Filtro Rigoroso: Solo device 'general'
-    // Usiamo la deviceMap creata all'inizio del file per identificare i generali
+    // 1. Filtro: Solo device 'general'
     const generalData = data.filter(d => {
-        const deviceInfo = deviceMap.get(d.device_id);
-        return deviceInfo && deviceInfo.category === 'general';
+        const info = deviceMap.get(d.device_id);
+        return info && info.category === 'general';
     });
 
-    // Se non troviamo il generale, evitiamo di calcolare numeri a caso
     if (generalData.length === 0) return "---";
 
-    // 3. Somma Pura (kWh)
-    // Sia per "Oggi" (15min) che "Storico" (Daily), il dato è quantità di energia.
-    // L'API (api.ts) normalizza già il valore nel campo 'value' (o 'value_sum').
+    // 2. Somma Pura dell'Energia (kWh)
+    // api.ts ora restituisce 'value_sum' per aggregati (hourly/daily)
+    // e 'value' per raw (15 min integral). Entrambi sono kWh.
     const totalKWh = generalData.reduce((acc, curr) => {
-      // Prendiamo il valore. Api.ts mette il dato corretto in value_sum o value per l'energia.
-      const val = Number(curr.value_sum ?? curr.value ?? 0);
-      if (isNaN(val)) return acc;
-      return acc + val;
+      const energy = Number(curr.value_sum ?? curr.value ?? 0);
+      return acc + energy;
     }, 0);
 
-    // 4. Calcolo Densità
-    return (totalKWh / area).toFixed(1); // 1 decimale (es. 12.5 kWh/m²)
+    return (totalKWh / area).toFixed(1);
   }, [energyTimeseriesResp, project, deviceMap]);
 
   const waterDailyTrendData = useMemo(() => [
