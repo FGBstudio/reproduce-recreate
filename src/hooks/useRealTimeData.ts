@@ -98,6 +98,7 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
     brandId: apiSite.brand_id,
     siteId: apiSite.id, // Store original site_id for API calls and telemetry
     area_m2: apiSite.area_m2,
+    energy_price_kwh: apiSite.energy_price_kwh,
   };
 }
 
