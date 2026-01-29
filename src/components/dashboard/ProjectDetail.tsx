@@ -1180,7 +1180,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const densityValue = useMemo(() => {
     // 1. Validazione Dati e Area
     const data = energyTimeseriesResp?.data;
-    const area = Number(project?.area_m2 || project?.area_sqm); // Supporta vari naming convenzioni
+    const area = Number(project?.area_m2); // Usa area_m2 come definito nel tipo Project
 
     // Se mancano dati o l'area non è valida, restituisci placeholder
     if (!data || !Array.isArray(data) || data.length === 0 || !area || area <= 0) {

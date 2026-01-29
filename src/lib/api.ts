@@ -747,9 +747,12 @@ export async function fetchEnergyTimeseriesApi(params: {
     return Array.from(map.values())
       .map((a) => ({
         ts_bucket: a.ts_bucket,
+        ts: a.ts_bucket,
         device_id: a.device_id,
         metric: a.metric,
         value_avg: a.count ? a.sum / a.count : 0,
+        value_sum: a.sum, // ENERGIA TOTALE: somma dei valori nel bucket
+        value: a.sum, // Helper per il frontend
         value_min: a.min,
         value_max: a.max,
         sample_count: a.count,
@@ -780,10 +783,11 @@ export async function fetchEnergyTimeseriesApi(params: {
   };
 
   // Execute query based on route - use ENERGY-specific tables
+  // IMPORTANTE: Includiamo value_sum per l'energia (kWh totali per bucket)
   if (route.table === 'hourly') {
     let query = supabase
       .from('energy_hourly')
-      .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
+      .select('ts_hour, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
       .order('ts_hour', { ascending: true });
@@ -795,7 +799,7 @@ export async function fetchEnergyTimeseriesApi(params: {
   } else if (route.table === 'daily') {
     let query = supabase
       .from('energy_daily')
-      .select('ts_day, device_id, metric, value_avg, value_min, value_max, sample_count')
+      .select('ts_day, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
       .order('ts_day', { ascending: true });
@@ -877,16 +881,23 @@ export async function fetchEnergyTimeseriesApi(params: {
   }
 
   // Map data to ApiTimeseriesPoint format
+  // IMPORTANTE: Esponiamo value_sum per permettere la SOMMA dell'energia (kWh)
   const formattedData: ApiTimeseriesPoint[] = (data || []).map((row: any) => {
+    const isRaw = route.table === 'raw';
+    
     if (route.table === 'hourly') {
       return {
         ts_bucket: row.ts_hour,
+        ts: row.ts_hour,
         device_id: row.device_id,
         metric: row.metric,
         value_avg: row.value_avg ?? 0,
+        value_sum: row.value_sum ?? row.value_avg ?? 0, // ENERGIA TOTALE del bucket
         value_min: row.value_min ?? row.value_avg ?? 0,
         value_max: row.value_max ?? row.value_avg ?? 0,
         sample_count: row.sample_count ?? 0,
+        // Helper: preferisci sempre value_sum per grafici energia
+        value: row.value_sum ?? row.value_avg ?? 0,
       };
     }
     
@@ -894,21 +905,28 @@ export async function fetchEnergyTimeseriesApi(params: {
       const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
       return {
         ts_bucket: dayIso,
+        ts: dayIso,
         device_id: row.device_id,
         metric: row.metric,
         value_avg: row.value_avg ?? 0,
+        value_sum: row.value_sum ?? row.value_avg ?? 0, // ENERGIA TOTALE del bucket
         value_min: row.value_min ?? row.value_avg ?? 0,
         value_max: row.value_max ?? row.value_avg ?? 0,
         sample_count: row.sample_count ?? 0,
+        // Helper: preferisci sempre value_sum per grafici energia
+        value: row.value_sum ?? row.value_avg ?? 0,
       };
     }
 
-    // Raw telemetry
+    // Raw telemetry - value è già l'energia (integrale 15min)
     return {
       ts_bucket: row.ts,
+      ts: row.ts,
       device_id: row.device_id,
       metric: row.metric,
+      value: row.value,
       value_avg: row.value,
+      value_sum: row.value, // Per raw, value è già l'energia del campione
       value_min: row.value,
       value_max: row.value,
       sample_count: 1,
