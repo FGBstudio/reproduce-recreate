@@ -120,6 +120,7 @@ const Index = () => {
               brandId: brand?.id || '',
               siteId: site.id, // Keep UUID reference for real-time data
               area_m2: site.area_m2,
+              energy_price_kwh: site.energy_price_kwh,
             };
             
             setSelectedProject(project);
