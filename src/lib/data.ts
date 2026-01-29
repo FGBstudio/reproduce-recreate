@@ -37,6 +37,8 @@ export interface ProjectData {
   temp: number;
   alerts: number;
   aq: string;
+  area_m2?: number;
+  energy_price_kwh?: number;
 }
 
 export type MonitoringType = "energy" | "air" | "water";
