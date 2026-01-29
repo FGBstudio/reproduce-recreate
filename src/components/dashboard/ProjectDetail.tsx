@@ -1599,122 +1599,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     };
   }, [energyTimeseriesResp, project, timePeriod, deviceMap]);
 
-  // --- 8. WIDGET: POWER CONSUMPTION (Real-time Donut kW) ---
-
-  // A. Fetch Dati Live (Tabella energy_latest)
-  const { data: latestEnergyResp } = useEnergyLatest({
-    site_id: project?.siteId,
-    // Cerchiamo le metriche di potenza tipiche
-    metrics: ['energy.power_kw', 'energy.active_power', 'power'] 
-  }, {
-    enabled: !!project?.siteId && activeDashboard === 'energy',
-    refetchInterval: 30000, // Aggiorna ogni 30 secondi
-  });
-
-  // B. Elaborazione Dati (Simile a Energy Breakdown ma per Potenza)
-  const powerDistributionData = useMemo(() => {
-    const devicesData = latestEnergyResp?.data;
-    if (!devicesData) return [];
-
-    let totalGeneral = 0;
-    let totalHVAC = 0;
-    let totalLighting = 0;
-    let totalPlugs = 0;
-    let totalOtherDefined = 0;
-    
-    const deviceTotals = new Map<string, number>();
-
-    // 1. Itera su tutti i device trovati nel latest
-    Object.entries(devicesData).forEach(([deviceId, metrics]) => {
-        const info = deviceMap.get(deviceId);
-        if (!info) return; // Ignora device sconosciuti
-
-        // Trova la metrica di potenza (kW)
-        const powerMetric = metrics.find(m => 
-            m.metric === 'energy.power_kw' || 
-            m.metric === 'energy.active_power' ||
-            m.metric === 'power'
-        );
-        
-        const val = Number(powerMetric?.value || 0);
-        if (val <= 0) return;
-
-        // 2. Accumula per Categoria
-        if (info.category === 'general') totalGeneral += val;
-        else if (info.category === 'hvac') totalHVAC += val;
-        else if (info.category === 'lighting') totalLighting += val;
-        else if (info.category === 'plugs') totalPlugs += val;
-        else totalOtherDefined += val;
-
-        // 3. Accumula per Device (escluso general per evitare duplicati nella view device)
-        if (info.category !== 'general') {
-             deviceTotals.set(info.label, val);
-        }
-    });
-
-    // 4. Costruzione Segmenti Grafico
-    let segments = [];
-
-    if (energyViewMode === 'category') {
-        const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
-        
-        // Se non ho sottocontatori ma ho il generale -> 100% General
-        if (subTotal === 0 && totalGeneral > 0) {
-            segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
-        } else {
-            // Ho sottocontatori -> Mostro breakdown
-            if (totalHVAC > 0) segments.push({ name: 'HVAC', value: totalHVAC, color: '#006367' });
-            if (totalLighting > 0) segments.push({ name: 'Lighting', value: totalLighting, color: '#e63f26' });
-            if (totalPlugs > 0) segments.push({ name: 'Plugs & Loads', value: totalPlugs, color: '#f8cbcc' });
-            if (totalOtherDefined > 0) segments.push({ name: 'Other Devices', value: totalOtherDefined, color: '#911140' });
-
-            // Il "Resto" è Other
-            const remainder = Math.max(0, totalGeneral - subTotal);
-            if (remainder > 0.1) { // Soglia minima 100W per mostrare "Other"
-                 segments.push({ name: 'Other', value: remainder, color: '#a0d5d6' });
-            }
-        }
-    } else {
-        // Vista Device: Lista piatta dei carichi
-        // Se ho solo il generale, mostro quello
-        if (deviceTotals.size === 0 && totalGeneral > 0) {
-             segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
-        } else {
-            const sortedDevices = Array.from(deviceTotals.entries()).sort((a, b) => b[1] - a[1]);
-            sortedDevices.forEach((entry, index) => {
-                segments.push({
-                    name: entry[0],
-                    value: entry[1],
-                    color: FGB_PALETTE[index % FGB_PALETTE.length]
-                });
-            });
-        }
-    }
-    return segments;
-  }, [latestEnergyResp, energyViewMode, deviceMap, FGB_PALETTE]);
-
-  // C. Calcolo Totale KW (Centro del Donut)
-  const totalPowerKw = useMemo(() => {
-      const devicesData = latestEnergyResp?.data;
-      if (!devicesData) return 0;
-
-      // Cerca il valore del meter "General"
-      let generalVal = 0;
-      let sumSub = 0;
-
-      Object.entries(devicesData).forEach(([deviceId, metrics]) => {
-          const powerMetric = metrics.find(m => m.metric === 'energy.power_kw' || m.metric === 'energy.active_power');
-          const val = Number(powerMetric?.value || 0);
-          
-          const info = deviceMap.get(deviceId);
-          if (info?.category === 'general') generalVal = val;
-          else sumSub += val;
-      });
-
-      // Se c'è il generale, è la verità. Altrimenti somma parziali.
-      return generalVal > 0 ? generalVal : sumSub;
-  }, [latestEnergyResp, deviceMap]);
-
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -2560,163 +2444,173 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
                   </div>
                 </div>
-                {/* Slide 3: Energy Analysis & Devices */}
+                {/* Slide 3: Actual vs Average & Device Consumption */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="flex flex-col gap-6 h-full pb-20">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-full pb-20">
                     
-                    {/* RIGA SUPERIORE: 2 colonne a sinistra (Grafico), 1 colonna a destra (Donut) */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      
-                      {/* 1. ACTUAL VS AVERAGE (Sinistra - 2/3) */}
-                      <div ref={actualVsAverageRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col min-h-[350px]">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
-                            <p className="text-xs text-gray-500">Energy Density (kWh/m²)</p>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            {/* Banner Dinamico */}
-                            {actualVsAverageData.summary && (
-                              <div className={`hidden md:flex px-3 py-1 rounded-lg text-[10px] font-semibold items-center gap-1 border ${
-                                actualVsAverageData.summary.status === 'above' 
-                                  ? 'bg-red-50 text-red-700 border-red-100' 
-                                  : actualVsAverageData.summary.status === 'below'
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                    : 'bg-gray-50 text-gray-700 border-gray-100'
-                              }`}>
-                                {actualVsAverageData.summary.status === 'above' && '↑'}
-                                {actualVsAverageData.summary.status === 'below' && '↓'}
-                                <span>{Math.abs(actualVsAverageData.summary.diffPct).toFixed(1)}% {actualVsAverageData.summary.status} avg</span>
-                              </div>
-                            )}
+                    {/* WIDGET 1: ACTUAL VS AVERAGE */}
+                    <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
+                          <p className="text-xs text-gray-500">Energy Density (kWh/m²)</p>
+                        </div>
+                        
+                        {/* BANNER DINAMICO */}
+                        {actualVsAverageData.summary && (
+                          <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
+                            actualVsAverageData.summary.status === 'above' 
+                              ? 'bg-red-50 text-red-700 border-red-100' 
+                              : actualVsAverageData.summary.status === 'below'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                : 'bg-gray-50 text-gray-700 border-gray-100'
+                          }`}>
+                            {actualVsAverageData.summary.status === 'above' && '↑'}
+                            {actualVsAverageData.summary.status === 'below' && '↓'}
+                            {actualVsAverageData.summary.status === 'line' && '•'}
                             
-                            {/* PULSANTI DOWNLOAD & EXPAND */}
-                            <ExportButtons 
-                              chartRef={actualVsAverageRef} 
-                              data={actualVsAverageData.data} 
-                              filename="actual-vs-average" 
-                              onExpand={() => setFullscreenChart('actualVsAverage')}
-                            />
+                            <span>
+                              You are {Math.abs(actualVsAverageData.summary.diffPct).toFixed(2)}% {actualVsAverageData.summary.status} average
+                            </span>
                           </div>
-                        </div>
-
-                        <div className="flex-1 w-full min-h-[250px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis 
-                                dataKey="tsLabel" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fontSize: 10, fill: '#9ca3af' }} 
-                                dy={10}
-                              />
-                              <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fontSize: 10, fill: '#9ca3af' }} 
-                                tickFormatter={(val) => Number(val).toFixed(2)}
-                              />
-                              <Tooltip 
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                formatter={(value: any) => [Number(value).toFixed(3) + ' kWh/m²', '']}
-                                labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
-                              />
-                              <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
-                              <Area type="monotone" dataKey="range" fill="#A6A6A6" stroke="none" fillOpacity={0.2} name="Peer Range" legendType="rect"/>
-                              <Line type="monotone" dataKey="average" stroke="#3A3A3A" strokeWidth={1.5} dot={false} name="Peer Average"/>
-                              <Line type="monotone" dataKey="benchmark" stroke="#7E0A2F" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Benchmark"/>
-                              <Line type="monotone" dataKey="actual" stroke="#129E97" strokeWidth={3} dot={{ r: 3, fill: '#129E97', strokeWidth: 0 }} activeDot={{ r: 6 }} name="Actual"/>
-                            </ComposedChart>
-                          </ResponsiveContainer>
-                        </div>
+                        )}
                       </div>
 
-                      {/* 2. POWER CONSUMPTION (Destra - 1/3) */}
-                      <div ref={powerConsRef} className="lg:col-span-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col min-h-[350px]">
-                          <div className="flex justify-between items-center mb-4">
-                            <div>
-                              <h3 className="text-base md:text-lg font-bold text-gray-800">Power Consumption</h3>
-                              <p className="text-xs text-gray-500">Real-time (kW)</p>
-                            </div>
-                            {/* PULSANTI DOWNLOAD & EXPAND */}
-                            <ExportButtons 
-                              chartRef={powerConsRef} 
-                              data={powerDistributionData} 
-                              filename="power-consumption-realtime" 
+                      <div className="flex-1 min-h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis 
+                              dataKey="tsLabel" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                              dy={10}
                             />
-                          </div>
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                              // FIX: Usa Number(val) per sicurezza
+                              tickFormatter={(val) => Number(val).toFixed(2)}
+                            />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              // FIX: Usa Number(value) per sicurezza
+                              formatter={(value: any) => [Number(value).toFixed(3) + ' kWh/m²', '']}
+                              labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
 
-                          <div className="flex flex-col items-center justify-center flex-1 gap-6">
-                             {/* Donut Chart */}
-                             <div className="relative w-40 h-40 md:w-48 md:h-48 flex-shrink-0">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <PieChart>
-                                    <Pie
-                                      data={powerDistributionData}
-                                      innerRadius="60%"
-                                      outerRadius="90%"
-                                      paddingAngle={2}
-                                      dataKey="value"
-                                      stroke="none"
-                                    >
-                                      {powerDistributionData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                      ))}
-                                    </Pie>
-                                    <Tooltip 
-                                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                      formatter={(value: any) => [Number(value).toFixed(2) + ' kW', '']}
-                                    />
-                                  </PieChart>
-                                </ResponsiveContainer>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                  <span className="text-2xl md:text-3xl font-bold text-fgb-secondary tabular-nums">
-                                    {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                                  </span>
-                                  <span className="text-xs text-gray-500 font-medium">kW Total</span>
-                                </div>
-                             </div>
+                            {/* BAND: Peer Range (Area) */}
+                            <Area 
+                              type="monotone" 
+                              dataKey="range" 
+                              fill="#A6A6A6" 
+                              stroke="none" 
+                              fillOpacity={0.2} 
+                              name="Peer Range" 
+                              legendType="rect"
+                            />
 
-                             {/* Legenda */}
-                             <div className="w-full grid grid-cols-2 gap-2 text-xs">
-                                {powerDistributionData.slice(0, 4).map((item, idx) => (
-                                  <div key={idx} className="flex items-center gap-1.5 overflow-hidden">
-                                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                                    <span className="truncate text-gray-600">{item.name}</span>
-                                    <span className="ml-auto font-medium text-gray-800">{Number(item.value).toFixed(1)}</span>
-                                  </div>
-                                ))}
-                             </div>
-                          </div>
+                            {/* LINE: Peer Average */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="average" 
+                              stroke="#3A3A3A" 
+                              strokeWidth={1.5} 
+                              dot={false} 
+                              name="Peer Average"
+                            />
+
+                            {/* LINE: Benchmark (Dotted) */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="benchmark" 
+                              stroke="#7E0A2F" 
+                              strokeWidth={2} 
+                              strokeDasharray="4 4" 
+                              dot={false} 
+                              name="Benchmark"
+                            />
+
+                            {/* LINE: Actual (Main) */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="actual" 
+                              stroke="#129E97" 
+                              strokeWidth={3} 
+                              dot={{ r: 3, fill: '#129E97', strokeWidth: 0 }} 
+                              activeDot={{ r: 6 }} 
+                              name="Actual"
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
 
-                    {/* RIGA INFERIORE: CONSUMO DISPOSITIVI (WIDGET 3) */}
-                    <div ref={deviceConsRef} className="w-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[300px]">
+                    {/* WIDGET 2: DEVICE CONSUMPTION (Placeholder per ora o lo sistemiamo dopo) */}
+                    <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                        <h3 className="text-base md:text-lg font-bold text-gray-800 mb-4">Top Consumers</h3>
+                        <div className="flex items-center justify-center h-64 text-gray-400 italic">
+                            Device detail coming soon...
+                        </div>
+                    </div>
+                    <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Dispositivi</h3>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Stacked Analysis</span>
-                            {/* PULSANTI DOWNLOAD & EXPAND */}
-                            <ExportButtons 
-                              chartRef={deviceConsRef} 
-                              data={[]} // TODO: Passare i dati veri quando pronti
-                              filename="device-consumption-stacked" 
-                              onExpand={() => setFullscreenChart('deviceCons')}
-                            />
-                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">Power consumption</h3>
+                        <ExportButtons chartRef={powerConsRef} data={donutData} filename="power-consumption" />
                       </div>
-                      
-                      {/* PLACEHOLDER PER ORA */}
-                      <div className="w-full h-full flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 min-h-[200px]">
-                        <div className="text-center">
-                          <p className="text-gray-400 font-medium">Grafico Stacked (Device Consumption) in arrivo...</p>
+                      <div className="flex items-center gap-8">
+                        <div className="space-y-3">
+                          {[{ n: 'HVAC', c: 'bg-fgb-secondary', v: '45%' }, { n: 'Lighting', c: 'bg-[hsl(338,50%,45%)]', v: '35%' }, { n: 'Plugs and Loads', c: 'bg-[hsl(338,50%,75%)]', v: '20%' }].map(({ n, c, v }) => (
+                            <div key={n} className="flex items-center gap-2">
+                              <span className={`w-3 h-3 rounded-full ${c}`} />
+                              <span className="text-sm text-gray-600">{n}</span>
+                              <span className="text-sm font-semibold text-gray-800 ml-auto">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="relative w-44 h-44">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={donutData} innerRadius={50} outerRadius={70} paddingAngle={3} dataKey="value">
+                                {donutData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="white" strokeWidth={2} />)}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-4xl font-bold text-fgb-secondary">89</span>
+                            <span className="text-xs text-gray-500">kW</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-
+                    <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Consumo Dispositivi</h3>
+                        <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={energyDeviceConsumptionLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis
+                            tick={axisStyle}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={autoDomainWithPadding}
+                            tickFormatter={(v) => `${v / 1000}k`}
+                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
+                          />
+                          <Tooltip {...tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                          <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
+                          <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Illuminazione" />
+                          <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Prese" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 </div>
 
