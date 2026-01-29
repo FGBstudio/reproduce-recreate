@@ -1180,7 +1180,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // --- FIX: DENSITÀ ENERGETICA (Variabile: ENERGIA, Operazione: SOMMA) ---
   const densityValue = useMemo(() => {
     const data = energyTimeseriesResp?.data;
-    const area = Number(project?.area_m2 || project?.area_sqm || 240);
+    const area = Number(project?.area_m2 || project?.area_sqm);
 
     // Se manca l'area, non possiamo calcolare la densità (divisione per zero)
     if (!area || area <= 0) return "---";
