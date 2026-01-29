@@ -2445,7 +2445,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 </div>
                 {/* Slide 3: Actual vs Average & Device Consumption */}
-                {/* Slide 3: Actual vs Average & Device Consumption */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-full pb-20">
                     
@@ -2492,11 +2491,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               axisLine={false} 
                               tickLine={false} 
                               tick={{ fontSize: 10, fill: '#9ca3af' }} 
-                              tickFormatter={(val) => val.toFixed(2)}
+                              // FIX: Usa Number(val) per sicurezza
+                              tickFormatter={(val) => Number(val).toFixed(2)}
                             />
                             <Tooltip 
                               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                              formatter={(value: number) => [value.toFixed(3) + ' kWh/m²', '']}
+                              // FIX: Usa Number(value) per sicurezza
+                              formatter={(value: any) => [Number(value).toFixed(3) + ' kWh/m²', '']}
                               labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
                             />
                             <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
