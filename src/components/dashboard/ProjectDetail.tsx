@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
@@ -1269,6 +1269,116 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     };
   }, [energyTimeseriesResp, project, deviceMap]);
 
+  // --- 5. WIDGET: ENERGY PERIODS (Pivot Table Annuale) ---
+  
+  // A. Stato per il widget
+  const [energyPeriodsYear, setEnergyPeriodsYear] = useState(new Date().getFullYear());
+  const [expandedMonths, setExpandedMonths] = useState<string[]>([]); // Array di chiavi "YYYY-MM"
+
+  // B. Fetch Dati Annuali (Granularità Giornaliera per Drill-down)
+  // Questa query è indipendente dai filtri globali (timePeriod)
+  const { data: periodsResp } = useEnergyTimeseries(
+    {
+      site_id: project?.siteId,
+      start: `${energyPeriodsYear}-01-01T00:00:00.000Z`,
+      end: `${energyPeriodsYear}-12-31T23:59:59.999Z`,
+      metrics: ['energy.active_energy', 'energy.power_kw'],
+      bucket: '1d',
+    },
+    {
+      // Fetch solo se siamo nella tab energy
+      enabled: !!project?.siteId && activeDashboard === 'energy', 
+    }
+  );
+
+  // C. Elaborazione Dati (Raggruppamento Mese -> Giorni)
+  const energyPeriodsData = useMemo(() => {
+    const rawData = periodsResp?.data;
+    if (!rawData || !Array.isArray(rawData)) return [];
+
+    const pricePerKwh = Number(project?.energy_price_kwh ?? 0);
+    const monthsMap = new Map<string, {
+      monthKey: string;     // YYYY-MM per ordinamento
+      monthLabel: string;   // "Mar 2025"
+      totalKwh: number;
+      totalCost: number;
+      days: Map<string, {   // Map per unire eventuali record doppi nello stesso giorno
+        dayKey: string;     // YYYY-MM-DD
+        dayLabel: string;   // "01 Mar 2025"
+        kwh: number;
+        cost: number;
+      }>
+    }>();
+
+    rawData.forEach(d => {
+      // 1. Filtra solo General (come per gli altri KPI)
+      const info = deviceMap.get(d.device_id);
+      const isGeneral = (info && info.category === 'general') || 
+                        (!info && (d.metric === 'energy.power_kw' || d.metric === 'energy.active_energy'));
+      if (!isGeneral) return;
+
+      // 2. Recupera Valore (kWh) - I dati daily sono già somme, ma usiamo la logica robusta
+      const kwh = Number(d.value_sum ?? d.value ?? 0);
+      if (kwh <= 0) return; // Ignora zero o negativi
+
+      // 3. Parsing Data
+      const ts = d.ts_bucket || d.ts;
+      if (!ts) return;
+      const date = new Date(ts);
+      
+      const monthKey = date.toISOString().slice(0, 7); // "2025-03"
+      const dayKey = date.toISOString().slice(0, 10);  // "2025-03-01"
+
+      // 4. Inizializza Mese se non esiste
+      if (!monthsMap.has(monthKey)) {
+        monthsMap.set(monthKey, {
+          monthKey,
+          monthLabel: date.toLocaleDateString('it-IT', { month: 'short', year: 'numeric' }), // "Mar 2025"
+          totalKwh: 0,
+          totalCost: 0,
+          days: new Map()
+        });
+      }
+      
+      const monthEntry = monthsMap.get(monthKey)!;
+      const cost = kwh * pricePerKwh;
+
+      // Aggiorna Totali Mese
+      monthEntry.totalKwh += kwh;
+      monthEntry.totalCost += cost;
+
+      // 5. Gestione Giorno (Drill-down)
+      if (!monthEntry.days.has(dayKey)) {
+        monthEntry.days.set(dayKey, {
+          dayKey,
+          dayLabel: date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }), // "01 Mar 2025"
+          kwh: 0,
+          cost: 0
+        });
+      }
+      const dayEntry = monthEntry.days.get(dayKey)!;
+      dayEntry.kwh += kwh;
+      dayEntry.cost += cost;
+    });
+
+    // 6. Trasformazione in Array e Ordinamento
+    return Array.from(monthsMap.values())
+      .sort((a, b) => a.monthKey.localeCompare(b.monthKey)) // Ascendente Gen -> Dic
+      .map(m => ({
+        ...m,
+        // Converti map giorni in array ordinato
+        days: Array.from(m.days.values()).sort((a, b) => a.dayKey.localeCompare(b.dayKey))
+      }));
+
+  }, [periodsResp, deviceMap, project?.energy_price_kwh]);
+
+  // Helper per espandere/collassare
+  const togglePeriodExpand = (monthKey: string) => {
+    setExpandedMonths(prev => 
+      prev.includes(monthKey) ? prev.filter(k => k !== monthKey) : [...prev, monthKey]
+    );
+  };
+
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -1932,10 +2042,92 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                     </div>
                     <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      {/* Energy Periods Pivot Table */}
+                    <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg h-full flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Energy Periods</h3>
-                        <ExportButtons chartRef={periodRef} data={periodData} filename="energy-periods" />
+                        <h3 className="text-base md:text-lg font-bold text-gray-800">Energy Periods</h3>
+                        
+                        <div className="flex items-center gap-2">
+                          {/* Selettore Anno Indipendente */}
+                          <select 
+                            value={energyPeriodsYear}
+                            onChange={(e) => setEnergyPeriodsYear(Number(e.target.value))}
+                            className="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-fgb-primary focus:border-fgb-primary block p-1.5 outline-none font-medium cursor-pointer hover:bg-gray-100 transition-colors"
+                          >
+                            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                              <option key={year} value={year}>{year}</option>
+                            ))}
+                          </select>
+                          
+                          <ExportButtons chartRef={periodRef} data={energyPeriodsData} filename={`energy-periods-${energyPeriodsYear}`} />
+                        </div>
                       </div>
+
+                      {/* Tabella Scrollabile */}
+                      <div className="overflow-y-auto flex-1 custom-scrollbar pr-1" style={{ maxHeight: '300px' }}>
+                        <table className="w-full text-sm text-left">
+                          <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th scope="col" className="px-3 py-3 rounded-l-lg">Period</th>
+                              <th scope="col" className="px-3 py-3 text-center">kWh</th>
+                              <th scope="col" className="px-3 py-3 text-right rounded-r-lg">Price</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {energyPeriodsData.length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="px-3 py-8 text-center text-gray-400 italic">
+                                  Nessun dato disponibile per il {energyPeriodsYear}
+                                </td>
+                              </tr>
+                            ) : (
+                              energyPeriodsData.map((period) => (
+                                <>
+                                  {/* RIGA MESE (Parent) */}
+                                  <tr 
+                                    key={period.monthKey} 
+                                    onClick={() => togglePeriodExpand(period.monthKey)}
+                                    className="bg-white border-b hover:bg-gray-50 cursor-pointer transition-colors group"
+                                  >
+                                    <td className="px-3 py-3 font-medium text-gray-900 flex items-center gap-2">
+                                      <span className={`p-1 rounded-md transition-colors ${expandedMonths.includes(period.monthKey) ? 'bg-emerald-100 text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'}`}>
+                                        {expandedMonths.includes(period.monthKey) ? (
+                                          <ChevronUp className="w-3.5 h-3.5" />
+                                        ) : (
+                                          <ChevronDown className="w-3.5 h-3.5" />
+                                        )}
+                                      </span>
+                                      <span className="capitalize">{period.monthLabel}</span>
+                                    </td>
+                                    <td className="px-3 py-3 text-center font-medium text-gray-600 tabular-nums">
+                                      {period.totalKwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="px-3 py-3 text-right font-bold text-gray-800 tabular-nums">
+                                      {period.totalCost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                                    </td>
+                                  </tr>
+
+                                  {/* RIGHE GIORNI (Children) - Renderizzate solo se espanso */}
+                                  {expandedMonths.includes(period.monthKey) && period.days.map((day) => (
+                                    <tr key={day.dayKey} className="bg-gray-50/50 border-b border-gray-100 animate-slide-down">
+                                      <td className="px-3 py-2 pl-10 text-xs text-gray-500 font-medium border-l-2 border-emerald-100">
+                                        {day.dayLabel}
+                                      </td>
+                                      <td className="px-3 py-2 text-center text-xs text-gray-500 tabular-nums">
+                                        {day.kwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-xs text-gray-500 tabular-nums">
+                                        {day.cost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                       <table className="w-full">
                         <thead>
                           <tr className="text-gray-500 text-sm font-medium">
