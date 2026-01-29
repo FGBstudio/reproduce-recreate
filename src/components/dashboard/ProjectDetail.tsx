@@ -29,26 +29,9 @@ import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/component
 import { OverviewSection } from "./OverviewSection";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
-import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest } from "@/lib/api";
+import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { TimeseriesDiagnostics } from "@/components/dashboard/TimeseriesDiagnostics";
-
-// --- HELPER UNIVERSALE PER DATE POSTGRES ---
-const parseTimestamp = (ts: any): Date | null => {
-  if (!ts) return null;
-  // Se è già un oggetto Date valido
-  if (ts instanceof Date && !isNaN(ts.getTime())) return ts;
-  
-  // Conversione in stringa e pulizia
-  const str = String(ts).trim();
-  
-  // FIX CRITICO: Sostituisce lo spazio con T per standard ISO (supporto Safari/Firefox/Chrome)
-  // Trasforma "2025-08-01 19:00:00+00" in "2025-08-01T19:00:00+00"
-  const isoStr = str.replace(' ', 'T');
-  
-  const d = new Date(isoStr);
-  return isNaN(d.getTime()) ? null : d;
-};
 
 
 // Dashboard types
@@ -212,30 +195,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
 
-// --- 1. RECUPERO E MAPPATURA DEVICES ---
-  // Recuperiamo tutti i device del sito per avere le categorie
-  const { data: siteDevicesResp } = useDevices(
-    project?.siteId ? { site_id: project.siteId } : undefined,
-    { enabled: !!project?.siteId }
-  );
-  const siteDevices = siteDevicesResp?.data ?? [];
-
-  // Creiamo una mappa per lookup istantaneo: ID -> { categoria, nome_circuito }
-  const deviceMap = useMemo(() => {
-    const map = new Map<string, { category: string; label: string }>();
-    siteDevices.forEach((d) => {
-      map.set(d.id, {
-        // Normalizziamo la categoria (es. 'General' -> 'general')
-        category: d.category ? d.category.toLowerCase() : 'other',
-        // Se c'è un circuit_name usiamo quello, altrimenti il nome del device
-        label: d.circuit_name || d.name,
-      });
-    });
-    return map;
-  }, [siteDevices]);
-  
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
+  
 
   // Get module configuration for this project
   const moduleConfig = useProjectModuleConfig(project);
@@ -365,6 +327,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   );
   const siteDevices = siteDevicesResp?.data ?? [];
   const siteDeviceIds = useMemo(() => siteDevices.map((d) => d.id), [siteDevices]);
+
+  // Creiamo una mappa per lookup istantaneo: ID -> { categoria, nome_circuito }
+  const deviceMap = useMemo(() => {
+    const map = new Map<string, { category: string; label: string }>();
+    siteDevices.forEach((d) => {
+      map.set(d.id, {
+        // Normalizziamo la categoria (es. 'General' -> 'general')
+        category: d.category ? d.category.toLowerCase() : 'other',
+        // Se c'è un circuit_name usiamo quello, altrimenti il nome del device
+        label: d.circuit_name || d.name || d.device_id,
+      });
+    });
+    return map;
+  }, [siteDevices]);
 
   // If modules are marked disabled in DB but devices exist, infer enablement from device types.
   // This fixes cases where DB auto-enable triggers didn't fire or legacy device_type values are used.
