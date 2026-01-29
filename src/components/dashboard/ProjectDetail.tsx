@@ -2564,37 +2564,44 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="flex flex-col gap-6 h-full pb-20">
                     
-                    {/* RIGA SUPERIORE: Actual vs Average + Power Consumption */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 min-h-[320px]">
+                    {/* RIGA SUPERIORE: 2 colonne a sinistra (Grafico), 1 colonna a destra (Donut) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       
                       {/* 1. ACTUAL VS AVERAGE (Sinistra - 2/3) */}
-                      <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                      <div ref={actualVsAverageRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col min-h-[350px]">
                         <div className="flex justify-between items-start mb-4">
                           <div>
                             <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
                             <p className="text-xs text-gray-500">Energy Density (kWh/m²)</p>
                           </div>
                           
-                          {/* Banner Dinamico */}
-                          {actualVsAverageData.summary && (
-                            <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
-                              actualVsAverageData.summary.status === 'above' 
-                                ? 'bg-red-50 text-red-700 border-red-100' 
-                                : actualVsAverageData.summary.status === 'below'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                  : 'bg-gray-50 text-gray-700 border-gray-100'
-                            }`}>
-                              {actualVsAverageData.summary.status === 'above' && '↑'}
-                              {actualVsAverageData.summary.status === 'below' && '↓'}
-                              {actualVsAverageData.summary.status === 'line' && '•'}
-                              <span>
-                                You are {Math.abs(actualVsAverageData.summary.diffPct).toFixed(2)}% {actualVsAverageData.summary.status} average
-                              </span>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {/* Banner Dinamico */}
+                            {actualVsAverageData.summary && (
+                              <div className={`hidden md:flex px-3 py-1 rounded-lg text-[10px] font-semibold items-center gap-1 border ${
+                                actualVsAverageData.summary.status === 'above' 
+                                  ? 'bg-red-50 text-red-700 border-red-100' 
+                                  : actualVsAverageData.summary.status === 'below'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                    : 'bg-gray-50 text-gray-700 border-gray-100'
+                              }`}>
+                                {actualVsAverageData.summary.status === 'above' && '↑'}
+                                {actualVsAverageData.summary.status === 'below' && '↓'}
+                                <span>{Math.abs(actualVsAverageData.summary.diffPct).toFixed(1)}% {actualVsAverageData.summary.status} avg</span>
+                              </div>
+                            )}
+                            
+                            {/* PULSANTI DOWNLOAD & EXPAND */}
+                            <ExportButtons 
+                              chartRef={actualVsAverageRef} 
+                              data={actualVsAverageData.data} 
+                              filename="actual-vs-average" 
+                              onExpand={() => setFullscreenChart('actualVsAverage')}
+                            />
+                          </div>
                         </div>
 
-                        <div className="flex-1 min-h-[250px]">
+                        <div className="flex-1 w-full min-h-[250px]">
                           <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -2627,15 +2634,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
 
                       {/* 2. POWER CONSUMPTION (Destra - 1/3) */}
-                      <div className="lg:col-span-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                      <div ref={powerConsRef} className="lg:col-span-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col min-h-[350px]">
                           <div className="flex justify-between items-center mb-4">
                             <div>
                               <h3 className="text-base md:text-lg font-bold text-gray-800">Power Consumption</h3>
                               <p className="text-xs text-gray-500">Real-time (kW)</p>
                             </div>
+                            {/* PULSANTI DOWNLOAD & EXPAND */}
+                            <ExportButtons 
+                              chartRef={powerConsRef} 
+                              data={powerDistributionData} 
+                              filename="power-consumption-realtime" 
+                            />
                           </div>
 
-                          <div className="flex flex-col items-center justify-center flex-1 min-h-[200px] gap-4">
+                          <div className="flex flex-col items-center justify-center flex-1 gap-6">
                              {/* Donut Chart */}
                              <div className="relative w-40 h-40 md:w-48 md:h-48 flex-shrink-0">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -2666,7 +2679,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 </div>
                              </div>
 
-                             {/* Legendina compatta sotto */}
+                             {/* Legenda */}
                              <div className="w-full grid grid-cols-2 gap-2 text-xs">
                                 {powerDistributionData.slice(0, 4).map((item, idx) => (
                                   <div key={idx} className="flex items-center gap-1.5 overflow-hidden">
@@ -2681,14 +2694,23 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     {/* RIGA INFERIORE: CONSUMO DISPOSITIVI (WIDGET 3) */}
-                    <div ref={deviceConsRef} className="flex-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[300px]">
+                    <div ref={deviceConsRef} className="w-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[300px]">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Dispositivi</h3>
-                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Stacked Analysis</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Stacked Analysis</span>
+                            {/* PULSANTI DOWNLOAD & EXPAND */}
+                            <ExportButtons 
+                              chartRef={deviceConsRef} 
+                              data={[]} // TODO: Passare i dati veri quando pronti
+                              filename="device-consumption-stacked" 
+                              onExpand={() => setFullscreenChart('deviceCons')}
+                            />
+                        </div>
                       </div>
                       
-                      {/* PLACEHOLDER PER ORA - Qui andrà il BarChart dei dispositivi */}
-                      <div className="w-full h-full flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                      {/* PLACEHOLDER PER ORA */}
+                      <div className="w-full h-full flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 min-h-[200px]">
                         <div className="text-center">
                           <p className="text-gray-400 font-medium">Grafico Stacked (Device Consumption) in arrivo...</p>
                         </div>
