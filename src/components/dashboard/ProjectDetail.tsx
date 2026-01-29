@@ -1944,9 +1944,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return { data: sortedData, series: seriesConfigs };
   }, [carbonResp, timePeriod, FGB_PALETTE]);
-  
-  // Ref per Export
-  const carbonRef = useRef<HTMLDivElement>(null);
                            
 
   const waterDailyTrendData = useMemo(() => [
