@@ -1182,26 +1182,35 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const data = energyTimeseriesResp?.data;
     const area = Number(project?.area_m2 || project?.area_sqm);
 
-    if (!data || !Array.isArray(data) || data.length === 0 || !area || area <= 0) {
-      return "----";
-    }
+    // Se manca l'area, non possiamo calcolare la densità (divisione per zero)
+    if (!area || area <= 0) return "---";
 
-    // 1. Filtro: Solo device 'general'
-    const generalData = data.filter(d => {
-        const info = deviceMap.get(d.device_id);
-        return info && info.category === 'general';
+    // Se i dati mancano (null/undefined), usiamo un array vuoto per non rompere il ciclo.
+    // Non ritorniamo più "---" qui: se è vuoto, il consumo sarà 0.
+    const safeData = Array.isArray(data) ? data : [];
+
+    // 1. Filtro: Solo device 'General' usando la mappa (più preciso della metrica)
+    const generalData = safeData.filter(d => {
+        // Usa la deviceMap se disponibile
+        if (deviceMap && deviceMap.size > 0) {
+            const info = deviceMap.get(d.device_id);
+            return info && info.category === 'general';
+        }
+        // Fallback temporaneo se la mappa non è ancora caricata: filtra per metrica
+        // Nota: questo fallback serve solo nei primi millisecondi di caricamento
+        return d.metric === 'energy.active_energy' || d.metric === 'energy.power_kw';
     });
 
-    if (generalData.length === 0) return "---";
-
-    // 2. Somma Pura dell'Energia (kWh)
-    // api.ts ora restituisce 'value_sum' per aggregati (hourly/daily)
-    // e 'value' per raw (15 min integral). Entrambi sono kWh.
+    // 2. Somma Pura (kWh)
+    // api.ts ora restituisce 'value_sum' (Energia Totale) per aggregati (hourly/daily)
+    // e 'value' (Energia 15min) per raw. Entrambi sono già kWh.
     const totalKWh = generalData.reduce((acc, curr) => {
+      // Se il valore è nullo (buco), usiamo 0
       const energy = Number(curr.value_sum ?? curr.value ?? 0);
       return acc + energy;
     }, 0);
 
+    // 3. Calcolo finale
     return (totalKWh / area).toFixed(1);
   }, [energyTimeseriesResp, project, deviceMap]);
 
