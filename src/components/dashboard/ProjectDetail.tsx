@@ -211,6 +211,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
+
+// --- 1. RECUPERO E MAPPATURA DEVICES ---
+  // Recuperiamo tutti i device del sito per avere le categorie
+  const { data: siteDevicesResp } = useDevices(
+    project?.siteId ? { site_id: project.siteId } : undefined,
+    { enabled: !!project?.siteId }
+  );
+  const siteDevices = siteDevicesResp?.data ?? [];
+
+  // Creiamo una mappa per lookup istantaneo: ID -> { categoria, nome_circuito }
+  const deviceMap = useMemo(() => {
+    const map = new Map<string, { category: string; label: string }>();
+    siteDevices.forEach((d) => {
+      map.set(d.id, {
+        // Normalizziamo la categoria (es. 'General' -> 'general')
+        category: d.category ? d.category.toLowerCase() : 'other',
+        // Se c'è un circuit_name usiamo quello, altrimenti il nome del device
+        label: d.circuit_name || d.name,
+      });
+    });
+    return map;
+  }, [siteDevices]);
   
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
@@ -804,129 +826,76 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // ---------------------------------------------------------------------------
   // --- NUOVO CALCOLO: ENERGY CONSUMPTION OVER TIME ---
   // --- FIX: ENERGY CONSUMPTION OVER TIME (Data Parsing Corretto) ---
+  // --- 2. DATI GRAFICO: ENERGY CONSUMPTION OVER TIME (Sempre Potenza kW) ---
   const energyConsumptionData = useMemo(() => {
     const rawData = energyTimeseriesResp?.data;
-    
-    // FALLBACK: Se non ci sono dati reali, usa mock data per la demo
-    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
-      // Generate mock data based on time period
-      const now = new Date();
-      const mockData: Array<{ts: string; label: string; General: number; HVAC: number; Lighting: number; Plugs: number}> = [];
-      
-      if (timePeriod === 'today') {
-        for (let i = 0; i < 24; i++) {
-          const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), i);
-          mockData.push({
-            ts: date.toISOString(),
-            label: date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-            General: Math.round(30 + Math.random() * 50),
-            HVAC: Math.round(15 + Math.random() * 25),
-            Lighting: Math.round(8 + Math.random() * 12),
-            Plugs: Math.round(5 + Math.random() * 10),
-          });
-        }
-      } else if (timePeriod === 'week') {
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          mockData.push({
-            ts: date.toISOString(),
-            label: date.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit' }),
-            General: Math.round(400 + Math.random() * 300),
-            HVAC: Math.round(200 + Math.random() * 150),
-            Lighting: Math.round(100 + Math.random() * 80),
-            Plugs: Math.round(50 + Math.random() * 50),
-          });
-        }
-      } else if (timePeriod === 'month') {
-        for (let i = 29; i >= 0; i--) {
-          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          mockData.push({
-            ts: date.toISOString(),
-            label: date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
-            General: Math.round(400 + Math.random() * 300),
-            HVAC: Math.round(200 + Math.random() * 150),
-            Lighting: Math.round(100 + Math.random() * 80),
-            Plugs: Math.round(50 + Math.random() * 50),
-          });
-        }
-      } else { // year
-        for (let i = 11; i >= 0; i--) {
-          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          mockData.push({
-            ts: date.toISOString(),
-            label: date.toLocaleDateString('it-IT', { month: 'short' }),
-            General: Math.round(8000 + Math.random() * 4000),
-            HVAC: Math.round(4000 + Math.random() * 2000),
-            Lighting: Math.round(2000 + Math.random() * 1000),
-            Plugs: Math.round(1000 + Math.random() * 500),
-          });
-        }
-      }
-      return mockData;
-    }
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) return [];
 
     const groupedMap = new Map<string, any>();
 
     rawData.forEach((d) => {
-      // 1. Parsing Data Sicuro
-      // Prova tutti i campi possibili (ts, ts_hour, etc.)
-      const rawTs = d.ts || d.ts_hour || d.ts_day || d.day_local || d.day_utc || d.bucket;
+      // A. Parsing Data Sicuro
+      const rawTs = d.ts_bucket || d.ts || d.ts_hour || d.ts_day;
       const dateObj = parseTimestamp(rawTs);
 
-      if (!dateObj) {
-        // Se fallisce ancora, saltiamo il punto invece di rompere tutto
-        // console.warn("Skipping invalid date row:", d); 
-        return; 
-      }
+      if (!dateObj) return;
 
-      // 2. Creazione Label Asse X
-      const tsKey = dateObj.toISOString(); // Chiave univoca
-      let label = "";
+      // B. Info Device (Se non ho info sul device, lo ignoro per sicurezza)
+      const deviceInfo = deviceMap.get(d.device_id);
+      if (!deviceInfo) return; 
+
+      // C. Chiave Raggruppamento Temporale
+      const tsKey = dateObj.toISOString();
       
-      if (timePeriod === 'today') {
-        label = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-      } else if (timePeriod === 'week' || timePeriod === 'month') {
-        label = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-      } else {
-        label = dateObj.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
-      }
-
-      // 3. Inizializzazione Gruppo
+      // Inizializza l'oggetto per questo timestamp se non esiste
       if (!groupedMap.has(tsKey)) {
-        groupedMap.set(tsKey, { 
+        let label = "";
+        if (timePeriod === 'today') {
+            label = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        } else if (timePeriod === 'week' || timePeriod === 'month') {
+            label = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        } else {
+            label = dateObj.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
+        }
+
+        groupedMap.set(tsKey, {
           ts: tsKey,
           label: label,
-          // Campi base per evitare undefined nel grafico
-          General: 0, HVAC: 0, Lighting: 0, Plugs: 0 
+          General: 0, HVAC: 0, Lighting: 0, Other: 0
         });
       }
-      
-      const entry = groupedMap.get(tsKey);
-      // Handle multiple value formats from API (standardized, avg, sum)
-      const rawVal = d.value ?? d.value_avg ?? d.value_sum ?? 0;
-      const val = Number(rawVal);
-      if (isNaN(val) || val === 0) return; // Salta valori non numerici o zero
 
-      // 4. Assegnazione Valori (Category o Device)
+      const entry = groupedMap.get(tsKey);
+
+      // D. Valore (Sempre Potenza kW)
+      const val = Number(d.value_avg ?? d.value);
+      if (isNaN(val)) return;
+
+      // E. Assegnazione Valori
       if (energyViewMode === 'category') {
-        if (d.metric === 'energy.power_kw') entry.General += val; 
-        else if (d.metric === 'energy.hvac_kw') entry.HVAC += val;
-        else if (d.metric === 'energy.lighting_kw') entry.Lighting += val;
-        else if (d.metric === 'energy.plugs_kw') entry.Plugs += val;
-      } else {
-        // Device view: accetta qualsiasi metrica di potenza
-        if (d.metric && d.metric.includes('_kw')) {
-           const deviceKey = d.device_id || 'Unknown';
-           entry[deviceKey] = (entry[deviceKey] || 0) + val;
+        const cat = deviceInfo.category;
+
+        if (cat === 'general') {
+            entry.General += val; 
+        } else if (cat === 'hvac') {
+            entry.HVAC += val;
+        } else if (cat === 'lighting') {
+            entry.Lighting += val;
+        } else {
+            entry.Other += val;
         }
+      } else {
+        // Vista Device Singolo
+        const circuitKey = deviceInfo.label;
+        entry[circuitKey] = (entry[circuitKey] || 0) + val;
       }
     });
 
-    // 5. Ordinamento Finale
+    // F. Ordinamento Temporale
     return Array.from(groupedMap.values()).sort((a, b) => 
       new Date(a.ts).getTime() - new Date(b.ts).getTime()
     );
-  }, [energyTimeseriesResp, timePeriod, energyViewMode]);
+  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap]);
 
   // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
   const deviceKeys = useMemo(() => {
@@ -1681,47 +1650,119 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
 
                       <ResponsiveContainer width="100%" height={280}>
-                        <AreaChart data={energyConsumptionData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <AreaChart
+                          data={energyConsumptionData}
+                          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                        >
                           <defs>
+                            {/* GRADIENTI BASATI SU PALETTE FGB */}
+                            {/* General: Teal Primary */}
                             <linearGradient id="colorGeneral" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.3}/>
-                              <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#009193" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="#009193" stopOpacity={0}/>
+                            </linearGradient>
+                            {/* HVAC: Dark Teal */}
+                            <linearGradient id="colorHVAC" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#006367" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="#006367" stopOpacity={0}/>
+                            </linearGradient>
+                            {/* Lighting: Orange/Red */}
+                            <linearGradient id="colorLighting" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#e63f26" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="#e63f26" stopOpacity={0}/>
+                            </linearGradient>
+                            {/* Other: Burgundy */}
+                            <linearGradient id="colorOther" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#911140" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="#911140" stopOpacity={0}/>
                             </linearGradient>
                           </defs>
+                          
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="label" tick={{ ...axisStyle, fontSize: 10 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
+                          <XAxis 
+                            dataKey="label" 
+                            tick={{ ...axisStyle, fontSize: 10 }} 
+                            axisLine={{ stroke: '#e2e8f0' }} 
+                            tickLine={{ stroke: '#e2e8f0' }} 
+                            minTickGap={30} 
+                          />
                           <YAxis
                             tick={{ ...axisStyle, fontSize: 10 }}
                             axisLine={{ stroke: '#e2e8f0' }}
                             tickLine={{ stroke: '#e2e8f0' }}
                             width={35}
-                            domain={autoDomainWithPadding}
+                            unit=" kW"
                           />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} />
+                          <Tooltip 
+                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', '']}
+                            labelStyle={{ color: '#111827', fontWeight: 'bold' }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} iconType="circle" />
 
                           {energyViewMode === 'category' ? (
                             <>
-                              {/* SERIE CATEGORIE RICHIESTE */}
-                              <Area type="monotone" dataKey="General" stroke="hsl(188, 100%, 35%)" strokeWidth={2} fill="url(#colorGeneral)" name="General (Total)" />
-                              <Line type="monotone" dataKey="HVAC" stroke="hsl(188, 100%, 19%)" strokeWidth={2} dot={false} name="HVAC" />
-                              <Line type="monotone" dataKey="Lighting" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} name="Lights" />
-                              <Line type="monotone" dataKey="Plugs" stroke="hsl(338, 50%, 75%)" strokeWidth={2} dot={false} name="Plugs & Loads" />
+                              {/* ORDINE DI RENDER: General (Sfondo/Totale) -> Specifici (Sopra) */}
+                              
+                              {/* General (Totale) - Teal FGB */}
+                              <Area 
+                                type="monotone" 
+                                dataKey="General" 
+                                stroke="#009193" 
+                                fillOpacity={1} 
+                                fill="url(#colorGeneral)" 
+                                strokeWidth={2}
+                                activeDot={{ r: 5 }}
+                              />
+                              
+                              {/* HVAC - Dark Teal */}
+                              <Area 
+                                type="monotone" 
+                                dataKey="HVAC" 
+                                stroke="#006367" 
+                                fillOpacity={1} 
+                                fill="url(#colorHVAC)" 
+                                strokeWidth={2}
+                              />
+                              
+                              {/* Lighting - Orange Red */}
+                              <Area 
+                                type="monotone" 
+                                dataKey="Lighting" 
+                                stroke="#e63f26" 
+                                fillOpacity={1} 
+                                fill="url(#colorLighting)" 
+                                strokeWidth={2}
+                              />
+                              
+                              {/* Other - Burgundy */}
+                              <Area 
+                                type="monotone" 
+                                dataKey="Other" 
+                                stroke="#911140" 
+                                fillOpacity={1} 
+                                fill="url(#colorOther)" 
+                                strokeWidth={2}
+                              />
                             </>
                           ) : (
                             <>
-                              {/* SERIE DEVICE (Dinamiche) */}
-                              {deviceKeys.slice(0, 10).map((key, idx) => (
-                                <Line 
-                                  key={key} 
-                                  type="monotone" 
-                                  dataKey={key} 
-                                  stroke={`hsl(${(idx * 137.5) % 360}, 70%, 50%)`} 
-                                  strokeWidth={1.5} 
-                                  dot={false} 
-                                  name={key.substring(0, 15)} 
-                                />
-                              ))}
+                              {/* VISTA DEVICE: Usa la palette FGB ciclica */}
+                              {deviceKeys.slice(0, 10).map((key, idx) => {
+                                const color = FGB_PALETTE[idx % FGB_PALETTE.length];
+                                return (
+                                  <Area
+                                    key={key}
+                                    type="monotone"
+                                    dataKey={key}
+                                    stroke={color}
+                                    fill={color}
+                                    fillOpacity={0.1}
+                                    strokeWidth={2}
+                                    name={key}
+                                  />
+                                );
+                              })}
                             </>
                           )}
                         </AreaChart>
