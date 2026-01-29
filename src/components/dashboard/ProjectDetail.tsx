@@ -1176,46 +1176,40 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [energyDistributionData]);
   
   // --- NUOVO CALCOLO: DENSITÀ ENERGETICA MEDIA ---
-  // --- FIX: DENSITÀ ENERGETICA MEDIA (Blindata) ---
+  // --- FIX: DENSITÀ ENERGETICA MEDIA (Logica Somma Pura / Area) ---
   const densityValue = useMemo(() => {
-    // 1. Controllo base esistenza dati
+    // 1. Validazione Dati e Area
     const data = energyTimeseriesResp?.data;
-    if (!data || !Array.isArray(data) || data.length === 0) return "---";
+    const area = Number(project?.area_m2 || project?.area_sqm); // Supporta vari naming convenzioni
 
-    // 2. Filtro solo Main (energy.power_kw)
-    const mainData = data.filter(d => d.metric === 'energy.power_kw');
-    if (mainData.length === 0) return "---";
-
-    let multiplier = 1;
-    
-    // 3. Rilevamento Bucket sicuro
-    if (mainData.length > 1) {
-      const d1 = parseTimestamp(mainData[0].ts || mainData[0].ts_hour || mainData[0].ts_day);
-      const d2 = parseTimestamp(mainData[1].ts || mainData[1].ts_hour || mainData[1].ts_day);
-      
-      if (d1 && d2) {
-        const diffHours = Math.abs(d2.getTime() - d1.getTime()) / (1000 * 60 * 60);
-        // Se < 23h (es. 1h o 15min), è potenza media -> serve moltiplicatore per l'energia
-        if (diffHours < 23) {
-           multiplier = diffHours || 1; // Default a 1 se diff è 0
-        }
-        // Se >= 23h (Daily), è già somma -> multiplier = 1
-      }
+    // Se mancano dati o l'area non è valida, restituisci placeholder
+    if (!data || !Array.isArray(data) || data.length === 0 || !area || area <= 0) {
+      return "---";
     }
 
-    // 4. Somma sicura (evita NaN)
-    const totalKWh = mainData.reduce((acc, curr) => {
-      const val = Number(curr.value);
-      if (isNaN(val)) return acc; // Salta valori non validi
-      return acc + (val * multiplier);
+    // 2. Filtro Rigoroso: Solo device 'general'
+    // Usiamo la deviceMap creata all'inizio del file per identificare i generali
+    const generalData = data.filter(d => {
+        const deviceInfo = deviceMap.get(d.device_id);
+        return deviceInfo && deviceInfo.category === 'general';
+    });
+
+    // Se non troviamo il generale, evitiamo di calcolare numeri a caso
+    if (generalData.length === 0) return "---";
+
+    // 3. Somma Pura (kWh)
+    // Sia per "Oggi" (15min) che "Storico" (Daily), il dato è quantità di energia.
+    // L'API (api.ts) normalizza già il valore nel campo 'value' (o 'value_sum').
+    const totalKWh = generalData.reduce((acc, curr) => {
+      // Prendiamo il valore. Api.ts mette il dato corretto in value_sum o value per l'energia.
+      const val = Number(curr.value_sum ?? curr.value ?? 0);
+      if (isNaN(val)) return acc;
+      return acc + val;
     }, 0);
 
-    // 5. Divisione Area sicura
-    const area = Number(project?.area_m2);
-    if (!area || isNaN(area) || area <= 0) return totalKWh.toFixed(0); // Ritorna solo totale se area manca
-
-    return (totalKWh / area).toFixed(1);
-  }, [energyTimeseriesResp, project]);
+    // 4. Calcolo Densità
+    return (totalKWh / area).toFixed(1); // 1 decimale (es. 12.5 kWh/m²)
+  }, [energyTimeseriesResp, project, deviceMap]);
 
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
