@@ -1184,7 +1184,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     // Se mancano dati o l'area non è valida, restituisci placeholder
     if (!data || !Array.isArray(data) || data.length === 0 || !area || area <= 0) {
-      return "---";
+      return "----";
     }
 
     // 2. Filtro Rigoroso: Solo device 'general'
