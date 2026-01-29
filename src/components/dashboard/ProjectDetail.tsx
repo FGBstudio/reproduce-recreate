@@ -1084,96 +1084,118 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // Energy distribution with cumulative kWh values based on time period
   // --- NUOVO CALCOLO: ENERGY BREAKDOWN (Donut Chart) ---
+  // --- 4. DATI GRAFICO: ENERGY CONSUMPTION BREAKDOWN (Donut Chart) ---
   const energyDistributionData = useMemo(() => {
-    // 1. Logica Dati Reali
-    if (realTimeEnergy.isRealData && energyTimeseriesResp?.data) {
-      const data = energyTimeseriesResp.data;
-      
-      // Accumulatori per categoria
-      let totalMain = 0;
-      let totalHvac = 0;
-      let totalLights = 0;
-      let totalPlugs = 0;
+    // 1. Validazione Dati
+    const data = energyTimeseriesResp?.data;
+    if (!data || !Array.isArray(data) || data.length === 0) return [];
 
-      // Helper per calcolare i kWh del singolo punto (gestione Daily vs Hourly)
-      const getPointKWh = (val: number, ts: string, allData: any[]) => {
-        // Se abbiamo pochi punti, assumiamo hourly (x1) per sicurezza
-        if (allData.length < 2) return val;
-        
-        // Calcolo delta ore
-        // Nota: Questo assume che l'array sia ordinato o che il bucket sia costante
-        // Per robustezza, usiamo la logica del bucket passata dal backend o stimata
-        // Qui usiamo una stima basata sul bucket selezionato
-        let multiplier = 1;
-        if (timeRange.bucket === '1d' || timeRange.bucket === '1M' || timeRange.bucket === '1w') {
-           // Daily/Weekly/Monthly: Il backend restituisce già la SOMMA (kWh)
-           multiplier = 1; 
-        } else {
-           // Hourly/Raw: Il backend restituisce la POTENZA MEDIA (kW)
-           // Se bucket è '1h', multiplier = 1. Se '15m', multiplier = 0.25
-           if (timeRange.bucket === '15m') multiplier = 0.25;
-           else if (timeRange.bucket === '5m') multiplier = 1/12;
-           // Default a 1h per sicurezza sui raw/hourly
+    // 2. Inizializzazione Totali
+    let totalGeneral = 0;
+    let totalHVAC = 0;
+    let totalLighting = 0;
+    let totalPlugs = 0;
+    let totalOtherDefined = 0; // Device esplicitamente categorizzati come 'other'
+    
+    // Mappa per vista "Device"
+    const deviceTotals = new Map<string, number>();
+
+    // 3. Somma Valori (kWh)
+    data.forEach(d => {
+        // Usa value_sum (aggregato) o value (raw)
+        const val = Number(d.value_sum ?? d.value ?? 0);
+        if (val <= 0) return;
+
+        const info = deviceMap.get(d.device_id);
+        if (!info) return;
+
+        // Accumula per Categoria
+        if (info.category === 'general') totalGeneral += val;
+        else if (info.category === 'hvac') totalHVAC += val;
+        else if (info.category === 'lighting') totalLighting += val;
+        else if (info.category === 'plugs') totalPlugs += val;
+        else totalOtherDefined += val;
+
+        // Accumula per Device (escludendo il generale per evitare duplicati nella vista device)
+        if (info.category !== 'general') {
+             deviceTotals.set(info.label, (deviceTotals.get(info.label) || 0) + val);
         }
-        return val * multiplier;
-      };
+    });
 
-      // Iterazione e Somma
-      data.forEach(d => {
-        const val = Number(d.value) || 0;
-        const kwh = getPointKWh(val, d.ts, data);
+    // 4. Creazione Segmenti in base alla Modalità
+    let segments = [];
 
-        if (d.metric === 'energy.power_kw') totalMain += kwh;
-        else if (d.metric === 'energy.hvac_kw') totalHvac += kwh;
-        else if (d.metric === 'energy.lighting_kw') totalLights += kwh;
-        else if (d.metric === 'energy.plugs_kw') totalPlugs += kwh;
-      });
+    if (energyViewMode === 'category') {
+        // Calcola il totale dei sotto-contatori noti
+        const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
+        
+        // CASO A: Ho solo il Generale (Nessun sotto-contatore)
+        // "se c'è solo general allora la scritta è general"
+        if (subTotal === 0 && totalGeneral > 0) {
+            segments.push({ name: 'General', value: totalGeneral, color: '#009193' }); // FGB Teal
+        } 
+        // CASO B: Ho sotto-contatori
+        else {
+            if (totalHVAC > 0) segments.push({ name: 'HVAC', value: totalHVAC, color: '#006367' }); // Dark Teal
+            if (totalLighting > 0) segments.push({ name: 'Lighting', value: totalLighting, color: '#e63f26' }); // Orange-Red
+            if (totalPlugs > 0) segments.push({ name: 'Plugs & Loads', value: totalPlugs, color: '#f8cbcc' }); // Pink Light
+            if (totalOtherDefined > 0) segments.push({ name: 'Other Devices', value: totalOtherDefined, color: '#911140' }); // Burgundy
 
-      // Calcolo "Other" (Il resto del generale non categorizzato)
-      // Se i sotto-contatori superano il generale (errore dati), Other = 0
-      const totalOther = Math.max(0, totalMain - (totalHvac + totalLights + totalPlugs));
-
-      // Costruzione Dati Grafico
-      // Usiamo 'value' per il grafico (Recharts usa questo per gli angoli) e 'kWh' per le etichette
-      return [
-        { name: 'HVAC', value: totalHvac, kWh: Math.round(totalHvac), color: 'hsl(188, 100%, 19%)' },
-        { name: 'Lighting', value: totalLights, kWh: Math.round(totalLights), color: 'hsl(338, 50%, 45%)' },
-        { name: 'Plugs & Loads', value: totalPlugs, kWh: Math.round(totalPlugs), color: 'hsl(338, 50%, 75%)' },
-        { name: 'Other', value: totalOther, kWh: Math.round(totalOther), color: 'hsl(188, 100%, 35%)' },
-      ].filter(item => item.value > 0); // Mostriamo solo categorie con consumo
+            // Calcola il "Resto" del Generale (consumi non monitorati dai sotto-contatori)
+            // Se il Generale è < della somma (errore dati), il resto è 0.
+            const remainder = Math.max(0, totalGeneral - subTotal);
+            
+            // Mostriamo "Other" solo se c'è una differenza significativa (> 1 kWh)
+            // Se il cliente ha "General" e "HVAC", la differenza è il resto dell'edificio.
+            if (remainder > 1) {
+                 segments.push({ name: 'Other', value: remainder, color: '#a0d5d6' }); // Teal Light
+            }
+        }
+    } else {
+        // VISTA DEVICE: Mostra i singoli carichi
+        // Se non ci sono device specifici ma c'è il generale, mostra il generale
+        if (deviceTotals.size === 0 && totalGeneral > 0) {
+             segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
+        } else {
+            // Ordina per consumo decrescente
+            const sortedDevices = Array.from(deviceTotals.entries())
+                .sort((a, b) => b[1] - a[1]);
+            
+            sortedDevices.forEach((entry, index) => {
+                segments.push({
+                    name: entry[0],
+                    value: entry[1],
+                    // Cicla sulla palette FGB
+                    color: FGB_PALETTE[index % FGB_PALETTE.length]
+                });
+            });
+        }
     }
 
-    // 2. Logica Mock (Fallback esistente)
-    // Base annual values
-    const hvacKwh = 42000;
-    const lightingKwh = 33600;
-    const plugsKwh = 21600;
-    const otherKwh = 14400;
-    
-    // Scale factor based on time period
-    let scaleFactor = 1;
-    if (timePeriod === 'today') scaleFactor = 1/365;
-    else if (timePeriod === 'week') scaleFactor = 7/365;
-    else if (timePeriod === 'month') scaleFactor = 1/12;
-    else if (timePeriod === 'year') scaleFactor = 1;
-    else if (dateRange?.from && dateRange?.to) {
-      const diffMs = dateRange.to.getTime() - dateRange.from.getTime();
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-      scaleFactor = diffDays / 365;
-    }
-    
-    return [
-      { name: 'HVAC', value: 35, kWh: Math.round(hvacKwh * scaleFactor), color: 'hsl(188, 100%, 19%)' },
-      { name: 'Lighting', value: 28, kWh: Math.round(lightingKwh * scaleFactor), color: 'hsl(338, 50%, 45%)' },
-      { name: 'Plugs & Loads', value: 18, kWh: Math.round(plugsKwh * scaleFactor), color: 'hsl(338, 50%, 75%)' },
-      { name: 'Other', value: 12, kWh: Math.round(otherKwh * scaleFactor), color: 'hsl(188, 100%, 35%)' },
-    ];
-  }, [energyTimeseriesResp, realTimeEnergy.isRealData, timePeriod, dateRange, timeRange.bucket]);
+    return segments;
+  }, [energyTimeseriesResp, energyViewMode, deviceMap, FGB_PALETTE]);
 
-  // Calcolo Totale per il Centro del Donut
+  // Totale per il Centro del Donut
   const totalBreakdownKwh = useMemo(() => {
-    return energyDistributionData.reduce((sum, item) => sum + (item.kWh || 0), 0);
-  }, [energyDistributionData]);
+    // Il totale deve essere sempre quello del "General" se esiste, 
+    // altrimenti la somma dei segmenti.
+    const data = energyTimeseriesResp?.data || [];
+    let generalSum = 0;
+    
+    // Prova a calcolare il Generale reale dai dati
+    data.forEach(d => {
+        const info = deviceMap.get(d.device_id);
+        if (info && info.category === 'general') {
+            generalSum += Number(d.value_sum ?? d.value ?? 0);
+        }
+    });
+
+    // Se abbiamo un generale, usiamo quello (è la verità assoluta del contatore)
+    if (generalSum > 0) return generalSum;
+
+    // Fallback: Somma dei segmenti (se non c'è un contatore generale ma solo parziali)
+    return energyDistributionData.reduce((sum, item) => sum + (item.value || 0), 0);
+  }, [energyTimeseriesResp, deviceMap, energyDistributionData]);
   
   // --- NUOVO CALCOLO: DENSITÀ ENERGETICA MEDIA ---
   // --- FIX: DENSITÀ ENERGETICA MEDIA (Logica Somma Pura / Area) ---
@@ -1743,38 +1765,58 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     {/* Energy Consumption Breakdown Chart - REPLACED */}
+                    {/* Energy Consumption Breakdown Chart */}
                     <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-3 md:mb-4">
-                        {/* RINOMINA TITOLO */}
                         <h3 className="text-base md:text-lg font-bold text-gray-800">Energy consumption breakdown</h3>
                         <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-breakdown" />
                       </div>
                       <div className="flex items-center gap-4 md:gap-6">
-                        <div className="space-y-1.5 md:space-y-2 flex-1">
-                          {energyDistributionData.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                              <span className="text-xs md:text-sm text-gray-600 truncate">{item.name}</span>
-                              {/* Mostra kWh assoluti */}
-                              <span className="text-xs md:text-sm font-semibold text-gray-800 ml-auto">{item.kWh.toLocaleString()} kWh</span>
-                            </div>
-                          ))}
+                        {/* Legenda a Sinistra */}
+                        <div className="space-y-1.5 md:space-y-2 flex-1 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+                          {energyDistributionData.length === 0 ? (
+                            <div className="text-sm text-gray-400 italic">No data available</div>
+                          ) : (
+                            energyDistributionData.map((item, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                                <span className="text-xs md:text-sm text-gray-600 truncate" title={item.name}>{item.name}</span>
+                                <span className="text-xs md:text-sm font-semibold text-gray-800 ml-auto">
+                                  {item.value.toLocaleString('it-IT', { maximumFractionDigits: 0 })} kWh
+                                </span>
+                              </div>
+                            ))
+                          )}
                         </div>
+
+                        {/* Donut Chart a Destra */}
                         <div className="relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              {/* Usa dataKey="value" per le proporzioni, ma visualizziamo i kWh calcolati */}
-                              <Pie data={energyDistributionData} innerRadius="55%" outerRadius="80%" paddingAngle={2} dataKey="value">
+                              <Pie
+                                data={energyDistributionData}
+                                innerRadius="55%"
+                                outerRadius="80%"
+                                paddingAngle={2}
+                                dataKey="value"
+                                stroke="none"
+                              >
                                 {energyDistributionData.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
+                              <Tooltip 
+                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', '']}
+                              />
                             </PieChart>
                           </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            {/* Valore Centrale: Totale kWh */}
-                            <span className="text-lg md:text-xl font-bold text-fgb-secondary">{totalBreakdownKwh.toLocaleString()}</span>
-                            <span className="text-[10px] md:text-xs text-gray-500">Total kWh</span>
+                          {/* Valore Centrale: Totale kWh */}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-lg md:text-xl font-bold text-fgb-secondary">
+                              {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
+                            </span>
+                            <span className="text-[10px] md:text-xs text-gray-500 font-medium">Total kWh</span>
                           </div>
                         </div>
                       </div>
