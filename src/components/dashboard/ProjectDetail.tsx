@@ -1819,6 +1819,134 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       // Fallback per Devices View (cicla palette)
       return FGB_PALETTE[index % FGB_PALETTE.length];
   };
+
+  // --- 10. WIDGET: CARBON FOOTPRINT (Multi-Horizon CO2 Analysis) ---
+  
+  // A. Configurazione Query Estesa (Serve più storico per i confronti)
+  const carbonConfig = useMemo(() => {
+    const now = new Date();
+    // Default: fine oggi
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    let start = new Date();
+    let bucket = '1d';
+
+    // Determina quanto storico scaricare in base alla vista
+    if (timePeriod === 'year') {
+        // Scarica ultimi 3 anni per confronto annuale
+        start = new Date(now.getFullYear() - 2, 0, 1); 
+        bucket = '1M'; // Granularità Mensile
+    } else if (timePeriod === 'month') {
+        // Scarica ultimi 6 mesi per confronto mensile
+        start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        bucket = '1d'; // Granularità Giornaliera (aggregata poi a settimane)
+    } else if (timePeriod === 'week') {
+        // Scarica ultimo mese intero per confronto settimane
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        bucket = '1d'; 
+    } else {
+        // Giorno: scarica ultima settimana
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        bucket = '1h';
+    }
+    return { start, end, bucket };
+  }, [timePeriod]);
+
+  // B. Fetch Dati CO2
+  const { data: carbonResp } = useEnergyTimeseries({
+      site_id: project?.siteId,
+      start: carbonConfig.start.toISOString(),
+      end: carbonConfig.end.toISOString(),
+      metrics: ['energy.active_energy'], // Useremo questo * EF
+      bucket: carbonConfig.bucket,
+  }, { enabled: !!project?.siteId && activeDashboard === 'energy' });
+
+  // C. Elaborazione Pivot (Il cuore del widget)
+  const carbonChartData = useMemo(() => {
+      const rawData = carbonResp?.data || [];
+      const EF = 0.233; // kgCO2e/kWh (Fattore emissione standard)
+      
+      const pivotMap = new Map<string, any>();
+      const seriesSet = new Set<string>();
+
+      // Helper: Definizione settimana del mese (W1..W5 standard)
+      const getMonthWeek = (d: Date) => {
+          const day = d.getDate();
+          if (day <= 7) return 'W1';
+          if (day <= 14) return 'W2';
+          if (day <= 21) return 'W3';
+          if (day <= 28) return 'W4';
+          return 'W5';
+      };
+
+      rawData.forEach(d => {
+          const valKwh = Number(d.value_sum ?? d.value ?? 0);
+          if (valKwh <= 0) return;
+          const co2 = valKwh * EF;
+          const date = new Date(d.ts_bucket || d.ts);
+
+          let bucketKey = ''; // Asse X
+          let seriesKey = ''; // Legenda (Barre)
+
+          if (timePeriod === 'year') {
+              // X: Mese (Jan, Feb...), Series: Anno (2024, 2025)
+              bucketKey = date.toLocaleDateString('en-US', { month: 'short' }); // "Jan"
+              seriesKey = date.getFullYear().toString(); // "2025"
+          } 
+          else if (timePeriod === 'month') {
+              // X: Settimana (W1..W5), Series: Mese (Jun, Jul...)
+              bucketKey = getMonthWeek(date);
+              seriesKey = date.toLocaleDateString('en-US', { month: 'short' }); // "Mar"
+          } 
+          else if (timePeriod === 'week') {
+              // X: Giorno Week (Mon..Sun), Series: Settimana (W1..W5)
+              bucketKey = date.toLocaleDateString('en-US', { weekday: 'short' }); // "Mon"
+              seriesKey = getMonthWeek(date); // "W1"
+          } 
+          else {
+              // Day: X: Ora, Series: "Today"
+              bucketKey = `${date.getHours()}:00`;
+              seriesKey = 'Today';
+          }
+
+          if (!pivotMap.has(bucketKey)) {
+              pivotMap.set(bucketKey, { bucket: bucketKey });
+          }
+          const entry = pivotMap.get(bucketKey);
+          entry[seriesKey] = (entry[seriesKey] || 0) + co2;
+          seriesSet.add(seriesKey);
+      });
+
+      // Ordinamento Buckets (Custom Sort per ogni vista)
+      let sortedData = Array.from(pivotMap.values());
+      const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const weekOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const wOrder = ['W1','W2','W3','W4','W5'];
+
+      if (timePeriod === 'year') {
+          sortedData.sort((a,b) => monthOrder.indexOf(a.bucket) - monthOrder.indexOf(b.bucket));
+      } else if (timePeriod === 'month') {
+          sortedData.sort((a,b) => wOrder.indexOf(a.bucket) - wOrder.indexOf(b.bucket));
+      } else if (timePeriod === 'week') {
+          sortedData.sort((a,b) => weekOrder.indexOf(a.bucket) - weekOrder.indexOf(b.bucket));
+      } else {
+          sortedData.sort((a,b) => parseInt(a.bucket) - parseInt(b.bucket));
+      }
+
+      // Preparazione Serie per Recharts
+      // Selezioniamo le ultime N serie per non affollare il grafico
+      const sortedSeries = Array.from(seriesSet).sort(); 
+      // Logica colori dinamica
+      const seriesConfigs = sortedSeries.slice(-4).map((key, idx) => ({
+          key,
+          label: key,
+          color: FGB_PALETTE[idx % FGB_PALETTE.length]
+      }));
+
+      return { data: sortedData, series: seriesConfigs };
+  }, [carbonResp, timePeriod, FGB_PALETTE]);
+  
+  // Ref per Export
+  const carbonRef = useRef<HTMLDivElement>(null);
                            
 
   const waterDailyTrendData = useMemo(() => [
@@ -2910,30 +3038,76 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 {/* Slide 4: Carbon Footprint & Energy Trends */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    {/* RIGA CARBON FOOTPRINT */}
+                    <div ref={carbonRef} className="w-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Carbon Footprint</h3>
-                        <ExportButtons chartRef={carbonRef} data={energyCarbonLiveData as any} filename="carbon-footprint" onExpand={() => setFullscreenChart('carbon')} />
+                        <div>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Carbon Footprint Analysis</h3>
+                          <p className="text-xs text-gray-500">
+                            {timePeriod === 'year' && 'Monthly Comparison (Year vs Year)'}
+                            {timePeriod === 'month' && 'Weekly Breakdown (Month vs Month)'}
+                            {timePeriod === 'week' && 'Daily Profile (Week vs Week)'}
+                            {timePeriod === 'day' && 'Hourly Emissions'}
+                            {' '}- kgCO₂e
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200">
+                                EF: 0.233 kg/kWh
+                            </span>
+                            <ExportButtons 
+                              chartRef={carbonRef} 
+                              data={carbonChartData.data} 
+                              filename={`carbon-footprint-${timePeriod}`} 
+                              onExpand={() => setFullscreenChart('carbon')}
+                            />
+                        </div>
                       </div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={energyCarbonLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="week" tick={{ ...axisStyle, fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis
-                            tick={{ ...axisStyle, fontSize: 12 }}
-                            axisLine={{ stroke: '#e2e8f0' }}
-                            tickLine={{ stroke: '#e2e8f0' }}
-                            domain={autoDomainWithPadding}
-                            label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft', style: { ...axisStyle, fontSize: 14, textAnchor: 'middle' } }}
-                          />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 13, fontWeight: 500, paddingTop: 20 }} />
-                          <Bar dataKey="june" fill="hsl(188, 100%, 19%)" name="June" radius={[6, 6, 0, 0]} />
-                          <Bar dataKey="july" fill="hsl(338, 50%, 45%)" name="July" radius={[6, 6, 0, 0]} />
-                          <Bar dataKey="august" fill="hsl(338, 50%, 75%)" name="August" radius={[6, 6, 0, 0]} />
-                          <Bar dataKey="september" fill="hsl(188, 100%, 35%)" name="September" radius={[6, 6, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                      
+                      <div className="flex-1 w-full min-h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart 
+                            data={carbonChartData.data} 
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            barGap={2}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis 
+                              dataKey="bucket" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} 
+                              dy={10}
+                            />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                              tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })}
+                              label={{ value: 'kgCO₂e', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: 10 } }}
+                            />
+                            <Tooltip 
+                              cursor={{ fill: '#f9fafb', opacity: 0.5 }}
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: any, name: string) => [Number(value).toFixed(1) + ' kg', name]}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
+                            
+                            {/* Generazione Barre Dinamiche (Confronto) */}
+                            {carbonChartData.series.map((s, index) => (
+                                <Bar 
+                                    key={s.key} 
+                                    dataKey={s.key} 
+                                    name={s.label} 
+                                    fill={s.color} 
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={50}
+                                />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                     <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
