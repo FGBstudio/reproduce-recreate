@@ -1236,6 +1236,39 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return (totalKWh / area).toFixed(1);
   }, [energyTimeseriesResp, project, deviceMap]);
 
+  const estimatedCostData = useMemo(() => {
+    // 1. Recupera Prezzo (dal project o fallback a 0)
+    const price = Number(project?.energy_price_kwh ?? 0);
+    
+    // Se non ho il prezzo o non ho dati, ritorno null per gestire la UI
+    const data = energyTimeseriesResp?.data;
+    if (!price || price <= 0 || !data || !Array.isArray(data)) {
+      return null; 
+    }
+
+    // 2. Calcola Energia Totale (Solo Generale)
+    // Usiamo la stessa logica robusta della Densità
+    const totalKWh = data.reduce((acc, curr) => {
+        // Filtra solo General
+        const info = deviceMap.get(curr.device_id);
+        const isGeneral = (info && info.category === 'general') || 
+                          (!info && (curr.metric === 'energy.power_kw' || curr.metric === 'energy.active_energy'));
+        
+        if (!isGeneral) return acc;
+
+        // Somma kWh (value_sum o value)
+        return acc + Number(curr.value_sum ?? curr.value ?? 0);
+    }, 0);
+
+    // 3. Calcolo Costo
+    const cost = totalKWh * price;
+
+    return {
+      totalCost: cost,
+      pricePerKwh: price
+    };
+  }, [energyTimeseriesResp, project, deviceMap]);
+
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -1831,11 +1864,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
                         <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">in the selected period</div>
                       </div>
+                      {/* Widget Costo Stimato */}
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Costo Stimato Annuale</p>
-                        <p className="text-xl md:text-3xl font-bold text-gray-800">€32,450</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">Consumo × €0.29/kWh</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">
+                          Costo Stimato ({periodLabel})
+                        </p>
+                        
+                        <p className="text-xl md:text-3xl font-bold text-gray-800">
+                          {estimatedCostData 
+                            ? `€${estimatedCostData.totalCost.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` 
+                            : '---'}
+                        </p>
+                        
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">
+                          {estimatedCostData 
+                            ? `Consumo × €${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
+                            : 'Prezzo energia non configurato'}
+                        </p>
+                        
+                        {/* Indicatore Trend (Statico o da calcolare in futuro) */}
+                        {/* <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficienza</p>
