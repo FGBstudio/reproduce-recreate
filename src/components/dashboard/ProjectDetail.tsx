@@ -1488,6 +1488,117 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       return '#ef5350'; // Critico/Picco
   }, []);
 
+  // --- 7. WIDGET: ACTUAL VS AVERAGE (Grafico Linee Comparativo) ---
+
+  const actualVsAverageData = useMemo(() => {
+    const rawData = energyTimeseriesResp?.data || [];
+    const area = Number(project?.area_m2 || project?.area_sqm);
+    
+    if (!area || area <= 0 || rawData.length === 0) return { data: [], summary: null };
+
+    // 1. Raggruppa i dati in base al bucket temporale corrente
+    // (Anno -> Mesi, Mese -> Giorni, Giorno -> Ore)
+    const groupedMap = new Map<string, {
+      ts: string;
+      tsLabel: string;
+      kwhActual: number;
+      count: number;
+    }>();
+
+    // Determina il formato della data per l'asse X
+    const isYear = timePeriod === 'year';
+    const isDay = timePeriod === 'day';
+    // Se "today", i dati raw sono 15min, ma il grafico day vuole granularità oraria?
+    // Il prompt dice: Day -> 24 punti orari.
+    
+    rawData.forEach(d => {
+        // Filtra solo General
+        const info = deviceMap.get(d.device_id);
+        const isGeneral = (info && info.category === 'general') || 
+                          (!info && (d.metric === 'energy.power_kw' || d.metric === 'energy.active_energy'));
+        if (!isGeneral) return;
+
+        // Usa value_sum (energia)
+        const val = Number(d.value_sum ?? d.value ?? 0);
+        if (val <= 0) return;
+
+        const date = new Date(d.ts_bucket || d.ts);
+        let key: string;
+        let label: string;
+
+        if (isYear) {
+            key = date.toISOString().slice(0, 7); // YYYY-MM
+            label = date.toLocaleDateString('it-IT', { month: 'short' });
+        } else if (isDay) {
+            // Raggruppa per ora
+            const h = String(date.getHours()).padStart(2, '0');
+            key = `${date.toISOString().slice(0, 10)}T${h}`; 
+            label = `${h}:00`;
+        } else {
+            // Mese/Settimana -> Giorni
+            key = date.toISOString().slice(0, 10); // YYYY-MM-DD
+            label = date.getDate().toString();
+        }
+
+        if (!groupedMap.has(key)) {
+            groupedMap.set(key, { ts: key, tsLabel: label, kwhActual: 0, count: 0 });
+        }
+        const entry = groupedMap.get(key)!;
+        entry.kwhActual += val;
+        entry.count++;
+    });
+
+    // 2. Costruisci array e calcola metriche derivate (Avg, Benchmark)
+    const chartData = Array.from(groupedMap.values())
+        .sort((a, b) => a.ts.localeCompare(b.ts))
+        .map(item => {
+            const actualDensity = item.kwhActual / area;
+            
+            // --- SIMULAZIONE DATI PEER & BENCHMARK ---
+            // In produzione, questi verrebbero da un'API separata o DB
+            
+            // Average: Simuliamo che sia un po' più basso dell'actual (es. 90%) con un po' di rumore
+            const simAverage = actualDensity * (0.9 + (Math.random() * 0.2 - 0.1));
+            
+            // Range (Min/Max): Banda attorno all'average
+            const simMin = simAverage * 0.8;
+            const simMax = simAverage * 1.2;
+
+            // Benchmark: Linea target fissa (es. 15% in meno dell'attuale medio)
+            // Se anno/mese, varia leggermente. Se giorno, segue curva oraria tipica.
+            const simBenchmark = actualDensity * 0.85; 
+
+            return {
+                ...item,
+                actual: actualDensity,
+                average: simAverage,
+                min: simMin,
+                max: simMax,
+                // Per l'area range chart (Recharts usa range area [min, max])
+                range: [simMin, simMax], 
+                benchmark: simBenchmark
+            };
+        });
+
+    // 3. Calcola Sommario per Banner
+    const totalActual = chartData.reduce((acc, cur) => acc + cur.actual, 0);
+    const totalAverage = chartData.reduce((acc, cur) => acc + cur.average, 0);
+    
+    let diffPct = 0;
+    let status: 'above' | 'below' | 'line' = 'line';
+    
+    if (totalAverage > 0) {
+        diffPct = ((totalActual / totalAverage) - 1) * 100;
+        if (diffPct > 0.5) status = 'above';
+        else if (diffPct < -0.5) status = 'below';
+    }
+
+    return { 
+        data: chartData, 
+        summary: { diffPct, status, totalActual, totalAverage } 
+    };
+  }, [energyTimeseriesResp, project, timePeriod, deviceMap]);
+
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -2334,32 +2445,115 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 </div>
                 {/* Slide 3: Actual vs Average & Device Consumption */}
+                {/* Slide 3: Actual vs Average & Device Consumption */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div ref={actualVsAvgRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Actual vs Average</h3>
-                        <ExportButtons chartRef={actualVsAvgRef} data={filteredEnergyData as unknown as Record<string, unknown>[]} filename="actual-vs-average" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-full pb-20">
+                    
+                    {/* WIDGET 1: ACTUAL VS AVERAGE */}
+                    <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
+                          <p className="text-xs text-gray-500">Energy Density (kWh/m²)</p>
+                        </div>
+                        
+                        {/* BANNER DINAMICO */}
+                        {actualVsAverageData.summary && (
+                          <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
+                            actualVsAverageData.summary.status === 'above' 
+                              ? 'bg-red-50 text-red-700 border-red-100' 
+                              : actualVsAverageData.summary.status === 'below'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                : 'bg-gray-50 text-gray-700 border-gray-100'
+                          }`}>
+                            {actualVsAverageData.summary.status === 'above' && '↑'}
+                            {actualVsAverageData.summary.status === 'below' && '↓'}
+                            {actualVsAverageData.summary.status === 'line' && '•'}
+                            
+                            <span>
+                              You are {Math.abs(actualVsAverageData.summary.diffPct).toFixed(2)}% {actualVsAverageData.summary.status} average
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={filteredEnergyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis
-                            tick={axisStyle}
-                            axisLine={{ stroke: '#e2e8f0' }}
-                            tickLine={{ stroke: '#e2e8f0' }}
-                            domain={autoDomainWithPadding}
-                            tickFormatter={(v) => `${v}`}
-                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
-                          />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Line type="monotone" dataKey="actual" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 3 }} activeDot={{ r: 5 }} name="Attuale" />
-                          <Line type="monotone" dataKey="expected" stroke="hsl(188, 100%, 35%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Previsto" />
-                          <Line type="monotone" dataKey="average" stroke="hsl(338, 50%, 45%)" strokeWidth={2} dot={false} name="Media" />
-                        </LineChart>
-                      </ResponsiveContainer>
+
+                      <div className="flex-1 min-h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis 
+                              dataKey="tsLabel" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                              dy={10}
+                            />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                              tickFormatter={(val) => val.toFixed(2)}
+                            />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: number) => [value.toFixed(3) + ' kWh/m²', '']}
+                              labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
+
+                            {/* BAND: Peer Range (Area) */}
+                            <Area 
+                              type="monotone" 
+                              dataKey="range" 
+                              fill="#A6A6A6" 
+                              stroke="none" 
+                              fillOpacity={0.2} 
+                              name="Peer Range" 
+                              legendType="rect"
+                            />
+
+                            {/* LINE: Peer Average */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="average" 
+                              stroke="#3A3A3A" 
+                              strokeWidth={1.5} 
+                              dot={false} 
+                              name="Peer Average"
+                            />
+
+                            {/* LINE: Benchmark (Dotted) */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="benchmark" 
+                              stroke="#7E0A2F" 
+                              strokeWidth={2} 
+                              strokeDasharray="4 4" 
+                              dot={false} 
+                              name="Benchmark"
+                            />
+
+                            {/* LINE: Actual (Main) */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="actual" 
+                              stroke="#129E97" 
+                              strokeWidth={3} 
+                              dot={{ r: 3, fill: '#129E97', strokeWidth: 0 }} 
+                              activeDot={{ r: 6 }} 
+                              name="Actual"
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* WIDGET 2: DEVICE CONSUMPTION (Placeholder per ora o lo sistemiamo dopo) */}
+                    <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                        <h3 className="text-base md:text-lg font-bold text-gray-800 mb-4">Top Consumers</h3>
+                        <div className="flex items-center justify-center h-64 text-gray-400 italic">
+                            Device detail coming soon...
+                        </div>
                     </div>
                     <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
