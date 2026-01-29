@@ -1599,6 +1599,122 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     };
   }, [energyTimeseriesResp, project, timePeriod, deviceMap]);
 
+  // --- 8. WIDGET: POWER CONSUMPTION (Real-time Donut kW) ---
+
+  // A. Fetch Dati Live (Tabella energy_latest)
+  const { data: latestEnergyResp } = useEnergyLatest({
+    site_id: project?.siteId,
+    // Cerchiamo le metriche di potenza tipiche
+    metrics: ['energy.power_kw', 'energy.active_power', 'power'] 
+  }, {
+    enabled: !!project?.siteId && activeDashboard === 'energy',
+    refetchInterval: 30000, // Aggiorna ogni 30 secondi
+  });
+
+  // B. Elaborazione Dati (Simile a Energy Breakdown ma per Potenza)
+  const powerDistributionData = useMemo(() => {
+    const devicesData = latestEnergyResp?.data;
+    if (!devicesData) return [];
+
+    let totalGeneral = 0;
+    let totalHVAC = 0;
+    let totalLighting = 0;
+    let totalPlugs = 0;
+    let totalOtherDefined = 0;
+    
+    const deviceTotals = new Map<string, number>();
+
+    // 1. Itera su tutti i device trovati nel latest
+    Object.entries(devicesData).forEach(([deviceId, metrics]) => {
+        const info = deviceMap.get(deviceId);
+        if (!info) return; // Ignora device sconosciuti
+
+        // Trova la metrica di potenza (kW)
+        const powerMetric = metrics.find(m => 
+            m.metric === 'energy.power_kw' || 
+            m.metric === 'energy.active_power' ||
+            m.metric === 'power'
+        );
+        
+        const val = Number(powerMetric?.value || 0);
+        if (val <= 0) return;
+
+        // 2. Accumula per Categoria
+        if (info.category === 'general') totalGeneral += val;
+        else if (info.category === 'hvac') totalHVAC += val;
+        else if (info.category === 'lighting') totalLighting += val;
+        else if (info.category === 'plugs') totalPlugs += val;
+        else totalOtherDefined += val;
+
+        // 3. Accumula per Device (escluso general per evitare duplicati nella view device)
+        if (info.category !== 'general') {
+             deviceTotals.set(info.label, val);
+        }
+    });
+
+    // 4. Costruzione Segmenti Grafico
+    let segments = [];
+
+    if (energyViewMode === 'category') {
+        const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
+        
+        // Se non ho sottocontatori ma ho il generale -> 100% General
+        if (subTotal === 0 && totalGeneral > 0) {
+            segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
+        } else {
+            // Ho sottocontatori -> Mostro breakdown
+            if (totalHVAC > 0) segments.push({ name: 'HVAC', value: totalHVAC, color: '#006367' });
+            if (totalLighting > 0) segments.push({ name: 'Lighting', value: totalLighting, color: '#e63f26' });
+            if (totalPlugs > 0) segments.push({ name: 'Plugs & Loads', value: totalPlugs, color: '#f8cbcc' });
+            if (totalOtherDefined > 0) segments.push({ name: 'Other Devices', value: totalOtherDefined, color: '#911140' });
+
+            // Il "Resto" è Other
+            const remainder = Math.max(0, totalGeneral - subTotal);
+            if (remainder > 0.1) { // Soglia minima 100W per mostrare "Other"
+                 segments.push({ name: 'Other', value: remainder, color: '#a0d5d6' });
+            }
+        }
+    } else {
+        // Vista Device: Lista piatta dei carichi
+        // Se ho solo il generale, mostro quello
+        if (deviceTotals.size === 0 && totalGeneral > 0) {
+             segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
+        } else {
+            const sortedDevices = Array.from(deviceTotals.entries()).sort((a, b) => b[1] - a[1]);
+            sortedDevices.forEach((entry, index) => {
+                segments.push({
+                    name: entry[0],
+                    value: entry[1],
+                    color: FGB_PALETTE[index % FGB_PALETTE.length]
+                });
+            });
+        }
+    }
+    return segments;
+  }, [latestEnergyResp, energyViewMode, deviceMap, FGB_PALETTE]);
+
+  // C. Calcolo Totale KW (Centro del Donut)
+  const totalPowerKw = useMemo(() => {
+      const devicesData = latestEnergyResp?.data;
+      if (!devicesData) return 0;
+
+      // Cerca il valore del meter "General"
+      let generalVal = 0;
+      let sumSub = 0;
+
+      Object.entries(devicesData).forEach(([deviceId, metrics]) => {
+          const powerMetric = metrics.find(m => m.metric === 'energy.power_kw' || m.metric === 'energy.active_power');
+          const val = Number(powerMetric?.value || 0);
+          
+          const info = deviceMap.get(deviceId);
+          if (info?.category === 'general') generalVal = val;
+          else sumSub += val;
+      });
+
+      // Se c'è il generale, è la verità. Altrimenti somma parziali.
+      return generalVal > 0 ? generalVal : sumSub;
+  }, [latestEnergyResp, deviceMap]);
+
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -2548,42 +2664,57 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </ResponsiveContainer>
                       </div>
                     </div>
-
-                    {/* WIDGET 2: DEVICE CONSUMPTION (Placeholder per ora o lo sistemiamo dopo) */}
-                    <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
-                        <h3 className="text-base md:text-lg font-bold text-gray-800 mb-4">Top Consumers</h3>
-                        <div className="flex items-center justify-center h-64 text-gray-400 italic">
-                            Device detail coming soon...
-                        </div>
-                    </div>
-                    <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Power consumption</h3>
-                        <ExportButtons chartRef={powerConsRef} data={donutData} filename="power-consumption" />
-                      </div>
-                      <div className="flex items-center gap-8">
-                        <div className="space-y-3">
-                          {[{ n: 'HVAC', c: 'bg-fgb-secondary', v: '45%' }, { n: 'Lighting', c: 'bg-[hsl(338,50%,45%)]', v: '35%' }, { n: 'Plugs and Loads', c: 'bg-[hsl(338,50%,75%)]', v: '20%' }].map(({ n, c, v }) => (
-                            <div key={n} className="flex items-center gap-2">
-                              <span className={`w-3 h-3 rounded-full ${c}`} />
-                              <span className="text-sm text-gray-600">{n}</span>
-                              <span className="text-sm font-semibold text-gray-800 ml-auto">{v}</span>
+                    {/* 2. POWER CONSUMPTION (Destra - 1/3) */}
+                      <div className="lg:col-span-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                          <div className="flex justify-between items-center mb-4">
+                            <div>
+                              <h3 className="text-base md:text-lg font-bold text-gray-800">Power Consumption</h3>
+                              <p className="text-xs text-gray-500">Real-time (kW)</p>
                             </div>
-                          ))}
-                        </div>
-                        <div className="relative w-44 h-44">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie data={donutData} innerRadius={50} outerRadius={70} paddingAngle={3} dataKey="value">
-                                {donutData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="white" strokeWidth={2} />)}
-                              </Pie>
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-4xl font-bold text-fgb-secondary">89</span>
-                            <span className="text-xs text-gray-500">kW</span>
                           </div>
-                        </div>
+
+                          <div className="flex flex-col items-center justify-center flex-1 min-h-[200px] gap-4">
+                             {/* Donut Chart */}
+                             <div className="relative w-40 h-40 md:w-48 md:h-48 flex-shrink-0">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie
+                                      data={powerDistributionData}
+                                      innerRadius="60%"
+                                      outerRadius="90%"
+                                      paddingAngle={2}
+                                      dataKey="value"
+                                      stroke="none"
+                                    >
+                                      {powerDistributionData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip 
+                                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                      formatter={(value: any) => [Number(value).toFixed(2) + ' kW', '']}
+                                    />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                  <span className="text-2xl md:text-3xl font-bold text-fgb-secondary tabular-nums">
+                                    {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                                  </span>
+                                  <span className="text-xs text-gray-500 font-medium">kW Total</span>
+                                </div>
+                             </div>
+
+                             {/* Legendina compatta sotto */}
+                             <div className="w-full grid grid-cols-2 gap-2 text-xs">
+                                {powerDistributionData.slice(0, 4).map((item, idx) => (
+                                  <div key={idx} className="flex items-center gap-1.5 overflow-hidden">
+                                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                                    <span className="truncate text-gray-600">{item.name}</span>
+                                    <span className="ml-auto font-medium text-gray-800">{item.value.toFixed(1)}</span>
+                                  </div>
+                                ))}
+                             </div>
+                          </div>
                       </div>
                     </div>
                     <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
