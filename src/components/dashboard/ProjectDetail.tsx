@@ -1714,6 +1714,111 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       // Se c'è il generale, è la verità. Altrimenti somma parziali.
       return generalVal > 0 ? generalVal : sumSub;
   }, [latestEnergyResp, deviceMap]);
+
+  // --- 9. WIDGET: DEVICES CONSUMPTION (Stacked Bar Chart) ---
+  const deviceConsumptionData = useMemo(() => {
+    const rawData = energyTimeseriesResp?.data;
+    if (!rawData || !Array.isArray(rawData)) return { data: [], keys: [] };
+
+    // 1. Raggruppa per Bucket Temporale (X-Axis)
+    const grouped = new Map<string, any>();
+    const foundKeys = new Set<string>(); // Tracciamo le chiavi trovate (hvac, lighting, device_X...)
+
+    rawData.forEach(d => {
+        const val = Number(d.value_sum ?? d.value ?? 0);
+        if (val <= 0) return;
+
+        // Determina il Bucket (X-Axis)
+        const date = new Date(d.ts_bucket || d.ts);
+        let timeKey = '';
+        let label = '';
+
+        if (timePeriod === 'year') {
+             timeKey = date.toISOString().slice(0, 7); // YYYY-MM
+             label = date.toLocaleDateString('it-IT', { month: 'short' });
+        } else if (timePeriod === 'day' || timeRange.bucket === '1h') {
+             const h = String(date.getHours()).padStart(2, '0');
+             timeKey = `${date.toISOString().slice(0, 10)}T${h}`;
+             label = `${h}:00`;
+        } else {
+             timeKey = date.toISOString().slice(0, 10); // YYYY-MM-DD
+             label = date.getDate().toString();
+        }
+
+        if (!grouped.has(timeKey)) {
+            grouped.set(timeKey, { label, timestamp: date.getTime(), _general: 0 });
+        }
+        const entry = grouped.get(timeKey);
+
+        // Determina la Chiave dello Stack (Stack Key)
+        const info = deviceMap.get(d.device_id);
+        const isGeneral = info?.category === 'general';
+
+        if (isGeneral) {
+            entry._general += val;
+        } else {
+            let stackKey = 'Other';
+            
+            if (energyViewMode === 'category') {
+                // Normalizza le categorie per lo stack
+                if (info?.category === 'hvac') stackKey = 'HVAC';
+                else if (info?.category === 'lighting') stackKey = 'Lighting';
+                else if (info?.category === 'plugs') stackKey = 'Plugs';
+            } else {
+                // Vista Device: usa il nome del device
+                stackKey = info?.label || d.device_id;
+            }
+            
+            // Arrotonda e somma
+            // (Nota: arrotondiamo alla fine per precisione, ma qui serve per pulizia chiavi)
+            foundKeys.add(stackKey);
+            entry[stackKey] = (entry[stackKey] || 0) + val;
+        }
+    });
+
+    // 2. Post-processing: Fallback Generale vs Stack
+    const finalData = Array.from(grouped.values())
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .map(entry => {
+            // Calcola somma stack (escluso _general)
+            const stackSum = Object.keys(entry)
+                .filter(k => k !== 'label' && k !== 'timestamp' && k !== '_general')
+                .reduce((sum, k) => sum + (entry[k] || 0), 0);
+
+            // LOGICA DI VISUALIZZAZIONE:
+            // Se ho stack (stackSum > 0), mostro quello e ignoro il generale (per evitare duplicati visivi).
+            // Se NON ho stack ma ho il generale, mostro il generale come colonna unica.
+            
+            if (stackSum > 0) {
+                // Ho dettagli: ritorno solo i dettagli
+                const { _general, timestamp, ...rest } = entry;
+                return rest;
+            } else if (entry._general > 0) {
+                // Ho solo generale: ritorno generale
+                foundKeys.add('General');
+                return { label: entry.label, General: entry._general };
+            }
+            return null; // Skip empty buckets
+        })
+        .filter(Boolean); // Rimuovi null
+
+    // Ordina le chiavi per avere un ordine di stack coerente (es. HVAC sempre sotto)
+    const sortedKeys = Array.from(foundKeys).sort();
+
+    return { data: finalData, keys: sortedKeys };
+  }, [energyTimeseriesResp, energyViewMode, deviceMap, timePeriod, timeRange.bucket]);
+
+  // Helper per colori barre (Category o Device palette)
+  const getBarColor = (key: string, index: number) => {
+      if (key === 'General') return '#009193'; // FGB Teal
+      if (key === 'HVAC') return '#006367'; // Dark Teal
+      if (key === 'Lighting') return '#e63f26'; // Orange-Red
+      if (key === 'Plugs') return '#f8cbcc'; // Pink Light
+      if (key === 'Other') return '#911140'; // Burgundy
+      
+      // Fallback per Devices View (cicla palette)
+      return FGB_PALETTE[index % FGB_PALETTE.length];
+  };
                            
 
   const waterDailyTrendData = useMemo(() => [
@@ -2490,6 +2595,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <h3 className="text-base md:text-lg font-bold text-gray-800">
                           Energy Consumption Heatmap
                         </h3>
+                        <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                         {/* Legendina minimale */}
                         <div className="flex items-center gap-2 text-[10px] text-gray-500">
                           <span>Low</span>
@@ -2570,6 +2676,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
+                          <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                           <p className="text-xs text-gray-500">Energy Density (kWh/m²)</p>
                         </div>
                         
@@ -2678,6 +2785,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="flex justify-between items-center mb-4">
                           <div>
                             <h3 className="text-base md:text-lg font-bold text-gray-800">Power Consumption</h3>
+                            <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                             <p className="text-xs text-gray-500">Real-time (kW)</p>
                           </div>
                           {/* Pulsantino Toggle View Mode (opzionale, usa lo stato globale o locale se vuoi) */}
@@ -2733,31 +2841,70 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                            </div>
                         </div>
                     </div>
-                    <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    {/* RIGA INFERIORE: DEVICES CONSUMPTION (Stacked Bar Chart) */}
+                    <div ref={deviceConsRef} className="w-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Consumo Dispositivi</h3>
-                        <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
+                        <div>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
+                          <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
+                          <p className="text-xs text-gray-500">Breakdown by {energyViewMode === 'category' ? 'Category' : 'Device'} (kWh)</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            {/* Export Buttons */}
+                            <ExportButtons 
+                              chartRef={deviceConsRef} 
+                              data={deviceConsumptionData.data} 
+                              filename={`devices-consumption-${timePeriod}`} 
+                              onExpand={() => setFullscreenChart('deviceCons')}
+                            />
+                        </div>
                       </div>
-                      <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={energyDeviceConsumptionLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis
-                            tick={axisStyle}
-                            axisLine={{ stroke: '#e2e8f0' }}
-                            tickLine={{ stroke: '#e2e8f0' }}
-                            domain={autoDomainWithPadding}
-                            tickFormatter={(v) => `${v / 1000}k`}
-                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
-                          />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
-                          <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Illuminazione" />
-                          <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Prese" radius={[6, 6, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                      
+                      <div className="flex-1 w-full min-h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart 
+                            data={deviceConsumptionData.data} 
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis 
+                              dataKey="label" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                              dy={10}
+                            />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                              tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })}
+                            />
+                            <Tooltip 
+                              cursor={{ fill: '#f9fafb', opacity: 0.5 }}
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: any, name: string) => [Number(value).toFixed(2) + ' kWh', name]}
+                              labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
+                            
+                            {/* Generazione Dinamica delle Barre (Stack) */}
+                            {deviceConsumptionData.keys.map((key, index) => (
+                                <Bar 
+                                    key={key} 
+                                    dataKey={key} 
+                                    stackId="a" 
+                                    fill={getBarColor(key, index)} 
+                                    radius={[index === deviceConsumptionData.keys.length - 1 ? 4 : 0, index === deviceConsumptionData.keys.length - 1 ? 4 : 0, 0, 0]}
+                                    maxBarSize={60}
+                                />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
+                    <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                   </div>
                 </div>
 
