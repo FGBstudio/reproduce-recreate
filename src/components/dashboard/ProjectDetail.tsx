@@ -2331,7 +2331,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
-
+                  </div>
+                </div>
                 {/* Slide 3: Actual vs Average & Device Consumption */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
