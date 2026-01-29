@@ -3169,10 +3169,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* Air Quality Overview Card */}
                     <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg" relative>
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                      <div className="absolute top-4 right-4">
                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                       </div>
-                     <div className="absolute top-4 right-4">
+                     <div className="absolute top-4 left-15">
                         <AirDeviceSelector
                           devices={airDevices}
                           selectedIds={selectedAirDeviceIds}
