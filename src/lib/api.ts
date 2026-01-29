@@ -7,7 +7,48 @@ import { useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // =============================================================================
+// Timestamp parsing helper (handles Postgres formats, Unix, ISO)
+// =============================================================================
+
+/**
+ * Parse timestamps from various database formats into stable Date objects.
+ * Handles:
+ * - ISO strings: "2025-01-29T12:00:00.000Z"
+ * - Postgres strings with space: "2025-01-29 12:00:00+00"
+ * - Unix timestamps (seconds or milliseconds)
+ * - Date objects
+ */
+export function parseTimestamp(ts: unknown): Date | null {
+  if (!ts) return null;
+  
+  // Already a valid Date
+  if (ts instanceof Date) {
+    return isNaN(ts.getTime()) ? null : ts;
+  }
+  
+  // Unix number (seconds or milliseconds)
+  if (typeof ts === 'number') {
+    // If < 1e12, assume seconds; otherwise milliseconds
+    const ms = ts < 1e12 ? ts * 1000 : ts;
+    const d = new Date(ms);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  
+  // String parsing
+  if (typeof ts === 'string') {
+    const str = ts.trim();
+    // Replace space with 'T' to make it ISO-like (Safari/Firefox compatibility)
+    const isoStr = str.replace(' ', 'T');
+    const d = new Date(isoStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  
+  return null;
+}
+
+// =============================================================================
 // Metric normalization (DB may store short names for backward compatibility)
+// =============================================================================
 // =============================================================================
 
 function normalizeMetric(metric: string): string {
@@ -104,6 +145,9 @@ export interface ApiDevice {
   firmware_version?: string;
   metadata?: Record<string, unknown>;
   site_id: string;
+  // Energy module: circuit categorization
+  category?: string;
+  circuit_name?: string;
   sites?: {
     id: string;
     name: string;
