@@ -1379,6 +1379,115 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     );
   };
 
+  // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
+  const heatmapConfig = useMemo(() => {
+    const baseParams = getTimeRangeParams(timePeriod, dateRange);
+    if (timePeriod === 'year') {
+        return { ...baseParams, bucket: '1d' }; // Scarica giorni per l'anno
+    }
+    return { ...baseParams, bucket: '1h' }; // Scarica ore per mese/settimana
+  }, [timePeriod, dateRange, getTimeRangeParams]);
+
+  const { data: heatmapResp } = useEnergyTimeseries(
+    {
+      site_id: project?.siteId,
+      start: heatmapConfig.start.toISOString(),
+      end: heatmapConfig.end.toISOString(),
+      metrics: ['energy.active_energy', 'energy.power_kw'],
+      bucket: heatmapConfig.bucket,
+    },
+    {
+      enabled: !!project?.siteId && activeDashboard === 'energy',
+    }
+  );
+
+  // B. Elaborazione Dati a Matrice
+  const heatmapGrid = useMemo(() => {
+    const rawData = heatmapResp?.data || [];
+    const isYearView = timePeriod === 'year';
+    
+    // Mappa Valori: "IndiceRiga_ChiaveColonna" -> kWh
+    const valueMap = new Map<string, number>();
+    const columnsSet = new Set<string>();
+    let maxVal = 0;
+
+    rawData.forEach(d => {
+        // Filtra General
+        const info = deviceMap.get(d.device_id);
+        const isGeneral = (info && info.category === 'general') || 
+                          (!info && (d.metric === 'energy.power_kw' || d.metric === 'energy.active_energy'));
+        if (!isGeneral) return;
+
+        const val = Number(d.value_sum ?? d.value ?? 0);
+        if (val <= 0) return;
+
+        if (val > maxVal) maxVal = val; // Tracciamo il picco per la scala colori
+
+        const date = new Date(d.ts_bucket || d.ts);
+        let rowKey: number; // Y-Axis (0-23 o 1-31)
+        let colKey: string; // X-Axis (Data o Mese)
+
+        if (isYearView) {
+            // ANNO: Y=Giorno (1-31), X=Mese (0-11)
+            rowKey = date.getDate(); 
+            colKey = String(date.getMonth()); 
+        } else {
+            // MESE/WEEK: Y=Ora (0-23), X=Giorno (ISO Date)
+            rowKey = date.getHours(); 
+            colKey = date.toISOString().slice(0, 10); 
+        }
+
+        columnsSet.add(colKey);
+        
+        // Accumula (per gestire eventuali doppi record)
+        const cellKey = `${rowKey}_${colKey}`;
+        valueMap.set(cellKey, (valueMap.get(cellKey) || 0) + val);
+    });
+
+    // Costruzione Assi
+    let rows: number[] = [];
+    let cols: { key: string; label: string }[] = [];
+
+    if (isYearView) {
+        // Y: 1 -> 31
+        rows = Array.from({ length: 31 }, (_, i) => i + 1);
+        // X: Gen -> Dic
+        cols = Array.from({ length: 12 }, (_, i) => ({
+            key: String(i),
+            label: new Date(2024, i, 1).toLocaleDateString('it-IT', { month: 'short' }).toUpperCase()
+        }));
+    } else {
+        // Y: 00:00 -> 23:00
+        rows = Array.from({ length: 24 }, (_, i) => i);
+        // X: Tutti i giorni nel range selezionato
+        const current = new Date(heatmapConfig.start);
+        const end = heatmapConfig.end;
+        while (current <= end) {
+            const iso = current.toISOString().slice(0, 10);
+            cols.push({
+                key: iso,
+                label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+            });
+            current.setDate(current.getDate() + 1);
+        }
+    }
+
+    return { rows, cols, valueMap, maxVal, isYearView };
+  }, [heatmapResp, timePeriod, heatmapConfig, deviceMap]);
+
+  // C. Helper Colore (Scala Relativa al Max)
+  const getHeatmapColor = useCallback((val: number, max: number) => {
+      if (!val || val <= 0) return '#f9fafb'; // Grigio base (empty)
+      
+      const ratio = val / max;
+      // Scala FGB-like (Verde -> Giallo -> Arancio -> Rosso)
+      if (ratio < 0.2) return '#e8f5e9'; // Minimo
+      if (ratio < 0.4) return '#c8e6c9'; 
+      if (ratio < 0.6) return '#fff59d'; // Medio
+      if (ratio < 0.8) return '#ffcc80'; // Alto
+      return '#ef5350'; // Critico/Picco
+  }, []);
+
   const waterDailyTrendData = useMemo(() => [
     { hour: '06:00', consumption: 45, peak: false },
     { hour: '07:00', consumption: 120, peak: false },
@@ -2147,36 +2256,81 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </tbody>
                       </table>
                     </div>
-                    <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    {/* Heatmap Widget - FIX LOGICA ORARIA/GIORNALIERA */}
+                    <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Heatmap</h3>
-                        <ExportButtons chartRef={heatmapRef} data={heatmapExportData} filename="heatmap" onExpand={() => setFullscreenChart('heatmap')} />
-                      </div>
-                      <div className="flex gap-4">
-                        <div className="text-xs text-gray-500 space-y-[6px] pt-1 font-medium">
-                          {Array.from({ length: 24 }, (_, i) => (
-                            <div key={i} className="h-4">{String(i).padStart(2, '0')}:00</div>
-                          ))}
+                        <h3 className="text-base md:text-lg font-bold text-gray-800">
+                          Energy Consumption Heatmap
+                        </h3>
+                        {/* Legendina minimale */}
+                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                          <span>Low</span>
+                          <div className="flex gap-0.5">
+                            {['#e8f5e9', '#c8e6c9', '#fff59d', '#ffcc80', '#ef5350'].map(c => (
+                                <div key={c} className="w-2 h-2 rounded-sm" style={{ backgroundColor: c }} />
+                            ))}
+                          </div>
+                          <span>High</span>
                         </div>
-                        <div className="flex-1">
-                          <div className="grid grid-cols-7 gap-[2px]">
-                            {heatmapData.flat().map((val, idx) => (
-                              <div key={idx} className="h-4 rounded-sm transition-transform hover:scale-110" style={{ backgroundColor: heatmapColors[val] }} />
+                      </div>
+
+                      {/* Container Scrollabile per la Griglia */}
+                      <div className="flex-1 overflow-x-auto pb-2 custom-scrollbar">
+                        <div className="min-w-max">
+                          {/* Header Colonne (X-Axis) */}
+                          <div className="flex">
+                            {/* Spacer angolo in alto a sx */}
+                            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-gray-400">
+                                {heatmapGrid.isYearView ? 'GG' : 'HH'}
+                            </div>
+                            {/* Labels Colonne */}
+                            {heatmapGrid.cols.map(col => (
+                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-gray-500 pb-1">
+                                    {col.label}
+                                </div>
                             ))}
                           </div>
-                          <div className="flex justify-between text-xs text-gray-500 mt-2 font-medium">
-                            {['27-05', '28-05', '29-05', '30-05', '31-05', '01-06', '02-06'].map(d => <span key={d}>{d}</span>)}
-                          </div>
-                          <div className="flex gap-4 mt-4 text-xs">
-                            {[{ c: 1, l: 'Ottimo' }, { c: 2, l: 'Buono' }, { c: 3, l: 'Moderato' }, { c: 4, l: 'Elevato' }].map(({ c, l }) => (
-                              <span key={c} className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: heatmapColors[c] }} /> {l}</span>
-                            ))}
-                          </div>
+
+                          {/* Body Griglia (Righe Y-Axis) */}
+                          {heatmapGrid.rows.map(row => (
+                              <div key={row} className="flex items-center h-6 mb-0.5">
+                                  {/* Label Riga (00:00 o Day 1) */}
+                                  <div className="w-12 flex-shrink-0 text-[10px] text-gray-400 text-right pr-2">
+                                      {heatmapGrid.isYearView 
+                                        ? row // Giorno mese (1, 2...)
+                                        : `${String(row).padStart(2, '0')}:00` // Ora (00:00...)
+                                      }
+                                  </div>
+                                  
+                                  {/* Celle */}
+                                  {heatmapGrid.cols.map(col => {
+                                      const val = heatmapGrid.valueMap.get(`${row}_${col.key}`) || 0;
+                                      return (
+                                          <div 
+                                            key={`${row}-${col.key}`} 
+                                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group"
+                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGrid.maxVal) }}
+                                          >
+                                            {/* Tooltip on Hover */}
+                                            {val > 0 && (
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                                    <div className="font-bold">
+                                                        {heatmapGrid.isYearView 
+                                                            ? `${row} ${col.label}` // "15 GEN"
+                                                            : `${col.label} ore ${row}:00` // "01/03 ore 14:00"
+                                                        }
+                                                    </div>
+                                                    <div>{val.toFixed(2)} kWh</div>
+                                                </div>
+                                            )}
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          ))}
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
 
                 {/* Slide 3: Actual vs Average & Device Consumption */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
