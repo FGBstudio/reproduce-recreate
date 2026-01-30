@@ -83,7 +83,9 @@ export interface AdminSite {
   region: RegionCode;
   lat: number;
   lng: number;
-  areaSqm: number;
+  areaSqm?: number;
+  area_m2?: number; // Alternative naming for area
+  energy_price_kwh?: number; // Price per kWh for cost calculations
   imageUrl?: string;
   timezone: string;
   createdAt: Date;

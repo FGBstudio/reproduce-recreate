@@ -69,6 +69,7 @@ export interface Project {
   brandId: string;
   siteId?: string; // UUID reference to sites table for real-time data
   area_m2?: number; // Area in square meters for energy density calculations
+  energy_price_kwh?: number; // Price per kWh for cost calculations
 }
 
 export const holdings: Holding[] = [
