@@ -1202,7 +1202,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // --- FIX: DENSITÀ ENERGETICA (Variabile: ENERGIA, Operazione: SOMMA) ---
   const densityValue = useMemo(() => {
     const data = energyTimeseriesResp?.data;
-    const area = Number(project?.area_m2 || project?.area_sqm);
+    const area = Number(project?.area_m2 || 0);
 
     // Se manca l'area, non possiamo calcolare la densità (divisione per zero)
     if (!area || area <= 0) return "---";
@@ -1492,7 +1492,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   const actualVsAverageData = useMemo(() => {
     const rawData = energyTimeseriesResp?.data || [];
-    const area = Number(project?.area_m2 || project?.area_sqm);
+    const area = Number(project?.area_m2 || 0);
     
     if (!area || area <= 0 || rawData.length === 0) return { data: [], summary: null };
 
@@ -1507,9 +1507,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     // Determina il formato della data per l'asse X
     const isYear = timePeriod === 'year';
-    const isDay = timePeriod === 'day';
-    // Se "today", i dati raw sono 15min, ma il grafico day vuole granularità oraria?
-    // Il prompt dice: Day -> 24 punti orari.
+    const isToday = timePeriod === 'today';
+    // Se "today", i dati raw sono 15min, ma il grafico vuole granularità oraria
     
     rawData.forEach(d => {
         // Filtra solo General
@@ -1529,7 +1528,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         if (isYear) {
             key = date.toISOString().slice(0, 7); // YYYY-MM
             label = date.toLocaleDateString('it-IT', { month: 'short' });
-        } else if (isDay) {
+        } else if (isToday) {
             // Raggruppa per ora
             const h = String(date.getHours()).padStart(2, '0');
             key = `${date.toISOString().slice(0, 10)}T${h}`; 
@@ -1736,7 +1735,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         if (timePeriod === 'year') {
              timeKey = date.toISOString().slice(0, 7); // YYYY-MM
              label = date.toLocaleDateString('it-IT', { month: 'short' });
-        } else if (timePeriod === 'day' || timeRange.bucket === '1h') {
+        } else if (timePeriod === 'today' || timeRange.bucket === '1h') {
              const h = String(date.getHours()).padStart(2, '0');
              timeKey = `${date.toISOString().slice(0, 10)}T${h}`;
              label = `${h}:00`;
@@ -2608,8 +2607,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
-                    <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      {/* Energy Periods Pivot Table */}
+                    {/* Energy Periods Pivot Table */}
                     <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg h-full flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">Energy Periods</h3>
@@ -2633,7 +2631,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       {/* Tabella Scrollabile */}
                       <div className="overflow-y-auto flex-1 custom-scrollbar pr-1" style={{ maxHeight: '300px' }}>
                         <table className="w-full text-sm text-left">
-                          <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10">
+                          <thead className="text-xs text-gray-500 uppercase bg-gray-50/90 sticky top-0 z-10">
                             <tr>
                               <th scope="col" className="px-3 py-3 rounded-l-lg">Period</th>
                               <th scope="col" className="px-3 py-3 text-center">kWh</th>
@@ -2695,41 +2693,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </table>
                       </div>
                     </div>
-                      <table className="w-full">
-                        <thead>
-                          <tr className="text-gray-500 text-sm font-medium">
-                            <th className="text-left pb-4 font-semibold">Period</th>
-                            <th className="text-right pb-4 font-semibold">kWh</th>
-                            <th className="text-right pb-4 font-semibold">Price</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {periodData.map((row, idx) => (
-                            <tr key={idx} className="border-t border-gray-100">
-                              <td className="py-3 text-sm"><span className="text-gray-800 font-medium">{row.period}</span><span className="text-emerald-500 ml-1">↓</span></td>
-                              <td className="py-3 text-sm text-right text-gray-600">{row.kWh.toLocaleString()}</td>
-                              <td className="py-3 text-sm text-right text-gray-600 font-medium">{row.price}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
                     {/* Heatmap Widget - FIX LOGICA ORARIA/GIORNALIERA */}
                     <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">
                           Energy Consumption Heatmap
                         </h3>
-                        <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
-                        {/* Legendina minimale */}
-                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                          <span>Low</span>
-                          <div className="flex gap-0.5">
-                            {['#e8f5e9', '#c8e6c9', '#fff59d', '#ffcc80', '#ef5350'].map(c => (
-                                <div key={c} className="w-2 h-2 rounded-sm" style={{ backgroundColor: c }} />
-                            ))}
+                        <div className="flex items-center gap-3">
+                          {/* Legendina minimale */}
+                          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                            <span>Low</span>
+                            <div className="flex gap-0.5">
+                              {['#e8f5e9', '#c8e6c9', '#fff59d', '#ffcc80', '#ef5350'].map(c => (
+                                  <div key={c} className="w-2 h-2 rounded-sm" style={{ backgroundColor: c }} />
+                              ))}
+                            </div>
+                            <span>High</span>
                           </div>
-                          <span>High</span>
+                          <ExportButtons chartRef={heatmapRef} data={[]} filename="energy-heatmap" />
                         </div>
                       </div>
 
@@ -2801,28 +2782,30 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
-                          <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                           <p className="text-xs text-gray-500">Energy Density (kWh/m²)</p>
                         </div>
                         
-                        {/* BANNER DINAMICO */}
-                        {actualVsAverageData.summary && (
-                          <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
-                            actualVsAverageData.summary.status === 'above' 
-                              ? 'bg-red-50 text-red-700 border-red-100' 
-                              : actualVsAverageData.summary.status === 'below'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                : 'bg-gray-50 text-gray-700 border-gray-100'
-                          }`}>
-                            {actualVsAverageData.summary.status === 'above' && '↑'}
-                            {actualVsAverageData.summary.status === 'below' && '↓'}
-                            {actualVsAverageData.summary.status === 'line' && '•'}
-                            
-                            <span>
-                              You are {Math.abs(actualVsAverageData.summary.diffPct).toFixed(2)}% {actualVsAverageData.summary.status} average
-                            </span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {/* BANNER DINAMICO */}
+                          {actualVsAverageData.summary && (
+                            <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
+                              actualVsAverageData.summary.status === 'above' 
+                                ? 'bg-red-50 text-red-700 border-red-100' 
+                                : actualVsAverageData.summary.status === 'below'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  : 'bg-gray-50 text-gray-700 border-gray-100'
+                            }`}>
+                              {actualVsAverageData.summary.status === 'above' && '↑'}
+                              {actualVsAverageData.summary.status === 'below' && '↓'}
+                              {actualVsAverageData.summary.status === 'line' && '•'}
+                              
+                              <span>
+                                You are {Math.abs(actualVsAverageData.summary.diffPct).toFixed(2)}% {actualVsAverageData.summary.status} average
+                              </span>
+                            </div>
+                          )}
+                          <ExportButtons chartRef={actualVsAvgRef} data={actualVsAverageData.data} filename="actual-vs-average" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                        </div>
                       </div>
 
                       <div className="flex-1 min-h-[300px]">
@@ -2905,15 +2888,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             Device detail coming soon...
                         </div>
                     </div>
-                    {/* WIDGET 2: POWER CONSUMPTION (Real-time Breakdown) */}
-                    <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                    {/* WIDGET: POWER CONSUMPTION (Real-time Breakdown) */}
+                    <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <div>
                             <h3 className="text-base md:text-lg font-bold text-gray-800">Power Consumption</h3>
-                            <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                             <p className="text-xs text-gray-500">Real-time (kW)</p>
                           </div>
-                          {/* Pulsantino Toggle View Mode (opzionale, usa lo stato globale o locale se vuoi) */}
+                          <ExportButtons chartRef={powerConsRef} data={powerDistributionData} filename="power-consumption" onExpand={() => setFullscreenChart('powerCons')} />
                         </div>
 
                         <div className="flex items-center gap-4 flex-1 min-h-[200px]">
@@ -2967,23 +2949,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                     </div>
                     {/* RIGA INFERIORE: DEVICES CONSUMPTION (Stacked Bar Chart) */}
-                    <div ref={deviceConsRef} className="w-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    <div ref={deviceConsRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
-                          <ExportButtons chartRef={deviceConsRef} data={energyDeviceConsumptionLiveData as any} filename="device-consumption" onExpand={() => setFullscreenChart('deviceCons')} />
                           <p className="text-xs text-gray-500">Breakdown by {energyViewMode === 'category' ? 'Category' : 'Device'} (kWh)</p>
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                            {/* Export Buttons */}
-                            <ExportButtons 
-                              chartRef={deviceConsRef} 
-                              data={deviceConsumptionData.data} 
-                              filename={`devices-consumption-${timePeriod}`} 
-                              onExpand={() => setFullscreenChart('deviceCons')}
-                            />
-                        </div>
+                        <ExportButtons 
+                          chartRef={deviceConsRef} 
+                          data={deviceConsumptionData.data} 
+                          filename={`devices-consumption-${timePeriod}`} 
+                          onExpand={() => setFullscreenChart('deviceCons')}
+                        />
                       </div>
                       
                       <div className="flex-1 w-full min-h-[250px]">
@@ -3036,7 +3013,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* RIGA CARBON FOOTPRINT */}
-                    <div ref={carbonRef} className="w-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Carbon Footprint Analysis</h3>
@@ -3044,7 +3021,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             {timePeriod === 'year' && 'Monthly Comparison (Year vs Year)'}
                             {timePeriod === 'month' && 'Weekly Breakdown (Month vs Month)'}
                             {timePeriod === 'week' && 'Daily Profile (Week vs Week)'}
-                            {timePeriod === 'day' && 'Hourly Emissions'}
+                            {timePeriod === 'today' && 'Hourly Emissions'}
                             {' '}- kgCO₂e
                           </p>
                         </div>
