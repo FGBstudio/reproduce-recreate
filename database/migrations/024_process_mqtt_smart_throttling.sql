@@ -17,6 +17,7 @@ DECLARE
     v_ts TIMESTAMPTZ;
     v_last_history_ts TIMESTAMPTZ;
     v_should_save_history BOOLEAN;
+    v_bucket_ts TIMESTAMPTZ;
     v_raw_val JSONB; -- Variabile temporanea per gestire l'oggetto nidificato
 BEGIN
     -- A. IDENTIFICAZIONE DISPOSITIVO
@@ -68,11 +69,8 @@ BEGIN
 
     -- C. BUCKET 15 MINUTI (1 punto ogni 15 min, idempotente)
     -- NB: date_bin richiede Postgres 14+. Se non lo hai, dimmelo e lo faccio con floor(epoch)
-    DECLARE
-        v_bucket_ts TIMESTAMPTZ;
-    BEGIN
-        v_bucket_ts := date_bin(INTERVAL '15 minutes', v_ts, '2024-01-01'::timestamptz);
-    END;
+    v_bucket_ts := date_bin(INTERVAL '15 minutes', v_ts, '2024-01-01'::timestamptz);
+
 
 
     -- D. PARSING, MAPPING & SCRITTURA
@@ -84,14 +82,14 @@ BEGIN
         -- 2. TRADUZIONE (MAPPING)
         -- Collega le tue chiavi MQTT a quelle standard del Frontend (useRealTimeData.ts)
         CASE upper(v_json_key)
-            WHEN 'temp'   THEN v_mapped_metric := 'env.temperature';
-            WHEN 'hum'    THEN v_mapped_metric := 'env.humidity';
+            WHEN 'TEMP'   THEN v_mapped_metric := 'env.temperature';
+            WHEN 'HUM'    THEN v_mapped_metric := 'env.humidity';
             WHEN 'CO2'    THEN v_mapped_metric := 'iaq.co2';
             WHEN 'VOC'    THEN v_mapped_metric := 'iaq.voc';
             WHEN 'PM2.5'  THEN v_mapped_metric := 'iaq.pm25';
             WHEN 'PM10'   THEN v_mapped_metric := 'iaq.pm10';
-            WHEN 'CO'     THEN v_mapped_metric := 'iaq.co'; -- Extra utile
-            WHEN 'O3'     THEN v_mapped_metric := 'iaq.o3'; -- Extra utile
+            WHEN 'CO'     THEN v_mapped_metric := 'iaq.co';
+            WHEN 'O3'     THEN v_mapped_metric := 'iaq.o3';
             ELSE v_mapped_metric := lower(v_json_key);
         END CASE;
 
@@ -104,7 +102,7 @@ BEGIN
                 v_json_value := (v_raw_val->>'value')::NUMERIC;
             -- Se è già un numero, usalo direttamente
             ELSIF jsonb_typeof(v_raw_val) = 'number' THEN
-                v_json_value := (v_raw_val)::NUMERIC;
+                v_json_value := (v_raw_val::text)::NUMERIC;
             ELSE
                 -- Se è stringa o altro, salta
                 CONTINUE;
@@ -141,8 +139,8 @@ BEGIN
     END LOOP;
 
     -- E. FINE
-    UPDATE mqtt_messages_raw 
-    SET processed = TRUE, error_message = NULL
+    UPDATE mqtt_messages_raw
+    SET processed = TRUE
     WHERE id = NEW.id;
 
     RETURN NEW;
@@ -155,4 +153,5 @@ CREATE TRIGGER trg_process_mqtt_message
     AFTER INSERT ON mqtt_messages_raw
     FOR EACH ROW
     EXECUTE FUNCTION process_mqtt_message_trigger();
+
 
