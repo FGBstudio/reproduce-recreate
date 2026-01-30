@@ -37,38 +37,53 @@ BEGIN
 
     -- B. TIMESTAMP (Gestione Millisecondi)
     -- Il tuo payload ha "timestamp": 956191699000. Se sono ms, va diviso per 1000.
+    DECLARE
+        v_epoch NUMERIC;
+        v_ts_candidate TIMESTAMPTZ;
     BEGIN
+        -- Default: server receive time
+        v_ts := NEW.received_at;
+    
         IF (NEW.payload ? 'timestamp') THEN
-            v_ts := to_timestamp((NEW.payload->>'timestamp')::NUMERIC / 1000.0);
-        ELSE
-            v_ts := NEW.received_at;
+            v_epoch := (NEW.payload->>'timestamp')::NUMERIC;
+    
+            -- ms vs sec heuristic
+            IF v_epoch >= 1000000000000 THEN
+                v_ts_candidate := to_timestamp(v_epoch / 1000.0);
+            ELSE
+                v_ts_candidate := to_timestamp(v_epoch);
+            END IF;
+    
+            -- Range check: se < 2024 (o troppo nel futuro) usa received_at
+            IF v_ts_candidate >= '2024-01-01'::timestamptz
+               AND v_ts_candidate <= (now() + interval '1 day') THEN
+                v_ts := v_ts_candidate;
+            ELSE
+                v_ts := NEW.received_at;
+            END IF;
         END IF;
     EXCEPTION WHEN OTHERS THEN
-        v_ts := NEW.received_at; -- Fallback se il timestamp è illeggibile
+        v_ts := NEW.received_at;
     END;
 
-    -- C. LOGICA 15 MINUTI
-    SELECT ts INTO v_last_history_ts
-    FROM telemetry
-    WHERE device_id = v_device_uuid
-    ORDER BY ts DESC
-    LIMIT 1;
+    -- C. BUCKET 15 MINUTI (1 punto ogni 15 min, idempotente)
+    -- NB: date_bin richiede Postgres 14+. Se non lo hai, dimmelo e lo faccio con floor(epoch)
+    DECLARE
+        v_bucket_ts TIMESTAMPTZ;
+    BEGIN
+        v_bucket_ts := date_bin(INTERVAL '15 minutes', v_ts, '2024-01-01'::timestamptz);
+    END;
 
-    IF v_last_history_ts IS NULL OR v_ts >= (v_last_history_ts + INTERVAL '15 minutes') THEN
-        v_should_save_history := TRUE;
-    ELSE
-        v_should_save_history := FALSE;
-    END IF;
 
     -- D. PARSING, MAPPING & SCRITTURA
     FOR v_json_key IN SELECT * FROM jsonb_object_keys(NEW.payload)
     LOOP
         -- 1. Salta i metadati che non sono sensori
-        CONTINUE WHEN v_json_key IN ('MAC', 'model', 'msgid', 'deviceid', 'timestamp', 'token');
+        CONTINUE WHEN lower(v_json_key) IN ('mac', 'model', 'msgid', 'deviceid', 'timestamp', 'token');
 
         -- 2. TRADUZIONE (MAPPING)
         -- Collega le tue chiavi MQTT a quelle standard del Frontend (useRealTimeData.ts)
-        CASE v_json_key
+        CASE upper(v_json_key)
             WHEN 'temp'   THEN v_mapped_metric := 'env.temperature';
             WHEN 'hum'    THEN v_mapped_metric := 'env.humidity';
             WHEN 'CO2'    THEN v_mapped_metric := 'iaq.co2';
@@ -77,7 +92,7 @@ BEGIN
             WHEN 'PM10'   THEN v_mapped_metric := 'iaq.pm10';
             WHEN 'CO'     THEN v_mapped_metric := 'iaq.co'; -- Extra utile
             WHEN 'O3'     THEN v_mapped_metric := 'iaq.o3'; -- Extra utile
-            ELSE v_mapped_metric := v_json_key; -- Fallback (es. raw.temp)
+            ELSE v_mapped_metric := lower(v_json_key);
         END CASE;
 
         -- 3. ESTRAZIONE VALORE (Gestione Oggetto vs Numero)
@@ -105,14 +120,22 @@ BEGIN
                 value = EXCLUDED.value, 
                 ts = EXCLUDED.ts,
                 site_id = EXCLUDED.site_id;
-
-            -- B) STORICO (15 min)
-            IF v_should_save_history THEN
-                INSERT INTO telemetry (device_id, site_id, ts, metric, value, quality, raw_payload)
-                VALUES (v_device_uuid, v_site_uuid, v_ts, v_mapped_metric, v_json_value, 'good', NEW.payload);
-            END IF;
+            
+            -- B) STORICO (Sempre, ma 1 punto per bucket 15 min per metrica)
+            INSERT INTO telemetry (device_id, site_id, ts, metric, value, quality, raw_payload)
+            VALUES (v_device_uuid, v_site_uuid, v_bucket_ts, v_mapped_metric, v_json_value, 'good', NEW.payload)
+            ON CONFLICT (device_id, metric, ts)
+            DO UPDATE SET
+                value = EXCLUDED.value,
+                quality = EXCLUDED.quality,
+                raw_payload = EXCLUDED.raw_payload;
 
         EXCEPTION WHEN OTHERS THEN
+            -- Log senza spam: scrive solo se error_message è nullo (o vuoto)
+            UPDATE mqtt_messages_raw
+            SET error_message = COALESCE(NULLIF(error_message, ''), SQLERRM)
+            WHERE id = NEW.id;
+        
             CONTINUE;
         END;
     END LOOP;
@@ -132,3 +155,4 @@ CREATE TRIGGER trg_process_mqtt_message
     AFTER INSERT ON mqtt_messages_raw
     FOR EACH ROW
     EXECUTE FUNCTION process_mqtt_message_trigger();
+
