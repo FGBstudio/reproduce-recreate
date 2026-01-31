@@ -36,7 +36,7 @@ const isValidDateString = (str: string): boolean => {
   return !isNaN(date.getTime())
 }
 
-const VALID_BUCKETS = ['1m', '5m', '15m', '30m', '1h', '6h', '1d', '1w', '1M']
+const VALID_BUCKETS = ['15m', '30m', '1h', '6h', '1d', '1w', '1M']
 
 // Convert bucket string to PostgreSQL interval
 const bucketToInterval = (bucket: string): string => {
@@ -58,24 +58,10 @@ const bucketToInterval = (bucket: string): string => {
 const autoSelectBucket = (start: Date, end: Date): string => {
   const diffMs = end.getTime() - start.getTime()
   const diffHours = diffMs / (1000 * 60 * 60)
-  
-  if (diffHours <= 6) return '5m'
-  if (diffHours <= 24) return '15m'
-  if (diffHours <= 48) return '30m'      // 2 days
-  if (diffHours <= 168) return '1h'      // 7 days  
-  if (diffHours <= 720) return '6h'      // 30 days
-  if (diffHours <= 2160) return '1d'     // 90 days
-  return '1w'
-}
 
-// Determine data source based on time range (updated thresholds)
-const getOptimalSource = (start: Date, end: Date): 'raw' | 'hourly' | 'daily' => {
-  const diffMs = end.getTime() - start.getTime()
-  const diffHours = diffMs / (1000 * 60 * 60)
-  
-  if (diffHours <= 48) return 'raw'      // <= 2 days: raw
-  if (diffHours <= 2160) return 'hourly' // <= 90 days: hourly
-  return 'daily'                          // > 90 days: daily
+  if (diffHours <= 24) return '15m'
+  if (diffHours <= 24 * 30) return '1h'
+  return '1d'
 }
 
 Deno.serve(async (req) => {
@@ -93,7 +79,13 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: authHeader ? { Authorization: authHeader } : {}
+      }
+    })
+
 
     const url = new URL(req.url)
     const deviceIdsParam = url.searchParams.get('device_ids')
@@ -101,6 +93,8 @@ Deno.serve(async (req) => {
     const startParam = url.searchParams.get('start')
     const endParam = url.searchParams.get('end')
     const bucketParam = url.searchParams.get('bucket')
+    const modeParam = (url.searchParams.get('mode') || 'auto').toLowerCase()
+    const fillParam = (url.searchParams.get('fill') || 'null').toLowerCase()
 
     // Validate required params
     const missingParams = []
@@ -229,6 +223,8 @@ Deno.serve(async (req) => {
       sample_count?: number
     }> = []
     let source = 'raw'
+    let effectiveBucket = bucket
+    let effectiveInterval = interval
 
     // 2. DYNAMIC TABLE ROUTING
 
@@ -253,7 +249,7 @@ Deno.serve(async (req) => {
             .in('device_id', deviceIds)
             .in('metric', metrics)
             .gte('ts', start.toISOString())
-            .lte('ts', end.toISOString())
+            .lt('ts', end.toISOString())
             .order('ts', { ascending: true })
           if (rawError) throw rawError
           data = (rawData || []).map(d => ({
@@ -323,7 +319,7 @@ Deno.serve(async (req) => {
           .in('device_id', deviceIds)
           .in('metric', metrics)
           .gte('ts', start.toISOString())
-          .lte('ts', end.toISOString())
+          .lt('ts', end.toISOString())
           .order('ts', { ascending: true })
         if (rawError) {
           console.warn('water_telemetry not found, falling back to telemetry:', rawError)
@@ -334,7 +330,7 @@ Deno.serve(async (req) => {
             .in('device_id', deviceIds)
             .in('metric', metrics)
             .gte('ts', start.toISOString())
-            .lte('ts', end.toISOString())
+            .lt('ts', end.toISOString())
             .order('ts', { ascending: true })
           if (fallbackError) throw fallbackError
           data = fallbackData || []
@@ -450,7 +446,7 @@ Deno.serve(async (req) => {
             .in('device_id', deviceIds)
             .in('metric', metrics)
             .gte('ts', start.toISOString())
-            .lte('ts', end.toISOString())
+            .lt('ts', end.toISOString())
             .order('ts', { ascending: true })
           if (rawError) throw rawError
           data = rawData || []
