@@ -2881,15 +2881,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                     </div>
 
-                    {/* WIDGET 2: DEVICE CONSUMPTION (Placeholder per ora o lo sistemiamo dopo) */}
-                    <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
-                        <h3 className="text-base md:text-lg font-bold text-gray-800 mb-4">Top Consumers</h3>
-                        <div className="flex items-center justify-center h-64 text-gray-400 italic">
-                            Device detail coming soon...
-                        </div>
-                    </div>
-                    {/* WIDGET: POWER CONSUMPTION (Real-time Breakdown) */}
-                    <div ref={powerConsRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                    {/* WIDGET: POWER CONSUMPTION (Real-time Breakdown) - 1/3 width */}
+                    <div ref={powerConsRef} className="lg:col-span-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <div>
                             <h3 className="text-base md:text-lg font-bold text-gray-800">Power Consumption</h3>
@@ -2948,8 +2941,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                            </div>
                         </div>
                     </div>
-                    {/* RIGA INFERIORE: DEVICES CONSUMPTION (Stacked Bar Chart) */}
-                    <div ref={deviceConsRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    {/* DEVICES CONSUMPTION (Stacked Bar Chart) - 2/3 width */}
+                    <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
@@ -4203,6 +4196,115 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Illuminazione" />
             <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Prese" radius={[6, 6, 0, 0]} />
           </BarChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Power Consumption */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'powerCons'}
+        onClose={() => setFullscreenChart(null)}
+        title="Power Consumption (Real-time)"
+      >
+        <div className="flex items-center gap-8 h-[500px]">
+          <div className="space-y-2 flex-1 max-h-[450px] overflow-y-auto pr-4">
+            {powerDistributionData.length === 0 ? (
+              <div className="text-gray-400 italic">No real-time data</div>
+            ) : (
+              powerDistributionData.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-sm text-gray-600">{item.name}</span>
+                  <span className="text-sm font-semibold text-gray-800 ml-auto tabular-nums">
+                    {item.value.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kW
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="w-72 h-72 flex-shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={powerDistributionData}
+                  innerRadius="55%"
+                  outerRadius="85%"
+                  paddingAngle={2}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {powerDistributionData.map((entry, index) => (
+                    <Cell key={`cell-fs-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => [Number(value).toFixed(2) + ' kW', '']}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Carbon Footprint */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'carbon'}
+        onClose={() => setFullscreenChart(null)}
+        title="Carbon Footprint Analysis"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <AreaChart data={carbonChartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorCarbonFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#129E97" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#129E97" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="tsLabel" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kg" />
+            <Tooltip {...tooltipStyle} formatter={(value: any) => [Number(value).toFixed(2) + ' kg CO₂', '']} />
+            <Legend />
+            <Area type="monotone" dataKey="co2" stroke="#129E97" strokeWidth={2} fill="url(#colorCarbonFS)" name="CO₂ Emissions" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Energy Trend */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'trend'}
+        onClose={() => setFullscreenChart(null)}
+        title="Energy Trend Over Time"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <LineChart data={energyTrendLiveData as any} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Line type="monotone" dataKey="value" stroke="#129E97" strokeWidth={3} dot={{ r: 3, fill: '#129E97' }} name="Energy" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Energy vs Outdoor Condition */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'outdoor'}
+        onClose={() => setFullscreenChart(null)}
+        title="Energy vs Outdoor Condition"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid {...gridStyle} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <YAxis yAxisId="left" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" />
+            <YAxis yAxisId="right" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" °C" />
+            <Tooltip {...tooltipStyle} />
+            <Legend />
+            <Line yAxisId="left" type="monotone" dataKey="energy" stroke="#129E97" strokeWidth={2} name="Energy (kWh)" />
+            <Line yAxisId="right" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} name="Temperature (°C)" />
+          </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
