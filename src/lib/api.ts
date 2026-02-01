@@ -787,7 +787,8 @@ export async function fetchEnergyTimeseriesApi(params: {
   if (route.table === 'hourly') {
     let query = supabase
       .from('energy_hourly')
-      .select('ts_hour, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
+      // NOTE: some deployments don't have value_sum on energy_hourly; keep hourly stable on value_avg.
+      .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
       .order('ts_hour', { ascending: true });
@@ -892,12 +893,13 @@ export async function fetchEnergyTimeseriesApi(params: {
         device_id: row.device_id,
         metric: row.metric,
         value_avg: row.value_avg ?? 0,
-        value_sum: row.value_sum ?? row.value_avg ?? 0, // ENERGIA TOTALE del bucket
+        // keep shape stable for callers that read value_sum, but on hourly we use value_avg
+        value_sum: row.value_avg ?? 0,
         value_min: row.value_min ?? row.value_avg ?? 0,
         value_max: row.value_max ?? row.value_avg ?? 0,
         sample_count: row.sample_count ?? 0,
-        // Helper: preferisci sempre value_sum per grafici energia
-        value: row.value_sum ?? row.value_avg ?? 0,
+        // Hourly: primary value is average
+        value: row.value_avg ?? 0,
       };
     }
     

@@ -359,7 +359,8 @@ Deno.serve(async (req) => {
         
         const { data: hourlyData, error: hourlyError } = await supabase
           .from('energy_hourly')
-          .select('ts_hour, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
+          // NOTE: energy_hourly may not include value_sum in some deployments; keep hourly stable on value_avg.
+          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
           .in('device_id', deviceIds)
           .in('metric', metrics)
           .gte('ts_hour', startHour)
@@ -369,7 +370,7 @@ Deno.serve(async (req) => {
         if (hourlyError) throw hourlyError
         data = (hourlyData || []).map(d => ({
           ts: d.ts_hour,
-          value: d.value_sum ?? d.value_avg,
+          value: d.value_avg,
           value_avg: d.value_avg,
           value_min: d.value_min,
           value_max: d.value_max,
