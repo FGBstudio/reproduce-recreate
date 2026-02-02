@@ -266,45 +266,58 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return map;
   }, [airDeviceIds, FGB_PALETTE]);
 
+  /**
+   * Get time range parameters with FORCED bucket selection
+   * Bucket is determined ONLY by the time range duration:
+   *   - ≤24 hours: 15m granularity
+   *   - >24h AND ≤30 days: 1h granularity
+   *   - >30 days: 1d granularity
+   */
   const getTimeRangeParams = useCallback((tp: TimePeriod, dr?: DateRange) => {
     const now = new Date();
     let start: Date;
     let end: Date = now;
-    let bucket: string;
 
     switch (tp) {
       case "today":
+        // Today: from midnight to now (≤24h → 15m bucket)
         start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        bucket = "1h";
         break;
       case "week":
+        // Last 7 days (>24h, ≤30d → 1h bucket)
         start = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-        bucket = "1d";
         break;
       case "month":
-        start = new Date(now.getTime() - 21 * 24 * 60 * 60 * 1000);
-        bucket = "1d";
+        // Last 30 days (>24h, ≤30d → 1h bucket)
+        start = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
         break;
       case "year":
+        // From Jan 1st of current year (>30d → 1d bucket)
         start = new Date(now.getFullYear(), 0, 1);
-        bucket = "1M";
         break;
       case "custom":
         if (!dr) {
           start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          bucket = "1d";
         } else {
           start = dr.from;
           end = dr.to;
-          const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysDiff <= 1) bucket = "1h";
-          else if (daysDiff <= 90) bucket = "1d";
-          else bucket = "1M";
         }
         break;
       default:
         start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        bucket = "1d";
+    }
+
+    // Calculate FORCED bucket based on duration (matching backend logic)
+    const durationMs = end.getTime() - start.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+    
+    let bucket: '15m' | '1h' | '1d';
+    if (durationHours <= 24) {
+      bucket = '15m';
+    } else if (durationHours <= 24 * 30) {
+      bucket = '1h';
+    } else {
+      bucket = '1d';
     }
 
     return { start, end, bucket };
@@ -470,13 +483,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         const base = `d_${id.replace(/-/g, "")}`;
         return keySuffix ? `${base}_${keySuffix}` : base;
       };
+      
+      /**
+       * Label formatting based on FORCED bucket (from timeRange.bucket):
+       *   - 15m bucket: "HH:MM" (e.g., "14:30")
+       *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
+       *   - 1d bucket: "dd/MM"
+       */
       const labelOf = (ts: Date) => {
-        // keep this lightweight; aligns to the same logic used elsewhere in telemetry hooks
         const pad = (n: number) => String(n).padStart(2, "0");
-        if (timePeriod === "today") return `${pad(ts.getHours())}:00`;
-        if (timePeriod === "week") return ts.toLocaleDateString("it-IT", { weekday: "short" });
-        if (timePeriod === "year") return ts.toLocaleDateString("it-IT", { month: "short" });
-        return ts.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+        const bucket = timeRange.bucket;
+        
+        if (bucket === '15m') {
+          // 15-minute granularity: show HH:MM
+          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
+        }
+        
+        if (bucket === '1h') {
+          // Hourly granularity
+          if (timePeriod === "today") {
+            return `${pad(ts.getHours())}:00`;
+          }
+          // Week/month: show date + hour
+          const day = pad(ts.getDate());
+          const month = pad(ts.getMonth() + 1);
+          return `${day}/${month} ${pad(ts.getHours())}:00`;
+        }
+        
+        // Daily granularity: show dd/MM
+        const day = pad(ts.getDate());
+        const month = pad(ts.getMonth() + 1);
+        return `${day}/${month}`;
       };
 
       const points = airTimeseriesResp?.data ?? [];
@@ -493,7 +530,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(map.values());
     },
-    [airTimeseriesResp, timePeriod]
+    [airTimeseriesResp, timePeriod, timeRange.bucket]
   );
   
   // Always call hooks unconditionally to comply with React rules
@@ -885,10 +922,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return Array.from(keys);
   }, [energyConsumptionData, energyViewMode]);
   
+  // bucketHours: multiply by hours in bucket to convert avg kW to kWh
   const bucketHours = useMemo(() => {
-    if (timeRange.bucket === '1h') return 1;
-    if (timeRange.bucket === '1d') return 24;
-    if (timeRange.bucket === '1M') return 24 * 30;
+    const bucket = timeRange.bucket;
+    if (bucket === '15m') return 0.25; // 15 minutes = 0.25 hours
+    if (bucket === '1h') return 1;
+    if (bucket === '1d') return 24;
     return 1;
   }, [timeRange.bucket]);
 
@@ -898,12 +937,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const filtered = points.filter((p) => p.metric === metric);
       if (filtered.length === 0) return [] as Array<Record<string, unknown>>;
 
+      /**
+       * Label formatting based on FORCED bucket (from timeRange.bucket):
+       *   - 15m bucket: "HH:MM"
+       *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
+       *   - 1d bucket: "dd/MM"
+       */
       const labelOf = (ts: Date) => {
         const pad = (n: number) => String(n).padStart(2, '0');
-        if (timePeriod === 'today') return `${pad(ts.getHours())}:00`;
-        if (timePeriod === 'week') return ts.toLocaleDateString('it-IT', { weekday: 'short' });
-        if (timePeriod === 'year') return ts.toLocaleDateString('it-IT', { month: 'short' });
-        return ts.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+        const bucket = timeRange.bucket;
+        
+        if (bucket === '15m') {
+          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
+        }
+        
+        if (bucket === '1h') {
+          if (timePeriod === 'today') {
+            return `${pad(ts.getHours())}:00`;
+          }
+          const day = pad(ts.getDate());
+          const month = pad(ts.getMonth() + 1);
+          return `${day}/${month} ${pad(ts.getHours())}:00`;
+        }
+        
+        // Daily: dd/MM
+        const day = pad(ts.getDate());
+        const month = pad(ts.getMonth() + 1);
+        return `${day}/${month}`;
       };
 
       const byLabel = new Map<string, number>();
@@ -914,7 +974,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(byLabel.entries()).map(([label, value]) => ({ label, value }));
     },
-    [energyTimeseriesResp, timePeriod]
+    [energyTimeseriesResp, timePeriod, timeRange.bucket]
   );
 
   const energyTrendLiveData = useMemo(() => {

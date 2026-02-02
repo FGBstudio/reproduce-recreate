@@ -1,22 +1,26 @@
 // Edge Function: GET /timeseries
-// Returns time-bucketed telemetry data with auto-table selection
+// Returns time-bucketed telemetry data with FORCED bucket selection based on time range
 //
 // Query params:
-//   - device_ids: string (required) - Comma-separated device UUIDs
 //   - metrics: string (required) - Comma-separated metric names (e.g., "iaq.co2,energy.power_kw")
-//   - start: string (required) - ISO 8601 start timestamp
-//   - end: string (required) - ISO 8601 end timestamp  
-//   - bucket: string (optional) - Time bucket: "5m", "15m", "1h", "1d", "1w" (auto-selected if not provided)
-//   - include_computed_power: boolean (optional) - Include computed power from I/V measurements
+//   - start: string (required if mode != latest) - ISO 8601 start timestamp
+//   - end: string (required if mode != latest) - ISO 8601 end timestamp  
+//   - mode: string (optional) - "auto" (default) | "latest" (for overview/instant values)
+//   - device_ids: string (optional) - Comma-separated device UUIDs
+//   - site_id: string (optional) - Site UUID for filtering
+//   - bucket: string (optional) - IGNORED (kept for backwards compatibility, bucket is FORCED by range)
+//   - fill: string (optional) - IGNORED
 //
-// Auto-selects optimal data source based on time range:
-//   - <= 48 hours: raw telemetry
-//   - <= 90 days: hourly aggregates
-//   - > 90 days: daily aggregates
+// FORCED bucket selection based on time range (bucket param is IGNORED):
+//   - ≤24 hours: 15m granularity → raw tables
+//   - >24h AND ≤30 days: 1h granularity → hourly tables
+//   - >30 days: 1d granularity → daily tables
 //
-// Examples:
-//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=iaq.co2&start=2025-01-01&end=2025-01-02"
-//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=energy.power_kw&start=2025-01-01&end=2025-01-14&bucket=1h"
+// Domain routing:
+//   - ENERGY (metrics starting with "energy."): energy_telemetry, energy_hourly, energy_daily, energy_latest
+//   - AIR (all other metrics): telemetry, telemetry_hourly, telemetry_daily, telemetry_latest
+//
+// IMPORTANT: Mixed domain requests are NOT allowed (except env.temperature with energy.*)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -25,7 +29,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// =============================================================================
 // Validation helpers
+// =============================================================================
+
 const isValidUUID = (str: string): boolean => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
   return uuidRegex.test(str)
@@ -36,49 +43,107 @@ const isValidDateString = (str: string): boolean => {
   return !isNaN(date.getTime())
 }
 
-const VALID_BUCKETS = ['1m', '5m', '15m', '30m', '1h', '6h', '1d', '1w', '1M']
+// =============================================================================
+// FORCED bucket selection based on time range
+// The bucket parameter from the client is ALWAYS ignored
+// =============================================================================
 
-// Convert bucket string to PostgreSQL interval
-const bucketToInterval = (bucket: string): string => {
-  const map: Record<string, string> = {
-    '1m': '1 minute',
-    '5m': '5 minutes',
-    '15m': '15 minutes',
-    '30m': '30 minutes',
-    '1h': '1 hour',
-    '6h': '6 hours',
-    '1d': '1 day',
-    '1w': '1 week',
-    '1M': '1 month'
+type ForcedBucket = '15m' | '1h' | '1d'
+
+function getForcedBucket(start: Date, end: Date): ForcedBucket {
+  const diffMs = end.getTime() - start.getTime()
+  const diffHours = diffMs / (1000 * 60 * 60)
+  
+  if (diffHours <= 24) return '15m'      // ≤24h: 15 minute granularity
+  if (diffHours <= 24 * 30) return '1h'  // >24h AND ≤30d: hourly granularity
+  return '1d'                             // >30d: daily granularity
+}
+
+function bucketToInterval(bucket: ForcedBucket): string {
+  switch (bucket) {
+    case '15m': return '15 minutes'
+    case '1h': return '1 hour'
+    case '1d': return '1 day'
   }
-  return map[bucket] || '1 hour'
 }
 
-// Auto-select bucket based on time range
-const autoSelectBucket = (start: Date, end: Date): string => {
-  const diffMs = end.getTime() - start.getTime()
-  const diffHours = diffMs / (1000 * 60 * 60)
-  
-  if (diffHours <= 6) return '5m'
-  if (diffHours <= 24) return '15m'
-  if (diffHours <= 48) return '30m'      // 2 days
-  if (diffHours <= 168) return '1h'      // 7 days  
-  if (diffHours <= 720) return '6h'      // 30 days
-  if (diffHours <= 2160) return '1d'     // 90 days
-  return '1w'
+// =============================================================================
+// Domain detection
+// =============================================================================
+
+interface DomainInfo {
+  isEnergy: boolean
+  isAir: boolean
+  domain: 'energy' | 'air' | 'mixed'
 }
 
-// Determine data source based on time range (updated thresholds)
-const getOptimalSource = (start: Date, end: Date): 'raw' | 'hourly' | 'daily' => {
-  const diffMs = end.getTime() - start.getTime()
-  const diffHours = diffMs / (1000 * 60 * 60)
+function detectDomain(metrics: string[]): DomainInfo {
+  // Metrics starting with 'energy.' are energy domain
+  const energyMetrics = metrics.filter(m => m.startsWith('energy.'))
+  // Exception: env.temperature can be mixed with energy
+  const allowedExceptions = ['env.temperature', 'env.humidity']
+  const airMetrics = metrics.filter(m => !m.startsWith('energy.') && !allowedExceptions.includes(m))
   
-  if (diffHours <= 48) return 'raw'      // <= 2 days: raw
-  if (diffHours <= 2160) return 'hourly' // <= 90 days: hourly
-  return 'daily'                          // > 90 days: daily
+  const isEnergy = energyMetrics.length > 0
+  const isAir = airMetrics.length > 0
+  
+  // If we have both energy and non-exception air metrics, it's a mixed (invalid) request
+  if (isEnergy && isAir) {
+    return { isEnergy: true, isAir: true, domain: 'mixed' }
+  }
+  
+  // If only energy (with or without exceptions), treat as energy
+  if (isEnergy) {
+    return { isEnergy: true, isAir: false, domain: 'energy' }
+  }
+  
+  // Otherwise it's air
+  return { isEnergy: false, isAir: true, domain: 'air' }
 }
+
+// =============================================================================
+// Floor timestamps to boundary for aggregate queries
+// =============================================================================
+
+function floorToHour(date: Date): Date {
+  const d = new Date(date)
+  d.setUTCMinutes(0, 0, 0)
+  return d
+}
+
+function floorToDay(date: Date): Date {
+  const d = new Date(date)
+  d.setUTCHours(0, 0, 0, 0)
+  return d
+}
+
+// =============================================================================
+// Output type (normalized for frontend compatibility)
+// =============================================================================
+
+interface TimeseriesPoint {
+  ts_bucket: string
+  ts: string
+  device_id: string
+  site_id?: string | null
+  metric: string
+  value: number | null
+  value_avg: number | null
+  value_min?: number | null
+  value_max?: number | null
+  value_sum?: number | null
+  sample_count?: number | null
+  unit?: string | null
+  quality?: string | null
+  labels?: Record<string, unknown> | null
+}
+
+// =============================================================================
+// Main handler
+// =============================================================================
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -91,20 +156,129 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Initialize Supabase client with auth header forwarding for RLS
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const authHeader = req.headers.get('Authorization') ?? ''
+    
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: authHeader ? { Authorization: authHeader } : {}
+      }
+    })
 
+    // Parse query parameters
     const url = new URL(req.url)
-    const deviceIdsParam = url.searchParams.get('device_ids')
     const metricsParam = url.searchParams.get('metrics')
     const startParam = url.searchParams.get('start')
     const endParam = url.searchParams.get('end')
-    const bucketParam = url.searchParams.get('bucket')
+    const modeParam = (url.searchParams.get('mode') || 'auto').toLowerCase()
+    const deviceIdsParam = url.searchParams.get('device_ids')
+    const siteIdParam = url.searchParams.get('site_id')
+    // bucket param is ACCEPTED but IGNORED (for backwards compatibility)
+    const _bucketParam = url.searchParams.get('bucket')
 
-    // Validate required params
-    const missingParams = []
-    if (!deviceIdsParam) missingParams.push('device_ids')
+    // =========================================================================
+    // MODE = LATEST (overview/instant values)
+    // =========================================================================
+    if (modeParam === 'latest') {
+      // For latest mode, start/end are NOT required
+      // But we need at least one filter (device_ids or site_id)
+      const hasDeviceFilter = deviceIdsParam && deviceIdsParam.trim().length > 0
+      const hasSiteFilter = siteIdParam && isValidUUID(siteIdParam)
+      
+      if (!hasDeviceFilter && !hasSiteFilter) {
+        return new Response(JSON.stringify({ 
+          error: 'At least one filter required: device_ids or site_id',
+          details: 'For mode=latest, provide device_ids and/or site_id'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      // Parse device_ids if provided
+      const deviceIds = hasDeviceFilter 
+        ? deviceIdsParam!.split(',').map(id => id.trim()).filter(Boolean)
+        : []
+      
+      // Validate device UUIDs
+      const invalidIds = deviceIds.filter(id => !isValidUUID(id))
+      if (invalidIds.length > 0) {
+        return new Response(JSON.stringify({ 
+          error: 'Invalid device_ids format',
+          details: `Invalid UUIDs: ${invalidIds.join(', ')}`
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      // Parse metrics (optional for latest - if not provided, get all)
+      const metrics = metricsParam 
+        ? metricsParam.split(',').map(m => m.trim()).filter(Boolean)
+        : []
+
+      // Detect domain
+      const domainInfo = metrics.length > 0 ? detectDomain(metrics) : { isEnergy: false, isAir: true, domain: 'air' as const }
+      
+      // For energy domain, use energy_latest; for air, use telemetry_latest
+      const tableName = domainInfo.domain === 'energy' ? 'energy_latest' : 'telemetry_latest'
+      
+      let query = supabase
+        .from(tableName)
+        .select('device_id, site_id, metric, value, unit, ts, quality')
+      
+      // Apply filters
+      if (deviceIds.length > 0) {
+        query = query.in('device_id', deviceIds)
+      }
+      if (hasSiteFilter) {
+        query = query.eq('site_id', siteIdParam)
+      }
+      if (metrics.length > 0) {
+        query = query.in('metric', metrics)
+      }
+
+      const { data: latestData, error: latestError } = await query
+
+      if (latestError) {
+        console.error('Latest query error:', latestError)
+        throw latestError
+      }
+
+      // Normalize output
+      const data: TimeseriesPoint[] = (latestData || []).map((row: any) => ({
+        ts_bucket: row.ts,
+        ts: row.ts,
+        device_id: row.device_id,
+        site_id: row.site_id,
+        metric: row.metric,
+        value: row.value,
+        value_avg: row.value,
+        unit: row.unit,
+        quality: row.quality,
+      }))
+
+      return new Response(JSON.stringify({
+        data,
+        meta: {
+          mode: 'latest',
+          domain: domainInfo.domain,
+          source: tableName,
+          point_count: data.length,
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // =========================================================================
+    // MODE = AUTO (timeseries)
+    // =========================================================================
+
+    // Validate required params for timeseries mode
+    const missingParams: string[] = []
     if (!metricsParam) missingParams.push('metrics')
     if (!startParam) missingParams.push('start')
     if (!endParam) missingParams.push('end')
@@ -119,8 +293,25 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Validate filters: at least one of device_ids or site_id must be present
+    const hasDeviceFilter = deviceIdsParam && deviceIdsParam.trim().length > 0
+    const hasSiteFilter = siteIdParam && isValidUUID(siteIdParam)
+    
+    if (!hasDeviceFilter && !hasSiteFilter) {
+      return new Response(JSON.stringify({ 
+        error: 'At least one filter required: device_ids or site_id',
+        details: 'Provide device_ids and/or site_id to filter results'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Parse and validate device_ids
-    const deviceIds = deviceIdsParam!.split(',').map(id => id.trim()).filter(Boolean)
+    const deviceIds = hasDeviceFilter 
+      ? deviceIdsParam!.split(',').map(id => id.trim()).filter(Boolean)
+      : []
+    
     const invalidIds = deviceIds.filter(id => !isValidUUID(id))
     if (invalidIds.length > 0) {
       return new Response(JSON.stringify({ 
@@ -131,6 +322,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+    
     if (deviceIds.length > 50) {
       return new Response(JSON.stringify({ 
         error: 'Too many device_ids',
@@ -143,6 +335,15 @@ Deno.serve(async (req) => {
 
     // Parse metrics
     const metrics = metricsParam!.split(',').map(m => m.trim()).filter(Boolean)
+    if (metrics.length === 0) {
+      return new Response(JSON.stringify({ 
+        error: 'No valid metrics provided',
+        details: 'metrics parameter must contain at least one metric'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     if (metrics.length > 20) {
       return new Response(JSON.stringify({ 
         error: 'Too many metrics',
@@ -198,334 +399,179 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Validate bucket if provided
-    if (bucketParam && !VALID_BUCKETS.includes(bucketParam)) {
+    // Detect domain
+    const domainInfo = detectDomain(metrics)
+    
+    if (domainInfo.domain === 'mixed') {
       return new Response(JSON.stringify({ 
-        error: 'Invalid bucket',
-        details: `bucket must be one of: ${VALID_BUCKETS.join(', ')}`
+        error: 'Mixed domain request not allowed',
+        details: 'Cannot mix energy metrics with non-env air metrics in a single request. Exception: env.temperature and env.humidity can be included with energy.*'
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Auto-select bucket
-    const bucket = bucketParam || autoSelectBucket(start, end)
-    const interval = bucketToInterval(bucket)
+    // FORCE bucket based on time range (ignore client bucket param)
+    const forcedBucket = getForcedBucket(start, end)
+    const bucketInterval = bucketToInterval(forcedBucket)
 
-    // 1. DOMAIN DETECTION & DURATION
-    const isEnergyRequest = metrics.some(m => m.startsWith('energy.'))
-    const isWaterRequest = metrics.some(m => m.startsWith('water.'))
-    const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+    // Determine table and source based on domain and bucket
+    let tableName: string
+    let tsColumn: string
+    let source: string
 
-    let data: Array<{
-      ts: string
-      device_id: string
-      metric: string
-      value: number
-      value_avg?: number
-      value_min?: number
-      value_max?: number
-      sample_count?: number
-    }> = []
-    let source = 'raw'
-
-    // 2. DYNAMIC TABLE ROUTING
-
-    if (isEnergyRequest) {
-      // ===== ENERGY DOMAIN (energy_*) =====
-      if (diffHours <= 24) {
-        // RAW (≤24h) → energy_telemetry via RPC
-        source = 'raw'
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_energy_timeseries', {
-          p_device_ids: deviceIds,
-          p_metrics: metrics,
-          p_start: start.toISOString(),
-          p_end: end.toISOString(),
-          p_bucket: interval
-        })
-        if (rpcError) {
-          console.error('Energy RPC error, falling back to direct query:', rpcError)
-          // Fallback to direct query
-          const { data: rawData, error: rawError } = await supabase
-            .from('energy_telemetry')
-            .select('ts, value, device_id, metric')
-            .in('device_id', deviceIds)
-            .in('metric', metrics)
-            .gte('ts', start.toISOString())
-            .lte('ts', end.toISOString())
-            .order('ts', { ascending: true })
-          if (rawError) throw rawError
-          data = (rawData || []).map(d => ({
-            ts: d.ts,
-            value: d.value,
-            device_id: d.device_id,
-            metric: d.metric
-          }))
-        } else {
-          data = rpcData || []
-        }
-      } else if (diffHours <= 24 * 30) {
-        // HOURLY (>24h, ≤30d) → energy_hourly
-        source = 'hourly'
-        const { data: hourlyData, error: hourlyError } = await supabase
-          .from('energy_hourly')
-          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
-          .in('device_id', deviceIds)
-          .in('metric', metrics)
-          .gte('ts_hour', start.toISOString())
-          .lte('ts_hour', end.toISOString())
-          .order('ts_hour', { ascending: true })
-
-        if (hourlyError) throw hourlyError
-        data = (hourlyData || []).map(d => ({
-          ts: d.ts_hour,
-          value: d.value_avg,
-          value_avg: d.value_avg,
-          value_min: d.value_min,
-          value_max: d.value_max,
-          sample_count: d.sample_count,
-          device_id: d.device_id,
-          metric: d.metric
-        }))
-      } else {
-        // DAILY (>30d) → energy_daily
-        source = 'daily'
-        const { data: dailyData, error: dailyError } = await supabase
-          .from('energy_daily')
-          .select('ts_day, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
-          .in('device_id', deviceIds)
-          .in('metric', metrics)
-          .gte('ts_day', start.toISOString())
-          .lte('ts_day', end.toISOString())
-          .order('ts_day', { ascending: true })
-
-        if (dailyError) throw dailyError
-        // For energy, use value_sum (kWh totals) for daily aggregation
-        data = (dailyData || []).map(d => ({
-          ts: d.ts_day,
-          value: d.value_sum || d.value_avg,
-          value_avg: d.value_avg,
-          value_min: d.value_min,
-          value_max: d.value_max,
-          sample_count: d.sample_count,
-          device_id: d.device_id,
-          metric: d.metric
-        }))
-      }
-    } else if (isWaterRequest) {
-      // ===== WATER DOMAIN (water_*) - Future support =====
-      if (diffHours <= 24) {
-        source = 'raw'
-        const { data: rawData, error: rawError } = await supabase
-          .from('water_telemetry')
-          .select('ts, value, device_id, metric')
-          .in('device_id', deviceIds)
-          .in('metric', metrics)
-          .gte('ts', start.toISOString())
-          .lte('ts', end.toISOString())
-          .order('ts', { ascending: true })
-        if (rawError) {
-          console.warn('water_telemetry not found, falling back to telemetry:', rawError)
-          // Fallback to standard telemetry
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('telemetry')
-            .select('ts, value, device_id, metric')
-            .in('device_id', deviceIds)
-            .in('metric', metrics)
-            .gte('ts', start.toISOString())
-            .lte('ts', end.toISOString())
-            .order('ts', { ascending: true })
-          if (fallbackError) throw fallbackError
-          data = fallbackData || []
-        } else {
-          data = rawData || []
-        }
-      } else if (diffHours <= 24 * 30) {
-        source = 'hourly'
-        const { data: hourlyData, error: hourlyError } = await supabase
-          .from('water_hourly')
-          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
-          .in('device_id', deviceIds)
-          .in('metric', metrics)
-          .gte('ts_hour', start.toISOString())
-          .lte('ts_hour', end.toISOString())
-          .order('ts_hour', { ascending: true })
-        if (hourlyError) {
-          console.warn('water_hourly not found, falling back to telemetry_hourly')
-          // Fallback
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('telemetry_hourly')
-            .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
-            .in('device_id', deviceIds)
-            .in('metric', metrics)
-            .gte('ts_hour', start.toISOString())
-            .lte('ts_hour', end.toISOString())
-            .order('ts_hour', { ascending: true })
-          if (fallbackError) throw fallbackError
-          data = (fallbackData || []).map(d => ({
-            ts: d.ts_hour,
-            value: d.value_avg,
-            value_avg: d.value_avg,
-            value_min: d.value_min,
-            value_max: d.value_max,
-            sample_count: d.sample_count,
-            device_id: d.device_id,
-            metric: d.metric
-          }))
-        } else {
-          data = (hourlyData || []).map(d => ({
-            ts: d.ts_hour,
-            value: d.value_avg,
-            value_avg: d.value_avg,
-            value_min: d.value_min,
-            value_max: d.value_max,
-            sample_count: d.sample_count,
-            device_id: d.device_id,
-            metric: d.metric
-          }))
-        }
-      } else {
-        source = 'daily'
-        const { data: dailyData, error: dailyError } = await supabase
-          .from('water_daily')
-          .select('ts_day, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
-          .in('device_id', deviceIds)
-          .in('metric', metrics)
-          .gte('ts_day', start.toISOString())
-          .lte('ts_day', end.toISOString())
-          .order('ts_day', { ascending: true })
-        if (dailyError) {
-          console.warn('water_daily not found, falling back to telemetry_daily')
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('telemetry_daily')
-            .select('ts_day, value_avg, value_min, value_max, sample_count, device_id, metric')
-            .in('device_id', deviceIds)
-            .in('metric', metrics)
-            .gte('ts_day', start.toISOString())
-            .lte('ts_day', end.toISOString())
-            .order('ts_day', { ascending: true })
-          if (fallbackError) throw fallbackError
-          data = (fallbackData || []).map(d => ({
-            ts: d.ts_day,
-            value: d.value_avg,
-            value_avg: d.value_avg,
-            value_min: d.value_min,
-            value_max: d.value_max,
-            sample_count: d.sample_count,
-            device_id: d.device_id,
-            metric: d.metric
-          }))
-        } else {
-          // For water, use value_sum (liters totals) for daily
-          data = (dailyData || []).map(d => ({
-            ts: d.ts_day,
-            value: d.value_sum || d.value_avg,
-            value_avg: d.value_avg,
-            value_min: d.value_min,
-            value_max: d.value_max,
-            sample_count: d.sample_count,
-            device_id: d.device_id,
-            metric: d.metric
-          }))
-        }
+    if (domainInfo.domain === 'energy') {
+      switch (forcedBucket) {
+        case '15m':
+          tableName = 'energy_telemetry'
+          tsColumn = 'ts'
+          source = 'raw'
+          break
+        case '1h':
+          tableName = 'energy_hourly'
+          tsColumn = 'ts_hour'
+          source = 'hourly'
+          break
+        case '1d':
+          tableName = 'energy_daily'
+          tsColumn = 'ts_day'
+          source = 'daily'
+          break
       }
     } else {
-      // ===== AIR / STANDARD DOMAIN (telemetry_*) =====
-      if (diffHours <= 24) {
-        // RAW (≤24h) → telemetry via RPC
-        source = 'raw'
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_telemetry_timeseries', {
-          p_device_ids: deviceIds,
-          p_metrics: metrics,
-          p_start: start.toISOString(),
-          p_end: end.toISOString(),
-          p_bucket: interval
-        })
-        if (rpcError) {
-          console.error('Telemetry RPC error, falling back to direct query:', rpcError)
-          const { data: rawData, error: rawError } = await supabase
-            .from('telemetry')
-            .select('ts, value, device_id, metric')
-            .in('device_id', deviceIds)
-            .in('metric', metrics)
-            .gte('ts', start.toISOString())
-            .lte('ts', end.toISOString())
-            .order('ts', { ascending: true })
-          if (rawError) throw rawError
-          data = rawData || []
-        } else {
-          data = rpcData || []
-        }
-      } else if (diffHours <= 24 * 30) {
-        // HOURLY (>24h, ≤30d) → telemetry_hourly
-        source = 'hourly'
-        const { data: hourlyData, error: hourlyError } = await supabase
-          .from('telemetry_hourly')
-          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
-          .in('device_id', deviceIds)
-          .in('metric', metrics)
-          .gte('ts_hour', start.toISOString())
-          .lte('ts_hour', end.toISOString())
-          .order('ts_hour', { ascending: true })
-
-        if (hourlyError) throw hourlyError
-        data = (hourlyData || []).map(d => ({
-          ts: d.ts_hour,
-          value: d.value_avg,
-          value_avg: d.value_avg,
-          value_min: d.value_min,
-          value_max: d.value_max,
-          sample_count: d.sample_count,
-          device_id: d.device_id,
-          metric: d.metric
-        }))
-      } else {
-        // DAILY (>30d) → telemetry_daily
-        source = 'daily'
-        const { data: dailyData, error: dailyError } = await supabase
-          .from('telemetry_daily')
-          .select('ts_day, value_avg, value_min, value_max, sample_count, device_id, metric')
-          .in('device_id', deviceIds)
-          .in('metric', metrics)
-          .gte('ts_day', start.toISOString())
-          .lte('ts_day', end.toISOString())
-          .order('ts_day', { ascending: true })
-
-        if (dailyError) throw dailyError
-        // For air quality, use value_avg (averages) for daily aggregation
-        data = (dailyData || []).map(d => ({
-          ts: d.ts_day,
-          value: d.value_avg,
-          value_avg: d.value_avg,
-          value_min: d.value_min,
-          value_max: d.value_max,
-          sample_count: d.sample_count,
-          device_id: d.device_id,
-          metric: d.metric
-        }))
+      // Air domain
+      switch (forcedBucket) {
+        case '15m':
+          tableName = 'telemetry'
+          tsColumn = 'ts'
+          source = 'raw'
+          break
+        case '1h':
+          tableName = 'telemetry_hourly'
+          tsColumn = 'ts_hour'
+          source = 'hourly'
+          break
+        case '1d':
+          tableName = 'telemetry_daily'
+          tsColumn = 'ts_day'
+          source = 'daily'
+          break
       }
     }
 
-    // Determine domain for metadata
-    const domain = isEnergyRequest ? 'energy' : isWaterRequest ? 'water' : 'air'
+    // Prepare date boundaries for aggregate queries
+    let queryStart: string
+    let queryEnd: string
+    
+    if (forcedBucket === '15m') {
+      // Raw: use exact timestamps
+      queryStart = start.toISOString()
+      queryEnd = end.toISOString()
+    } else if (forcedBucket === '1h') {
+      // Hourly: floor start to hour boundary
+      queryStart = floorToHour(start).toISOString()
+      queryEnd = end.toISOString()
+    } else {
+      // Daily: floor start to day boundary, use date only for end
+      queryStart = floorToDay(start).toISOString()
+      queryEnd = end.toISOString()
+    }
 
-    return new Response(JSON.stringify({ 
+    // Build and execute query
+    let data: TimeseriesPoint[] = []
+
+    // Select columns based on table type
+    const selectColumns = forcedBucket === '15m'
+      ? `${tsColumn}, device_id, site_id, metric, value, unit, quality, labels`
+      : `${tsColumn}, device_id, site_id, metric, value_avg, value_min, value_max, ${forcedBucket === '1d' ? 'value_sum, ' : ''}sample_count, unit, labels`
+
+    let query = supabase
+      .from(tableName)
+      .select(selectColumns)
+      .in('metric', metrics)
+      .gte(tsColumn, queryStart)
+      .lt(tsColumn, queryEnd)
+      .order(tsColumn, { ascending: true })
+
+    // Apply device/site filters
+    if (deviceIds.length > 0) {
+      query = query.in('device_id', deviceIds)
+    }
+    if (hasSiteFilter) {
+      query = query.eq('site_id', siteIdParam)
+    }
+
+    const { data: rawData, error: queryError } = await query
+
+    if (queryError) {
+      console.error(`Query error on ${tableName}:`, queryError)
+      throw queryError
+    }
+
+    // Normalize output to standard format
+    data = (rawData || []).map((row: any) => {
+      const timestamp = row[tsColumn]
+      const isRaw = forcedBucket === '15m'
+      
+      // For daily tables, ensure timestamp is ISO format
+      let normalizedTs = timestamp
+      if (forcedBucket === '1d' && typeof timestamp === 'string' && !timestamp.includes('T')) {
+        normalizedTs = `${timestamp}T00:00:00.000Z`
+      }
+
+      if (isRaw) {
+        // Raw table: value is the primary field
+        return {
+          ts_bucket: normalizedTs,
+          ts: normalizedTs,
+          device_id: row.device_id,
+          site_id: row.site_id,
+          metric: row.metric,
+          value: row.value,
+          value_avg: row.value,
+          unit: row.unit,
+          quality: row.quality,
+          labels: row.labels,
+        }
+      } else {
+        // Aggregate table: value_avg is primary, value_sum available for daily
+        return {
+          ts_bucket: normalizedTs,
+          ts: normalizedTs,
+          device_id: row.device_id,
+          site_id: row.site_id,
+          metric: row.metric,
+          value: row.value_avg,
+          value_avg: row.value_avg,
+          value_min: row.value_min,
+          value_max: row.value_max,
+          value_sum: row.value_sum ?? null,
+          sample_count: row.sample_count,
+          unit: row.unit,
+          labels: row.labels,
+        }
+      }
+    })
+
+    return new Response(JSON.stringify({
       data,
       meta: {
-        device_ids: deviceIds,
         metrics,
         start: start.toISOString(),
         end: end.toISOString(),
-        bucket,
-        bucket_interval: interval,
+        bucket: forcedBucket,
+        bucket_interval: bucketInterval,
         source,
+        domain: domainInfo.domain,
         point_count: data.length,
-        domain
+        device_ids: deviceIds.length > 0 ? deviceIds : undefined,
+        site_id: hasSiteFilter ? siteIdParam : undefined,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
+
   } catch (error) {
     console.error('Timeseries function error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'

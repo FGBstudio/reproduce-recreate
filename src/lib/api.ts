@@ -391,8 +391,14 @@ export async function fetchLatestApi(params?: {
 /**
  * Smart table routing configuration
  * Routes queries to the optimal table based on time range duration
+ * 
+ * FORCED bucket selection (aligns with Edge Function spec):
+ *   - ≤24 hours: 15m granularity → raw tables
+ *   - >24h AND ≤30 days: 1h granularity → hourly tables  
+ *   - >30 days: 1d granularity → daily tables
  */
 type TableRoute = 'raw' | 'hourly' | 'daily';
+type ForcedBucket = '15m' | '1h' | '1d';
 
 interface TableRouteConfig {
   table: TableRoute;
@@ -400,14 +406,14 @@ interface TableRouteConfig {
   tsColumn: string;
   valueColumn: string;
   hasMinMax: boolean;
+  forcedBucket: ForcedBucket;
 }
 
 function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
   const durationMs = endDate.getTime() - startDate.getTime();
   const durationHours = durationMs / (1000 * 60 * 60);
-  const durationDays = durationHours / 24;
 
-  // ≤24 hours: use raw telemetry (maximum detail)
+  // ≤24 hours: use raw telemetry (15m granularity)
   if (durationHours <= 24) {
     return {
       table: 'raw',
@@ -415,27 +421,30 @@ function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
       tsColumn: 'ts',
       valueColumn: 'value',
       hasMinMax: false,
+      forcedBucket: '15m',
     };
   }
 
-  // >24 hours AND ≤30 days: use hourly aggregates
-  if (durationDays <= 30) {
+  // >24 hours AND ≤30 days: use hourly aggregates (1h granularity)
+  if (durationHours <= 24 * 30) {
     return {
       table: 'hourly',
       source: 'telemetry_hourly',
       tsColumn: 'ts_hour',
       valueColumn: 'value_avg',
       hasMinMax: true,
+      forcedBucket: '1h',
     };
   }
 
-  // >30 days: use daily aggregates
+  // >30 days: use daily aggregates (1d granularity)
   return {
     table: 'daily',
     source: 'telemetry_daily',
     tsColumn: 'ts_day',
     valueColumn: 'value_avg',
     hasMinMax: true,
+    forcedBucket: '1d',
   };
 }
 
@@ -657,13 +666,11 @@ export async function fetchTimeseriesApi(params: {
     };
   });
 
-  // Determine actual bucket for metadata
-  const actualBucket = route.table === 'hourly' ? '1h' : route.table === 'daily' ? '1d' : 'raw';
-
+  // Use FORCED bucket from route (ignore client bucket param)
   return {
     data: formattedData,
     meta: {
-      bucket: params.bucket || actualBucket,
+      bucket: route.forcedBucket,
       source: route.source,
       start: params.start,
       end: params.end,
@@ -935,12 +942,11 @@ export async function fetchEnergyTimeseriesApi(params: {
     };
   });
 
-  const actualBucket = route.table === 'hourly' ? '1h' : route.table === 'daily' ? '1d' : 'raw';
-
+  // Use FORCED bucket from route (ignore client bucket param)
   return {
     data: formattedData,
     meta: {
-      bucket: params.bucket || actualBucket,
+      bucket: route.forcedBucket,
       source: `energy_${route.source}`,
       start: params.start,
       end: params.end,
