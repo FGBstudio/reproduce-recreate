@@ -6,18 +6,17 @@
 //   - metrics: string (required) - Comma-separated metric names (e.g., "iaq.co2,energy.power_kw")
 //   - start: string (required) - ISO 8601 start timestamp
 //   - end: string (required) - ISO 8601 end timestamp  
-//   - bucket: string (optional) - Time bucket: "15m", "30m", "1h", "6h", "1d", "1w", "1M" (auto-selected if not provided)
-//   - mode: string (optional) - "auto" (default) or "latest" (only for telemetry/air domain)
-//   - fill: string (optional) - "null" (default) or "empty" (gap filling for hourly/daily)
+//   - bucket: string (optional) - Time bucket: "5m", "15m", "1h", "1d", "1w" (auto-selected if not provided)
+//   - include_computed_power: boolean (optional) - Include computed power from I/V measurements
 //
 // Auto-selects optimal data source based on time range:
-//   - <= 24 hours: raw telemetry
-//   - <= 30 days: hourly aggregates
-//   - > 30 days: daily aggregates
+//   - <= 48 hours: raw telemetry
+//   - <= 90 days: hourly aggregates
+//   - > 90 days: daily aggregates
 //
 // Examples:
 //   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=iaq.co2&start=2025-01-01&end=2025-01-02"
-//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=iaq.co2&mode=latest"
+//   curl "https://PROJECT.supabase.co/functions/v1/timeseries?device_ids=UUID&metrics=energy.power_kw&start=2025-01-01&end=2025-01-14&bucket=1h"
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -39,9 +38,11 @@ const isValidDateString = (str: string): boolean => {
 
 const VALID_BUCKETS = ['15m', '30m', '1h', '6h', '1d', '1w', '1M']
 
-// Convert bucket string to PostgreSQL interval (cleaned: only valid buckets)
+// Convert bucket string to PostgreSQL interval
 const bucketToInterval = (bucket: string): string => {
   const map: Record<string, string> = {
+    '1m': '1 minute',
+    '5m': '5 minutes',
     '15m': '15 minutes',
     '30m': '30 minutes',
     '1h': '1 hour',
@@ -61,20 +62,6 @@ const autoSelectBucket = (start: Date, end: Date): string => {
   if (diffHours <= 24) return '15m'
   if (diffHours <= 24 * 30) return '1h'
   return '1d'
-}
-
-// Floor timestamp to hour boundary (UTC)
-const floorToHourUTC = (d: Date): Date => {
-  const x = new Date(d)
-  x.setUTCMinutes(0, 0, 0)
-  return x
-}
-
-// Floor timestamp to day boundary (UTC)
-const floorToDayUTC = (d: Date): Date => {
-  const x = new Date(d)
-  x.setUTCHours(0, 0, 0, 0)
-  return x
 }
 
 Deno.serve(async (req) => {
@@ -99,6 +86,7 @@ Deno.serve(async (req) => {
       }
     })
 
+
     const url = new URL(req.url)
     const deviceIdsParam = url.searchParams.get('device_ids')
     const metricsParam = url.searchParams.get('metrics')
@@ -108,14 +96,12 @@ Deno.serve(async (req) => {
     const modeParam = (url.searchParams.get('mode') || 'auto').toLowerCase()
     const fillParam = (url.searchParams.get('fill') || 'null').toLowerCase()
 
-    // Validate required params (mode=latest doesn't need start/end)
+    // Validate required params
     const missingParams = []
     if (!deviceIdsParam) missingParams.push('device_ids')
     if (!metricsParam) missingParams.push('metrics')
-    if (modeParam !== 'latest') {
-      if (!startParam) missingParams.push('start')
-      if (!endParam) missingParams.push('end')
-    }
+    if (!startParam) missingParams.push('start')
+    if (!endParam) missingParams.push('end')
 
     if (missingParams.length > 0) {
       return new Response(JSON.stringify({ 
@@ -161,90 +147,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Domain detection
-    const isEnergyRequest = metrics.some(m => m.startsWith('energy.'))
-    const isWaterRequest = metrics.some(m => m.startsWith('water.'))
-
-    // Reject mode=latest for energy/water domains
-    if (modeParam === 'latest' && (isEnergyRequest || isWaterRequest)) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid mode for domain',
-        details: 'mode=latest is only supported for air/telemetry domain'
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Check for mixed domain requests
-    const domainCount = [isEnergyRequest, isWaterRequest, !isEnergyRequest && !isWaterRequest].filter(Boolean).length
-    if (domainCount > 1 || (isEnergyRequest && isWaterRequest)) {
-      return new Response(JSON.stringify({ 
-        error: 'Mixed domain request',
-        details: 'Cannot mix energy.*, water.*, and air metrics in the same request'
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    let data: Array<{
-      ts: string
-      device_id: string
-      metric: string
-      value: number
-      value_avg?: number
-      value_min?: number
-      value_max?: number
-      sample_count?: number
-    }> = []
-    let source = 'raw'
-    let effectiveBucket = 'latest'
-    let effectiveInterval = 'latest'
-    let start: Date | null = null
-    let end: Date | null = null
-    let diffHours = 0
-
-    // Handle mode=latest for telemetry (no start/end needed)
-    if (modeParam === 'latest') {
-      source = 'latest'
-      effectiveBucket = 'latest'
-      effectiveInterval = 'latest'
-
-      const { data: latestData, error: latestError } = await supabase
-        .from('telemetry_latest')
-        .select('ts, value, device_id, metric')
-        .in('device_id', deviceIds)
-        .in('metric', metrics)
-
-      if (latestError) throw latestError
-
-      data = (latestData || []).map(d => ({
-        ts: d.ts,
-        value: d.value,
-        device_id: d.device_id,
-        metric: d.metric
-      }))
-
-      const domain = 'air'
-      return new Response(JSON.stringify({ 
-        data,
-        meta: {
-          device_ids: deviceIds,
-          metrics,
-          mode: 'latest',
-          bucket: effectiveBucket,
-          bucket_interval: effectiveInterval,
-          source,
-          point_count: data.length,
-          domain
-        }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Validate dates for non-latest mode
+    // Validate dates
     if (!isValidDateString(startParam!)) {
       return new Response(JSON.stringify({ 
         error: 'Invalid start date',
@@ -264,8 +167,8 @@ Deno.serve(async (req) => {
       })
     }
 
-    start = new Date(startParam!)
-    end = new Date(endParam!)
+    const start = new Date(startParam!)
+    const end = new Date(endParam!)
 
     if (start >= end) {
       return new Response(JSON.stringify({ 
@@ -303,27 +206,33 @@ Deno.serve(async (req) => {
     // Auto-select bucket
     const bucket = bucketParam || autoSelectBucket(start, end)
     const interval = bucketToInterval(bucket)
-    diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
 
-    // Initialize effective values (will be overwritten per branch)
-    effectiveBucket = bucket
-    effectiveInterval = interval
+    // 1. DOMAIN DETECTION & DURATION
+    const isEnergyRequest = metrics.some(m => m.startsWith('energy.'))
+    const isWaterRequest = metrics.some(m => m.startsWith('water.'))
+    const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
 
-    // Pre-compute aligned boundaries for aggregate tables
-    const startHour = floorToHourUTC(start).toISOString()
-    const endHour = end.toISOString() // Use lt() so no floor needed for end
-    const startDay = floorToDayUTC(start).toISOString().slice(0, 10) + 'T00:00:00.000Z'
-    const endDay = end.toISOString()
+    let data: Array<{
+      ts: string
+      device_id: string
+      metric: string
+      value: number
+      value_avg?: number
+      value_min?: number
+      value_max?: number
+      sample_count?: number
+    }> = []
+    let source = 'raw'
+    let effectiveBucket = bucket
+    let effectiveInterval = interval
 
-    // DYNAMIC TABLE ROUTING
+    // 2. DYNAMIC TABLE ROUTING
+
     if (isEnergyRequest) {
       // ===== ENERGY DOMAIN (energy_*) =====
       if (diffHours <= 24) {
         // RAW (≤24h) → energy_telemetry via RPC
         source = 'raw'
-        effectiveBucket = bucket
-        effectiveInterval = interval
-        
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_energy_timeseries', {
           p_device_ids: deviceIds,
           p_metrics: metrics,
@@ -333,6 +242,7 @@ Deno.serve(async (req) => {
         })
         if (rpcError) {
           console.error('Energy RPC error, falling back to direct query:', rpcError)
+          // Fallback to direct query
           const { data: rawData, error: rawError } = await supabase
             .from('energy_telemetry')
             .select('ts, value, device_id, metric')
@@ -354,17 +264,13 @@ Deno.serve(async (req) => {
       } else if (diffHours <= 24 * 30) {
         // HOURLY (>24h, ≤30d) → energy_hourly
         source = 'hourly'
-        effectiveBucket = '1h'
-        effectiveInterval = '1 hour'
-        
         const { data: hourlyData, error: hourlyError } = await supabase
           .from('energy_hourly')
-          // NOTE: energy_hourly may not include value_sum in some deployments; keep hourly stable on value_avg.
           .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
           .in('device_id', deviceIds)
           .in('metric', metrics)
-          .gte('ts_hour', startHour)
-          .lt('ts_hour', endHour)
+          .gte('ts_hour', start.toISOString())
+          .lte('ts_hour', end.toISOString())
           .order('ts_hour', { ascending: true })
 
         if (hourlyError) throw hourlyError
@@ -381,22 +287,20 @@ Deno.serve(async (req) => {
       } else {
         // DAILY (>30d) → energy_daily
         source = 'daily'
-        effectiveBucket = '1d'
-        effectiveInterval = '1 day'
-        
         const { data: dailyData, error: dailyError } = await supabase
           .from('energy_daily')
           .select('ts_day, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
           .in('device_id', deviceIds)
           .in('metric', metrics)
-          .gte('ts_day', startDay)
-          .lt('ts_day', endDay)
+          .gte('ts_day', start.toISOString())
+          .lte('ts_day', end.toISOString())
           .order('ts_day', { ascending: true })
 
         if (dailyError) throw dailyError
+        // For energy, use value_sum (kWh totals) for daily aggregation
         data = (dailyData || []).map(d => ({
           ts: d.ts_day,
-          value: d.value_sum ?? d.value_avg,
+          value: d.value_sum || d.value_avg,
           value_avg: d.value_avg,
           value_min: d.value_min,
           value_max: d.value_max,
@@ -406,12 +310,9 @@ Deno.serve(async (req) => {
         }))
       }
     } else if (isWaterRequest) {
-      // ===== WATER DOMAIN (water_*) =====
+      // ===== WATER DOMAIN (water_*) - Future support =====
       if (diffHours <= 24) {
         source = 'raw'
-        effectiveBucket = bucket
-        effectiveInterval = interval
-        
         const { data: rawData, error: rawError } = await supabase
           .from('water_telemetry')
           .select('ts, value, device_id, metric')
@@ -422,6 +323,7 @@ Deno.serve(async (req) => {
           .order('ts', { ascending: true })
         if (rawError) {
           console.warn('water_telemetry not found, falling back to telemetry:', rawError)
+          // Fallback to standard telemetry
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('telemetry')
             .select('ts, value, device_id, metric')
@@ -437,26 +339,24 @@ Deno.serve(async (req) => {
         }
       } else if (diffHours <= 24 * 30) {
         source = 'hourly'
-        effectiveBucket = '1h'
-        effectiveInterval = '1 hour'
-        
         const { data: hourlyData, error: hourlyError } = await supabase
           .from('water_hourly')
-          .select('ts_hour, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
+          .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
           .in('device_id', deviceIds)
           .in('metric', metrics)
-          .gte('ts_hour', startHour)
-          .lt('ts_hour', endHour)
+          .gte('ts_hour', start.toISOString())
+          .lte('ts_hour', end.toISOString())
           .order('ts_hour', { ascending: true })
         if (hourlyError) {
           console.warn('water_hourly not found, falling back to telemetry_hourly')
+          // Fallback
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('telemetry_hourly')
             .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
             .in('device_id', deviceIds)
             .in('metric', metrics)
-            .gte('ts_hour', startHour)
-            .lt('ts_hour', endHour)
+            .gte('ts_hour', start.toISOString())
+            .lte('ts_hour', end.toISOString())
             .order('ts_hour', { ascending: true })
           if (fallbackError) throw fallbackError
           data = (fallbackData || []).map(d => ({
@@ -472,7 +372,7 @@ Deno.serve(async (req) => {
         } else {
           data = (hourlyData || []).map(d => ({
             ts: d.ts_hour,
-            value: d.value_sum ?? d.value_avg,
+            value: d.value_avg,
             value_avg: d.value_avg,
             value_min: d.value_min,
             value_max: d.value_max,
@@ -483,16 +383,13 @@ Deno.serve(async (req) => {
         }
       } else {
         source = 'daily'
-        effectiveBucket = '1d'
-        effectiveInterval = '1 day'
-        
         const { data: dailyData, error: dailyError } = await supabase
           .from('water_daily')
           .select('ts_day, value_avg, value_sum, value_min, value_max, sample_count, device_id, metric')
           .in('device_id', deviceIds)
           .in('metric', metrics)
-          .gte('ts_day', startDay)
-          .lt('ts_day', endDay)
+          .gte('ts_day', start.toISOString())
+          .lte('ts_day', end.toISOString())
           .order('ts_day', { ascending: true })
         if (dailyError) {
           console.warn('water_daily not found, falling back to telemetry_daily')
@@ -501,8 +398,8 @@ Deno.serve(async (req) => {
             .select('ts_day, value_avg, value_min, value_max, sample_count, device_id, metric')
             .in('device_id', deviceIds)
             .in('metric', metrics)
-            .gte('ts_day', startDay)
-            .lt('ts_day', endDay)
+            .gte('ts_day', start.toISOString())
+            .lte('ts_day', end.toISOString())
             .order('ts_day', { ascending: true })
           if (fallbackError) throw fallbackError
           data = (fallbackData || []).map(d => ({
@@ -516,9 +413,10 @@ Deno.serve(async (req) => {
             metric: d.metric
           }))
         } else {
+          // For water, use value_sum (liters totals) for daily
           data = (dailyData || []).map(d => ({
             ts: d.ts_day,
-            value: d.value_sum ?? d.value_avg,
+            value: d.value_sum || d.value_avg,
             value_avg: d.value_avg,
             value_min: d.value_min,
             value_max: d.value_max,
@@ -533,9 +431,6 @@ Deno.serve(async (req) => {
       if (diffHours <= 24) {
         // RAW (≤24h) → telemetry via RPC
         source = 'raw'
-        effectiveBucket = bucket
-        effectiveInterval = interval
-        
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_telemetry_timeseries', {
           p_device_ids: deviceIds,
           p_metrics: metrics,
@@ -561,16 +456,13 @@ Deno.serve(async (req) => {
       } else if (diffHours <= 24 * 30) {
         // HOURLY (>24h, ≤30d) → telemetry_hourly
         source = 'hourly'
-        effectiveBucket = '1h'
-        effectiveInterval = '1 hour'
-        
         const { data: hourlyData, error: hourlyError } = await supabase
           .from('telemetry_hourly')
           .select('ts_hour, value_avg, value_min, value_max, sample_count, device_id, metric')
           .in('device_id', deviceIds)
           .in('metric', metrics)
-          .gte('ts_hour', startHour)
-          .lt('ts_hour', endHour)
+          .gte('ts_hour', start.toISOString())
+          .lte('ts_hour', end.toISOString())
           .order('ts_hour', { ascending: true })
 
         if (hourlyError) throw hourlyError
@@ -587,19 +479,17 @@ Deno.serve(async (req) => {
       } else {
         // DAILY (>30d) → telemetry_daily
         source = 'daily'
-        effectiveBucket = '1d'
-        effectiveInterval = '1 day'
-        
         const { data: dailyData, error: dailyError } = await supabase
           .from('telemetry_daily')
           .select('ts_day, value_avg, value_min, value_max, sample_count, device_id, metric')
           .in('device_id', deviceIds)
           .in('metric', metrics)
-          .gte('ts_day', startDay)
-          .lt('ts_day', endDay)
+          .gte('ts_day', start.toISOString())
+          .lte('ts_day', end.toISOString())
           .order('ts_day', { ascending: true })
 
         if (dailyError) throw dailyError
+        // For air quality, use value_avg (averages) for daily aggregation
         data = (dailyData || []).map(d => ({
           ts: d.ts_day,
           value: d.value_avg,
@@ -623,12 +513,11 @@ Deno.serve(async (req) => {
         metrics,
         start: start.toISOString(),
         end: end.toISOString(),
-        bucket: effectiveBucket,
-        bucket_interval: effectiveInterval,
+        bucket,
+        bucket_interval: interval,
         source,
         point_count: data.length,
-        domain,
-        fill: fillParam
+        domain
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
