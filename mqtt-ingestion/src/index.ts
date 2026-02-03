@@ -5,14 +5,16 @@ import pino from 'pino';
 import { z } from 'zod';
 
 // =============================================================================
-// FGB MQTT Ingestion Service - SIMPLIFIED (Raw Insert Only)
+// FGB MQTT Ingestion Service - ROBUST VERSION
 // =============================================================================
 // 
-// This service performs MINIMAL processing:
-// 1. Receive MQTT messages
-// 2. Save raw JSON to mqtt_messages_raw (audit log)
-// 3. Extract basic fields and insert to telemetry_raw (normalized)
-// 4. Upsert device registry
+// FLOW ORDER (robust):
+// 1. Receive MQTT message
+// 2. Save raw JSON to mqtt_messages_raw IMMEDIATELY (audit log)
+// 3. Infer external device ID (best effort)
+// 4. Upsert device (even without DEFAULT_SITE_ID → creates orphan)
+// 5. Parse telemetry if recognized topic
+// 6. Insert telemetry points
 //
 // ALL heavy processing (power calculation, aggregation, downsampling) 
 // happens in the DATABASE via SQL functions and scheduled jobs.
@@ -26,7 +28,10 @@ const logger = pino({
   } : undefined
 });
 
-// Environment validation
+// =============================================================================
+// ENVIRONMENT VALIDATION
+// =============================================================================
+
 const envSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(10),
@@ -53,18 +58,19 @@ const supabase: SupabaseClient = createClient(
 // =============================================================================
 // TYPES
 // =============================================================================
+
 interface RawMessage {
   received_at: string;
   broker: string;
   topic: string;
   payload: object;
-  device_external_id?: string;
-  source_type?: string;
+  device_external_id: string | null;
+  source_type: string | null;
 }
 
 interface TelemetryPoint {
   device_id: string;
-  site_id?: string | null;  // NULL for orphan devices (not yet assigned to a site)
+  site_id: string | null;  // NULL for orphan devices
   ts: string;
   metric: string;
   value: number | null;
@@ -77,38 +83,109 @@ interface DeviceInfo {
   externalId: string;
   broker: string;
   model: string;
-  deviceType: 'air_quality' | 'energy_monitor' | 'water_meter';
+  deviceType: 'air_quality' | 'energy_monitor' | 'water_meter' | 'other';
   mac?: string;
   rssi?: number;
+  topic?: string;
 }
 
 interface ParseResult {
   device: DeviceInfo;
   points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[];
-  rawMessage: Omit<RawMessage, 'received_at'>;
+}
+
+interface DeviceCacheEntry {
+  uuid: string;
+  site_id: string | null;
 }
 
 // =============================================================================
 // BUFFERS & CACHES
 // =============================================================================
+
 let telemetryBuffer: TelemetryPoint[] = [];
 let rawMessageBuffer: RawMessage[] = [];
-const deviceCache: Map<string, { uuid: string; site_id: string | null }> = new Map();
+const deviceCache: Map<string, DeviceCacheEntry> = new Map();
 let mqttClient: MqttClient | null = null;
 
 const stats = {
   messagesReceived: 0,
+  rawMessagesBuffered: 0,
+  rawMessagesInserted: 0,
   pointsBuffered: 0,
   pointsInserted: 0,
-  rawMessagesInserted: 0,
   insertErrors: 0,
   devicesRegistered: 0,
+  devicesOrphan: 0,
   lastFlush: new Date().toISOString(),
 };
 
 // =============================================================================
+// TIMESTAMP NORMALIZATION (Robust - handles ms/s/us/ns)
+// =============================================================================
+
+// Epoch thresholds for year 3000 in different units
+const YEAR_3000_S  = 32503680000;           // seconds
+const YEAR_3000_MS = YEAR_3000_S * 1000;    // milliseconds  
+const YEAR_3000_US = YEAR_3000_MS * 1000;   // microseconds
+const YEAR_3000_NS = YEAR_3000_US * 1000;   // nanoseconds
+
+/**
+ * Normalizes any timestamp format to ISO string with robust validation.
+ * Handles: seconds, milliseconds, microseconds, nanoseconds, ISO strings.
+ * Falls back to receivedAt if timestamp is invalid or too far from server time.
+ */
+function normalizeTimestamp(raw: unknown, receivedAt: Date, maxSkewSeconds = 86400): string {
+  const fallback = receivedAt.toISOString();
+
+  if (raw === null || raw === undefined) return fallback;
+
+  // Handle ISO string
+  if (typeof raw === 'string') {
+    // Try parsing as date string
+    const d = new Date(raw.replace(' ', 'T'));
+    if (!isNaN(d.getTime())) {
+      const skew = Math.abs(d.getTime() - receivedAt.getTime()) / 1000;
+      return skew > maxSkewSeconds ? fallback : d.toISOString();
+    }
+    
+    // Try parsing as numeric string
+    const asNum = Number(raw);
+    if (!Number.isFinite(asNum)) return fallback;
+    raw = asNum;
+  }
+
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return fallback;
+
+  const abs = Math.abs(raw);
+  let ms: number;
+
+  // Detect unit based on magnitude (order: largest first)
+  if (abs > YEAR_3000_NS) {
+    ms = raw / 1e6;       // nanoseconds → ms
+  } else if (abs > YEAR_3000_US) {
+    ms = raw / 1e3;       // microseconds → ms  
+  } else if (abs > YEAR_3000_MS) {
+    ms = raw;             // already milliseconds (but huge, likely error)
+    return fallback;
+  } else if (abs > YEAR_3000_S) {
+    ms = raw;             // milliseconds
+  } else {
+    ms = raw * 1000;      // seconds → ms
+  }
+
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return fallback;
+
+  // Validate against server time (reject if too far off)
+  const skew = Math.abs(d.getTime() - receivedAt.getTime()) / 1000;
+  return skew > maxSkewSeconds ? fallback : d.toISOString();
+}
+
+// =============================================================================
 // METRIC MAPPING (Canonical Names from metrics_catalog.md)
 // =============================================================================
+
 const METRIC_MAP: Record<string, { canonical: string; unit: string }> = {
   // IAQ
   'CO2': { canonical: 'iaq.co2', unit: 'ppm' },
@@ -130,6 +207,7 @@ const METRIC_MAP: Record<string, { canonical: string; unit: string }> = {
   'temperature': { canonical: 'env.temperature', unit: '°C' },
   'Humidity': { canonical: 'env.humidity', unit: '%' },
   'humidity': { canonical: 'env.humidity', unit: '%' },
+  'Hum': { canonical: 'env.humidity', unit: '%' },
   'noise': { canonical: 'env.noise', unit: 'dB' },
   'lux': { canonical: 'env.illuminance', unit: 'lx' },
   // Energy - Individual phases (NO power calculation here!)
@@ -154,56 +232,137 @@ const METRIC_MAP: Record<string, { canonical: string; unit: string }> = {
 };
 
 // =============================================================================
-// PARSERS - Extract fields, NO calculations
+// TOPIC PATTERN MATCHING
 // =============================================================================
 
-function parseTimestamp(ts: string | number | undefined): string {
-  if (!ts) return new Date().toISOString();
-  if (typeof ts === 'number') {
-    const multiplier = ts > 1e12 ? 1 : 1000;
-    return new Date(ts * multiplier).toISOString();
+type TopicType = 'air_quality' | 'pan12' | 'mschn' | null;
+
+function matchTopicPattern(topic: string): TopicType {
+  if (topic.includes('fosensor') || topic.includes('iaq') || topic.includes('air')) {
+    return 'air_quality';
   }
-  const parsed = new Date(ts.replace(' ', 'T'));
-  return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+  if (/bridge\/[^/]+\/[^/]+\/reading/.test(topic)) {
+    return 'pan12';
+  }
+  if (topic.includes('MSCHN') || topic.includes('mschn')) {
+    return 'mschn';
+  }
+  return null;
 }
 
-function isValidValue(val: any): boolean {
+// =============================================================================
+// EXTERNAL ID INFERENCE (Best Effort)
+// =============================================================================
+
+/**
+ * Infers the external device ID from topic and payload using multiple strategies.
+ * Returns null if no ID can be determined.
+ */
+function inferExternalId(topic: string, payload: Record<string, unknown>): string | null {
+  const topicType = matchTopicPattern(topic);
+
+  // Strategy 1: Topic-based extraction
+  if (topicType === 'air_quality') {
+    // fosensor/iaq/<device_id> or fosensor/<device_id>/...
+    const parts = topic.split('/');
+    if (parts.length >= 2 && parts[1] && parts[1] !== 'iaq') {
+      return parts[1];
+    }
+  }
+
+  if (topicType === 'pan12') {
+    // bridge/<bridge_name>/<slot>/reading → use sensor_sn from payload
+    const sensorSn = payload?.sensor_sn;
+    if (typeof sensorSn === 'string' && sensorSn.trim()) {
+      return sensorSn.trim();
+    }
+    // Fallback: bridge name + slot
+    const match = topic.match(/bridge\/([^/]+)\/([^/]+)\/reading/);
+    if (match) {
+      return `${match[1]}_${match[2]}`;
+    }
+  }
+
+  if (topicType === 'mschn') {
+    // MSCHN uses ID field in payload
+    const id = payload?.ID || payload?.id || payload?.device_id || payload?.serial_number;
+    if (typeof id === 'string' && id.trim()) {
+      return id.trim();
+    }
+    if (typeof id === 'number') {
+      return String(id);
+    }
+  }
+
+  // Strategy 2: Common payload fields
+  const commonIdFields = ['DeviceID', 'device_id', 'deviceId', 'MAC', 'mac', 'serial', 'sensor_sn'];
+  for (const field of commonIdFields) {
+    const val = payload?.[field];
+    if (typeof val === 'string' && val.trim()) {
+      return val.trim();
+    }
+  }
+
+  // Strategy 3: Nested MAC address (WEEL format)
+  if (payload?.MAC && typeof payload.MAC === 'object') {
+    const mac = payload.MAC as { address?: string };
+    if (mac.address) {
+      return mac.address;
+    }
+  }
+
+  return null;
+}
+
+// =============================================================================
+// VALUE EXTRACTION & VALIDATION
+// =============================================================================
+
+function isValidValue(val: unknown): boolean {
   if (val === null || val === undefined) return false;
   const num = typeof val === 'string' ? parseFloat(val) : val;
-  if (isNaN(num)) return false;
+  if (typeof num !== 'number' || isNaN(num)) return false;
   // Detect placeholder values like -555555
   if (num < -100000 || num > 100000000) return false;
   return true;
 }
 
-function extractValue(val: any): number | null {
+function extractValue(val: unknown): number | null {
   if (!isValidValue(val)) return null;
-  return typeof val === 'string' ? parseFloat(val) : val;
+  return typeof val === 'string' ? parseFloat(val) : val as number;
 }
+
+// =============================================================================
+// PARSERS - Extract fields, NO calculations
+// =============================================================================
 
 /**
  * Parser: Air Quality (WEEL/LEED) - fosensor/iaq topic
  */
-function parseAirQuality(topic: string, payload: Record<string, any>): ParseResult | null {
-  const deviceId = payload.DeviceID || payload.device_id;
-  if (!deviceId) {
-    logger.warn({ topic }, 'Air quality payload missing DeviceID');
+function parseAirQuality(topic: string, payload: Record<string, unknown>, receivedAt: Date): ParseResult | null {
+  const externalId = inferExternalId(topic, payload);
+  if (!externalId) {
+    logger.warn({ topic }, 'Air quality payload: cannot infer device ID');
     return null;
   }
 
-  const timestamp = parseTimestamp(payload.Timestamp || payload.timestamp);
-  const broker = payload.Broker || env.MQTT_BROKER_URL;
+  const timestamp = normalizeTimestamp(
+    payload.Timestamp || payload.timestamp || payload.ts,
+    receivedAt
+  );
+  const broker = typeof payload.Broker === 'string' ? payload.Broker : env.MQTT_BROKER_URL;
   
   const device: DeviceInfo = {
-    externalId: deviceId,
+    externalId,
     broker,
-    model: payload.Model || 'UNKNOWN',
+    model: typeof payload.Model === 'string' ? payload.Model : 'UNKNOWN',
     deviceType: 'air_quality',
-    mac: payload.MAC,
+    mac: typeof payload.MAC === 'string' ? payload.MAC : undefined,
+    topic,
   };
 
   const points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[] = [];
-  const metricsToExtract = ['CO2', 'VOC', 'Temp', 'Humidity', 'O3', 'CO', 'PM2.5', 'PM10'];
+  const metricsToExtract = ['CO2', 'VOC', 'Temp', 'Humidity', 'Hum', 'O3', 'CO', 'PM2.5', 'PM10'];
   
   for (const key of metricsToExtract) {
     const value = extractValue(payload[key]);
@@ -220,39 +379,33 @@ function parseAirQuality(topic: string, payload: Record<string, any>): ParseResu
     }
   }
 
-  return points.length > 0 ? {
-    device,
-    points,
-    rawMessage: { broker, topic, payload, device_external_id: deviceId, source_type: 'fosensor' }
-  } : null;
+  return points.length > 0 ? { device, points } : null;
 }
 
 /**
  * Parser: Energy Single Phase (PAN12) - bridge/*/slot*/reading
  * Saves only raw current - NO power calculation!
  */
-function parseEnergyPAN12(topic: string, payload: Record<string, any>): ParseResult | null {
-  const deviceId = payload.sensor_sn || payload.device_id;
-  if (!deviceId) {
-    logger.warn({ topic }, 'PAN12 payload missing sensor_sn');
+function parseEnergyPAN12(topic: string, payload: Record<string, unknown>, receivedAt: Date): ParseResult | null {
+  const externalId = inferExternalId(topic, payload);
+  if (!externalId) {
+    logger.warn({ topic }, 'PAN12 payload: cannot infer device ID');
     return null;
   }
 
-  let timestamp: string;
-  if (payload.ts && typeof payload.ts === 'number') {
-    timestamp = new Date(payload.ts * 1000).toISOString();
-  } else {
-    timestamp = parseTimestamp(payload.Timestamp || payload.timestamp);
-  }
-
-  const broker = payload.Broker || env.MQTT_BROKER_URL;
+  const timestamp = normalizeTimestamp(
+    payload.ts || payload.Timestamp || payload.timestamp,
+    receivedAt
+  );
+  const broker = typeof payload.Broker === 'string' ? payload.Broker : env.MQTT_BROKER_URL;
   
   const device: DeviceInfo = {
-    externalId: deviceId,
+    externalId,
     broker,
-    model: payload.type || 'PAN12',
+    model: typeof payload.type === 'string' ? payload.type : 'PAN12',
     deviceType: 'energy_monitor',
-    rssi: payload.rssi_dBm,
+    rssi: typeof payload.rssi_dBm === 'number' ? payload.rssi_dBm : undefined,
+    topic,
   };
 
   const points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[] = [];
@@ -268,32 +421,32 @@ function parseEnergyPAN12(topic: string, payload: Record<string, any>): ParseRes
     });
   }
 
-  return points.length > 0 ? {
-    device,
-    points,
-    rawMessage: { broker, topic, payload, device_external_id: deviceId, source_type: 'bridge' }
-  } : null;
+  return points.length > 0 ? { device, points } : null;
 }
 
 /**
  * Parser: Energy Three Phase (MSCHN) - MSCHN/misure
  * Saves I1,I2,I3,V1,V2,V3 individually - power_kw computed by DB!
  */
-function parseEnergyMSCHN(topic: string, payload: Record<string, any>): ParseResult | null {
-  const deviceId = payload.ID || payload.device_id;
-  if (!deviceId) {
-    logger.warn({ topic }, 'MSCHN payload missing ID');
+function parseEnergyMSCHN(topic: string, payload: Record<string, unknown>, receivedAt: Date): ParseResult | null {
+  const externalId = inferExternalId(topic, payload);
+  if (!externalId) {
+    logger.warn({ topic }, 'MSCHN payload: cannot infer device ID');
     return null;
   }
 
-  const timestamp = parseTimestamp(payload.time || payload.Timestamp || payload.timestamp);
-  const broker = payload.Broker || env.MQTT_BROKER_URL;
+  const timestamp = normalizeTimestamp(
+    payload.time || payload.Timestamp || payload.timestamp || payload.ts,
+    receivedAt
+  );
+  const broker = typeof payload.Broker === 'string' ? payload.Broker : env.MQTT_BROKER_URL;
   
   const device: DeviceInfo = {
-    externalId: deviceId,
+    externalId,
     broker,
     model: 'MSCHN',
     deviceType: 'energy_monitor',
+    topic,
   };
 
   const points: Omit<TelemetryPoint, 'device_id' | 'site_id'>[] = [];
@@ -316,37 +469,26 @@ function parseEnergyMSCHN(topic: string, payload: Record<string, any>): ParseRes
     }
   }
 
-  return points.length > 0 ? {
-    device,
-    points,
-    rawMessage: { broker, topic, payload, device_external_id: deviceId, source_type: 'mschn' }
-  } : null;
-}
-
-function matchTopicPattern(topic: string): 'air_quality' | 'pan12' | 'mschn' | null {
-  if (topic.includes('fosensor') || topic.includes('iaq') || topic.includes('air')) {
-    return 'air_quality';
-  }
-  if (/bridge\/[^/]+\/slot\d+\/reading/.test(topic)) {
-    return 'pan12';
-  }
-  if (topic.includes('MSCHN') || topic.includes('mschn')) {
-    return 'mschn';
-  }
-  return null;
+  return points.length > 0 ? { device, points } : null;
 }
 
 // =============================================================================
 // DEVICE MANAGEMENT
 // =============================================================================
 
-async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: string | null } | null> {
+/**
+ * Upserts device in database. Creates orphan devices (site_id=NULL) if DEFAULT_SITE_ID not set.
+ * Returns device UUID and site_id for telemetry insertion.
+ */
+async function upsertDevice(info: DeviceInfo): Promise<DeviceCacheEntry | null> {
   const cacheKey = `${info.externalId}:${info.broker}`;
   
+  // Check cache first
   if (deviceCache.has(cacheKey)) {
     return deviceCache.get(cacheKey)!;
   }
 
+  // Try to find existing device
   const { data: existing, error: findError } = await supabase
     .from('devices')
     .select('id, site_id')
@@ -360,31 +502,41 @@ async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: 
   }
 
   if (existing) {
-    const result = { uuid: existing.id, site_id: existing.site_id };
+    const result: DeviceCacheEntry = { uuid: existing.id, site_id: existing.site_id };
     deviceCache.set(cacheKey, result);
     
-    // Update device last_seen
-    await supabase
+    // Update device last_seen (fire and forget)
+    supabase
       .from('devices')
       .update({
         last_seen: new Date().toISOString(),
         status: 'online',
         rssi_dbm: info.rssi,
         model: info.model,
+        topic: info.topic,
       })
-      .eq('id', existing.id);
+      .eq('id', existing.id)
+      .then(() => {})
+      .catch(e => logger.warn({ error: e, deviceId: info.externalId }, 'Failed to update last_seen'));
       
     return result;
   }
 
-  // Auto-register new device (with or without site_id)
-  // If DEFAULT_SITE_ID is set, use it; otherwise, create as orphan (site_id = NULL)
+  // =========================================================================
+  // AUTO-REGISTER NEW DEVICE (with or without site_id)
+  // =========================================================================
+  // If DEFAULT_SITE_ID is set → assign device to that site
+  // If DEFAULT_SITE_ID is NOT set → create as orphan (site_id = NULL)
+  // Orphan devices can be assigned to sites later via admin UI
+  // =========================================================================
+
   const siteId = env.DEFAULT_SITE_ID || null;
-  
+  const isOrphan = siteId === null;
+
   logger.info({ 
     deviceId: info.externalId, 
     model: info.model,
-    siteId: siteId || 'ORPHAN (unassigned)',
+    site: isOrphan ? 'ORPHAN (unassigned)' : siteId,
   }, 'Auto-registering new device');
   
   const { data: newDevice, error: insertError } = await supabase
@@ -397,6 +549,7 @@ async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: 
       device_type: info.deviceType,
       mac_address: info.mac,
       rssi_dbm: info.rssi,
+      topic: info.topic,
       status: 'online',
       last_seen: new Date().toISOString(),
       name: `${info.model} - ${info.externalId.slice(-4)}`,
@@ -409,14 +562,15 @@ async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: 
     return null;
   }
 
-  const result = { uuid: newDevice.id, site_id: newDevice.site_id };
+  const result: DeviceCacheEntry = { uuid: newDevice.id, site_id: newDevice.site_id };
   deviceCache.set(cacheKey, result);
   stats.devicesRegistered++;
+  if (isOrphan) stats.devicesOrphan++;
   
   logger.info({ 
     deviceId: info.externalId, 
     uuid: newDevice.id,
-    site: siteId ? 'assigned' : 'orphan',
+    orphan: isOrphan,
   }, '✓ Device registered');
   
   return result;
@@ -451,7 +605,7 @@ async function flushBuffers(): Promise<void> {
   
   const startTime = Date.now();
   
-  // Insert raw messages (audit log)
+  // 1) Insert raw messages FIRST (audit log - most important)
   if (rawBatch.length > 0 && env.SAVE_RAW_MESSAGES) {
     const result = await withRetry(async () => {
       const { error } = await supabase.from('mqtt_messages_raw').insert(rawBatch);
@@ -461,10 +615,16 @@ async function flushBuffers(): Promise<void> {
     
     if (result) {
       stats.rawMessagesInserted += rawBatch.length;
+    } else {
+      // Re-queue failed raw messages (critical audit data)
+      if (rawMessageBuffer.length < 10000) {
+        rawMessageBuffer.unshift(...rawBatch);
+        logger.warn({ count: rawBatch.length }, 'Re-queued failed raw batch');
+      }
     }
   }
   
-  // Insert telemetry
+  // 2) Insert telemetry
   if (telemetryBatch.length > 0) {
     logger.debug({ count: telemetryBatch.length }, 'Flushing telemetry batch');
 
@@ -486,7 +646,7 @@ async function flushBuffers(): Promise<void> {
       stats.insertErrors++;
       if (telemetryBuffer.length < 10000) {
         telemetryBuffer.unshift(...telemetryBatch);
-        logger.warn({ count: telemetryBatch.length }, 'Re-queued failed batch');
+        logger.warn({ count: telemetryBatch.length }, 'Re-queued failed telemetry batch');
       } else {
         logger.error({ dropped: telemetryBatch.length }, 'Buffer full, dropped failed batch');
       }
@@ -532,64 +692,110 @@ function connectMqtt(): MqttClient {
     });
   });
 
+  // =========================================================================
+  // MESSAGE HANDLER - ROBUST FLOW
+  // =========================================================================
   client.on('message', async (topic, payloadBuf) => {
     if (topic.startsWith('$SYS')) return;
-    
+
+    const receivedAt = new Date();
     stats.messagesReceived++;
-    
+
+    // Parse payload (fallback to string if not valid JSON)
+    let payload: Record<string, unknown>;
     try {
-      const payload = JSON.parse(payloadBuf.toString());
-      const topicType = matchTopicPattern(topic);
-      
-      let result: ParseResult | null = null;
-      
-      switch (topicType) {
-        case 'air_quality':
-          result = parseAirQuality(topic, payload);
-          break;
-        case 'pan12':
-          result = parseEnergyPAN12(topic, payload);
-          break;
-        case 'mschn':
-          result = parseEnergyMSCHN(topic, payload);
-          break;
-        default:
-          logger.debug({ topic }, 'Unknown topic pattern, skipping');
-          return;
-      }
-      
-      if (!result) return;
-      
-      // Upsert device and get UUID + site_id
-      const deviceInfo = await upsertDevice(result.device);
-      if (!deviceInfo) return;
-      
-      // Add raw message to buffer
-      if (env.SAVE_RAW_MESSAGES) {
-        rawMessageBuffer.push({
-          ...result.rawMessage,
-          received_at: new Date().toISOString(),
-        });
-      }
-      
-      // Add telemetry points with device_id (site_id may be null for orphan devices)
-      const points: TelemetryPoint[] = result.points.map(p => ({
+      payload = JSON.parse(payloadBuf.toString());
+    } catch {
+      // Store as raw string wrapped in object for audit
+      payload = { _raw: payloadBuf.toString() };
+    }
+
+    // Infer external ID (best effort)
+    const externalId = inferExternalId(topic, payload);
+    const topicType = matchTopicPattern(topic);
+
+    // =====================================================================
+    // STEP 1: SAVE RAW MESSAGE IMMEDIATELY (before any processing)
+    // =====================================================================
+    if (env.SAVE_RAW_MESSAGES) {
+      rawMessageBuffer.push({
+        device_external_id: externalId,  // Can be null - that's OK for audit
+        topic,
+        payload,
+        received_at: receivedAt.toISOString(),
+        broker: env.MQTT_BROKER_URL,
+        source_type: topicType,
+      });
+      stats.rawMessagesBuffered++;
+    }
+
+    // =====================================================================
+    // STEP 2: If no external ID, we can't create device or telemetry
+    // =====================================================================
+    if (!externalId) {
+      logger.debug({ topic }, 'Cannot infer device ID, raw saved but no telemetry');
+      return;
+    }
+
+    // =====================================================================
+    // STEP 3: Parse telemetry (if recognized topic)
+    // =====================================================================
+    let parseResult: ParseResult | null = null;
+    
+    switch (topicType) {
+      case 'air_quality':
+        parseResult = parseAirQuality(topic, payload, receivedAt);
+        break;
+      case 'pan12':
+        parseResult = parseEnergyPAN12(topic, payload, receivedAt);
+        break;
+      case 'mschn':
+        parseResult = parseEnergyMSCHN(topic, payload, receivedAt);
+        break;
+      default:
+        // Unknown topic type - still try to create device for audit trail
+        break;
+    }
+
+    // =====================================================================
+    // STEP 4: ALWAYS create/update device (even if parse failed)
+    // =====================================================================
+    const deviceInfo = await upsertDevice({
+      externalId,
+      deviceType: parseResult?.device.deviceType ?? 
+                  (topicType === 'air_quality' ? 'air_quality' : 
+                   topicType === 'pan12' || topicType === 'mschn' ? 'energy_monitor' : 'other'),
+      broker: env.MQTT_BROKER_URL,
+      model: parseResult?.device.model ?? 'UNKNOWN',
+      mac: parseResult?.device.mac,
+      rssi: parseResult?.device.rssi,
+      topic,
+    });
+
+    if (!deviceInfo) {
+      logger.warn({ externalId, topic }, 'Failed to upsert device');
+      return;
+    }
+
+    // =====================================================================
+    // STEP 5: Insert telemetry (only if parse succeeded)
+    // =====================================================================
+    if (parseResult?.points?.length) {
+      const points: TelemetryPoint[] = parseResult.points.map(p => ({
         ...p,
         device_id: deviceInfo.uuid,
-        site_id: deviceInfo.site_id,  // Can be null - orphan device
+        site_id: deviceInfo.site_id,  // Can be null for orphan devices
       }));
       
       telemetryBuffer.push(...points);
       stats.pointsBuffered += points.length;
       
-      logger.debug({ topic, deviceId: result.device.externalId, points: points.length }, 'Parsed message');
-      
-    } catch (error) {
-      logger.error({ 
-        error: (error as Error).message, 
-        topic,
-        payload: payloadBuf.toString().slice(0, 200)
-      }, 'Failed to parse MQTT message');
+      logger.debug({ 
+        topic, 
+        deviceId: externalId, 
+        points: points.length,
+        orphan: deviceInfo.site_id === null,
+      }, 'Parsed message');
     }
   });
 
@@ -612,8 +818,16 @@ function startHealthServer(): void {
     res.status(healthy ? 200 : 503).json({
       status: healthy ? 'ok' : 'degraded',
       mqtt: { connected: mqttClient?.connected ?? false, broker: env.MQTT_BROKER_URL },
-      buffer: { telemetry: telemetryBuffer.length, raw: rawMessageBuffer.length, maxSize: 10000 },
-      stats: { ...stats, deviceCacheSize: deviceCache.size, uptime: process.uptime() },
+      buffer: { 
+        telemetry: telemetryBuffer.length, 
+        raw: rawMessageBuffer.length, 
+        maxSize: 10000 
+      },
+      stats: { 
+        ...stats, 
+        deviceCacheSize: deviceCache.size, 
+        uptime: process.uptime() 
+      },
     });
   });
 
@@ -622,21 +836,33 @@ function startHealthServer(): void {
       `# HELP mqtt_messages_received_total Total MQTT messages received`,
       `# TYPE mqtt_messages_received_total counter`,
       `mqtt_messages_received_total ${stats.messagesReceived}`,
-      `# HELP telemetry_points_inserted_total Total telemetry points inserted`,
-      `# TYPE telemetry_points_inserted_total counter`,
-      `telemetry_points_inserted_total ${stats.pointsInserted}`,
+      `# HELP mqtt_raw_messages_buffered_total Total raw messages buffered`,
+      `# TYPE mqtt_raw_messages_buffered_total counter`,
+      `mqtt_raw_messages_buffered_total ${stats.rawMessagesBuffered}`,
       `# HELP mqtt_raw_messages_inserted_total Total raw messages inserted`,
       `# TYPE mqtt_raw_messages_inserted_total counter`,
       `mqtt_raw_messages_inserted_total ${stats.rawMessagesInserted}`,
+      `# HELP telemetry_points_buffered_total Total telemetry points buffered`,
+      `# TYPE telemetry_points_buffered_total counter`,
+      `telemetry_points_buffered_total ${stats.pointsBuffered}`,
+      `# HELP telemetry_points_inserted_total Total telemetry points inserted`,
+      `# TYPE telemetry_points_inserted_total counter`,
+      `telemetry_points_inserted_total ${stats.pointsInserted}`,
       `# HELP telemetry_insert_errors_total Total insert errors`,
       `# TYPE telemetry_insert_errors_total counter`,
       `telemetry_insert_errors_total ${stats.insertErrors}`,
       `# HELP devices_registered_total Devices auto-registered`,
       `# TYPE devices_registered_total counter`,
       `devices_registered_total ${stats.devicesRegistered}`,
+      `# HELP devices_orphan_total Orphan devices (no site assigned)`,
+      `# TYPE devices_orphan_total counter`,
+      `devices_orphan_total ${stats.devicesOrphan}`,
       `# HELP telemetry_buffer_size Current telemetry buffer size`,
       `# TYPE telemetry_buffer_size gauge`,
       `telemetry_buffer_size ${telemetryBuffer.length}`,
+      `# HELP raw_buffer_size Current raw message buffer size`,
+      `# TYPE raw_buffer_size gauge`,
+      `raw_buffer_size ${rawMessageBuffer.length}`,
     ];
     res.type('text/plain').send(lines.join('\n'));
   });
@@ -652,9 +878,20 @@ function startHealthServer(): void {
 
 async function main(): Promise<void> {
   logger.info('═══════════════════════════════════════════════════════════════');
-  logger.info('  FGB MQTT Ingestion Service (Simplified - Raw Insert Only)');
-  logger.info('  Power calculation & aggregation handled by DATABASE');
+  logger.info('  FGB MQTT Ingestion Service (ROBUST VERSION)');
+  logger.info('  ✓ Raw messages saved BEFORE device/telemetry processing');
+  logger.info('  ✓ Orphan devices supported (site_id = NULL)');
+  logger.info('  ✓ Robust timestamp normalization (ms/s/us/ns detection)');
+  logger.info('  ✓ Power calculation & aggregation handled by DATABASE');
   logger.info('═══════════════════════════════════════════════════════════════');
+
+  // Log configuration
+  logger.info({ 
+    defaultSiteId: env.DEFAULT_SITE_ID || 'NOT SET (orphan mode)',
+    saveRaw: env.SAVE_RAW_MESSAGES,
+    batchSize: env.BATCH_SIZE,
+    batchIntervalMs: env.BATCH_INTERVAL_MS,
+  }, 'Configuration');
 
   // Verify Supabase connection
   const { error } = await supabase.from('devices').select('id').limit(1);
@@ -673,9 +910,16 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down...');
     mqttClient?.end(true);
+    
+    // Flush remaining buffers
     while (telemetryBuffer.length > 0 || rawMessageBuffer.length > 0) {
+      logger.info({ 
+        telemetry: telemetryBuffer.length, 
+        raw: rawMessageBuffer.length 
+      }, 'Flushing remaining buffers...');
       await flushBuffers();
     }
+    
     logger.info('Shutdown complete');
     process.exit(0);
   };

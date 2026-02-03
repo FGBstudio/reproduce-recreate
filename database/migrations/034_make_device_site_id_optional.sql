@@ -16,15 +16,25 @@
 
 ALTER TABLE devices ALTER COLUMN site_id DROP NOT NULL;
 
+-- =============================================================================
+-- 2. CHANGE FK CONSTRAINT: Use SET NULL instead of CASCADE
+-- =============================================================================
+-- CASCADE would delete devices and all their telemetry if a site is deleted.
+-- SET NULL preserves devices and data, just orphans them for reassignment.
+
+ALTER TABLE devices DROP CONSTRAINT IF EXISTS devices_site_id_fkey;
+
+ALTER TABLE devices 
+    ADD CONSTRAINT devices_site_id_fkey 
+    FOREIGN KEY (site_id) REFERENCES sites(id) 
+    ON DELETE SET NULL;
+
 COMMENT ON COLUMN devices.site_id IS 
-    'Site this device belongs to. NULL = unassigned/orphan device awaiting assignment via admin UI.';
+    'Site this device belongs to. NULL = unassigned/orphan device awaiting assignment via admin UI. Uses SET NULL on site deletion to preserve device and telemetry data.';
 
 -- =============================================================================
--- 2. CREATE "Inbox" site for orphan devices (optional, for UI convenience)
+-- 3. CREATE "Inbox" site for orphan devices (optional, for UI convenience)
 -- =============================================================================
-
--- This provides a default "bucket" where unassigned devices can be viewed
--- Note: We don't force devices into this site, but it's available for UI purposes
 
 INSERT INTO sites (id, name, address, latitude, longitude, brand_id, metadata)
 SELECT 
@@ -39,13 +49,6 @@ WHERE NOT EXISTS (
 );
 
 -- =============================================================================
--- 3. UPDATE RLS POLICIES: Handle NULL site_id
--- =============================================================================
-
--- Users should be able to see orphan devices (for assignment purposes)
--- No changes needed since existing policy uses (true) for SELECT
-
--- =============================================================================
 -- 4. CREATE VIEW for orphan devices (admin convenience)
 -- =============================================================================
 
@@ -53,7 +56,7 @@ CREATE OR REPLACE VIEW devices_orphan AS
 SELECT 
     d.*,
     tl.ts as last_data_ts,
-    COUNT(DISTINCT t.id) as telemetry_count
+    COUNT(DISTINCT t.id) as telemetry_count_24h
 FROM devices d
 LEFT JOIN telemetry_latest tl ON tl.device_id = d.id
 LEFT JOIN telemetry t ON t.device_id = d.id AND t.ts > NOW() - INTERVAL '24 hours'
@@ -99,7 +102,7 @@ COMMENT ON FUNCTION assign_device_to_site IS
     'Assigns an orphan device to a site. Triggers automatic telemetry site_id sync.';
 
 -- =============================================================================
--- 6. UPDATE EXISTING INDEXES for NULL site_id queries
+-- 6. INDEX for NULL site_id queries (admin orphan device listing)
 -- =============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_devices_site_id_null ON devices(id) WHERE site_id IS NULL;
@@ -112,3 +115,4 @@ CREATE INDEX IF NOT EXISTS idx_devices_site_id_null ON devices(id) WHERE site_id
 -- 2. Orphan devices (site_id = NULL) will collect telemetry normally
 -- 3. Admins can use the devices_orphan view or API to assign devices to sites
 -- 4. When a device is assigned, the trigger updates telemetry_latest.site_id automatically
+-- 5. Deleting a site will SET NULL on device.site_id (not cascade delete)
