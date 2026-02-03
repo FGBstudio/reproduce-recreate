@@ -17,6 +17,7 @@ const Index = () => {
   const [selectedHolding, setSelectedHolding] = useState<string | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [autoOpenProject, setAutoOpenProject] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // User scope detection for role-based routing
   const { clientRole, holdingId, brandId, siteId, isLoading: scopeLoading } = useUserScope();
@@ -186,10 +187,11 @@ const Index = () => {
         activeFilters={activeFilters}
         selectedHolding={selectedHolding}
         selectedBrand={selectedBrand}
+        searchQuery={searchQuery}
       />
 
       {/* UI Overlay */}
-      <Header />
+      <Header onSearch={setSearchQuery} />
       
       {/* Brand/Holding Overlay - shows when brand or holding is selected */}
       <BrandOverlay 
