@@ -25,7 +25,7 @@ CREATE TYPE device_status AS ENUM (
 -- Devices table
 CREATE TABLE IF NOT EXISTS devices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    site_id UUID NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+    site_id UUID REFERENCES sites(id) ON DELETE SET NULL,
     device_id TEXT NOT NULL,           -- External device identifier (e.g., "******0076")
     mac_address TEXT,                   -- MAC address if available
     model TEXT,                         -- Device model (e.g., WEEL, LEED, PAN12)
