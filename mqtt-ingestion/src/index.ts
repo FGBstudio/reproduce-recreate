@@ -64,7 +64,7 @@ interface RawMessage {
 
 interface TelemetryPoint {
   device_id: string;
-  site_id?: string;
+  site_id?: string | null;  // NULL for orphan devices (not yet assigned to a site)
   ts: string;
   metric: string;
   value: number | null;
@@ -93,7 +93,7 @@ interface ParseResult {
 // =============================================================================
 let telemetryBuffer: TelemetryPoint[] = [];
 let rawMessageBuffer: RawMessage[] = [];
-const deviceCache: Map<string, { uuid: string; site_id: string }> = new Map();
+const deviceCache: Map<string, { uuid: string; site_id: string | null }> = new Map();
 let mqttClient: MqttClient | null = null;
 
 const stats = {
@@ -340,7 +340,7 @@ function matchTopicPattern(topic: string): 'air_quality' | 'pan12' | 'mschn' | n
 // DEVICE MANAGEMENT
 // =============================================================================
 
-async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: string } | null> {
+async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: string | null } | null> {
   const cacheKey = `${info.externalId}:${info.broker}`;
   
   if (deviceCache.has(cacheKey)) {
@@ -377,19 +377,20 @@ async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: 
     return result;
   }
 
-  // Auto-register new device
-  if (!env.DEFAULT_SITE_ID) {
-    logger.warn({ deviceId: info.externalId, broker: info.broker }, 
-      'Device not found and DEFAULT_SITE_ID not set');
-    return null;
-  }
-
-  logger.info({ deviceId: info.externalId, model: info.model }, 'Auto-registering new device');
+  // Auto-register new device (with or without site_id)
+  // If DEFAULT_SITE_ID is set, use it; otherwise, create as orphan (site_id = NULL)
+  const siteId = env.DEFAULT_SITE_ID || null;
+  
+  logger.info({ 
+    deviceId: info.externalId, 
+    model: info.model,
+    siteId: siteId || 'ORPHAN (unassigned)',
+  }, 'Auto-registering new device');
   
   const { data: newDevice, error: insertError } = await supabase
     .from('devices')
     .insert({
-      site_id: env.DEFAULT_SITE_ID,
+      site_id: siteId,  // NULL is valid - device awaits assignment via admin UI
       device_id: info.externalId,
       broker: info.broker,
       model: info.model,
@@ -411,6 +412,12 @@ async function upsertDevice(info: DeviceInfo): Promise<{ uuid: string; site_id: 
   const result = { uuid: newDevice.id, site_id: newDevice.site_id };
   deviceCache.set(cacheKey, result);
   stats.devicesRegistered++;
+  
+  logger.info({ 
+    deviceId: info.externalId, 
+    uuid: newDevice.id,
+    site: siteId ? 'assigned' : 'orphan',
+  }, '✓ Device registered');
   
   return result;
 }
@@ -565,11 +572,11 @@ function connectMqtt(): MqttClient {
         });
       }
       
-      // Add telemetry points with device_id and site_id
+      // Add telemetry points with device_id (site_id may be null for orphan devices)
       const points: TelemetryPoint[] = result.points.map(p => ({
         ...p,
         device_id: deviceInfo.uuid,
-        site_id: deviceInfo.site_id,
+        site_id: deviceInfo.site_id,  // Can be null - orphan device
       }));
       
       telemetryBuffer.push(...points);
