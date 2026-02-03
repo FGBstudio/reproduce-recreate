@@ -12,9 +12,10 @@ interface MapViewProps {
   activeFilters: MonitoringType[];
   selectedHolding: string | null;
   selectedBrand: string | null;
+  searchQuery?: string;
 }
 
-const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHolding, selectedBrand }: MapViewProps) => {
+const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHolding, selectedBrand, searchQuery = "" }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -23,8 +24,10 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
   const { projects, isLoading, error, refetch } = useAllProjects();
   const { brands } = useAllBrands();
 
-  // Filter projects by region, monitoring type, holding and brand
+  // Filter projects by region, monitoring type, holding, brand and search query
   const visibleProjects = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    
     return projects.filter(p => {
       const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
       const monitoringMatch = activeFilters.length === 0 || 
@@ -40,9 +43,14 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       // Brand filter
       const brandMatch = !selectedBrand || p.brandId === selectedBrand;
       
-      return regionMatch && monitoringMatch && holdingMatch && brandMatch;
+      // Search filter - match project name or address
+      const searchMatch = !query || 
+        p.name.toLowerCase().includes(query) || 
+        p.address.toLowerCase().includes(query);
+      
+      return regionMatch && monitoringMatch && holdingMatch && brandMatch && searchMatch;
     });
-  }, [projects, brands, currentRegion, activeFilters, selectedHolding, selectedBrand]);
+  }, [projects, brands, currentRegion, activeFilters, selectedHolding, selectedBrand, searchQuery]);
 
   // Initialize map
   useEffect(() => {
