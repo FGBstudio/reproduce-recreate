@@ -136,7 +136,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderP
             
             {/* Search Results Dropdown */}
             {filteredProjects.length > 0 && (
-              <div className="absolute top-full mt-2 w-72 md:w-80 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-border/50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full mt-2 w-72 md:w-80 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-transparent overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 <ScrollArea className="max-h-64">
                   <div className="py-1">
                     {filteredProjects.map((project) => (
