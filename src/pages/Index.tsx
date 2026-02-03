@@ -191,7 +191,7 @@ const Index = () => {
       />
 
       {/* UI Overlay */}
-      <Header onSearch={setSearchQuery} />
+      <Header onSearch={setSearchQuery} onProjectSelect={handleProjectSelect} />
       
       {/* Brand/Holding Overlay - shows when brand or holding is selected */}
       <BrandOverlay 
