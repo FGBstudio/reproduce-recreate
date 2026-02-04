@@ -352,9 +352,9 @@ DECLARE
 BEGIN
     -- For each message with 'Device not found' error, create the device and reprocess
     FOR v_row IN 
-        SELECT DISTINCT device_external_id, topic, broker, 
+        SELECT device_external_id, topic, broker, 
                MAX(received_at) as last_seen,
-               MAX(payload) as sample_payload
+               (array_agg(payload ORDER BY received_at DESC))[1] as sample_payload
         FROM mqtt_messages_raw
         WHERE (error_message LIKE '%Device not found%' OR processed = FALSE)
           AND device_external_id IS NOT NULL
