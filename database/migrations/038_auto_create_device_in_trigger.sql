@@ -362,28 +362,34 @@ BEGIN
         GROUP BY device_external_id, topic, broker
         LIMIT 500
     LOOP
-        -- Infer device type
-        v_device_type := infer_device_type_from_topic(v_row.topic);
+        -- Check if device already exists (handles both old and new constraints)
+        SELECT id INTO v_device_uuid FROM devices WHERE device_id = v_row.device_external_id LIMIT 1;
         
-        -- Insert device if not exists
-        INSERT INTO devices (
-            device_id, name, model, device_type, site_id, 
-            topic, broker, status, last_seen, metadata
-        ) VALUES (
-            v_row.device_external_id,
-            'Auto: ' || v_row.device_external_id,
-            COALESCE(v_row.sample_payload->>'Model', v_row.sample_payload->>'model', 'Unknown'),
-            v_device_type,
-            NULL,
-            v_row.topic,
-            COALESCE(v_row.broker, 'mqtt://unknown'),
-            'offline'::device_status,
-            v_row.last_seen,
-            '{"auto_created": true, "source": "migration_038_backfill"}'::jsonb
-        )
-        ON CONFLICT (device_id, broker) DO UPDATE SET
-            last_seen = GREATEST(devices.last_seen, EXCLUDED.last_seen)
-        RETURNING id, site_id INTO v_device_uuid, v_site_uuid;
+        IF v_device_uuid IS NOT NULL THEN
+            -- Device exists, just update last_seen
+            UPDATE devices SET last_seen = GREATEST(last_seen, v_row.last_seen) WHERE id = v_device_uuid;
+        ELSE
+            -- Infer device type
+            v_device_type := infer_device_type_from_topic(v_row.topic);
+            
+            -- Insert new device
+            INSERT INTO devices (
+                device_id, name, model, device_type, site_id, 
+                topic, broker, status, last_seen, metadata
+            ) VALUES (
+                v_row.device_external_id,
+                'Auto: ' || v_row.device_external_id,
+                COALESCE(v_row.sample_payload->>'Model', v_row.sample_payload->>'model', 'Unknown'),
+                v_device_type,
+                NULL,
+                v_row.topic,
+                COALESCE(v_row.broker, 'mqtt://unknown'),
+                'offline'::device_status,
+                v_row.last_seen,
+                '{"auto_created": true, "source": "migration_038_backfill"}'::jsonb
+            )
+            ON CONFLICT DO NOTHING;
+        END IF;
         
         v_processed := v_processed + 1;
     END LOOP;
