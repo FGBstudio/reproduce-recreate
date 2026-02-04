@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Montserrat", "sans-serif"],
+        sans: ["Futura", "sans-serif"],
         serif: ["Georgia", "serif"],
       },
       colors: {
