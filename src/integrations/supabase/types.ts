@@ -1925,6 +1925,14 @@ export type Database = {
           processed_count: number
         }[]
       }
+      reprocess_unprocessed_mqtt_messages: {
+        Args: { p_limit?: number }
+        Returns: {
+          error_count: number
+          processed_count: number
+          telemetry_created: number
+        }[]
+      }
       run_daily_jobs: {
         Args: never
         Returns: {
