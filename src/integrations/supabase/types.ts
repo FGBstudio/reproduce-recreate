@@ -1821,6 +1821,10 @@ export type Database = {
           power_w: number
         }[]
       }
+      extract_mqtt_timestamp: {
+        Args: { p_fallback: string; p_payload: Json }
+        Returns: string
+      }
       get_panel_config: {
         Args: { p_device_id: string; p_site_id: string }
         Returns: {
@@ -1901,6 +1905,7 @@ export type Database = {
           records_created: number
         }[]
       }
+      normalize_device_id: { Args: { p_device_id: string }; Returns: string }
       purge_old_telemetry: {
         Args: {
           p_hourly_retention_days?: number
