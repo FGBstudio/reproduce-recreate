@@ -1,0 +1,2101 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  public: {
+    Tables: {
+      brands: {
+        Row: {
+          created_at: string | null
+          holding_id: string
+          id: string
+          logo_url: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          holding_id: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          holding_id?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brands_holding_id_fkey"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "holdings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certification_milestones: {
+        Row: {
+          category: string
+          certification_id: string
+          completed_date: string | null
+          created_at: string | null
+          due_date: string | null
+          evidence_url: string | null
+          id: string
+          max_score: number | null
+          notes: string | null
+          requirement: string
+          score: number | null
+          status: string | null
+        }
+        Insert: {
+          category: string
+          certification_id: string
+          completed_date?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          evidence_url?: string | null
+          id?: string
+          max_score?: number | null
+          notes?: string | null
+          requirement: string
+          score?: number | null
+          status?: string | null
+        }
+        Update: {
+          category?: string
+          certification_id?: string
+          completed_date?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          evidence_url?: string | null
+          id?: string
+          max_score?: number | null
+          notes?: string | null
+          requirement?: string
+          score?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certifications: {
+        Row: {
+          categories: Json | null
+          cert_type: string
+          created_at: string | null
+          expiry_date: string | null
+          id: string
+          issued_date: string | null
+          level: string | null
+          score: number | null
+          site_id: string
+          status: string | null
+          target_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          categories?: Json | null
+          cert_type: string
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          issued_date?: string | null
+          level?: string | null
+          score?: number | null
+          site_id: string
+          status?: string | null
+          target_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          categories?: Json | null
+          cert_type?: string
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          issued_date?: string | null
+          level?: string | null
+          score?: number | null
+          site_id?: string
+          status?: string | null
+          target_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certifications_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_provisioning_map: {
+        Row: {
+          created_at: string | null
+          device_external_id: string
+          id: number
+          mac_address: string | null
+          project_name: string | null
+          site_uuid: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_external_id: string
+          id?: number
+          mac_address?: string | null
+          project_name?: string | null
+          site_uuid?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_external_id?: string
+          id?: number
+          mac_address?: string | null
+          project_name?: string | null
+          site_uuid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_provisioning_map_site_uuid_fkey"
+            columns: ["site_uuid"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      devices: {
+        Row: {
+          broker: string | null
+          category: string | null
+          circuit_name: string | null
+          created_at: string | null
+          device_id: string
+          device_type: Database["public"]["Enums"]["device_type"]
+          firmware_version: string | null
+          id: string
+          last_seen: string | null
+          location: string | null
+          mac_address: string | null
+          metadata: Json | null
+          model: string | null
+          name: string | null
+          rssi_dbm: number | null
+          site_id: string | null
+          status: Database["public"]["Enums"]["device_status"] | null
+          topic: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          broker?: string | null
+          category?: string | null
+          circuit_name?: string | null
+          created_at?: string | null
+          device_id: string
+          device_type: Database["public"]["Enums"]["device_type"]
+          firmware_version?: string | null
+          id?: string
+          last_seen?: string | null
+          location?: string | null
+          mac_address?: string | null
+          metadata?: Json | null
+          model?: string | null
+          name?: string | null
+          rssi_dbm?: number | null
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["device_status"] | null
+          topic?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          broker?: string | null
+          category?: string | null
+          circuit_name?: string | null
+          created_at?: string | null
+          device_id?: string
+          device_type?: Database["public"]["Enums"]["device_type"]
+          firmware_version?: string | null
+          id?: string
+          last_seen?: string | null
+          location?: string | null
+          mac_address?: string | null
+          metadata?: Json | null
+          model?: string | null
+          name?: string | null
+          rssi_dbm?: number | null
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["device_status"] | null
+          topic?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devices_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      energy_daily: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          sample_count: number | null
+          site_id: string | null
+          ts_day: string
+          unit: string | null
+          value_avg: number | null
+          value_max: number | null
+          value_min: number | null
+          value_sum: number | null
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_day: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_day?: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "energy_daily_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "energy_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      energy_hourly: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          sample_count: number | null
+          site_id: string | null
+          ts_hour: string
+          unit: string | null
+          value_avg: number | null
+          value_max: number | null
+          value_min: number | null
+          value_sum: number | null
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_hour: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_hour?: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "energy_hourly_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "energy_hourly_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      energy_latest: {
+        Row: {
+          device_id: string
+          metric: string
+          quality: string | null
+          site_id: string | null
+          ts: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          device_id: string
+          metric: string
+          quality?: string | null
+          site_id?: string | null
+          ts: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          device_id?: string
+          metric?: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "energy_latest_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "energy_latest_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      energy_site_config: {
+        Row: {
+          historical_total_device_id: string
+          live_device_ids: string[]
+          merge_policy: string
+          site_id: string
+          timezone: string
+        }
+        Insert: {
+          historical_total_device_id: string
+          live_device_ids: string[]
+          merge_policy?: string
+          site_id: string
+          timezone?: string
+        }
+        Update: {
+          historical_total_device_id?: string
+          live_device_ids?: string[]
+          merge_policy?: string
+          site_id?: string
+          timezone?: string
+        }
+        Relationships: []
+      }
+      energy_site_daily: {
+        Row: {
+          computed_at: string
+          day_local: string
+          day_utc: string
+          devices_count: number | null
+          metric: string
+          points: number | null
+          site_id: string
+          source: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          computed_at?: string
+          day_local: string
+          day_utc: string
+          devices_count?: number | null
+          metric: string
+          points?: number | null
+          site_id: string
+          source: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          computed_at?: string
+          day_local?: string
+          day_utc?: string
+          devices_count?: number | null
+          metric?: string
+          points?: number | null
+          site_id?: string
+          source?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
+      energy_site_device_allowlist: {
+        Row: {
+          device_id: string
+          site_id: string
+        }
+        Insert: {
+          device_id: string
+          site_id: string
+        }
+        Update: {
+          device_id?: string
+          site_id?: string
+        }
+        Relationships: []
+      }
+      energy_site_hourly: {
+        Row: {
+          computed_at: string
+          devices_count: number | null
+          hour_local: string
+          hour_utc: string
+          metric: string
+          points: number | null
+          site_id: string
+          source: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          computed_at?: string
+          devices_count?: number | null
+          hour_local: string
+          hour_utc: string
+          metric: string
+          points?: number | null
+          site_id: string
+          source: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          computed_at?: string
+          devices_count?: number | null
+          hour_local?: string
+          hour_utc?: string
+          metric?: string
+          points?: number | null
+          site_id?: string
+          source?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
+      energy_telemetry: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          quality: string | null
+          site_id: string | null
+          ts: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "energy_telemetry_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "energy_telemetry_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      energy_telemetry_swapfix_backup: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          quality: string | null
+          site_id: string | null
+          ts: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
+      energy_telemetry_ts_backup: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          quality: string | null
+          site_id: string | null
+          ts: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          acknowledged_by: string | null
+          device_id: string | null
+          event_type: string
+          id: string
+          message: string | null
+          metadata: Json | null
+          metric: string | null
+          resolved_by: string | null
+          severity: Database["public"]["Enums"]["event_severity"]
+          site_id: string | null
+          status: Database["public"]["Enums"]["event_status"]
+          threshold: number | null
+          title: string
+          ts_acknowledged: string | null
+          ts_created: string
+          ts_resolved: string | null
+          value: number | null
+        }
+        Insert: {
+          acknowledged_by?: string | null
+          device_id?: string | null
+          event_type: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          metric?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["event_severity"]
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["event_status"]
+          threshold?: number | null
+          title: string
+          ts_acknowledged?: string | null
+          ts_created?: string
+          ts_resolved?: string | null
+          value?: number | null
+        }
+        Update: {
+          acknowledged_by?: string | null
+          device_id?: string | null
+          event_type?: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          metric?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["event_severity"]
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["event_status"]
+          threshold?: number | null
+          title?: string
+          ts_acknowledged?: string | null
+          ts_created?: string
+          ts_resolved?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_energy: {
+        Row: {
+          circuit_name: string | null
+          created_at: string | null
+          id: number
+          metric_type: string | null
+          project_name: string | null
+          site_id: string | null
+          timestamp: string
+          unit: string | null
+          value: number | null
+        }
+        Insert: {
+          circuit_name?: string | null
+          created_at?: string | null
+          id?: number
+          metric_type?: string | null
+          project_name?: string | null
+          site_id?: string | null
+          timestamp: string
+          unit?: string | null
+          value?: number | null
+        }
+        Update: {
+          circuit_name?: string | null
+          created_at?: string | null
+          id?: number
+          metric_type?: string | null
+          project_name?: string | null
+          site_id?: string | null
+          timestamp?: string
+          unit?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_energy_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      holdings: {
+        Row: {
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      mqtt_messages_raw: {
+        Row: {
+          broker: string
+          device_external_id: string | null
+          error_message: string | null
+          id: number
+          payload: Json
+          processed: boolean | null
+          received_at: string
+          source_type: string | null
+          topic: string
+        }
+        Insert: {
+          broker: string
+          device_external_id?: string | null
+          error_message?: string | null
+          id?: number
+          payload: Json
+          processed?: boolean | null
+          received_at?: string
+          source_type?: string | null
+          topic: string
+        }
+        Update: {
+          broker?: string
+          device_external_id?: string | null
+          error_message?: string | null
+          id?: number
+          payload?: Json
+          processed?: boolean | null
+          received_at?: string
+          source_type?: string | null
+          topic?: string
+        }
+        Relationships: []
+      }
+      panel_config: {
+        Row: {
+          created_at: string | null
+          device_id: string | null
+          id: string
+          metadata: Json | null
+          name: string | null
+          notes: string | null
+          pf_default: number | null
+          pf_l1: number | null
+          pf_l2: number | null
+          pf_l3: number | null
+          site_id: string
+          updated_at: string | null
+          use_measured_pf: boolean | null
+          use_measured_voltage: boolean | null
+          vll_default: number | null
+          vln_default: number | null
+          wiring_type: Database["public"]["Enums"]["wiring_type"]
+        }
+        Insert: {
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          notes?: string | null
+          pf_default?: number | null
+          pf_l1?: number | null
+          pf_l2?: number | null
+          pf_l3?: number | null
+          site_id: string
+          updated_at?: string | null
+          use_measured_pf?: boolean | null
+          use_measured_voltage?: boolean | null
+          vll_default?: number | null
+          vln_default?: number | null
+          wiring_type?: Database["public"]["Enums"]["wiring_type"]
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          notes?: string | null
+          pf_default?: number | null
+          pf_l1?: number | null
+          pf_l2?: number | null
+          pf_l3?: number | null
+          site_id?: string
+          updated_at?: string | null
+          use_measured_pf?: boolean | null
+          use_measured_voltage?: boolean | null
+          vll_default?: number | null
+          vln_default?: number | null
+          wiring_type?: Database["public"]["Enums"]["wiring_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "panel_config_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "panel_config_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string | null
+          display_name: string | null
+          email: string
+          first_name: string | null
+          id: string
+          job_title: string | null
+          last_name: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email: string
+          first_name?: string | null
+          id: string
+          job_title?: string | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email?: string
+          first_name?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      site_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          site_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          site_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          site_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_config_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: true
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_device_config: {
+        Row: {
+          created_at: string
+          device_id: string
+          included: boolean
+          priority: number
+          role: string
+          site_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          included?: boolean
+          priority?: number
+          role: string
+          site_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          included?: boolean
+          priority?: number
+          role?: string
+          site_id?: string
+        }
+        Relationships: []
+      }
+      site_kpis: {
+        Row: {
+          alerts_critical: number | null
+          alerts_warning: number | null
+          aq_co2_avg: number | null
+          aq_co2_max: number | null
+          aq_humidity_avg: number | null
+          aq_index: string | null
+          aq_pm10_avg: number | null
+          aq_pm25_avg: number | null
+          aq_temp_avg: number | null
+          aq_voc_avg: number | null
+          devices_critical: number | null
+          devices_online: number | null
+          devices_total: number | null
+          energy_cost_usd: number | null
+          energy_hvac_kwh: number | null
+          energy_intensity_kwh_m2: number | null
+          energy_lighting_kwh: number | null
+          energy_plugs_kwh: number | null
+          energy_total_kwh: number | null
+          id: string
+          period_end: string | null
+          period_start: string | null
+          period_type: string | null
+          site_id: string
+          ts_computed: string
+          water_consumption_liters: number | null
+          water_leak_count: number | null
+          water_target_liters: number | null
+        }
+        Insert: {
+          alerts_critical?: number | null
+          alerts_warning?: number | null
+          aq_co2_avg?: number | null
+          aq_co2_max?: number | null
+          aq_humidity_avg?: number | null
+          aq_index?: string | null
+          aq_pm10_avg?: number | null
+          aq_pm25_avg?: number | null
+          aq_temp_avg?: number | null
+          aq_voc_avg?: number | null
+          devices_critical?: number | null
+          devices_online?: number | null
+          devices_total?: number | null
+          energy_cost_usd?: number | null
+          energy_hvac_kwh?: number | null
+          energy_intensity_kwh_m2?: number | null
+          energy_lighting_kwh?: number | null
+          energy_plugs_kwh?: number | null
+          energy_total_kwh?: number | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          period_type?: string | null
+          site_id: string
+          ts_computed?: string
+          water_consumption_liters?: number | null
+          water_leak_count?: number | null
+          water_target_liters?: number | null
+        }
+        Update: {
+          alerts_critical?: number | null
+          alerts_warning?: number | null
+          aq_co2_avg?: number | null
+          aq_co2_max?: number | null
+          aq_humidity_avg?: number | null
+          aq_index?: string | null
+          aq_pm10_avg?: number | null
+          aq_pm25_avg?: number | null
+          aq_temp_avg?: number | null
+          aq_voc_avg?: number | null
+          devices_critical?: number | null
+          devices_online?: number | null
+          devices_total?: number | null
+          energy_cost_usd?: number | null
+          energy_hvac_kwh?: number | null
+          energy_intensity_kwh_m2?: number | null
+          energy_lighting_kwh?: number | null
+          energy_plugs_kwh?: number | null
+          energy_total_kwh?: number | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          period_type?: string | null
+          site_id?: string
+          ts_computed?: string
+          water_consumption_liters?: number | null
+          water_leak_count?: number | null
+          water_target_liters?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_kpis_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sites: {
+        Row: {
+          address: string | null
+          area_m2: number | null
+          brand_id: string
+          city: string | null
+          country: string | null
+          created_at: string | null
+          energy_price_kwh: number | null
+          id: string
+          image_url: string | null
+          lat: number | null
+          lng: number | null
+          monitoring_types: string[] | null
+          name: string
+          region: string | null
+          timezone: string | null
+          typology: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          area_m2?: number | null
+          brand_id: string
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          energy_price_kwh?: number | null
+          id?: string
+          image_url?: string | null
+          lat?: number | null
+          lng?: number | null
+          monitoring_types?: string[] | null
+          name: string
+          region?: string | null
+          timezone?: string | null
+          typology?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          area_m2?: number | null
+          brand_id?: string
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          energy_price_kwh?: number | null
+          id?: string
+          image_url?: string | null
+          lat?: number | null
+          lng?: number | null
+          monitoring_types?: string[] | null
+          name?: string
+          region?: string | null
+          timezone?: string | null
+          typology?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telemetry: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          quality: string | null
+          raw_payload: Json | null
+          site_id: string | null
+          ts: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          quality?: string | null
+          raw_payload?: Json | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          quality?: string | null
+          raw_payload?: Json | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telemetry_daily: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          sample_count: number | null
+          site_id: string | null
+          ts_day: string
+          unit: string | null
+          value_avg: number | null
+          value_max: number | null
+          value_min: number | null
+          value_sum: number | null
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_day: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_day?: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_daily_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telemetry_hourly: {
+        Row: {
+          device_id: string
+          id: string
+          labels: Json | null
+          metric: string
+          sample_count: number | null
+          site_id: string | null
+          ts_hour: string
+          unit: string | null
+          value_avg: number | null
+          value_max: number | null
+          value_min: number | null
+          value_sum: number | null
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          labels?: Json | null
+          metric: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_hour: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          labels?: Json | null
+          metric?: string
+          sample_count?: number | null
+          site_id?: string | null
+          ts_hour?: string
+          unit?: string | null
+          value_avg?: number | null
+          value_max?: number | null
+          value_min?: number | null
+          value_sum?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_hourly_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_hourly_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telemetry_latest: {
+        Row: {
+          device_id: string
+          labels: Json | null
+          metric: string
+          quality: string | null
+          site_id: string | null
+          ts: string
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          device_id: string
+          labels?: Json | null
+          metric: string
+          quality?: string | null
+          site_id?: string | null
+          ts: string
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          device_id?: string
+          labels?: Json | null
+          metric?: string
+          quality?: string | null
+          site_id?: string | null
+          ts?: string
+          unit?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_latest_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_latest_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_memberships: {
+        Row: {
+          brand_id: string | null
+          created_at: string | null
+          holding_id: string | null
+          id: string
+          permission: Database["public"]["Enums"]["permission_level"]
+          role: string | null
+          scope_id: string
+          scope_type: Database["public"]["Enums"]["scope_type"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string | null
+          holding_id?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["permission_level"]
+          role?: string | null
+          scope_id: string
+          scope_type: Database["public"]["Enums"]["scope_type"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string | null
+          holding_id?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["permission_level"]
+          role?: string | null
+          scope_id?: string
+          scope_type?: Database["public"]["Enums"]["scope_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_memberships_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_memberships_holding_id_fkey"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "holdings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      water_leaks: {
+        Row: {
+          id: string
+          leak_rate: number | null
+          metadata: Json | null
+          notes: string | null
+          site_id: string
+          status: string
+          ts_detected: string
+          ts_resolved: string | null
+          zone_id: string
+        }
+        Insert: {
+          id?: string
+          leak_rate?: number | null
+          metadata?: Json | null
+          notes?: string | null
+          site_id: string
+          status?: string
+          ts_detected?: string
+          ts_resolved?: string | null
+          zone_id: string
+        }
+        Update: {
+          id?: string
+          leak_rate?: number | null
+          metadata?: Json | null
+          notes?: string | null
+          site_id?: string
+          status?: string
+          ts_detected?: string
+          ts_resolved?: string | null
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_leaks_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "water_leaks_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "water_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      water_zones: {
+        Row: {
+          created_at: string | null
+          flow_device_id: string | null
+          id: string
+          name: string
+          site_id: string
+          zone_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          flow_device_id?: string | null
+          id?: string
+          name: string
+          site_id: string
+          zone_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          flow_device_id?: string | null
+          id?: string
+          name?: string
+          site_id?: string
+          zone_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_zones_flow_device_id_fkey"
+            columns: ["flow_device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "water_zones_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      energy_phase_latest: {
+        Row: {
+          current_a: number | null
+          device_id: string | null
+          i1: number | null
+          i2: number | null
+          i3: number | null
+          pf1: number | null
+          pf2: number | null
+          pf3: number | null
+          site_id: string | null
+          ts: string | null
+          v1: number | null
+          v2: number | null
+          v3: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      energy_power_computed: {
+        Row: {
+          current_a: number | null
+          device_id: string | null
+          i1: number | null
+          i2: number | null
+          i3: number | null
+          phase_type: string | null
+          power_source: string | null
+          power_w: number | null
+          site_id: string | null
+          ts: string | null
+          v1: number | null
+          v2: number | null
+          v3: number | null
+          wiring_type: Database["public"]["Enums"]["wiring_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      energy_site_daily_stitched: {
+        Row: {
+          computed_at: string | null
+          day_local: string | null
+          day_utc: string | null
+          devices_count: number | null
+          metric: string | null
+          points: number | null
+          site_id: string | null
+          source: string | null
+          unit: string | null
+          value: number | null
+        }
+        Relationships: []
+      }
+      site_energy_daily: {
+        Row: {
+          metric: string | null
+          sample_count: number | null
+          site_id: string | null
+          ts_day: string | null
+          value_avg: number | null
+          value_max: number | null
+          value_min: number | null
+          value_sum: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "energy_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_energy_hourly: {
+        Row: {
+          metric: string | null
+          sample_count: number | null
+          site_id: string | null
+          ts_hour: string | null
+          value_avg: number | null
+          value_max: number | null
+          value_min: number | null
+          value_sum: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "energy_hourly_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Functions: {
+      aggregate_daily: { Args: { p_date?: string }; Returns: number }
+      aggregate_energy_daily: {
+        Args: { p_date?: string }
+        Returns: {
+          metrics_aggregated: number
+          rows_inserted: number
+          rows_processed: number
+        }[]
+      }
+      aggregate_energy_hourly: {
+        Args: { p_hour?: string }
+        Returns: {
+          metrics_aggregated: number
+          rows_inserted: number
+          rows_processed: number
+        }[]
+      }
+      aggregate_hourly: { Args: { p_hour?: string }; Returns: number }
+      aggregate_telemetry_daily: {
+        Args: { p_date?: string }
+        Returns: {
+          metrics_aggregated: number
+          rows_inserted: number
+          rows_processed: number
+        }[]
+      }
+      aggregate_telemetry_hourly: {
+        Args: { p_hour?: string }
+        Returns: {
+          metrics_aggregated: number
+          rows_inserted: number
+          rows_processed: number
+        }[]
+      }
+      can_access_brand: {
+        Args: { _brand_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_access_holding: {
+        Args: { _holding_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_access_site: {
+        Args: { _site_id: string; _user_id: string }
+        Returns: boolean
+      }
+      compute_historical_power: {
+        Args: { p_device_id: string; p_end: string; p_start: string }
+        Returns: {
+          phase_type: string
+          power_source: string
+          power_w: number
+          ts: string
+        }[]
+      }
+      compute_power_w:
+        | {
+            Args: {
+              p_i1: number
+              p_i2: number
+              p_i3: number
+              p_pf_default?: number
+              p_pf1?: number
+              p_pf2?: number
+              p_pf3?: number
+              p_v1: number
+              p_v2: number
+              p_v3: number
+              p_vll_default?: number
+              p_vln_default?: number
+              p_wiring_type?: string
+            }
+            Returns: {
+              calc_method: string
+              power_source: string
+              power_w: number
+            }[]
+          }
+        | {
+            Args: {
+              p_i1: number
+              p_i2: number
+              p_i3: number
+              p_pf_default?: number
+              p_pf1?: number
+              p_pf2?: number
+              p_pf3?: number
+              p_v1: number
+              p_v2: number
+              p_v3: number
+              p_vll_default?: number
+              p_vln_default?: number
+              p_wiring_type?: Database["public"]["Enums"]["wiring_type"]
+            }
+            Returns: {
+              calc_method: string
+              power_source: string
+              power_w: number
+            }[]
+          }
+      compute_power_w_single: {
+        Args: {
+          p_current_a: number
+          p_pf?: number
+          p_pf_default?: number
+          p_vln_default?: number
+          p_voltage_v?: number
+        }
+        Returns: {
+          power_source: string
+          power_w: number
+        }[]
+      }
+      get_panel_config: {
+        Args: { p_device_id: string; p_site_id: string }
+        Returns: {
+          pf_default: number
+          use_measured_pf: boolean
+          use_measured_voltage: boolean
+          vll_default: number
+          vln_default: number
+          wiring_type: string
+        }[]
+      }
+      get_site_energy_summary: {
+        Args: { p_end: string; p_site_id: string; p_start: string }
+        Returns: {
+          avg_power_kw: number
+          hvac_kwh: number
+          lighting_kwh: number
+          peak_power_kw: number
+          plugs_kwh: number
+          total_kwh: number
+        }[]
+      }
+      get_telemetry_timeseries: {
+        Args: {
+          p_bucket?: string
+          p_device_ids: string[]
+          p_end: string
+          p_metrics: string[]
+          p_start: string
+        }
+        Returns: {
+          device_id: string
+          metric: string
+          sample_count: number
+          ts: string
+          value: number
+          value_max: number
+          value_min: number
+        }[]
+      }
+      get_time_bucket: {
+        Args: { p_end: string; p_start: string }
+        Returns: string
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_scope_access: {
+        Args: {
+          _required_permission?: Database["public"]["Enums"]["permission_level"]
+          _scope_id: string
+          _scope_type: Database["public"]["Enums"]["scope_type"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      infer_device_type_from_topic: {
+        Args: { p_topic: string }
+        Returns: Database["public"]["Enums"]["device_type"]
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_valid_measurement: { Args: { val: number }; Returns: boolean }
+      mark_stale_devices_offline: {
+        Args: { p_threshold_minutes?: number }
+        Returns: number
+      }
+      materialize_power_metrics: {
+        Args: { p_since?: string }
+        Returns: {
+          records_created: number
+        }[]
+      }
+      purge_old_telemetry: {
+        Args: {
+          p_hourly_retention_days?: number
+          p_mqtt_raw_retention_days?: number
+          p_raw_retention_days?: number
+        }
+        Returns: {
+          hourly_deleted: number
+          mqtt_raw_deleted: number
+          raw_deleted: number
+        }[]
+      }
+      reprocess_failed_mqtt_messages: {
+        Args: { p_limit?: number }
+        Returns: {
+          error_count: number
+          processed_count: number
+        }[]
+      }
+      run_daily_jobs: {
+        Args: never
+        Returns: {
+          details: Json
+          job_name: string
+          status: string
+        }[]
+      }
+      run_scheduled_jobs: {
+        Args: never
+        Returns: {
+          details: Json
+          job_name: string
+          status: string
+        }[]
+      }
+    }
+    Enums: {
+      app_role: "viewer" | "editor" | "admin" | "superuser"
+      device_status: "online" | "offline" | "warning" | "error" | "maintenance"
+      device_type:
+        | "air_quality"
+        | "energy_monitor"
+        | "water_meter"
+        | "occupancy"
+        | "hvac"
+        | "lighting"
+        | "other"
+      event_severity: "info" | "warning" | "critical"
+      event_status: "active" | "acknowledged" | "resolved"
+      permission_level: "view" | "edit" | "admin"
+      scope_type: "project" | "site" | "brand" | "holding" | "region"
+      wiring_type: "WYE" | "DELTA"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["viewer", "editor", "admin", "superuser"],
+      device_status: ["online", "offline", "warning", "error", "maintenance"],
+      device_type: [
+        "air_quality",
+        "energy_monitor",
+        "water_meter",
+        "occupancy",
+        "hvac",
+        "lighting",
+        "other",
+      ],
+      event_severity: ["info", "warning", "critical"],
+      event_status: ["active", "acknowledged", "resolved"],
+      permission_level: ["view", "edit", "admin"],
+      scope_type: ["project", "site", "brand", "holding", "region"],
+      wiring_type: ["WYE", "DELTA"],
+    },
+  },
+} as const
