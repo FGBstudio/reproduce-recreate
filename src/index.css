@@ -1,4 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+/* IMPORTAZIONE FONT FUTURA (FILE LOCALI) */
+
+/* 1. Futura Book (Normale) - Peso 400 */
+@font-face {
+  font-family: 'Futura';
+  src: url('/fonts/FuturaLT-Book.woff2') format('woff2'),
+       url('/fonts/FuturaLT-Book.woff') format('woff'),
+       url('/fonts/FuturaLT-Book.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 2. Futura Book Oblique (Corsivo) - Peso 400 + Italic */
+@font-face {
+  font-family: 'Futura';
+  src: url('/fonts/FuturaLT-BookOblique.woff') format('woff'),
+       url('/fonts/FuturaLT-BookOblique.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* 3. Futura Bold Oblique (Grassetto Corsivo) - Peso 700 + Italic */
+@font-face {
+  font-family: 'Futura';
+  src: url('/fonts/FuturaLT-BoldOblique.woff2') format('woff2'),
+       url('/fonts/FuturaLT-BoldOblique.woff') format('woff'),
+       url('/fonts/FuturaLT-BoldOblique.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Nota: Manca il file per il Grassetto Normale (Bold), quindi il browser cercherà di adattare il Book */
 
 @tailwind base;
 @tailwind components;
@@ -101,7 +135,8 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Montserrat', sans-serif;
+    /* --- MODIFICATO: Usa Futura invece di Montserrat --- */
+    font-family: 'Futura', sans-serif;
     overflow: hidden;
   }
 }
