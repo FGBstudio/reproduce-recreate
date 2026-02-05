@@ -155,6 +155,39 @@ export type Database = {
           },
         ]
       }
+      device_migration_log: {
+        Row: {
+          id: number
+          mac_device_id: string | null
+          mac_site_id: string | null
+          migrated_at: string | null
+          new_device_id: string
+          old_device_id: string
+          serial: string | null
+          serial_site_id: string | null
+        }
+        Insert: {
+          id?: number
+          mac_device_id?: string | null
+          mac_site_id?: string | null
+          migrated_at?: string | null
+          new_device_id: string
+          old_device_id: string
+          serial?: string | null
+          serial_site_id?: string | null
+        }
+        Update: {
+          id?: number
+          mac_device_id?: string | null
+          mac_site_id?: string | null
+          migrated_at?: string | null
+          new_device_id?: string
+          old_device_id?: string
+          serial?: string | null
+          serial_site_id?: string | null
+        }
+        Relationships: []
+      }
       device_provisioning_map: {
         Row: {
           created_at: string | null
@@ -189,6 +222,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      device_serial_mac_map: {
+        Row: {
+          mac: string
+          serial: string
+        }
+        Insert: {
+          mac: string
+          serial: string
+        }
+        Update: {
+          mac?: string
+          serial?: string
+        }
+        Relationships: []
+      }
+      device_serial_mac_map_persistent: {
+        Row: {
+          mac: string
+          serial: string
+        }
+        Insert: {
+          mac: string
+          serial: string
+        }
+        Update: {
+          mac?: string
+          serial?: string
+        }
+        Relationships: []
       }
       devices: {
         Row: {
