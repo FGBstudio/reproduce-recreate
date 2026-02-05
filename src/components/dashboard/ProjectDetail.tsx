@@ -2072,6 +2072,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return { backgroundColor: '#f0f2f5' };
   }, [project, brand]);
 
+  if (!project) return null;
+
   const prevSlide = () => {
     if (currentSlide > 0) {
       setCurrentSlide(prev => prev - 1);
