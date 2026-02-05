@@ -2072,6 +2072,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   if (!project) return null;
 
+  const nextSlide = () => {
+    if (currentSlide < totalSlides - 1) {
+      setCurrentSlide(prev => prev + 1);
+    }
+  };
+
   const prevSlide = () => {
     if (currentSlide > 0) {
       setCurrentSlide(prev => prev - 1);
