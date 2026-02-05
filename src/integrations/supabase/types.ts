@@ -1580,6 +1580,41 @@ export type Database = {
           },
         ]
       }
+      weather_data: {
+        Row: {
+          created_at: string | null
+          humidity_percent: number | null
+          id: string
+          site_id: string | null
+          temperature_c: number | null
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string | null
+          humidity_percent?: number | null
+          id?: string
+          site_id?: string | null
+          temperature_c?: number | null
+          timestamp: string
+        }
+        Update: {
+          created_at?: string | null
+          humidity_percent?: number | null
+          id?: string
+          site_id?: string | null
+          temperature_c?: number | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weather_data_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       energy_phase_latest: {
