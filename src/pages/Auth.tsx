@@ -344,62 +344,62 @@ const Auth = () => {
       </div>
 
       {/* Right Panel - Hero Image/Animation */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-gradient-to-br from-[#006367] to-[#004d51]">
+      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-[#006367]">
         {/* Animated Background Elements */}
         <div className="absolute inset-0">
-          {/* Grid Pattern */}
+          
+          {/* --- MODIFICA QUI: Pattern Logo --- */}
           <div 
-            className="absolute inset-0 opacity-[0.03]"
+            className="absolute inset-0 opacity-10" 
             style={{
-              backgroundImage: `
-                linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
-                linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
-              `,
-              backgroundSize: '60px 60px'
+              backgroundImage: "url('/white.png')", // Pesca direttamente da /public/white.png
+              backgroundSize: '80px', // Dimensione del logo nel pattern (modifica a piacere)
+              backgroundRepeat: 'repeat',
+              backgroundPosition: '0 0'
             }}
           />
           
-          {/* Floating Orbs */}
-          <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
-          <div className="absolute bottom-1/3 left-1/3 w-96 h-96 bg-fgb-accent/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+          {/* Floating Orbs (Opzionale: puoi lasciarli per dare profondità o rimuoverli) */}
+          <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-white/10 rounded-full blur-[100px] animate-pulse" />
+          <div className="absolute bottom-1/3 left-1/3 w-96 h-96 bg-white/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
+        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12 text-white">
           {/* Badge */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Live Monitoring</span>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8 backdrop-blur-sm">
+            <Zap className="w-4 h-4 text-white" />
+            <span className="text-sm font-medium text-white">Live Monitoring</span>
           </div>
 
           {/* Main Text */}
-          <h2 className="text-4xl lg:text-5xl font-bold text-foreground text-center mb-6 max-w-lg">
+          <h2 className="text-4xl lg:text-5xl font-bold text-white text-center mb-6 max-w-lg">
             Il futuro della gestione energetica.
           </h2>
           
-          <p className="text-lg text-muted-foreground text-center max-w-md mb-12">
+          <p className="text-lg text-white/80 text-center max-w-md mb-12">
             Ottimizza le prestazioni, riduci gli sprechi e prendi decisioni basate sui dati con la nostra suite analitica.
           </p>
 
           {/* Feature Icons */}
           <div className="flex items-center gap-6">
             <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <BarChart3 className="w-7 h-7 text-primary" />
+              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
+                <BarChart3 className="w-7 h-7 text-white" />
               </div>
-              <span className="text-xs text-muted-foreground">Analytics</span>
+              <span className="text-xs text-white/70">Analytics</span>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-2xl bg-fgb-accent/10 border border-fgb-accent/20 flex items-center justify-center">
-                <Zap className="w-7 h-7 text-fgb-accent" />
+              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
+                <Zap className="w-7 h-7 text-white" />
               </div>
-              <span className="text-xs text-muted-foreground">Energy</span>
+              <span className="text-xs text-white/70">Energy</span>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                <Shield className="w-7 h-7 text-green-500" />
+              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
+                <Shield className="w-7 h-7 text-white" />
               </div>
-              <span className="text-xs text-muted-foreground">Security</span>
+              <span className="text-xs text-white/70">Security</span>
             </div>
           </div>
         </div>
