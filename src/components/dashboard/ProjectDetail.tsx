@@ -2191,13 +2191,34 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   return (
     <div className="fixed inset-0 z-50 animate-slide-up bg-background">
       
-      {/* MODIFICA 4: Background Gestito Dinamicamente (Pattern o Immagine) */}
-      <div 
-        className="absolute inset-0 transition-all duration-500"
-        style={backgroundStyle}
-      >
-        {/* Overlay gradient sempre presente per leggibilità */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/40 to-white/70" />
+      {/* --- GESTIONE SFONDO --- */}
+      <div className="absolute inset-0 overflow-hidden bg-[#f5f6fa]"> {/* 1. LAYER BASE: Colore Sfondo Chiaro */}
+        
+        {project.img ? (
+          /* CASO A: C'è un'immagine del progetto -> La mostriamo a tutto schermo */
+          <div 
+            className="absolute inset-0 transition-all duration-500 bg-cover bg-center"
+            style={{ backgroundImage: `url(${project.img})` }}
+          >
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px]" />
+          </div>
+        ) : brand?.logo ? (
+          /* CASO B: Niente immagine -> Usiamo il LOGO come PATTERN sopra il colore */
+          <div 
+            className="absolute inset-0" 
+            style={{
+              backgroundImage: `url(${brand.logo})`, // Carica il logo originale
+              backgroundRepeat: 'repeat',            // Lo ripete a mosaico
+              backgroundSize: '100px',               // Dimensione di ogni logo
+              backgroundPosition: 'center',
+              opacity: 0.05                          // TRASPARENZA: 0.05 = 5% (molto delicato)
+                                                     // Se lo vuoi più visibile metti 0.1 (10%) o 0.2 (20%)
+            }}
+          />
+        ) : (
+          /* CASO C: Fallback totale (niente di niente) */
+          <div className="absolute inset-0 bg-gray-100" />
+        )}
       </div>
 
       {/* Header */}
