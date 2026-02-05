@@ -344,7 +344,7 @@ const Auth = () => {
       </div>
 
       {/* Right Panel - Hero Image/Animation */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-gradient-to-br from-background via-muted/30 to-primary/10">
+      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-gradient-to-br from-[#006367] to-[#004d51]">
         {/* Animated Background Elements */}
         <div className="absolute inset-0">
           {/* Grid Pattern */}
