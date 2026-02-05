@@ -2043,7 +2043,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const backgroundStyle = useMemo(() => {
     if (!project) return {};
 
-    // 1. Immagine Custom del progetto (Priorità massima)
+    // 1. Immagine Custom (o Unsplash legacy)
     if (project.img) {
       return {
         backgroundImage: `url(${project.img})`,
@@ -2052,18 +2052,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       };
     }
 
-    // 2. Pattern del Brand
+    // 2. Pattern del Brand (Fallback Smart)
     if (brand?.logo) {
       return {
-        // Colore di sfondo base (grigio chiarissimo per contrasto)
-        backgroundColor: '#f0f2f5', 
-        
-        // CORREZIONE: Ho rimosso il linear-gradient bianco che copriva il logo.
-        // Ora carichiamo il logo "nudo e crudo". 
-        // Sarà il div overlay nel tuo HTML (quello con from-white/70) a renderlo tenue.
-        backgroundImage: `url(${brand.logo})`,
+        // Overlay scuro leggero + pattern logo ripetuto
+        backgroundImage: `
+          linear-gradient(rgba(240,240,240,0.92), rgba(240,240,240,0.85)), 
+          url(${brand.logo})
+        `,
         backgroundRepeat: 'repeat',
-        backgroundSize: '120px', // Dimensione del pattern
+        backgroundSize: '120px', // Dimensione logo nel pattern
         backgroundPosition: 'center',
       };
     }
