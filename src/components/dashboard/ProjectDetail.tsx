@@ -2043,7 +2043,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const backgroundStyle = useMemo(() => {
     if (!project) return {};
 
-    // 1. Immagine Custom (o Unsplash legacy)
+    // 1. Immagine Custom del progetto (Priorità massima)
     if (project.img) {
       return {
         backgroundImage: `url(${project.img})`,
@@ -2052,16 +2052,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       };
     }
 
-    // 2. Pattern del Brand (Fallback Smart)
+    // 2. Pattern del Brand
+    // Se il logo è scuro (come mi hai detto), qui lo mostriamo direttamente.
     if (brand?.logo) {
       return {
-        // Overlay scuro leggero + pattern logo ripetuto
-        backgroundImage: `
-          linear-gradient(rgba(240,240,240,0.92), rgba(240,240,240,0.85)), 
-          url(${brand.logo})
-        `,
+        // Sfondo grigio chiarissimo
+        backgroundColor: '#f0f2f5', 
+        
+        // Carichiamo SOLO il logo, senza gradienti che lo coprono
+        backgroundImage: `url(${brand.logo})`,
+        
+        // Impostazioni pattern
         backgroundRepeat: 'repeat',
-        backgroundSize: '120px', // Dimensione logo nel pattern
+        backgroundSize: '120px', // Puoi cambiare questo numero per fare i loghi più grandi/piccoli
         backgroundPosition: 'center',
       };
     }
