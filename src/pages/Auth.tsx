@@ -134,7 +134,7 @@ const Auth = () => {
       {/* Left Panel - Auth Form */}
       <div className="w-full lg:w-[480px] flex flex-col min-h-screen bg-[#006367] text-white">
         {/* Header */}
-        <header className="p-6 flex items-center justify-between">
+        <header className="p-10 flex items-center justify-between">
           <div className="flex items-center">
             <img 
               src={brandImg} 
