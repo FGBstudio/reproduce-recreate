@@ -1949,6 +1949,13 @@ export type Database = {
           status: string
         }[]
       }
+      sync_telemetry_to_energy: {
+        Args: { p_since?: string }
+        Returns: {
+          rows_skipped: number
+          rows_synced: number
+        }[]
+      }
     }
     Enums: {
       app_role: "viewer" | "editor" | "admin" | "superuser"
