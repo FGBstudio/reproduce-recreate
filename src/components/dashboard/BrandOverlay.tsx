@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-// Import hooks per i dati reali
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
+import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
 } from "recharts";
-import { BarChart3, ChevronUp, ChevronDown } from "lucide-react";
+import { BarChart3, ChevronUp, ChevronDown, Wifi, WifiOff } from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 
 interface BrandOverlayProps {
@@ -15,17 +15,14 @@ interface BrandOverlayProps {
 }
 
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
-  // Stato per la visibilità su Mobile (default chiuso)
   const [chartsExpanded, setChartsExpanded] = useState(false);
-  // Stato per la visibilità su Desktop (default aperto)
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
 
-  // 1. RECUPERIAMO LE LISTE COMPLETE (REALI + DEMO)
   const { brands } = useAllBrands();
   const { holdings } = useAllHoldings();
-  const { projects, isLoading } = useAllProjects();
+  const { projects, isLoading: projectsLoading } = useAllProjects();
 
-  // 2. TROVIAMO L'ENTITÀ SELEZIONATA NELLE LISTE REALI
+  // Find selected entity
   const brand = useMemo(() => 
     selectedBrand ? brands.find(b => b.id === selectedBrand) : null
   , [selectedBrand, brands]);
@@ -34,7 +31,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
     selectedHolding ? holdings.find(h => h.id === selectedHolding) : null
   , [selectedHolding, holdings]);
   
-  // Get filtered projects
+  // Get filtered projects for this brand/holding
   const filteredProjects = useMemo(() => {
     if (selectedBrand) {
       return projects.filter(p => p.brandId === selectedBrand);
@@ -47,58 +44,111 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
     return [];
   }, [selectedBrand, selectedHolding, projects, brands]);
 
-  // Chart data setup
+  // Fetch REAL aggregated data for sites with active modules
+  const {
+    sitesWithEnergy,
+    sitesWithAir,
+    totals,
+    isLoading: telemetryLoading,
+    hasRealData,
+  } = useAggregatedSiteData(filteredProjects);
+
+  // Build chart data from REAL data only
   const energyComparisonData = useMemo(() => {
-    return filteredProjects.map(p => ({
-      name: p.name.split(' ').slice(-1)[0],
-      fullName: p.name,
-      hvac: p.data.hvac,
-      light: p.data.light,
-      total: p.data.total
+    return sitesWithEnergy.map(site => ({
+      name: site.siteName.split(' ').slice(-1)[0],
+      fullName: site.siteName,
+      hvac: site.energy.hvac ?? 0,
+      light: site.energy.lighting ?? 0,
+      total: site.energy.total ?? 0,
     }));
-  }, [filteredProjects]);
+  }, [sitesWithEnergy]);
 
   const airQualityComparisonData = useMemo(() => {
-    return filteredProjects.map(p => ({
-      name: p.name.split(' ').slice(-1)[0],
-      fullName: p.name,
-      co2: p.data.co2,
-      temp: p.data.temp,
-      alerts: p.data.alerts
+    return sitesWithAir.map(site => ({
+      name: site.siteName.split(' ').slice(-1)[0],
+      fullName: site.siteName,
+      co2: site.air.co2 ?? 0,
+      temp: site.air.temperature ?? 0,
     }));
-  }, [filteredProjects]);
+  }, [sitesWithAir]);
+
+  // Radar chart combines sites that have both energy AND air data
+  const sitesWithBothData = useMemo(() => {
+    return sitesWithEnergy.filter(site => 
+      sitesWithAir.some(airSite => airSite.siteId === site.siteId)
+    ).map(site => {
+      const airData = sitesWithAir.find(s => s.siteId === site.siteId);
+      return {
+        ...site,
+        air: airData?.air ?? { co2: null, temperature: null, humidity: null, voc: null },
+      };
+    });
+  }, [sitesWithEnergy, sitesWithAir]);
 
   const radarData = useMemo(() => {
-    if (filteredProjects.length === 0) return [];
-    const maxEnergy = Math.max(...filteredProjects.map(p => p.data.total)) || 100;
-    const maxCo2 = Math.max(...filteredProjects.map(p => p.data.co2)) || 1000;
+    if (sitesWithBothData.length === 0) return [];
+    
+    const maxEnergy = Math.max(...sitesWithBothData.map(s => s.energy.total || 1)) || 100;
+    const maxCo2 = Math.max(...sitesWithBothData.map(s => s.air.co2 || 1)) || 1000;
     
     return [
-      { metric: 'Energy', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.total / maxEnergy) * 100])) },
-      { metric: 'HVAC', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.hvac / (maxEnergy * 0.6)) * 100])) },
-      { metric: 'Lighting', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.light / (maxEnergy * 0.5)) * 100])) },
-      { metric: 'CO₂', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.co2 / maxCo2) * 100])) },
-      { metric: 'Temp', ...Object.fromEntries(filteredProjects.map(p => [p.name.split(' ').slice(-1)[0], (p.data.temp / 30) * 100])) },
+      { 
+        metric: 'Energy', 
+        ...Object.fromEntries(
+          sitesWithBothData.map(s => [
+            s.siteName.split(' ').slice(-1)[0], 
+            ((s.energy.total || 0) / maxEnergy) * 100
+          ])
+        ) 
+      },
+      { 
+        metric: 'HVAC', 
+        ...Object.fromEntries(
+          sitesWithBothData.map(s => [
+            s.siteName.split(' ').slice(-1)[0], 
+            ((s.energy.hvac || 0) / (maxEnergy * 0.6)) * 100
+          ])
+        ) 
+      },
+      { 
+        metric: 'Lighting', 
+        ...Object.fromEntries(
+          sitesWithBothData.map(s => [
+            s.siteName.split(' ').slice(-1)[0], 
+            ((s.energy.lighting || 0) / (maxEnergy * 0.5)) * 100
+          ])
+        ) 
+      },
+      { 
+        metric: 'CO₂', 
+        ...Object.fromEntries(
+          sitesWithBothData.map(s => [
+            s.siteName.split(' ').slice(-1)[0], 
+            ((s.air.co2 || 0) / maxCo2) * 100
+          ])
+        ) 
+      },
+      { 
+        metric: 'Temp', 
+        ...Object.fromEntries(
+          sitesWithBothData.map(s => [
+            s.siteName.split(' ').slice(-1)[0], 
+            ((s.air.temperature || 0) / 30) * 100
+          ])
+        ) 
+      },
     ];
-  }, [filteredProjects]);
+  }, [sitesWithBothData]);
 
-  const stats = useMemo(() => {
-    const totalEnergy = filteredProjects.reduce((sum, p) => sum + p.data.total, 0);
-    const avgCo2 = filteredProjects.length 
-      ? Math.round(filteredProjects.reduce((sum, p) => sum + p.data.co2, 0) / filteredProjects.length)
-      : 0;
-    const totalAlerts = filteredProjects.reduce((sum, p) => sum + p.data.alerts, 0);
-    
-    return { projectCount: filteredProjects.length, totalEnergy, avgCo2, totalAlerts };
-  }, [filteredProjects]);
+  const storeNames = sitesWithBothData.map(s => s.siteName.split(' ').slice(-1)[0]);
+  const chartColors = ['hsl(188, 100%, 35%)', 'hsl(338, 50%, 50%)', 'hsl(43, 70%, 50%)', 'hsl(160, 60%, 40%)', 'hsl(280, 50%, 50%)'];
   
   const displayEntity = brand || holding;
-  const storeNames = filteredProjects.map(p => p.name.split(' ').slice(-1)[0]);
-  const chartColors = ['hsl(188, 100%, 35%)', 'hsl(338, 50%, 50%)', 'hsl(43, 70%, 50%)', 'hsl(160, 60%, 40%)', 'hsl(280, 50%, 50%)'];
   
   if (!displayEntity || !visible) return null;
 
-  if (isLoading) {
+  if (projectsLoading || telemetryLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
         <BrandOverlaySkeleton />
@@ -106,7 +156,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
     );
   }
 
-  const showCharts = filteredProjects.length > 1;
+  // Show charts only if we have real data from multiple sites
+  const showEnergyChart = energyComparisonData.length > 1;
+  const showAirChart = airQualityComparisonData.length > 1;
+  const showRadarChart = sitesWithBothData.length > 1;
+  const showAnyChart = showEnergyChart || showAirChart || showRadarChart;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
@@ -116,7 +170,6 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         <div className="flex flex-col items-center gap-3 md:gap-6">
           {/* Brand/Holding Logo Container */}
           <div className="relative pointer-events-auto">
-            {/* Glow effect bianco diffuso */}
             <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-110" />
             
             <div className="glass-panel relative rounded-2xl md:rounded-3xl p-4 md:p-6">
@@ -142,31 +195,52 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                 {brand ? 'Brand Overview' : 'Holding Overview'}
               </p>
             </div>
+
+            {/* Real Data Indicator */}
+            <div className="flex items-center justify-center gap-1 mb-2">
+              {hasRealData ? (
+                <>
+                  <Wifi className="w-3 h-3 text-emerald-500" />
+                  <span className="text-[10px] text-emerald-500 uppercase tracking-wider">Live Data</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">No Live Data</span>
+                </>
+              )}
+            </div>
             
             <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-foreground">{stats.projectCount}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Stores</div>
+                <div className="text-base md:text-xl font-bold text-foreground">
+                  {hasRealData ? totals.sitesCount : '—'}
+                </div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Live Sites</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-foreground">{stats.totalEnergy}</div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kWh</div>
+                <div className="text-base md:text-xl font-bold text-foreground">
+                  {hasRealData && totals.energy > 0 ? totals.energy : '—'}
+                </div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kW</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-foreground">{stats.avgCo2}</div>
+                <div className="text-base md:text-xl font-bold text-foreground">
+                  {hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
+                </div>
                 <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className={`text-base md:text-xl font-bold ${stats.totalAlerts > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                  {stats.totalAlerts}
+                <div className="text-base md:text-xl font-bold text-foreground">
+                  {filteredProjects.length}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Alerts</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Total Sites</div>
               </div>
             </div>
             
-            {showCharts && (
+            {showAnyChart && (
               <>
-                {/* Pulsante Mobile */}
+                {/* Mobile Toggle Button */}
                 <button
                   onClick={() => setChartsExpanded(!chartsExpanded)}
                   className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/50 hover:bg-white/70 backdrop-blur-md rounded-lg border border-white/30 text-xs font-medium transition-all pointer-events-auto mt-2 text-slate-700"
@@ -176,7 +250,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                   {chartsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
 
-                {/* Pulsante Desktop */}
+                {/* Desktop Toggle Button */}
                 <button
                   onClick={() => setIsDesktopVisible(!isDesktopVisible)}
                   className="hidden md:flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-muted-foreground hover:text-foreground"
@@ -187,122 +261,146 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                 </button>
               </>
             )}
+
+            {/* No real data message */}
+            {!hasRealData && (
+              <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-muted">
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Nessun sito con moduli attivi e dati in tempo reale
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Comparison Charts */}
-        {showCharts && (
+        {/* Comparison Charts - Only show with REAL data */}
+        {showAnyChart && (
           <div className={`
             flex-1 grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl pointer-events-auto w-full 
             ${chartsExpanded ? 'grid' : 'hidden'} 
             ${isDesktopVisible ? 'md:grid' : 'md:hidden'} 
           `}>
-            {/* Energy Comparison */}
-            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
-              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Energy Consumption (kWh)</h4>
-              <ResponsiveContainer width="100%" height={120} className="md:hidden">
-                <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', fontSize: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
-                  />
-                  <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={180} className="hidden md:block">
-                <BarChart data={energyComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
-                  />
-                  <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* CO2 Comparison */}
-            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
-              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Air Quality (CO₂ ppm)</h4>
-              <ResponsiveContainer width="100%" height={120} className="md:hidden">
-                <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', fontSize: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
-                  />
-                  <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={180} className="hidden md:block">
-                <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    labelStyle={{ color: '#1e293b' }}
-                    itemStyle={{ color: '#64748b' }}
-                  />
-                  <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Radar Chart */}
-            <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4 md:col-span-2">
-              <h4 className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3">Store Performance</h4>
-              <ResponsiveContainer width="100%" height={160} className="md:hidden">
-                <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                  <PolarGrid stroke="rgba(0,0,0,0.1)" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 8 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 7 }} />
-                  {storeNames.map((name, idx) => (
-                    <Radar 
-                      key={name} 
-                      name={name} 
-                      dataKey={name} 
-                      stroke={chartColors[idx % chartColors.length]} 
-                      fill={chartColors[idx % chartColors.length]} 
-                      fillOpacity={0.2}
-                      strokeWidth={1.5}
+            {/* Energy Comparison - Only if real energy data */}
+            {showEnergyChart && (
+              <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
+                <div className="flex items-center gap-2 mb-2 md:mb-3">
+                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Energy Consumption (kW)</h4>
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
+                </div>
+                <ResponsiveContainer width="100%" height={120} className="md:hidden">
+                  <BarChart data={energyComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <YAxis tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', fontSize: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      labelStyle={{ color: '#1e293b' }}
+                      itemStyle={{ color: '#64748b' }}
                     />
-                  ))}
-                  <Legend wrapperStyle={{ fontSize: 9, color: '#94a3b8' }} iconType="circle" iconSize={6} />
-                </RadarChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={220} className="hidden md:block">
-                <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
-                  <PolarGrid stroke="rgba(0,0,0,0.15)" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 9 }} />
-                  {storeNames.map((name, idx) => (
-                    <Radar 
-                      key={name} 
-                      name={name} 
-                      dataKey={name} 
-                      stroke={chartColors[idx % chartColors.length]} 
-                      fill={chartColors[idx % chartColors.length]} 
-                      fillOpacity={0.2}
-                      strokeWidth={2}
+                    <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height={180} className="hidden md:block">
+                  <BarChart data={energyComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      labelStyle={{ color: '#1e293b' }}
+                      itemStyle={{ color: '#64748b' }}
                     />
-                  ))}
-                  <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} iconType="circle" />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
+                    <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* CO2 Comparison - Only if real air data */}
+            {showAirChart && (
+              <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
+                <div className="flex items-center gap-2 mb-2 md:mb-3">
+                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Air Quality (CO₂ ppm)</h4>
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
+                </div>
+                <ResponsiveContainer width="100%" height={120} className="md:hidden">
+                  <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <YAxis tick={{ fill: '#64748b', fontSize: 8 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', fontSize: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      labelStyle={{ color: '#1e293b' }}
+                      itemStyle={{ color: '#64748b' }}
+                    />
+                    <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height={180} className="hidden md:block">
+                  <BarChart data={airQualityComparisonData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: 'rgba(0,0,0,0.1)' }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      labelStyle={{ color: '#1e293b' }}
+                      itemStyle={{ color: '#64748b' }}
+                    />
+                    <Bar dataKey="co2" fill="hsl(160, 60%, 40%)" name="CO₂" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Radar Chart - Only if sites have both energy AND air data */}
+            {showRadarChart && (
+              <div className={`glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4 ${showEnergyChart && showAirChart ? 'md:col-span-2' : ''}`}>
+                <div className="flex items-center gap-2 mb-2 md:mb-3">
+                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Store Performance</h4>
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
+                </div>
+                <ResponsiveContainer width="100%" height={160} className="md:hidden">
+                  <RadarChart data={radarData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                    <PolarGrid stroke="rgba(0,0,0,0.1)" />
+                    <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 8 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 7 }} />
+                    {storeNames.map((name, idx) => (
+                      <Radar 
+                        key={name} 
+                        name={name} 
+                        dataKey={name} 
+                        stroke={chartColors[idx % chartColors.length]} 
+                        fill={chartColors[idx % chartColors.length]} 
+                        fillOpacity={0.2}
+                        strokeWidth={1.5}
+                      />
+                    ))}
+                    <Legend wrapperStyle={{ fontSize: 9, color: '#94a3b8' }} iconType="circle" iconSize={6} />
+                  </RadarChart>
+                </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height={220} className="hidden md:block">
+                  <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
+                    <PolarGrid stroke="rgba(0,0,0,0.15)" />
+                    <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 9 }} />
+                    {storeNames.map((name, idx) => (
+                      <Radar 
+                        key={name} 
+                        name={name} 
+                        dataKey={name} 
+                        stroke={chartColors[idx % chartColors.length]} 
+                        fill={chartColors[idx % chartColors.length]} 
+                        fillOpacity={0.2}
+                        strokeWidth={2}
+                      />
+                    ))}
+                    <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} iconType="circle" />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         )}
       </div>
