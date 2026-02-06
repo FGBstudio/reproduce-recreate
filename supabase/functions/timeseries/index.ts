@@ -55,7 +55,7 @@ function getForcedBucket(start: Date, end: Date): ForcedBucket {
   const diffHours = diffMs / (1000 * 60 * 60)
   
   if (diffHours <= 24) return '15m'      // ≤24h: 15 minute granularity
-  if (diffHours <= 24 * 30) return '1h'  // >24h AND ≤30d: hourly granularity
+  if (diffHours <= 24 * 32) return '1h' // ✅ ALLOW 31-DAY MONTHS  // >24h AND ≤30d: hourly granularity
   return '1d'                             // >30d: daily granularity
 }
 
