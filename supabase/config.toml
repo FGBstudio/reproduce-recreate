@@ -1,1 +1,4 @@
 project_id = "vejqfpznzcohtbggkfhr"
+
+[functions.energy-diagnosis]
+verify_jwt = false

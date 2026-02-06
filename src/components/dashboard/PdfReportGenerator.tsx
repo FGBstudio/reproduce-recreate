@@ -6,6 +6,7 @@ import { it } from "date-fns/locale";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import { TimePeriod } from "./TimePeriodSelector";
 import { DateRange, getPeriodLabel } from "@/hooks/useTimeFilteredData";
+import { generateEnergyDiagnosis, EnergyDiagnosisInput } from "@/lib/energyDiagnosis";
 
 interface ReportData {
   energy: {
@@ -38,6 +39,8 @@ interface GeneratePdfOptions {
   dateRange?: DateRange;
   data: ReportData;
   chartRefs?: ChartRefs;
+  includeAiDiagnosis?: boolean;
+  onProgress?: (message: string) => void;
 }
 
 const COLORS = {
@@ -67,7 +70,15 @@ const captureChartAsImage = async (ref: React.RefObject<HTMLDivElement | null>):
   }
 };
 
-export const generatePdfReport = async ({ project, timePeriod, dateRange, data, chartRefs }: GeneratePdfOptions) => {
+export const generatePdfReport = async ({ 
+  project, 
+  timePeriod, 
+  dateRange, 
+  data, 
+  chartRefs,
+  includeAiDiagnosis = true,
+  onProgress 
+}: GeneratePdfOptions) => {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -84,6 +95,8 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data, 
   const periodLabel = getPeriodLabel(timePeriod, dateRange);
   const generatedDate = format(new Date(), "dd MMMM yyyy, HH:mm", { locale: it });
 
+  onProgress?.("Acquisizione grafici...");
+
   // Capture chart images in parallel
   const [energyChartImg, deviceChartImg, waterChartImg, airQualityChartImg] = await Promise.all([
     chartRefs?.energyChart ? captureChartAsImage(chartRefs.energyChart) : null,
@@ -91,6 +104,16 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data, 
     chartRefs?.waterChart ? captureChartAsImage(chartRefs.waterChart) : null,
     chartRefs?.airQualityChart ? captureChartAsImage(chartRefs.airQualityChart) : null,
   ]);
+
+  // Generate AI diagnosis if requested
+  let aiDiagnosis: string | null = null;
+  if (includeAiDiagnosis) {
+    onProgress?.("Generazione diagnosi energetica AI...");
+    const diagnosisResult = await generateAiDiagnosis(project, periodLabel, data);
+    if (diagnosisResult) {
+      aiDiagnosis = diagnosisResult;
+    }
+  }
 
   // Helper functions
   const addPage = () => {
@@ -370,6 +393,91 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data, 
     yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   }
 
+  // ========== AI DIAGNOSIS SECTION ==========
+  if (aiDiagnosis) {
+    addPage();
+    drawHeader("🤖 Diagnosi Energetica AI", 1);
+    drawSeparator();
+    
+    // Add AI badge
+    doc.setFillColor(59, 130, 246); // Blue accent
+    doc.roundedRect(margin, yPos, 85, 8, 2, 2, "F");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text("Generato con Intelligenza Artificiale", margin + 3, yPos + 5.5);
+    yPos += 15;
+    
+    // Parse and render the diagnosis text
+    const diagnosisLines = aiDiagnosis.split('\n');
+    doc.setTextColor(...COLORS.text);
+    
+    for (const line of diagnosisLines) {
+      if (!line.trim()) {
+        yPos += 3;
+        continue;
+      }
+      
+      checkPageBreak(12);
+      
+      // Handle headers
+      if (line.startsWith('## ')) {
+        yPos += 3;
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...COLORS.primary);
+        doc.text(line.replace('## ', ''), margin, yPos);
+        yPos += 7;
+      } else if (line.startsWith('**') && line.endsWith('**')) {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...COLORS.text);
+        doc.text(line.replace(/\*\*/g, ''), margin, yPos);
+        yPos += 6;
+      } else if (line.startsWith('- ') || line.startsWith('• ')) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...COLORS.text);
+        const bulletText = line.replace(/^[-•]\s*/, '');
+        const splitText = doc.splitTextToSize(`• ${bulletText}`, pageWidth - 2 * margin - 5);
+        doc.text(splitText, margin + 3, yPos);
+        yPos += splitText.length * 5;
+      } else if (line.match(/^\d+\.\s/)) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...COLORS.text);
+        const splitText = doc.splitTextToSize(line, pageWidth - 2 * margin - 5);
+        doc.text(splitText, margin + 3, yPos);
+        yPos += splitText.length * 5;
+      } else {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...COLORS.text);
+        const splitText = doc.splitTextToSize(line, pageWidth - 2 * margin);
+        doc.text(splitText, margin, yPos);
+        yPos += splitText.length * 5;
+      }
+    }
+    
+    // Disclaimer
+    yPos += 10;
+    checkPageBreak(20);
+    doc.setFillColor(...COLORS.lightGray);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 15, 2, 2, "F");
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.secondary);
+    doc.text(
+      "⚠️ Questa diagnosi è generata automaticamente da un modello AI e ha finalità indicative.",
+      margin + 3,
+      yPos + 5
+    );
+    doc.text(
+      "Si consiglia la validazione da parte di un professionista qualificato.",
+      margin + 3,
+      yPos + 10
+    );
+    yPos += 20;
+  }
+
   // ========== FOOTER ON ALL PAGES ==========
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
@@ -384,7 +492,81 @@ export const generatePdfReport = async ({ project, timePeriod, dateRange, data, 
     );
   }
 
+  onProgress?.("Salvataggio PDF...");
+
   // Save the PDF
   const filename = `Report_${project.name.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
   doc.save(filename);
 };
+
+// ========== AI DIAGNOSIS HELPER ==========
+async function generateAiDiagnosis(
+  project: Project,
+  periodLabel: string,
+  data: ReportData
+): Promise<string | null> {
+  try {
+    // Extract totals from consumption data
+    const totalConsumption = data.energy.consumption.reduce((sum, row) => {
+      const val = row['Consumo (kWh)'] || row['consumption'] || row['value'] || 0;
+      return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
+    }, 0) || project.data.total * 24; // Fallback to daily estimate
+
+    const hvacConsumption = project.data.hvac * 24;
+    const lightingConsumption = project.data.light * 24;
+    
+    const co2Total = data.energy.co2.reduce((sum, row) => {
+      const val = row['CO₂ (kg)'] || row['co2'] || row['value'] || 0;
+      return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
+    }, 0) || totalConsumption * 0.4; // Default factor
+
+    // Build device breakdown
+    const deviceBreakdown = data.energy.devices.map(row => ({
+      name: String(row['Dispositivo'] || row['device'] || row['name'] || 'Unknown'),
+      consumption: typeof row['Consumo (kWh)'] === 'number' 
+        ? row['Consumo (kWh)'] 
+        : parseFloat(String(row['Consumo (kWh)'] || row['consumption'] || 0)) || 0,
+      category: String(row['Categoria'] || row['category'] || '')
+    }));
+
+    // Water data
+    const waterConsumption = data.water.consumption.reduce((sum, row) => {
+      const val = row['Consumo (L)'] || row['consumption'] || row['value'] || 0;
+      return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
+    }, 0);
+
+    const waterLeaks = data.water.leaks.filter(
+      leak => leak['status'] === 'warning' || leak['status'] === 'critical'
+    ).length;
+
+    const diagnosisInput: EnergyDiagnosisInput = {
+      projectName: project.name,
+      period: periodLabel,
+      totalConsumption: totalConsumption || project.data.total * 24,
+      hvacConsumption,
+      lightingConsumption,
+      co2Emissions: co2Total,
+      avgTemperature: project.data.temp,
+      avgCo2: project.data.co2,
+      avgHumidity: 45, // Default if not available
+      airQualityIndex: project.data.aq,
+      area_m2: project.area_m2,
+      energy_price_kwh: project.energy_price_kwh,
+      deviceBreakdown: deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
+      waterConsumption: waterConsumption > 0 ? waterConsumption : undefined,
+      waterLeaks: waterLeaks > 0 ? waterLeaks : undefined,
+    };
+
+    const result = await generateEnergyDiagnosis(diagnosisInput);
+    
+    if (result.error) {
+      console.warn("AI diagnosis error:", result.error);
+      return null;
+    }
+
+    return result.diagnosis;
+  } catch (error) {
+    console.error("Failed to generate AI diagnosis:", error);
+    return null;
+  }
+}
