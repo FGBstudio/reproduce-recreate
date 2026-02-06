@@ -240,16 +240,16 @@ export const generatePdfReport = async ({
   const getTableOptions = () => ({
     styles: {
       font: "FuturaLT",
-      fontStyle: "normal",
+      fontStyle: "normal" as const,
       fontSize: 8,
       cellPadding: 3,
     },
-    headStyles: { 
-        font: "FuturaLT",
-        fontStyle: "bold",
-        fillColor: COLORS.primary, 
-        fontSize: 9,
-        halign: 'left' as const
+    headStyles: {
+      font: "FuturaLT",
+      fontStyle: "bold" as const,
+      fillColor: COLORS.primary,
+      fontSize: 9,
+      halign: "left" as const,
     },
     alternateRowStyles: { fillColor: COLORS.lightGray },
     margin: { left: margin, right: margin },
