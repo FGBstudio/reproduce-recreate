@@ -9,6 +9,12 @@ import { generateEnergyDiagnosis, EnergyDiagnosisInput } from "@/lib/energyDiagn
 import { ReportLanguage, getTranslations, getDateLocale } from "@/lib/translations/pdfReport";
 
 // --- INTERFACCE DATI ---
+export interface ReportModuleConfig {
+  energy: { enabled: boolean };
+  water: { enabled: boolean };
+  air: { enabled: boolean };
+}
+
 interface ReportData {
   energy: {
     consumption: Record<string, unknown>[];
@@ -34,19 +40,12 @@ interface ChartRefs {
   airQualityChart?: React.RefObject<HTMLDivElement | null>;
 }
 
-// Struttura minima per la configurazione dei moduli
-export interface ReportModuleConfig {
-  energy: { enabled: boolean };
-  water: { enabled: boolean };
-  air: { enabled: boolean };
-}
-
 interface GeneratePdfOptions {
   project: Project;
   timePeriod: TimePeriod;
   dateRange?: DateRange;
   data: ReportData;
-  moduleConfig: ReportModuleConfig; // <--- NUOVO CAMPO
+  moduleConfig: ReportModuleConfig;
   chartRefs?: ChartRefs;
   includeAiDiagnosis?: boolean;
   onProgress?: (message: string) => void;
@@ -67,7 +66,7 @@ const COLORS = {
 
 // --- HELPER FUNCTIONS ---
 
-const loadFontAsBase64 = async (url: string): Promise<string> => {
+const loadFileAsBase64 = async (url: string): Promise<string> => {
   const response = await fetch(url);
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
@@ -103,7 +102,7 @@ export const generatePdfReport = async ({
   timePeriod, 
   dateRange, 
   data, 
-  moduleConfig, // <--- Riceviamo la config
+  moduleConfig,
   chartRefs, 
   includeAiDiagnosis = true, 
   onProgress,
@@ -118,21 +117,31 @@ export const generatePdfReport = async ({
     format: "a4",
   });
 
-  // --- 1. CARICAMENTO FONT ---
-  onProgress?.("Caricamento Font...");
+  // --- 1. CARICAMENTO RISORSE ---
+  onProgress?.("Caricamento Risorse...");
+  
+  let headerLogoData: string | null = null;
+  let watermarkData: string | null = null;
+  
   try {
-    const fontRegular = await loadFontAsBase64('/fonts/FuturaLT-Book.ttf');
-    const fontBold = await loadFontAsBase64('/fonts/FuturaLT-Bold.ttf');
+    const [fontRegular, fontBold, imgHeader, imgWatermark] = await Promise.all([
+      loadFileAsBase64('/fonts/FuturaLT-Book.ttf'),
+      loadFileAsBase64('/fonts/FuturaLT-Bold.ttf'),
+      loadFileAsBase64('/white.png').catch(() => null),
+      loadFileAsBase64('/favicon.ico').catch(() => null)
+    ]);
 
     doc.addFileToVFS("FuturaLT-Regular.ttf", fontRegular);
     doc.addFileToVFS("FuturaLT-Bold.ttf", fontBold);
-
     doc.addFont("FuturaLT-Regular.ttf", "FuturaLT", "normal");
     doc.addFont("FuturaLT-Bold.ttf", "FuturaLT", "bold");
-
     doc.setFont("FuturaLT", "normal");
+
+    headerLogoData = imgHeader;
+    watermarkData = imgWatermark;
+
   } catch (e) {
-    console.error("Errore caricamento font, uso fallback standard.", e);
+    console.error("Errore risorse, uso fallback.", e);
     doc.setFont("helvetica");
   }
 
@@ -149,7 +158,6 @@ export const generatePdfReport = async ({
 
   onProgress?.(t.progress.capturingCharts);
 
-  // Capture chart images in parallel (only if module is enabled)
   const [energyChartImg, deviceChartImg, waterChartImg, airQualityChartImg] = await Promise.all([
     moduleConfig.energy.enabled && chartRefs?.energyChart ? captureChartAsImage(chartRefs.energyChart) : null,
     moduleConfig.energy.enabled && chartRefs?.deviceChart ? captureChartAsImage(chartRefs.deviceChart) : null,
@@ -157,7 +165,6 @@ export const generatePdfReport = async ({
     moduleConfig.air.enabled && chartRefs?.airQualityChart ? captureChartAsImage(chartRefs.airQualityChart) : null,
   ]);
 
-  // Generate AI diagnosis
   let aiDiagnosis: string | null = null;
   if (includeAiDiagnosis) {
     onProgress?.(t.progress.generatingAiDiagnosis);
@@ -167,7 +174,7 @@ export const generatePdfReport = async ({
     }
   }
 
-  // Helper functions
+  // Helpers
   const addPage = () => {
     doc.addPage();
     yPos = margin;
@@ -240,42 +247,63 @@ export const generatePdfReport = async ({
   const getTableOptions = () => ({
     styles: {
       font: "FuturaLT",
-      fontStyle: "normal" as const,
+      fontStyle: "normal",
       fontSize: 8,
       cellPadding: 3,
     },
-    headStyles: {
-      font: "FuturaLT",
-      fontStyle: "bold" as const,
-      fillColor: COLORS.primary,
-      fontSize: 9,
-      halign: "left" as const,
+    headStyles: { 
+        font: "FuturaLT",
+        fontStyle: "bold",
+        fillColor: COLORS.primary, 
+        fontSize: 9,
+        halign: 'left' as const
     },
     alternateRowStyles: { fillColor: COLORS.lightGray },
     margin: { left: margin, right: margin },
   });
 
   // ========== COVER PAGE ==========
+  
+  // 1. Aumentiamo l'altezza della banda verde per farci stare il logo grande
+  const headerHeight = 110; 
   doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 80, "F");
+  doc.rect(0, 0, pageWidth, headerHeight, "F");
 
-  doc.setFontSize(28);
+  // 2. Logo Intestazione (white.png) - CENTRATO E GRANDE
+  if (headerLogoData) {
+    const hLogoWidth = 60; // Larghezza aumentata
+    const hLogoHeight = 60; // Altezza (assumendo quadrato/proporzionale)
+    const hLogoX = (pageWidth - hLogoWidth) / 2; // Centrato orizzontalmente
+    const hLogoY = 15; // Margine dall'alto
+    doc.addImage(headerLogoData, 'PNG', hLogoX, hLogoY, hLogoWidth, hLogoHeight);
+  }
+
+  // 3. Testi Cover - CENTRATI SOTTO IL LOGO
   doc.setTextColor(255, 255, 255);
+  const centerX = pageWidth / 2;
+  
+  // Titolo Report
+  doc.setFontSize(26);
   doc.setFont("FuturaLT", "bold");
-  doc.text(t.cover.title, margin, 35);
+  doc.text(t.cover.title, centerX, 85, { align: 'center' });
 
+  // Nome Progetto
   doc.setFontSize(16);
   doc.setFont("FuturaLT", "normal");
-  doc.text(project.name, margin, 50);
+  doc.text(project.name, centerX, 95, { align: 'center' });
 
+  // Periodo
   doc.setFontSize(11);
-  doc.text(`${t.cover.period}: ${periodLabel}`, margin, 62);
+  doc.text(`${t.cover.period}: ${periodLabel}`, centerX, 102, { align: 'center' });
 
-  yPos = 95;
+  // 4. Box Info Progetto - Spostato più in basso per fare spazio
+  yPos = 125; 
   doc.setFillColor(...COLORS.lightGray);
   doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 50, 3, 3, "F");
 
   yPos += 10;
+  // Per il box info, torniamo all'allineamento a sinistra (standard di drawKeyValue)
+  doc.setTextColor(...COLORS.text); 
   drawKeyValue(t.cover.address, project.address);
   if (brand) drawKeyValue(t.cover.brand, brand.name);
   if (holding) drawKeyValue(t.cover.holding, holding.name);
@@ -283,43 +311,25 @@ export const generatePdfReport = async ({
   drawKeyValue(t.cover.generatedOn, generatedDate);
 
   // --- KPI CARDS DINAMICHE ---
-  yPos = 160;
+  yPos = 190; // Spostiamo giù anche le KPI
   drawHeader(t.cover.currentKpis, 2);
   yPos += 5;
 
-  // Costruiamo la lista di card da mostrare in base ai moduli attivi
   const activeKpis = [];
-  
-  // 1. Temperature (Sempre presente o legato ad Air/Energy)
   if (moduleConfig.air.enabled || moduleConfig.energy.enabled) {
     activeKpis.push({ title: t.kpis.temperature, value: `${project.data.temp}`, unit: "°C" });
   }
-  
-  // 2. Air Quality (Solo se AIR è attivo)
   if (moduleConfig.air.enabled) {
      activeKpis.push({ title: t.kpis.co2, value: `${project.data.co2}`, unit: "ppm" });
      activeKpis.push({ title: t.kpis.airQuality, value: project.data.aq, unit: "" });
+     activeKpis.push({ title: t.kpis.humidity, value: "45", unit: "%" });
   }
-
-  // 3. Humidity (Solo se AIR è attivo)
-  if (moduleConfig.air.enabled) {
-     activeKpis.push({ title: t.kpis.humidity, value: "45", unit: "%" }); // Mock data nel progetto originale
-  }
-
-  // Se abbiamo card da mostrare
+  
   if (activeKpis.length > 0) {
       const cardGap = 5;
       const cardWidth = (pageWidth - 2 * margin - (cardGap * (activeKpis.length - 1))) / activeKpis.length;
-      
       activeKpis.forEach((kpi, index) => {
-         drawKpiCard(
-             margin + (cardWidth + cardGap) * index, 
-             yPos, 
-             cardWidth, 
-             kpi.title, 
-             kpi.value, 
-             kpi.unit
-         );
+         drawKpiCard(margin + (cardWidth + cardGap) * index, yPos, cardWidth, kpi.title, kpi.value, kpi.unit);
       });
   }
 
@@ -329,9 +339,7 @@ export const generatePdfReport = async ({
       drawHeader(t.sections.energyDashboard, 1);
       drawSeparator();
 
-      if (energyChartImg) {
-        addChartImage(energyChartImg, t.energy.consumptionChart, 55);
-      }
+      if (energyChartImg) addChartImage(energyChartImg, t.energy.consumptionChart, 55);
 
       drawHeader(t.energy.consumption, 2);
       if (data.energy.consumption.length > 0) {
@@ -386,9 +394,7 @@ export const generatePdfReport = async ({
       drawHeader(t.sections.waterDashboard, 1);
       drawSeparator();
 
-      if (waterChartImg) {
-        addChartImage(waterChartImg, t.water.consumptionChart, 55);
-      }
+      if (waterChartImg) addChartImage(waterChartImg, t.water.consumptionChart, 55);
 
       drawHeader(t.water.consumption, 2);
       if (data.water.consumption.length > 0) {
@@ -443,9 +449,7 @@ export const generatePdfReport = async ({
       drawHeader(t.sections.airQualityDashboard, 1);
       drawSeparator();
 
-      if (airQualityChartImg) {
-        addChartImage(airQualityChartImg, t.airQuality.chart, 55);
-      }
+      if (airQualityChartImg) addChartImage(airQualityChartImg, t.airQuality.chart, 55);
 
       drawHeader(t.airQuality.co2TvocHistory, 2);
       if (data.airQuality.co2History.length > 0) {
@@ -511,7 +515,6 @@ export const generatePdfReport = async ({
         yPos += 3;
         continue;
       }
-      
       checkPageBreak(12);
       
       if (line.startsWith('## ')) {
@@ -551,7 +554,6 @@ export const generatePdfReport = async ({
         yPos += splitText.length * 5;
       }
     }
-    
     yPos += 10;
     checkPageBreak(20);
     doc.setFillColor(...COLORS.lightGray);
@@ -563,10 +565,33 @@ export const generatePdfReport = async ({
     yPos += 20;
   }
 
-  // ========== FOOTER ==========
+  // ========== POST-PROCESSING: WATERMARK & FOOTER ==========
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
+
+    // --- WATERMARK (favicon.ico come filigrana centrale) ---
+    if (watermarkData) {
+      doc.saveGraphicsState();
+      
+      // Imposta trasparenza molto leggera
+      doc.setGState(new doc.GState({ opacity: 0.05 }));
+      
+      const wWidth = 60; 
+      const wHeight = 60; 
+      const x = (pageWidth - wWidth) / 2;
+      const y = (pageHeight - wHeight) / 2;
+
+      try {
+          doc.addImage(watermarkData, 'PNG', x, y, wWidth, wHeight);
+      } catch (e) {
+          console.warn("Impossibile renderizzare favicon come immagine nel PDF", e);
+      }
+      
+      doc.restoreGraphicsState();
+    }
+
+    // --- FOOTER ---
     doc.setFontSize(8);
     doc.setTextColor(...COLORS.secondary);
     doc.setFont("FuturaLT", "normal");
@@ -583,12 +608,12 @@ export const generatePdfReport = async ({
   doc.save(filename);
 };
 
-// ========== AI HELPER (MODIFICATO PER RICEVERE MODULE CONFIG) ==========
+// ... (Resto del file: generateAiDiagnosis)
 async function generateAiDiagnosis(
   project: Project,
   periodLabel: string,
   data: ReportData,
-  moduleConfig: ReportModuleConfig, // <--- Riceve la config
+  moduleConfig: ReportModuleConfig,
   language: ReportLanguage
 ): Promise<string | null> {
   try {
@@ -597,7 +622,6 @@ async function generateAiDiagnosis(
     let waterConsumption = undefined;
     let waterLeaks = undefined;
 
-    // Processa energia solo se abilitata
     if (moduleConfig.energy.enabled) {
         totalConsumption = data.energy.consumption.reduce((sum, row) => {
         const val = row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || row['value'] || 0;
@@ -616,13 +640,11 @@ async function generateAiDiagnosis(
     const hvacConsumption = project.data.hvac * 24;
     const lightingConsumption = project.data.light * 24;
     
-    // Calcola CO2 solo se pertinente
     const co2Total = moduleConfig.energy.enabled ? (data.energy.co2.reduce((sum, row) => {
       const val = row['CO₂ (kg)'] || row['co2'] || row['value'] || 0;
       return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
     }, 0) || totalConsumption * 0.4) : 0;
 
-    // Processa acqua solo se abilitata
     if (moduleConfig.water.enabled) {
         waterConsumption = data.water.consumption.reduce((sum, row) => {
         const val = row['Consumo (L)'] || row['Consumption (L)'] || row['consumption'] || row['value'] || 0;
