@@ -315,7 +315,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     let bucket: '15m' | '1h' | '1d';
     if (durationHours <= 24) {
       bucket = '15m';
-    } else if (durationHours <= 24 * 30) {
+    } else if (durationHours <= 24 * 31) {
       bucket = '1h';
     } else {
       bucket = '1d';
@@ -1440,36 +1440,58 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     );
   };
 
- // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
+// --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
 
-  // 1. Find the General Device IDs first
+  // ✅ FIX 1: Find the ONE true Main Meter (energy_monitor)
+  // This reduces row count from ~20,000 to ~720, fixing the "2 Weeks" cutoff.
   const generalDeviceIds = useMemo(() => {
-    return siteDevices
-      .filter(d => (d.category?.toLowerCase() === 'general'))
-      .map(d => d.id);
+    const candidates = siteDevices
+      .filter(d => (d.category?.toLowerCase() === 'general'));
+    
+    // Sort: Put 'energy_monitor' at the top
+    candidates.sort((a, b) => {
+        if (a.device_type === 'energy_monitor' && b.device_type !== 'energy_monitor') return -1;
+        if (a.device_type !== 'energy_monitor' && b.device_type === 'energy_monitor') return 1;
+        return 0;
+    });
+
+    // Take ONLY the first one
+    return candidates.length > 0 ? [candidates[0].id] : [];
   }, [siteDevices]);
 
+
+  // ✅ FIX 2: Allow Hourly resolution for full 31-day months (The "30 to 31" fix)
   const heatmapConfig = useMemo(() => {
     const baseParams = getTimeRangeParams(timePeriod, dateRange);
-    if (timePeriod === 'year') {
-        return { ...baseParams, bucket: '1d' };
+    
+    // Recalculate bucket logic locally to override the default if needed
+    const durationMs = baseParams.end.getTime() - baseParams.start.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+
+    let bucket: '15m' | '1h' | '1d' = baseParams.bucket;
+    
+    // If it's a month view (approx 744 hours), force '1h' even if it's 31 days
+    if (timePeriod === 'month' || (durationHours > 24 && durationHours <= 24 * 32)) {
+        bucket = '1h';
     }
-    return { ...baseParams, bucket: '1h' };
+    
+    if (timePeriod === 'year') {
+        bucket = '1d';
+    }
+    
+    return { ...baseParams, bucket };
   }, [timePeriod, dateRange, getTimeRangeParams]);
+
 
   const { data: heatmapResp } = useEnergyTimeseries(
     {
+      // Pass the Single ID (Critical for the limit)
       device_ids: generalDeviceIds.length > 0 ? generalDeviceIds : undefined,
-      site_id: generalDeviceIds.length > 0 ? undefined : project?.siteId,
+      site_id: generalDeviceIds.length > 0 ? undefined : project?.siteId, 
       
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      
-      // ✅ FIX: Request ONLY 'active_energy'.
-      // 1 Device * 1 Metric * 720 Hours = 720 Rows.
-      // This fits PERFECTLY in the default 1,000 row limit.
       metrics: ['energy.active_energy'], 
-      
       bucket: heatmapConfig.bucket,
     },
     {
@@ -1481,75 +1503,57 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
     const isYearView = timePeriod === 'year';
-    
-    // Mappa Valori: "IndiceRiga_ChiaveColonna" -> kWh
     const valueMap = new Map<string, number>();
-    const columnsSet = new Set<string>();
     let maxVal = 0;
 
     rawData.forEach(d => {
-        // Filtra General
-        const info = deviceMap.get(d.device_id);
-        const isGeneral = (info && info.category === 'general') || 
-                          (!info && (d.metric === 'energy.power_kw' || d.metric === 'energy.active_energy'));
-        if (!isGeneral) return;
+      const val = Number(d.value_sum ?? d.value ?? 0);
+      if (val <= 0) return;
+      if (val > maxVal) maxVal = val; 
 
-        const val = Number(d.value_sum ?? d.value ?? 0);
-        if (val <= 0) return;
+      const date = new Date(d.ts_bucket || d.ts);
+      let rowKey: number; 
+      let colKey: string; 
 
-        if (val > maxVal) maxVal = val; // Tracciamo il picco per la scala colori
+      if (isYearView) {
+        rowKey = date.getDate(); // 1-31
+        colKey = String(date.getMonth()); // 0-11
+      } else {
+        rowKey = date.getHours(); // 0-23
+        colKey = date.toISOString().slice(0, 10);
+      }
 
-        const date = new Date(d.ts_bucket || d.ts);
-        let rowKey: number; // Y-Axis (0-23 o 1-31)
-        let colKey: string; // X-Axis (Data o Mese)
-
-        if (isYearView) {
-            // ANNO: Y=Giorno (1-31), X=Mese (0-11)
-            rowKey = date.getDate(); 
-            colKey = String(date.getMonth()); 
-        } else {
-            // MESE/WEEK: Y=Ora (0-23), X=Giorno (ISO Date)
-            rowKey = date.getHours(); 
-            colKey = date.toISOString().slice(0, 10); 
-        }
-
-        columnsSet.add(colKey);
-        
-        // Accumula (per gestire eventuali doppi record)
-        const cellKey = `${rowKey}_${colKey}`;
-        valueMap.set(cellKey, (valueMap.get(cellKey) || 0) + val);
+      const cellKey = `${rowKey}_${colKey}`;
+      valueMap.set(cellKey, (valueMap.get(cellKey) || 0) + val);
     });
 
-    // Costruzione Assi
     let rows: number[] = [];
     let cols: { key: string; label: string }[] = [];
 
     if (isYearView) {
-        // Y: 1 -> 31
-        rows = Array.from({ length: 31 }, (_, i) => i + 1);
-        // X: Gen -> Dic
-        cols = Array.from({ length: 12 }, (_, i) => ({
-            key: String(i),
-            label: new Date(2024, i, 1).toLocaleDateString('it-IT', { month: 'short' }).toUpperCase()
-        }));
+      rows = Array.from({ length: 31 }, (_, i) => i + 1);
+      cols = Array.from({ length: 12 }, (_, i) => ({
+        key: String(i),
+        label: new Date(2024, i, 1).toLocaleDateString('it-IT', { month: 'short' }).toUpperCase()
+      }));
     } else {
-        // Y: 00:00 -> 23:00
-        rows = Array.from({ length: 24 }, (_, i) => i);
-        // X: Tutti i giorni nel range selezionato
-        const current = new Date(heatmapConfig.start);
-        const end = heatmapConfig.end;
-        while (current <= end) {
-            const iso = current.toISOString().slice(0, 10);
-            cols.push({
-                key: iso,
-                label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
-            });
-            current.setDate(current.getDate() + 1);
-        }
+      rows = Array.from({ length: 24 }, (_, i) => i);
+      
+      // ✅ FIX 3: Loop through EVERY day to ensure no gaps
+      const current = new Date(heatmapConfig.start);
+      const end = heatmapConfig.end;
+      while (current <= end) {
+        const iso = current.toISOString().slice(0, 10);
+        cols.push({
+          key: iso,
+          label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+        });
+        current.setDate(current.getDate() + 1);
+      }
     }
 
     return { rows, cols, valueMap, maxVal, isYearView };
-  }, [heatmapResp, timePeriod, heatmapConfig, deviceMap]);
+  }, [heatmapResp, timePeriod, heatmapConfig]);
 
   // C. Helper Colore (Scala Relativa al Max)
   const getHeatmapColor = useCallback((val: number, max: number) => {
