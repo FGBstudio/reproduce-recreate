@@ -34,11 +34,19 @@ interface ChartRefs {
   airQualityChart?: React.RefObject<HTMLDivElement | null>;
 }
 
+// Struttura minima per la configurazione dei moduli
+export interface ReportModuleConfig {
+  energy: { enabled: boolean };
+  water: { enabled: boolean };
+  air: { enabled: boolean };
+}
+
 interface GeneratePdfOptions {
   project: Project;
   timePeriod: TimePeriod;
   dateRange?: DateRange;
   data: ReportData;
+  moduleConfig: ReportModuleConfig; // <--- NUOVO CAMPO
   chartRefs?: ChartRefs;
   includeAiDiagnosis?: boolean;
   onProgress?: (message: string) => void;
@@ -59,14 +67,12 @@ const COLORS = {
 
 // --- HELPER FUNCTIONS ---
 
-// Carica un font da URL e lo converte in Base64 (necessario per jsPDF)
 const loadFontAsBase64 = async (url: string): Promise<string> => {
   const response = await fetch(url);
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      // Rimuove il prefisso "data:application/octet-stream;base64,"
       const base64 = (reader.result as string).split(',')[1];
       resolve(base64);
     };
@@ -97,6 +103,7 @@ export const generatePdfReport = async ({
   timePeriod, 
   dateRange, 
   data, 
+  moduleConfig, // <--- Riceviamo la config
   chartRefs, 
   includeAiDiagnosis = true, 
   onProgress,
@@ -112,26 +119,21 @@ export const generatePdfReport = async ({
   });
 
   // --- 1. CARICAMENTO FONT ---
-  // Carichiamo i font personalizzati per supportare caratteri speciali e mantenere il branding
   onProgress?.("Caricamento Font...");
   try {
-    // Assicurati che questi file esistano in public/fonts/
     const fontRegular = await loadFontAsBase64('/fonts/FuturaLT-Book.ttf');
     const fontBold = await loadFontAsBase64('/fonts/FuturaLT-Bold.ttf');
 
-    // Aggiungi i font al file system virtuale di jsPDF
     doc.addFileToVFS("FuturaLT-Regular.ttf", fontRegular);
     doc.addFileToVFS("FuturaLT-Bold.ttf", fontBold);
 
-    // Registra i font
     doc.addFont("FuturaLT-Regular.ttf", "FuturaLT", "normal");
     doc.addFont("FuturaLT-Bold.ttf", "FuturaLT", "bold");
 
-    // Imposta il font di default
     doc.setFont("FuturaLT", "normal");
   } catch (e) {
     console.error("Errore caricamento font, uso fallback standard.", e);
-    doc.setFont("helvetica"); // Fallback di sicurezza
+    doc.setFont("helvetica");
   }
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -147,25 +149,25 @@ export const generatePdfReport = async ({
 
   onProgress?.(t.progress.capturingCharts);
 
-  // Capture chart images in parallel
+  // Capture chart images in parallel (only if module is enabled)
   const [energyChartImg, deviceChartImg, waterChartImg, airQualityChartImg] = await Promise.all([
-    chartRefs?.energyChart ? captureChartAsImage(chartRefs.energyChart) : null,
-    chartRefs?.deviceChart ? captureChartAsImage(chartRefs.deviceChart) : null,
-    chartRefs?.waterChart ? captureChartAsImage(chartRefs.waterChart) : null,
-    chartRefs?.airQualityChart ? captureChartAsImage(chartRefs.airQualityChart) : null,
+    moduleConfig.energy.enabled && chartRefs?.energyChart ? captureChartAsImage(chartRefs.energyChart) : null,
+    moduleConfig.energy.enabled && chartRefs?.deviceChart ? captureChartAsImage(chartRefs.deviceChart) : null,
+    moduleConfig.water.enabled && chartRefs?.waterChart ? captureChartAsImage(chartRefs.waterChart) : null,
+    moduleConfig.air.enabled && chartRefs?.airQualityChart ? captureChartAsImage(chartRefs.airQualityChart) : null,
   ]);
 
-  // Generate AI diagnosis if requested
+  // Generate AI diagnosis
   let aiDiagnosis: string | null = null;
   if (includeAiDiagnosis) {
     onProgress?.(t.progress.generatingAiDiagnosis);
-    const diagnosisResult = await generateAiDiagnosis(project, periodLabel, data, language);
+    const diagnosisResult = await generateAiDiagnosis(project, periodLabel, data, moduleConfig, language);
     if (diagnosisResult) {
       aiDiagnosis = diagnosisResult;
     }
   }
 
-  // Helper functions interni per il disegno
+  // Helper functions
   const addPage = () => {
     doc.addPage();
     yPos = margin;
@@ -207,7 +209,7 @@ export const generatePdfReport = async ({
     doc.setTextColor(...COLORS.text);
     doc.setFont("FuturaLT", "bold");
     doc.text(value, margin + 45, yPos);
-    doc.setFont("FuturaLT", "normal"); // Reset
+    doc.setFont("FuturaLT", "normal");
     yPos += 6;
   };
 
@@ -235,7 +237,6 @@ export const generatePdfReport = async ({
     yPos += height + 10;
   };
 
-  // Configurazione tabelle per usare il font corretto
   const getTableOptions = () => ({
     styles: {
       font: "FuturaLT",
@@ -281,174 +282,211 @@ export const generatePdfReport = async ({
   drawKeyValue(t.cover.region, project.region.toUpperCase());
   drawKeyValue(t.cover.generatedOn, generatedDate);
 
+  // --- KPI CARDS DINAMICHE ---
   yPos = 160;
   drawHeader(t.cover.currentKpis, 2);
   yPos += 5;
 
-  const cardWidth = (pageWidth - 2 * margin - 15) / 4;
-  drawKpiCard(margin, yPos, cardWidth, t.kpis.temperature, `${project.data.temp}`, "°C");
-  drawKpiCard(margin + cardWidth + 5, yPos, cardWidth, t.kpis.co2, `${project.data.co2}`, "ppm");
-  drawKpiCard(margin + (cardWidth + 5) * 2, yPos, cardWidth, t.kpis.humidity, "45", "%");
-  drawKpiCard(margin + (cardWidth + 5) * 3, yPos, cardWidth, t.kpis.airQuality, project.data.aq, "");
+  // Costruiamo la lista di card da mostrare in base ai moduli attivi
+  const activeKpis = [];
+  
+  // 1. Temperature (Sempre presente o legato ad Air/Energy)
+  if (moduleConfig.air.enabled || moduleConfig.energy.enabled) {
+    activeKpis.push({ title: t.kpis.temperature, value: `${project.data.temp}`, unit: "°C" });
+  }
+  
+  // 2. Air Quality (Solo se AIR è attivo)
+  if (moduleConfig.air.enabled) {
+     activeKpis.push({ title: t.kpis.co2, value: `${project.data.co2}`, unit: "ppm" });
+     activeKpis.push({ title: t.kpis.airQuality, value: project.data.aq, unit: "" });
+  }
+
+  // 3. Humidity (Solo se AIR è attivo)
+  if (moduleConfig.air.enabled) {
+     activeKpis.push({ title: t.kpis.humidity, value: "45", unit: "%" }); // Mock data nel progetto originale
+  }
+
+  // Se abbiamo card da mostrare
+  if (activeKpis.length > 0) {
+      const cardGap = 5;
+      const cardWidth = (pageWidth - 2 * margin - (cardGap * (activeKpis.length - 1))) / activeKpis.length;
+      
+      activeKpis.forEach((kpi, index) => {
+         drawKpiCard(
+             margin + (cardWidth + cardGap) * index, 
+             yPos, 
+             cardWidth, 
+             kpi.title, 
+             kpi.value, 
+             kpi.unit
+         );
+      });
+  }
 
   // ========== ENERGY SECTION ==========
-  addPage();
-  drawHeader(t.sections.energyDashboard, 1);
-  drawSeparator();
+  if (moduleConfig.energy.enabled) {
+      addPage();
+      drawHeader(t.sections.energyDashboard, 1);
+      drawSeparator();
 
-  if (energyChartImg) {
-    addChartImage(energyChartImg, t.energy.consumptionChart, 55);
-  }
+      if (energyChartImg) {
+        addChartImage(energyChartImg, t.energy.consumptionChart, 55);
+      }
 
-  drawHeader(t.energy.consumption, 2);
-  if (data.energy.consumption.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.energy.consumption[0])],
-      body: data.energy.consumption.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
+      drawHeader(t.energy.consumption, 2);
+      if (data.energy.consumption.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.energy.consumption[0])],
+          body: data.energy.consumption.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
 
-  if (deviceChartImg) {
-    checkPageBreak(70);
-    addChartImage(deviceChartImg, t.energy.deviceChart, 55);
-  }
+      if (deviceChartImg) {
+        checkPageBreak(70);
+        addChartImage(deviceChartImg, t.energy.deviceChart, 55);
+      }
 
-  checkPageBreak(60);
-  drawHeader(t.energy.deviceConsumption, 2);
-  if (data.energy.devices.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.energy.devices[0])],
-      body: data.energy.devices.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
+      checkPageBreak(60);
+      drawHeader(t.energy.deviceConsumption, 2);
+      if (data.energy.devices.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.energy.devices[0])],
+          body: data.energy.devices.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
 
-  checkPageBreak(60);
-  drawHeader(t.energy.co2Emissions, 2);
-  if (data.energy.co2.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.energy.co2[0])],
-      body: data.energy.co2.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.success },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+      checkPageBreak(60);
+      drawHeader(t.energy.co2Emissions, 2);
+      if (data.energy.co2.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.energy.co2[0])],
+          body: data.energy.co2.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.success },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
   }
 
   // ========== WATER SECTION ==========
-  addPage();
-  drawHeader(t.sections.waterDashboard, 1);
-  drawSeparator();
+  if (moduleConfig.water.enabled) {
+      addPage();
+      drawHeader(t.sections.waterDashboard, 1);
+      drawSeparator();
 
-  if (waterChartImg) {
-    addChartImage(waterChartImg, t.water.consumptionChart, 55);
-  }
+      if (waterChartImg) {
+        addChartImage(waterChartImg, t.water.consumptionChart, 55);
+      }
 
-  drawHeader(t.water.consumption, 2);
-  if (data.water.consumption.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.water.consumption[0])],
-      body: data.water.consumption.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.accent },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
+      drawHeader(t.water.consumption, 2);
+      if (data.water.consumption.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.water.consumption[0])],
+          body: data.water.consumption.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.accent },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
 
-  checkPageBreak(60);
-  drawHeader(t.water.quality, 2);
-  if (data.water.quality.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.water.quality[0])],
-      body: data.water.quality.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.accent },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
+      checkPageBreak(60);
+      drawHeader(t.water.quality, 2);
+      if (data.water.quality.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.water.quality[0])],
+          body: data.water.quality.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.accent },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
 
-  checkPageBreak(60);
-  drawHeader(t.water.leakDetection, 2);
-  if (data.water.leaks.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [[t.tables.zone, t.tables.leakRate, t.tables.status, t.tables.detected]],
-      body: data.water.leaks.map(row => [
-        row.zone,
-        row.leakRate,
-        row.status === "ok" ? t.status.ok : row.status === "warning" ? t.status.warning : t.status.critical,
-        row.detected || "-"
-      ]),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.warning },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+      checkPageBreak(60);
+      drawHeader(t.water.leakDetection, 2);
+      if (data.water.leaks.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [[t.tables.zone, t.tables.leakRate, t.tables.status, t.tables.detected]],
+          body: data.water.leaks.map(row => [
+            row.zone,
+            row.leakRate,
+            row.status === "ok" ? t.status.ok : row.status === "warning" ? t.status.warning : t.status.critical,
+            row.detected || "-"
+          ]),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.warning },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
   }
 
   // ========== AIR QUALITY SECTION ==========
-  addPage();
-  drawHeader(t.sections.airQualityDashboard, 1);
-  drawSeparator();
+  if (moduleConfig.air.enabled) {
+      addPage();
+      drawHeader(t.sections.airQualityDashboard, 1);
+      drawSeparator();
 
-  if (airQualityChartImg) {
-    addChartImage(airQualityChartImg, t.airQuality.chart, 55);
-  }
+      if (airQualityChartImg) {
+        addChartImage(airQualityChartImg, t.airQuality.chart, 55);
+      }
 
-  drawHeader(t.airQuality.co2TvocHistory, 2);
-  if (data.airQuality.co2History.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.airQuality.co2History[0])],
-      body: data.airQuality.co2History.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.success },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
+      drawHeader(t.airQuality.co2TvocHistory, 2);
+      if (data.airQuality.co2History.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.airQuality.co2History[0])],
+          body: data.airQuality.co2History.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.success },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
 
-  checkPageBreak(60);
-  drawHeader(t.airQuality.tempHumidity, 2);
-  if (data.airQuality.tempHumidity.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.airQuality.tempHumidity[0])],
-      body: data.airQuality.tempHumidity.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
+      checkPageBreak(60);
+      drawHeader(t.airQuality.tempHumidity, 2);
+      if (data.airQuality.tempHumidity.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.airQuality.tempHumidity[0])],
+          body: data.airQuality.tempHumidity.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
 
-  checkPageBreak(60);
-  drawHeader(t.airQuality.particulates, 2);
-  if (data.airQuality.particulates.length > 0) {
-    // @ts-ignore
-    autoTable(doc, {
-      startY: yPos,
-      head: [Object.keys(data.airQuality.particulates[0])],
-      body: data.airQuality.particulates.map(row => Object.values(row)),
-      ...getTableOptions(),
-      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.warning },
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+      checkPageBreak(60);
+      drawHeader(t.airQuality.particulates, 2);
+      if (data.airQuality.particulates.length > 0) {
+        // @ts-ignore
+        autoTable(doc, {
+          startY: yPos,
+          head: [Object.keys(data.airQuality.particulates[0])],
+          body: data.airQuality.particulates.map(row => Object.values(row)),
+          ...getTableOptions(),
+          headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.warning },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+      }
   }
 
   // ========== AI DIAGNOSIS SECTION ==========
@@ -476,7 +514,6 @@ export const generatePdfReport = async ({
       
       checkPageBreak(12);
       
-      // Supporto per Markdown base (Header, Bold, Bullet points)
       if (line.startsWith('## ')) {
         yPos += 3;
         doc.setFontSize(12);
@@ -546,48 +583,61 @@ export const generatePdfReport = async ({
   doc.save(filename);
 };
 
-// ========== AI HELPER ==========
+// ========== AI HELPER (MODIFICATO PER RICEVERE MODULE CONFIG) ==========
 async function generateAiDiagnosis(
   project: Project,
   periodLabel: string,
   data: ReportData,
+  moduleConfig: ReportModuleConfig, // <--- Riceve la config
   language: ReportLanguage
 ): Promise<string | null> {
   try {
-    const totalConsumption = data.energy.consumption.reduce((sum, row) => {
-      const val = row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || row['value'] || 0;
-      return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-    }, 0) || project.data.total * 24;
+    let totalConsumption = 0;
+    let deviceBreakdown = undefined;
+    let waterConsumption = undefined;
+    let waterLeaks = undefined;
+
+    // Processa energia solo se abilitata
+    if (moduleConfig.energy.enabled) {
+        totalConsumption = data.energy.consumption.reduce((sum, row) => {
+        const val = row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || row['value'] || 0;
+        return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
+        }, 0) || project.data.total * 24;
+
+        deviceBreakdown = data.energy.devices.map(row => ({
+        name: String(row['Dispositivo'] || row['Device'] || row['device'] || row['name'] || 'Unknown'),
+        consumption: typeof row['Consumo (kWh)'] === 'number' 
+            ? row['Consumo (kWh)'] 
+            : parseFloat(String(row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || 0)) || 0,
+        category: String(row['Categoria'] || row['Category'] || row['category'] || '')
+        }));
+    }
 
     const hvacConsumption = project.data.hvac * 24;
     const lightingConsumption = project.data.light * 24;
     
-    const co2Total = data.energy.co2.reduce((sum, row) => {
+    // Calcola CO2 solo se pertinente
+    const co2Total = moduleConfig.energy.enabled ? (data.energy.co2.reduce((sum, row) => {
       const val = row['CO₂ (kg)'] || row['co2'] || row['value'] || 0;
       return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-    }, 0) || totalConsumption * 0.4;
+    }, 0) || totalConsumption * 0.4) : 0;
 
-    const deviceBreakdown = data.energy.devices.map(row => ({
-      name: String(row['Dispositivo'] || row['Device'] || row['device'] || row['name'] || 'Unknown'),
-      consumption: typeof row['Consumo (kWh)'] === 'number' 
-        ? row['Consumo (kWh)'] 
-        : parseFloat(String(row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || 0)) || 0,
-      category: String(row['Categoria'] || row['Category'] || row['category'] || '')
-    }));
+    // Processa acqua solo se abilitata
+    if (moduleConfig.water.enabled) {
+        waterConsumption = data.water.consumption.reduce((sum, row) => {
+        const val = row['Consumo (L)'] || row['Consumption (L)'] || row['consumption'] || row['value'] || 0;
+        return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
+        }, 0);
 
-    const waterConsumption = data.water.consumption.reduce((sum, row) => {
-      const val = row['Consumo (L)'] || row['Consumption (L)'] || row['consumption'] || row['value'] || 0;
-      return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-    }, 0);
-
-    const waterLeaks = data.water.leaks.filter(
-      leak => leak['status'] === 'warning' || leak['status'] === 'critical'
-    ).length;
+        waterLeaks = data.water.leaks.filter(
+        leak => leak['status'] === 'warning' || leak['status'] === 'critical'
+        ).length;
+    }
 
     const diagnosisInput: EnergyDiagnosisInput = {
       projectName: project.name,
       period: periodLabel,
-      totalConsumption: totalConsumption || project.data.total * 24,
+      totalConsumption: totalConsumption,
       hvacConsumption,
       lightingConsumption,
       co2Emissions: co2Total,
@@ -597,9 +647,9 @@ async function generateAiDiagnosis(
       airQualityIndex: project.data.aq,
       area_m2: project.area_m2,
       energy_price_kwh: project.energy_price_kwh,
-      deviceBreakdown: deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
-      waterConsumption: waterConsumption > 0 ? waterConsumption : undefined,
-      waterLeaks: waterLeaks > 0 ? waterLeaks : undefined,
+      deviceBreakdown: deviceBreakdown && deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
+      waterConsumption: waterConsumption && waterConsumption > 0 ? waterConsumption : undefined,
+      waterLeaks: waterLeaks && waterLeaks > 0 ? waterLeaks : undefined,
       language: language,
     };
 
