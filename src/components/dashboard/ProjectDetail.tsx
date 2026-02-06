@@ -1441,6 +1441,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   };
 
   // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
+
+  // 1. Find the General Device IDs first (To fix the 1000 row limit issue)
+  const generalDeviceIds = useMemo(() => {
+    return siteDevices
+      .filter(d => (d.category?.toLowerCase() === 'general'))
+      .map(d => d.id);
+  }, [siteDevices]);
+
   const heatmapConfig = useMemo(() => {
     const baseParams = getTimeRangeParams(timePeriod, dateRange);
     if (timePeriod === 'year') {
@@ -1451,7 +1459,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   const { data: heatmapResp } = useEnergyTimeseries(
     {
-      site_id: project?.siteId,
+      // ✅ FIX: Ask ONLY for the General Meter ID. 
+      // This reduces rows from ~3,500 (Site) to ~720 (Device), fitting in the limit.
+      device_ids: generalDeviceIds.length > 0 ? generalDeviceIds : undefined,
+      site_id: generalDeviceIds.length > 0 ? undefined : project?.siteId,
+      
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
       metrics: ['energy.active_energy', 'energy.power_kw'],
