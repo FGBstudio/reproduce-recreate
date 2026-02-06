@@ -32,7 +32,6 @@ import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { TimeseriesDiagnostics } from "@/components/dashboard/TimeseriesDiagnostics";
 
 
 // Dashboard types
@@ -3311,21 +3310,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.o3"] == null ? "—" : Math.round(airLatestByMetric["iaq.o3"])}</div>
                           <div className="text-[9px] text-gray-500 uppercase">ppb O₃</div>
                         </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <TimeseriesDiagnostics
-                          title="Diagnostica Air timeseries"
-                          enabled={isSupabaseConfigured && selectedAirDeviceIds.length > 0}
-                          params={{
-                            device_ids: selectedAirDeviceIds,
-                            metrics: airMetrics,
-                            start: airStart.toISOString(),
-                            end: airEnd.toISOString(),
-                            bucket: airBucket,
-                          }}
-                          query={airTimeseriesQuery}
-                        />
                       </div>
                     </div>
 
