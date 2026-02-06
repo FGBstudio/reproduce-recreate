@@ -201,12 +201,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               {hasRealData ? (
                 <>
                   <Wifi className="w-3 h-3 text-emerald-500" />
-                  <span className="text-[10px] text-emerald-500 uppercase tracking-wider">Live Data</span>
+                  <span className="text-[10px] text-emerald-500 uppercase tracking-wider">Dati disponibili</span>
                 </>
               ) : (
                 <>
                   <WifiOff className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">No Live Data</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Nessun dato</span>
                 </>
               )}
             </div>
@@ -216,7 +216,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                 <div className="text-base md:text-xl font-bold text-foreground">
                   {hasRealData ? totals.sitesCount : '—'}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Live Sites</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Siti con dati</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-foreground">
@@ -266,7 +266,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {!hasRealData && (
               <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-muted">
                 <p className="text-[10px] text-muted-foreground text-center">
-                  Nessun sito con moduli attivi e dati in tempo reale
+                  Nessun sito con moduli attivi e dati disponibili
                 </p>
               </div>
             )}
