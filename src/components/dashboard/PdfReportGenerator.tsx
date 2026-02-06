@@ -8,6 +8,7 @@ import { DateRange, getPeriodLabel } from "@/hooks/useTimeFilteredData";
 import { generateEnergyDiagnosis, EnergyDiagnosisInput } from "@/lib/energyDiagnosis";
 import { ReportLanguage, getTranslations, getDateLocale } from "@/lib/translations/pdfReport";
 
+// --- INTERFACCE DATI ---
 interface ReportData {
   energy: {
     consumption: Record<string, unknown>[];
@@ -44,6 +45,7 @@ interface GeneratePdfOptions {
   language?: ReportLanguage;
 }
 
+// --- COSTANTI E COLORI ---
 const COLORS = {
   primary: [0, 75, 77] as [number, number, number],
   secondary: [100, 116, 139] as [number, number, number],
@@ -53,6 +55,24 @@ const COLORS = {
   danger: [239, 68, 68] as [number, number, number],
   text: [30, 41, 59] as [number, number, number],
   lightGray: [241, 245, 249] as [number, number, number],
+};
+
+// --- HELPER FUNCTIONS ---
+
+// Carica un font da URL e lo converte in Base64 (necessario per jsPDF)
+const loadFontAsBase64 = async (url: string): Promise<string> => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // Rimuove il prefisso "data:application/octet-stream;base64,"
+      const base64 = (reader.result as string).split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 const captureChartAsImage = async (ref: React.RefObject<HTMLDivElement | null>): Promise<string | null> => {
@@ -71,13 +91,14 @@ const captureChartAsImage = async (ref: React.RefObject<HTMLDivElement | null>):
   }
 };
 
+// --- FUNZIONE PRINCIPALE DI GENERAZIONE ---
 export const generatePdfReport = async ({ 
   project, 
   timePeriod, 
   dateRange, 
   data, 
-  chartRefs,
-  includeAiDiagnosis = true,
+  chartRefs, 
+  includeAiDiagnosis = true, 
   onProgress,
   language = 'en'
 }: GeneratePdfOptions) => {
@@ -89,6 +110,29 @@ export const generatePdfReport = async ({
     unit: "mm",
     format: "a4",
   });
+
+  // --- 1. CARICAMENTO FONT ---
+  // Carichiamo i font personalizzati per supportare caratteri speciali e mantenere il branding
+  onProgress?.("Caricamento Font...");
+  try {
+    // Assicurati che questi file esistano in public/fonts/
+    const fontRegular = await loadFontAsBase64('/fonts/FuturaLT-Book.ttf');
+    const fontBold = await loadFontAsBase64('/fonts/FuturaLT-Bold.ttf');
+
+    // Aggiungi i font al file system virtuale di jsPDF
+    doc.addFileToVFS("FuturaLT-Regular.ttf", fontRegular);
+    doc.addFileToVFS("FuturaLT-Bold.ttf", fontBold);
+
+    // Registra i font
+    doc.addFont("FuturaLT-Regular.ttf", "FuturaLT", "normal");
+    doc.addFont("FuturaLT-Bold.ttf", "FuturaLT", "bold");
+
+    // Imposta il font di default
+    doc.setFont("FuturaLT", "normal");
+  } catch (e) {
+    console.error("Errore caricamento font, uso fallback standard.", e);
+    doc.setFont("helvetica"); // Fallback di sicurezza
+  }
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -121,7 +165,7 @@ export const generatePdfReport = async ({
     }
   }
 
-  // Helper functions
+  // Helper functions interni per il disegno
   const addPage = () => {
     doc.addPage();
     yPos = margin;
@@ -142,7 +186,7 @@ export const generatePdfReport = async ({
     checkPageBreak(15);
     doc.setFontSize(sizes[level]);
     doc.setTextColor(...colors[level]);
-    doc.setFont("helvetica", level === 1 ? "bold" : level === 2 ? "bold" : "normal");
+    doc.setFont("FuturaLT", level === 1 ? "bold" : level === 2 ? "bold" : "normal");
     doc.text(text, margin, yPos);
     yPos += level === 1 ? 12 : level === 2 ? 10 : 8;
   };
@@ -157,11 +201,13 @@ export const generatePdfReport = async ({
   const drawKeyValue = (key: string, value: string) => {
     doc.setFontSize(10);
     doc.setTextColor(...COLORS.secondary);
+    doc.setFont("FuturaLT", "normal");
     doc.text(key + ":", margin, yPos);
+    
     doc.setTextColor(...COLORS.text);
-    doc.setFont("helvetica", "bold");
+    doc.setFont("FuturaLT", "bold");
     doc.text(value, margin + 45, yPos);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("FuturaLT", "normal"); // Reset
     yPos += 6;
   };
 
@@ -175,9 +221,9 @@ export const generatePdfReport = async ({
     
     doc.setFontSize(14);
     doc.setTextColor(...COLORS.primary);
-    doc.setFont("helvetica", "bold");
+    doc.setFont("FuturaLT", "bold");
     doc.text(value + (unit ? ` ${unit}` : ""), x + 5, y + 18);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("FuturaLT", "normal");
   };
 
   const addChartImage = (imageData: string, title: string, height: number = 60) => {
@@ -189,17 +235,36 @@ export const generatePdfReport = async ({
     yPos += height + 10;
   };
 
+  // Configurazione tabelle per usare il font corretto
+  const getTableOptions = () => ({
+    styles: {
+      font: "FuturaLT",
+      fontStyle: "normal",
+      fontSize: 8,
+      cellPadding: 3,
+    },
+    headStyles: { 
+        font: "FuturaLT",
+        fontStyle: "bold",
+        fillColor: COLORS.primary, 
+        fontSize: 9,
+        halign: 'left' as const
+    },
+    alternateRowStyles: { fillColor: COLORS.lightGray },
+    margin: { left: margin, right: margin },
+  });
+
   // ========== COVER PAGE ==========
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 0, pageWidth, 80, "F");
 
   doc.setFontSize(28);
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("FuturaLT", "bold");
   doc.text(t.cover.title, margin, 35);
 
   doc.setFontSize(16);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("FuturaLT", "normal");
   doc.text(project.name, margin, 50);
 
   doc.setFontSize(11);
@@ -231,26 +296,23 @@ export const generatePdfReport = async ({
   drawHeader(t.sections.energyDashboard, 1);
   drawSeparator();
 
-  // Add energy chart snapshot if available
   if (energyChartImg) {
     addChartImage(energyChartImg, t.energy.consumptionChart, 55);
   }
 
   drawHeader(t.energy.consumption, 2);
   if (data.energy.consumption.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.energy.consumption[0])],
       body: data.energy.consumption.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.primary, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // Add device chart snapshot if available
   if (deviceChartImg) {
     checkPageBreak(70);
     addChartImage(deviceChartImg, t.energy.deviceChart, 55);
@@ -259,31 +321,29 @@ export const generatePdfReport = async ({
   checkPageBreak(60);
   drawHeader(t.energy.deviceConsumption, 2);
   if (data.energy.devices.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.energy.devices[0])],
       body: data.energy.devices.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.primary, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader(t.energy.co2Emissions, 2);
   if (data.energy.co2.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.energy.co2[0])],
       body: data.energy.co2.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.success, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.success },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   // ========== WATER SECTION ==========
@@ -291,43 +351,41 @@ export const generatePdfReport = async ({
   drawHeader(t.sections.waterDashboard, 1);
   drawSeparator();
 
-  // Add water chart snapshot if available
   if (waterChartImg) {
     addChartImage(waterChartImg, t.water.consumptionChart, 55);
   }
 
   drawHeader(t.water.consumption, 2);
   if (data.water.consumption.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.water.consumption[0])],
       body: data.water.consumption.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.accent, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.accent },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader(t.water.quality, 2);
   if (data.water.quality.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.water.quality[0])],
       body: data.water.quality.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.accent, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.accent },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader(t.water.leakDetection, 2);
   if (data.water.leaks.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [[t.tables.zone, t.tables.leakRate, t.tables.status, t.tables.detected]],
@@ -337,12 +395,10 @@ export const generatePdfReport = async ({
         row.status === "ok" ? t.status.ok : row.status === "warning" ? t.status.warning : t.status.critical,
         row.detected || "-"
       ]),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.warning, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.warning },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   // ========== AIR QUALITY SECTION ==========
@@ -350,53 +406,49 @@ export const generatePdfReport = async ({
   drawHeader(t.sections.airQualityDashboard, 1);
   drawSeparator();
 
-  // Add air quality chart snapshot if available
   if (airQualityChartImg) {
     addChartImage(airQualityChartImg, t.airQuality.chart, 55);
   }
 
   drawHeader(t.airQuality.co2TvocHistory, 2);
   if (data.airQuality.co2History.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.airQuality.co2History[0])],
       body: data.airQuality.co2History.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.success, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.success },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader(t.airQuality.tempHumidity, 2);
   if (data.airQuality.tempHumidity.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.airQuality.tempHumidity[0])],
       body: data.airQuality.tempHumidity.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.primary, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.primary },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   checkPageBreak(60);
   drawHeader(t.airQuality.particulates, 2);
   if (data.airQuality.particulates.length > 0) {
+    // @ts-ignore
     autoTable(doc, {
       startY: yPos,
       head: [Object.keys(data.airQuality.particulates[0])],
       body: data.airQuality.particulates.map(row => Object.values(row)),
-      margin: { left: margin, right: margin },
-      headStyles: { fillColor: COLORS.warning, fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: COLORS.lightGray },
+      ...getTableOptions(),
+      headStyles: { ...getTableOptions().headStyles, fillColor: COLORS.warning },
     });
-    yPos = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   // ========== AI DIAGNOSIS SECTION ==========
@@ -405,8 +457,7 @@ export const generatePdfReport = async ({
     drawHeader(t.sections.aiDiagnosis, 1);
     drawSeparator();
     
-    // Add AI badge
-    doc.setFillColor(59, 130, 246); // Blue accent
+    doc.setFillColor(59, 130, 246);
     const badgeWidth = language === 'it' ? 85 : 95;
     doc.roundedRect(margin, yPos, badgeWidth, 8, 2, 2, "F");
     doc.setFontSize(8);
@@ -414,7 +465,6 @@ export const generatePdfReport = async ({
     doc.text(t.aiSection.badge, margin + 3, yPos + 5.5);
     yPos += 15;
     
-    // Parse and render the diagnosis text
     const diagnosisLines = aiDiagnosis.split('\n');
     doc.setTextColor(...COLORS.text);
     
@@ -426,23 +476,23 @@ export const generatePdfReport = async ({
       
       checkPageBreak(12);
       
-      // Handle headers
+      // Supporto per Markdown base (Header, Bold, Bullet points)
       if (line.startsWith('## ')) {
         yPos += 3;
         doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("FuturaLT", "bold");
         doc.setTextColor(...COLORS.primary);
         doc.text(line.replace('## ', ''), margin, yPos);
         yPos += 7;
       } else if (line.startsWith('**') && line.endsWith('**')) {
         doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("FuturaLT", "bold");
         doc.setTextColor(...COLORS.text);
         doc.text(line.replace(/\*\*/g, ''), margin, yPos);
         yPos += 6;
       } else if (line.startsWith('- ') || line.startsWith('• ')) {
         doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("FuturaLT", "normal");
         doc.setTextColor(...COLORS.text);
         const bulletText = line.replace(/^[-•]\s*/, '');
         const splitText = doc.splitTextToSize(`• ${bulletText}`, pageWidth - 2 * margin - 5);
@@ -450,14 +500,14 @@ export const generatePdfReport = async ({
         yPos += splitText.length * 5;
       } else if (line.match(/^\d+\.\s/)) {
         doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("FuturaLT", "normal");
         doc.setTextColor(...COLORS.text);
         const splitText = doc.splitTextToSize(line, pageWidth - 2 * margin - 5);
         doc.text(splitText, margin + 3, yPos);
         yPos += splitText.length * 5;
       } else {
         doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("FuturaLT", "normal");
         doc.setTextColor(...COLORS.text);
         const splitText = doc.splitTextToSize(line, pageWidth - 2 * margin);
         doc.text(splitText, margin, yPos);
@@ -465,7 +515,6 @@ export const generatePdfReport = async ({
       }
     }
     
-    // Disclaimer
     yPos += 10;
     checkPageBreak(20);
     doc.setFillColor(...COLORS.lightGray);
@@ -477,12 +526,13 @@ export const generatePdfReport = async ({
     yPos += 20;
   }
 
-  // ========== FOOTER ON ALL PAGES ==========
+  // ========== FOOTER ==========
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(...COLORS.secondary);
+    doc.setFont("FuturaLT", "normal");
     doc.text(
       `${t.footer.page} ${i} ${t.footer.of} ${totalPages} | ${project.name} | ${periodLabel}`,
       pageWidth / 2,
@@ -492,13 +542,11 @@ export const generatePdfReport = async ({
   }
 
   onProgress?.(t.progress.savingPdf);
-
-  // Save the PDF
   const filename = `Report_${project.name.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
   doc.save(filename);
 };
 
-// ========== AI DIAGNOSIS HELPER ==========
+// ========== AI HELPER ==========
 async function generateAiDiagnosis(
   project: Project,
   periodLabel: string,
@@ -506,11 +554,10 @@ async function generateAiDiagnosis(
   language: ReportLanguage
 ): Promise<string | null> {
   try {
-    // Extract totals from consumption data
     const totalConsumption = data.energy.consumption.reduce((sum, row) => {
       const val = row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || row['value'] || 0;
       return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-    }, 0) || project.data.total * 24; // Fallback to daily estimate
+    }, 0) || project.data.total * 24;
 
     const hvacConsumption = project.data.hvac * 24;
     const lightingConsumption = project.data.light * 24;
@@ -518,9 +565,8 @@ async function generateAiDiagnosis(
     const co2Total = data.energy.co2.reduce((sum, row) => {
       const val = row['CO₂ (kg)'] || row['co2'] || row['value'] || 0;
       return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-    }, 0) || totalConsumption * 0.4; // Default factor
+    }, 0) || totalConsumption * 0.4;
 
-    // Build device breakdown
     const deviceBreakdown = data.energy.devices.map(row => ({
       name: String(row['Dispositivo'] || row['Device'] || row['device'] || row['name'] || 'Unknown'),
       consumption: typeof row['Consumo (kWh)'] === 'number' 
@@ -529,7 +575,6 @@ async function generateAiDiagnosis(
       category: String(row['Categoria'] || row['Category'] || row['category'] || '')
     }));
 
-    // Water data
     const waterConsumption = data.water.consumption.reduce((sum, row) => {
       const val = row['Consumo (L)'] || row['Consumption (L)'] || row['consumption'] || row['value'] || 0;
       return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
@@ -548,7 +593,7 @@ async function generateAiDiagnosis(
       co2Emissions: co2Total,
       avgTemperature: project.data.temp,
       avgCo2: project.data.co2,
-      avgHumidity: 45, // Default if not available
+      avgHumidity: 45,
       airQualityIndex: project.data.aq,
       area_m2: project.area_m2,
       energy_price_kwh: project.energy_price_kwh,
