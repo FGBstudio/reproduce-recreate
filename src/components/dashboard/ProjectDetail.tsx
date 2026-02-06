@@ -2322,7 +2322,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 disabled={isGeneratingPdf}
                 variant="outline"
                 size="sm"
-                className="h-7 md:h-9 px-2 md:px-3 bg-white/50 border-gray-200 rounded-full text-xs md:text-sm font-medium hover:bg-fgb-secondary hover:text-white"
+                className="h-7 md:h-9 px-2 md:px-3 bg-white/50 border-gray-200 rounded-full text-xs md:text-sm font-medium text-gray-700 hover:bg-fgb-secondary hover:text-white"
               >
                 {isGeneratingPdf ? (
                   <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
