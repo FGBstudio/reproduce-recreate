@@ -52,173 +52,185 @@ export interface AggregatedOverlayData {
 }
 
 // =============================================================================
-// Fetch latest telemetry for multiple sites
+// Fetch aggregated telemetry for multiple sites (from hourly/daily tables)
 // =============================================================================
 
-async function fetchLatestTelemetryForSites(siteIds: string[]): Promise<Map<string, Record<string, number>>> {
+async function fetchAggregatedTelemetryForSites(siteIds: string[]): Promise<Map<string, Record<string, number>>> {
   if (!supabase || siteIds.length === 0) {
     return new Map();
   }
 
-  // We aggregate per-site metrics across multiple devices.
-  // - Energy metrics: SUM (kW)
-  // - Non-energy metrics: AVERAGE (e.g., CO2)
-  const energyMetrics = new Set([
-    'energy.power_kw',
-    'energy.total_kw',
-    'energy.hvac_kw',
-    'energy.lighting_kw',
-    'energy.plugs_kw',
-  ]);
+  const siteData = new Map<string, Record<string, { sum: number; count: number }>>();
 
-  const siteEnergy = new Map<string, Record<string, number>>();
-  const siteNonEnergySum = new Map<string, Record<string, number>>();
-  const siteNonEnergyCount = new Map<string, Record<string, number>>();
-
-  const ensure = (m: Map<string, Record<string, number>>, siteId: string) => {
-    if (!m.has(siteId)) m.set(siteId, {});
-    return m.get(siteId)!;
+  const ensure = (siteId: string, metric: string) => {
+    if (!siteData.has(siteId)) siteData.set(siteId, {});
+    const metrics = siteData.get(siteId)!;
+    if (!metrics[metric]) metrics[metric] = { sum: 0, count: 0 };
+    return metrics[metric];
   };
 
-  const add = (siteId: string, rawMetric: string, rawValue: number) => {
+  const add = (siteId: string, rawMetric: string, value: number | null) => {
+    if (value === null || value === undefined || !Number.isFinite(value)) return;
     const metric = normalizeMetric(rawMetric);
-    if (!Number.isFinite(rawValue)) return;
-
-    if (energyMetrics.has(metric) || metric.startsWith('energy.')) {
-      const metrics = ensure(siteEnergy, siteId);
-      metrics[metric] = (metrics[metric] || 0) + rawValue;
-      return;
-    }
-
-    const sums = ensure(siteNonEnergySum, siteId);
-    const counts = ensure(siteNonEnergyCount, siteId);
-    sums[metric] = (sums[metric] || 0) + rawValue;
-    counts[metric] = (counts[metric] || 0) + 1;
+    const entry = ensure(siteId, metric);
+    entry.sum += value;
+    entry.count += 1;
   };
 
   // ---------------------------------------------------------------------------
-  // 1) ENERGY: Prefer dedicated energy_latest (doesn't require "live" freshness)
+  // 1) ENERGY: Query energy_daily for recent data (last 30 days)
   // ---------------------------------------------------------------------------
+  const energyMetrics = ['energy.power_kw', 'energy.total_kw', 'energy.hvac_kw', 'energy.lighting_kw', 'energy.plugs_kw'];
+  
   try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+
     const { data: energyRows, error: energyError } = await supabase
-      .from('energy_latest')
-      .select('site_id, metric, value')
+      .from('energy_daily')
+      .select('site_id, metric, value_avg, value_sum')
       .in('site_id', siteIds)
-      .in('metric', Array.from(energyMetrics));
+      .gte('ts_day', dateStr)
+      .order('ts_day', { ascending: false });
 
     if (energyError) {
-      console.warn('[useAggregatedSiteData] energy_latest query failed (will fallback to telemetry_latest):', energyError);
+      console.warn('[useAggregatedSiteData] energy_daily query failed:', energyError);
     } else {
       (energyRows || []).forEach((row: any) => {
-        const siteId = row.site_id;
-        if (!siteId) return;
-        add(siteId, row.metric, row.value);
+        if (!row.site_id) return;
+        // Use value_avg for power metrics
+        const val = row.value_avg ?? row.value_sum;
+        add(row.site_id, row.metric, val);
       });
     }
   } catch (e) {
-    console.warn('[useAggregatedSiteData] energy_latest query threw (will fallback to telemetry_latest):', e);
+    console.warn('[useAggregatedSiteData] energy_daily query threw:', e);
+  }
+
+  // Also try energy_hourly for more recent data
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data: energyHourlyRows, error } = await supabase
+      .from('energy_hourly')
+      .select('site_id, metric, value_avg')
+      .in('site_id', siteIds)
+      .gte('ts_hour', sevenDaysAgo.toISOString())
+      .order('ts_hour', { ascending: false });
+
+    if (!error && energyHourlyRows) {
+      energyHourlyRows.forEach((row: any) => {
+        if (!row.site_id) return;
+        add(row.site_id, row.metric, row.value_avg);
+      });
+    }
+  } catch (e) {
+    console.warn('[useAggregatedSiteData] energy_hourly query threw:', e);
   }
 
   // ---------------------------------------------------------------------------
-  // 2) AIR/WATER (and possible energy fallback): telemetry_latest
-  // Prefer filtering by telemetry_latest.site_id (migration 012). If missing,
-  // fallback to join on devices.
+  // 2) AIR/WATER: Query telemetry_daily + telemetry_hourly
   // ---------------------------------------------------------------------------
-  const telemetryMetricCandidates = [
-    // canonical
-    'iaq.co2',
-    'iaq.voc',
-    'iaq.tvoc',
-    'env.temperature',
-    'env.humidity',
-    'env.temp',
-    'env.hum',
-    'water.consumption',
-    'water.flow',
-
-    // legacy short keys (still seen in some payloads)
-    'co2',
-    'CO2',
-    'voc',
-    'tvoc',
-    'temp',
-    'temperature',
-    'temp_c',
-    'humidity',
-    'hum',
-
-    // energy fallback (some deployments still write energy.* to telemetry_latest)
-    ...Array.from(energyMetrics),
+  const airWaterMetrics = [
+    'iaq.co2', 'iaq.voc', 'iaq.tvoc', 'iaq.pm25', 'iaq.pm10',
+    'env.temperature', 'env.humidity', 'env.temp', 'env.hum',
+    'water.consumption', 'water.flow',
+    'co2', 'CO2', 'voc', 'tvoc', 'temp', 'temperature', 'humidity', 'hum'
   ];
 
-  // Attempt: direct site_id filter
-  const direct = await supabase
-    .from('telemetry_latest')
-    .select('site_id, metric, value')
-    .in('site_id', siteIds)
-    .in('metric', telemetryMetricCandidates);
+  // Query telemetry_daily
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-  if (direct.error) {
-    const msg = String((direct.error as any)?.message || '').toLowerCase();
+    const { data: dailyRows, error } = await supabase
+      .from('telemetry_daily')
+      .select('site_id, metric, value_avg')
+      .in('site_id', siteIds)
+      .in('metric', airWaterMetrics)
+      .gte('ts_day', dateStr);
 
-    // If site_id column isn't available in this deployment, fallback to the join.
-    if (msg.includes('site_id') && msg.includes('column')) {
-      const { data, error } = await supabase
-        .from('telemetry_latest')
-        .select(`
-          metric,
-          value,
-          devices!inner(site_id)
-        `)
-        .in('devices.site_id', siteIds)
-        .in('metric', telemetryMetricCandidates);
-
-      if (error) {
-        console.error('[useAggregatedSiteData] Error fetching telemetry_latest (join fallback):', error);
-      } else {
-        (data || []).forEach((row: any) => {
-          const siteId = row.devices?.site_id;
-          if (!siteId) return;
-          add(siteId, row.metric, row.value);
-        });
-      }
-    } else {
-      console.error('[useAggregatedSiteData] Error fetching telemetry_latest:', direct.error);
+    if (!error && dailyRows) {
+      dailyRows.forEach((row: any) => {
+        if (!row.site_id) return;
+        add(row.site_id, row.metric, row.value_avg);
+      });
     }
-  } else {
-    (direct.data || []).forEach((row: any) => {
-      const siteId = row.site_id;
-      if (!siteId) return;
-      add(siteId, row.metric, row.value);
-    });
+  } catch (e) {
+    console.warn('[useAggregatedSiteData] telemetry_daily query threw:', e);
+  }
+
+  // Query telemetry_hourly for more recent data
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data: hourlyRows, error } = await supabase
+      .from('telemetry_hourly')
+      .select('site_id, metric, value_avg')
+      .in('site_id', siteIds)
+      .in('metric', airWaterMetrics)
+      .gte('ts_hour', sevenDaysAgo.toISOString());
+
+    if (!error && hourlyRows) {
+      hourlyRows.forEach((row: any) => {
+        if (!row.site_id) return;
+        add(row.site_id, row.metric, row.value_avg);
+      });
+    }
+  } catch (e) {
+    console.warn('[useAggregatedSiteData] telemetry_hourly query threw:', e);
   }
 
   // ---------------------------------------------------------------------------
-  // Finalize map: energy sums + non-energy averages
+  // 3) Fallback: Also check _latest tables for any additional data
+  // ---------------------------------------------------------------------------
+  try {
+    const { data: energyLatest } = await supabase
+      .from('energy_latest')
+      .select('site_id, metric, value')
+      .in('site_id', siteIds);
+
+    (energyLatest || []).forEach((row: any) => {
+      if (!row.site_id) return;
+      add(row.site_id, row.metric, row.value);
+    });
+  } catch (e) { /* ignore */ }
+
+  try {
+    const { data: telemetryLatest } = await supabase
+      .from('telemetry_latest')
+      .select('site_id, metric, value')
+      .in('site_id', siteIds)
+      .in('metric', airWaterMetrics);
+
+    (telemetryLatest || []).forEach((row: any) => {
+      if (!row.site_id) return;
+      add(row.site_id, row.metric, row.value);
+    });
+  } catch (e) { /* ignore */ }
+
+  // ---------------------------------------------------------------------------
+  // Finalize: compute averages
   // ---------------------------------------------------------------------------
   const out = new Map<string, Record<string, number>>();
 
-  const allSiteIds = new Set<string>([
-    ...Array.from(siteEnergy.keys()),
-    ...Array.from(siteNonEnergySum.keys()),
-  ]);
-
-  allSiteIds.forEach((siteId) => {
-    const merged: Record<string, number> = {};
-
-    const e = siteEnergy.get(siteId);
-    if (e) Object.assign(merged, e);
-
-    const sums = siteNonEnergySum.get(siteId) || {};
-    const counts = siteNonEnergyCount.get(siteId) || {};
-    Object.keys(sums).forEach((metric) => {
-      const c = counts[metric] || 0;
-      if (c > 0) merged[metric] = sums[metric] / c;
+  siteData.forEach((metrics, siteId) => {
+    const result: Record<string, number> = {};
+    Object.entries(metrics).forEach(([metric, { sum, count }]) => {
+      if (count > 0) {
+        result[metric] = sum / count;
+      }
     });
-
-    out.set(siteId, merged);
+    if (Object.keys(result).length > 0) {
+      out.set(siteId, result);
+    }
   });
 
+  console.log('[useAggregatedSiteData] Fetched data for sites:', out.size, 'sites with data');
   return out;
 }
 
@@ -306,10 +318,10 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
     return config;
   }, [filteredProjects, adminProjects]);
 
-  // Fetch real telemetry data
+  // Fetch real telemetry data from aggregated tables
   const { data: telemetryMap, isLoading, isError } = useQuery({
-    queryKey: ['aggregated-site-telemetry', [...siteIds].sort().join(',')],
-    queryFn: () => fetchLatestTelemetryForSites(siteIds),
+    queryKey: ['aggregated-site-telemetry-v2', [...siteIds].sort().join(',')],
+    queryFn: () => fetchAggregatedTelemetryForSites(siteIds),
     enabled: isSupabaseConfigured && siteIds.length > 0,
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // 1 minute
