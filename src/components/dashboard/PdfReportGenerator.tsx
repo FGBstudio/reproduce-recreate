@@ -286,7 +286,7 @@ export const generatePdfReport = async ({
   // 2. Logo Intestazione (white.png) - CENTRATO E PROPORZIONATO
   if (headerLogoData) {
     const originalDims = await getImageDimensions(headerLogoData);
-    const targetWidth = 60; // 60mm
+    const targetWidth = 80; // 60mm
     const aspectRatio = originalDims.height / originalDims.width;
     const targetHeight = targetWidth * aspectRatio;
 
