@@ -2201,7 +2201,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               
               // 3. TRASPARENZA: 0.03 = 3% di opacità. 
               // Molto leggero ed elegante. Se lo vuoi più visibile metti 0.05 o 0.08
-              opacity: 0.03 
+              opacity: 0.08 
             }}
           />
         )}
