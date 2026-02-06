@@ -80,7 +80,6 @@ const loadFileAsBase64 = async (url: string): Promise<string> => {
   });
 };
 
-// Helper per ottenere le dimensioni originali dell'immagine (per mantenere aspect ratio)
 const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -138,7 +137,7 @@ export const generatePdfReport = async ({
     const [fontRegular, fontBold, imgHeader, imgWatermark] = await Promise.all([
       loadFileAsBase64('/fonts/FuturaLT-Book.ttf'),
       loadFileAsBase64('/fonts/FuturaLT-Bold.ttf'),
-      loadFileAsBase64('/white-logo.png').catch(() => null),
+      loadFileAsBase64('/white.png').catch(() => null),
       loadFileAsBase64('/favicon.ico').catch(() => null)
     ]);
 
@@ -185,7 +184,7 @@ export const generatePdfReport = async ({
     }
   }
 
-  // Helpers
+  // Helpers disegno
   const addPage = () => {
     doc.addPage();
     yPos = margin;
@@ -275,25 +274,20 @@ export const generatePdfReport = async ({
 
   // ========== COVER PAGE ==========
   
-  // 1. Sfondo Verde Intestazione
+  // 1. Sfondo Verde Intestazione (Aumentato a 110mm)
   const headerHeight = 110; 
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 0, pageWidth, headerHeight, "F");
 
-  // 2. Logo Intestazione (white.png) - CENTRATO CON ASPECT RATIO CORRETTO
+  // 2. Logo Intestazione (white.png) - CENTRATO E PROPORZIONATO
   if (headerLogoData) {
     const originalDims = await getImageDimensions(headerLogoData);
-    
-    // Larghezza fissa desiderata: 60mm
-    const targetWidth = 60; 
-    
-    // Calcoliamo l'altezza proporzionale: width * (h / w)
+    const targetWidth = 60; // 60mm
     const aspectRatio = originalDims.height / originalDims.width;
     const targetHeight = targetWidth * aspectRatio;
 
-    // Calcolo posizione X per centrare
     const hLogoX = (pageWidth - targetWidth) / 2;
-    const hLogoY = 15; // Margine dall'alto
+    const hLogoY = 15; 
     
     doc.addImage(headerLogoData, 'PNG', hLogoX, hLogoY, targetWidth, targetHeight);
   }
@@ -512,12 +506,13 @@ export const generatePdfReport = async ({
       }
   }
 
-  // ========== AI DIAGNOSIS SECTION ==========
+  // ========== AI DIAGNOSIS SECTION (PARSER OTTIMIZZATO) ==========
   if (aiDiagnosis) {
     addPage();
     drawHeader(t.sections.aiDiagnosis, 1);
     drawSeparator();
     
+    // AI Badge
     doc.setFillColor(59, 130, 246);
     const badgeWidth = language === 'it' ? 85 : 95;
     doc.roundedRect(margin, yPos, badgeWidth, 8, 2, 2, "F");
@@ -526,54 +521,67 @@ export const generatePdfReport = async ({
     doc.text(t.aiSection.badge, margin + 3, yPos + 5.5);
     yPos += 15;
     
+    // Parser Markdown Avanzato
     const diagnosisLines = aiDiagnosis.split('\n');
     doc.setTextColor(...COLORS.text);
     
-    for (const line of diagnosisLines) {
-      if (!line.trim()) {
-        yPos += 3;
+    for (let line of diagnosisLines) {
+      line = line.trim();
+      if (!line) { 
+          yPos += 3; // Spazio per le righe vuote
+          continue; 
+      }
+
+      checkPageBreak(12);
+
+      // 1. Linea Separatore (--- o ***)
+      if (line === '---' || line === '***') {
+        drawSeparator();
         continue;
       }
-      checkPageBreak(12);
-      
-      if (line.startsWith('## ')) {
+
+      // 2. Titoli (#, ##, ###)
+      if (line.startsWith('#')) {
+        // Rimuove cancelletti e asterischi
+        const title = line.replace(/^#+\s*/, '').replace(/\*\*/g, ''); 
         yPos += 3;
         doc.setFontSize(12);
         doc.setFont("FuturaLT", "bold");
-        doc.setTextColor(...COLORS.primary);
-        doc.text(line.replace('## ', ''), margin, yPos);
+        doc.setTextColor(...COLORS.primary); // Testo Verde
+        doc.text(title, margin, yPos);
         yPos += 7;
-      } else if (line.startsWith('**') && line.endsWith('**')) {
-        doc.setFontSize(10);
-        doc.setFont("FuturaLT", "bold");
-        doc.setTextColor(...COLORS.text);
-        doc.text(line.replace(/\*\*/g, ''), margin, yPos);
-        yPos += 6;
-      } else if (line.startsWith('- ') || line.startsWith('• ')) {
-        doc.setFontSize(9);
-        doc.setFont("FuturaLT", "normal");
-        doc.setTextColor(...COLORS.text);
-        const bulletText = line.replace(/^[-•]\s*/, '');
-        const splitText = doc.splitTextToSize(`• ${bulletText}`, pageWidth - 2 * margin - 5);
-        doc.text(splitText, margin + 3, yPos);
-        yPos += splitText.length * 5;
-      } else if (line.match(/^\d+\.\s/)) {
-        doc.setFontSize(9);
-        doc.setFont("FuturaLT", "normal");
-        doc.setTextColor(...COLORS.text);
-        const splitText = doc.splitTextToSize(line, pageWidth - 2 * margin - 5);
-        doc.text(splitText, margin + 3, yPos);
-        yPos += splitText.length * 5;
-      } else {
-        doc.setFontSize(9);
-        doc.setFont("FuturaLT", "normal");
-        doc.setTextColor(...COLORS.text);
-        const splitText = doc.splitTextToSize(line, pageWidth - 2 * margin);
-        doc.text(splitText, margin, yPos);
-        yPos += splitText.length * 5;
+        continue;
       }
+
+      // 3. Punti elenco (*, -, •)
+      if (line.match(/^[*•-]\s/)) {
+         // Rimuove il bullet originale e gli asterischi
+         const content = line.replace(/^[*•-]\s*/, '').replace(/\*\*/g, '');
+         doc.setFontSize(9);
+         doc.setFont("FuturaLT", "normal");
+         doc.setTextColor(...COLORS.text);
+         
+         const splitText = doc.splitTextToSize(`• ${content}`, pageWidth - 2 * margin - 5);
+         doc.text(splitText, margin + 3, yPos);
+         yPos += splitText.length * 5;
+         continue;
+      }
+
+      // 4. Testo Normale e Grassetto (Pulisce gli asterischi **)
+      const cleanLine = line.replace(/\*\*/g, '').replace(/__/g, '');
+      
+      doc.setFontSize(9);
+      // Rileva pattern "Chiave: Valore" per applicare grassetto (opzionale, ma utile)
+      const isKeyValue = /^[A-Za-z\s]+:/.test(cleanLine) && cleanLine.length < 80;
+      doc.setFont("FuturaLT", isKeyValue ? "bold" : "normal");
+      
+      doc.setTextColor(...COLORS.text);
+      const splitText = doc.splitTextToSize(cleanLine, pageWidth - 2 * margin);
+      doc.text(splitText, margin, yPos);
+      yPos += splitText.length * 5;
     }
     
+    // Disclaimer
     yPos += 10;
     checkPageBreak(20);
     doc.setFillColor(...COLORS.lightGray);
@@ -590,10 +598,9 @@ export const generatePdfReport = async ({
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
 
-    // --- WATERMARK ---
+    // --- WATERMARK (favicon) ---
     if (watermarkData) {
       doc.saveGraphicsState();
-      
       doc.setGState(new doc.GState({ opacity: 0.05 }));
       
       const wWidth = 60; 
@@ -606,7 +613,6 @@ export const generatePdfReport = async ({
       } catch (e) {
           console.warn("Impossibile renderizzare favicon come immagine nel PDF", e);
       }
-      
       doc.restoreGraphicsState();
     }
 
@@ -627,7 +633,7 @@ export const generatePdfReport = async ({
   doc.save(filename);
 };
 
-// ... (Resto del file invariato: generateAiDiagnosis)
+// ... (Generate AI Diagnosis helper, invariato)
 async function generateAiDiagnosis(
   project: Project,
   periodLabel: string,
