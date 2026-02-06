@@ -3,6 +3,8 @@
  * Calls the edge function to generate AI-powered energy diagnostics
  */
 
+export type DiagnosisLanguage = 'en' | 'it';
+
 export interface EnergyDiagnosisInput {
   projectName: string;
   period: string;
@@ -21,6 +23,7 @@ export interface EnergyDiagnosisInput {
   waterLeaks?: number;
   pm25?: number;
   pm10?: number;
+  language?: DiagnosisLanguage;
 }
 
 export interface EnergyDiagnosisResult {
@@ -39,7 +42,7 @@ export async function generateEnergyDiagnosis(
   if (!supabaseUrl) {
     return { 
       diagnosis: "", 
-      error: "Supabase non configurato" 
+      error: energyData.language === 'it' ? "Supabase non configurato" : "Supabase not configured"
     };
   }
 
@@ -55,10 +58,20 @@ export async function generateEnergyDiagnosis(
 
     if (!response.ok) {
       if (response.status === 429) {
-        return { diagnosis: "", error: "Limite richieste AI raggiunto. Riprova più tardi." };
+        return { 
+          diagnosis: "", 
+          error: energyData.language === 'it' 
+            ? "Limite richieste AI raggiunto. Riprova più tardi." 
+            : "AI request limit reached. Please try again later."
+        };
       }
       if (response.status === 402) {
-        return { diagnosis: "", error: "Crediti AI esauriti. Aggiungi crediti al workspace." };
+        return { 
+          diagnosis: "", 
+          error: energyData.language === 'it'
+            ? "Crediti AI esauriti. Aggiungi crediti al workspace."
+            : "AI credits exhausted. Add credits to your workspace."
+        };
       }
       throw new Error(`HTTP ${response.status}`);
     }
@@ -74,7 +87,7 @@ export async function generateEnergyDiagnosis(
     console.error("Energy diagnosis error:", error);
     return { 
       diagnosis: "", 
-      error: error instanceof Error ? error.message : "Errore sconosciuto" 
+      error: error instanceof Error ? error.message : (energyData.language === 'it' ? "Errore sconosciuto" : "Unknown error")
     };
   }
 }

@@ -2,11 +2,11 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import { format } from "date-fns";
-import { it } from "date-fns/locale";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import { TimePeriod } from "./TimePeriodSelector";
 import { DateRange, getPeriodLabel } from "@/hooks/useTimeFilteredData";
 import { generateEnergyDiagnosis, EnergyDiagnosisInput } from "@/lib/energyDiagnosis";
+import { ReportLanguage, getTranslations, getDateLocale } from "@/lib/translations/pdfReport";
 
 interface ReportData {
   energy: {
@@ -41,6 +41,7 @@ interface GeneratePdfOptions {
   chartRefs?: ChartRefs;
   includeAiDiagnosis?: boolean;
   onProgress?: (message: string) => void;
+  language?: ReportLanguage;
 }
 
 const COLORS = {
@@ -77,8 +78,12 @@ export const generatePdfReport = async ({
   data, 
   chartRefs,
   includeAiDiagnosis = true,
-  onProgress 
+  onProgress,
+  language = 'en'
 }: GeneratePdfOptions) => {
+  const t = getTranslations(language);
+  const dateLocale = await getDateLocale(language);
+  
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -93,9 +98,10 @@ export const generatePdfReport = async ({
   const brand = getBrandById(project.brandId);
   const holding = brand ? getHoldingById(brand.holdingId) : null;
   const periodLabel = getPeriodLabel(timePeriod, dateRange);
-  const generatedDate = format(new Date(), "dd MMMM yyyy, HH:mm", { locale: it });
+  const dateFormat = language === 'it' ? "dd MMMM yyyy, HH:mm" : "MMMM dd, yyyy, HH:mm";
+  const generatedDate = format(new Date(), dateFormat, { locale: dateLocale });
 
-  onProgress?.("Acquisizione grafici...");
+  onProgress?.(t.progress.capturingCharts);
 
   // Capture chart images in parallel
   const [energyChartImg, deviceChartImg, waterChartImg, airQualityChartImg] = await Promise.all([
@@ -108,8 +114,8 @@ export const generatePdfReport = async ({
   // Generate AI diagnosis if requested
   let aiDiagnosis: string | null = null;
   if (includeAiDiagnosis) {
-    onProgress?.("Generazione diagnosi energetica AI...");
-    const diagnosisResult = await generateAiDiagnosis(project, periodLabel, data);
+    onProgress?.(t.progress.generatingAiDiagnosis);
+    const diagnosisResult = await generateAiDiagnosis(project, periodLabel, data, language);
     if (diagnosisResult) {
       aiDiagnosis = diagnosisResult;
     }
@@ -190,47 +196,47 @@ export const generatePdfReport = async ({
   doc.setFontSize(28);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.text("Report Dashboard", margin, 35);
+  doc.text(t.cover.title, margin, 35);
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "normal");
   doc.text(project.name, margin, 50);
 
   doc.setFontSize(11);
-  doc.text(`Periodo: ${periodLabel}`, margin, 62);
+  doc.text(`${t.cover.period}: ${periodLabel}`, margin, 62);
 
   yPos = 95;
   doc.setFillColor(...COLORS.lightGray);
   doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 50, 3, 3, "F");
 
   yPos += 10;
-  drawKeyValue("Indirizzo", project.address);
-  if (brand) drawKeyValue("Brand", brand.name);
-  if (holding) drawKeyValue("Holding", holding.name);
-  drawKeyValue("Regione", project.region.toUpperCase());
-  drawKeyValue("Generato il", generatedDate);
+  drawKeyValue(t.cover.address, project.address);
+  if (brand) drawKeyValue(t.cover.brand, brand.name);
+  if (holding) drawKeyValue(t.cover.holding, holding.name);
+  drawKeyValue(t.cover.region, project.region.toUpperCase());
+  drawKeyValue(t.cover.generatedOn, generatedDate);
 
   yPos = 160;
-  drawHeader("KPI Attuali", 2);
+  drawHeader(t.cover.currentKpis, 2);
   yPos += 5;
 
   const cardWidth = (pageWidth - 2 * margin - 15) / 4;
-  drawKpiCard(margin, yPos, cardWidth, "Temperatura", `${project.data.temp}`, "°C");
-  drawKpiCard(margin + cardWidth + 5, yPos, cardWidth, "CO₂", `${project.data.co2}`, "ppm");
-  drawKpiCard(margin + (cardWidth + 5) * 2, yPos, cardWidth, "Umidità", "45", "%");
-  drawKpiCard(margin + (cardWidth + 5) * 3, yPos, cardWidth, "Qualità Aria", project.data.aq, "");
+  drawKpiCard(margin, yPos, cardWidth, t.kpis.temperature, `${project.data.temp}`, "°C");
+  drawKpiCard(margin + cardWidth + 5, yPos, cardWidth, t.kpis.co2, `${project.data.co2}`, "ppm");
+  drawKpiCard(margin + (cardWidth + 5) * 2, yPos, cardWidth, t.kpis.humidity, "45", "%");
+  drawKpiCard(margin + (cardWidth + 5) * 3, yPos, cardWidth, t.kpis.airQuality, project.data.aq, "");
 
   // ========== ENERGY SECTION ==========
   addPage();
-  drawHeader("📊 Dashboard Energia", 1);
+  drawHeader(t.sections.energyDashboard, 1);
   drawSeparator();
 
   // Add energy chart snapshot if available
   if (energyChartImg) {
-    addChartImage(energyChartImg, "Grafico Consumi Energetici", 55);
+    addChartImage(energyChartImg, t.energy.consumptionChart, 55);
   }
 
-  drawHeader("Consumi Energetici", 2);
+  drawHeader(t.energy.consumption, 2);
   if (data.energy.consumption.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -247,11 +253,11 @@ export const generatePdfReport = async ({
   // Add device chart snapshot if available
   if (deviceChartImg) {
     checkPageBreak(70);
-    addChartImage(deviceChartImg, "Grafico Consumi per Dispositivo", 55);
+    addChartImage(deviceChartImg, t.energy.deviceChart, 55);
   }
 
   checkPageBreak(60);
-  drawHeader("Consumi per Dispositivo", 2);
+  drawHeader(t.energy.deviceConsumption, 2);
   if (data.energy.devices.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -266,7 +272,7 @@ export const generatePdfReport = async ({
   }
 
   checkPageBreak(60);
-  drawHeader("Emissioni CO₂", 2);
+  drawHeader(t.energy.co2Emissions, 2);
   if (data.energy.co2.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -282,15 +288,15 @@ export const generatePdfReport = async ({
 
   // ========== WATER SECTION ==========
   addPage();
-  drawHeader("💧 Dashboard Acqua", 1);
+  drawHeader(t.sections.waterDashboard, 1);
   drawSeparator();
 
   // Add water chart snapshot if available
   if (waterChartImg) {
-    addChartImage(waterChartImg, "Grafico Consumi Idrici", 55);
+    addChartImage(waterChartImg, t.water.consumptionChart, 55);
   }
 
-  drawHeader("Consumi Idrici", 2);
+  drawHeader(t.water.consumption, 2);
   if (data.water.consumption.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -305,7 +311,7 @@ export const generatePdfReport = async ({
   }
 
   checkPageBreak(60);
-  drawHeader("Qualità Acqua", 2);
+  drawHeader(t.water.quality, 2);
   if (data.water.quality.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -320,15 +326,15 @@ export const generatePdfReport = async ({
   }
 
   checkPageBreak(60);
-  drawHeader("Rilevamento Perdite", 2);
+  drawHeader(t.water.leakDetection, 2);
   if (data.water.leaks.length > 0) {
     autoTable(doc, {
       startY: yPos,
-      head: [["Zona", "Tasso Perdita (L/h)", "Stato", "Rilevato"]],
+      head: [[t.tables.zone, t.tables.leakRate, t.tables.status, t.tables.detected]],
       body: data.water.leaks.map(row => [
         row.zone,
         row.leakRate,
-        row.status === "ok" ? "✓ OK" : row.status === "warning" ? "⚠ Attenzione" : "⚠ Critico",
+        row.status === "ok" ? t.status.ok : row.status === "warning" ? t.status.warning : t.status.critical,
         row.detected || "-"
       ]),
       margin: { left: margin, right: margin },
@@ -341,15 +347,15 @@ export const generatePdfReport = async ({
 
   // ========== AIR QUALITY SECTION ==========
   addPage();
-  drawHeader("🌬️ Dashboard Qualità Aria", 1);
+  drawHeader(t.sections.airQualityDashboard, 1);
   drawSeparator();
 
   // Add air quality chart snapshot if available
   if (airQualityChartImg) {
-    addChartImage(airQualityChartImg, "Grafico Qualità Aria", 55);
+    addChartImage(airQualityChartImg, t.airQuality.chart, 55);
   }
 
-  drawHeader("Storico CO₂ e TVOC", 2);
+  drawHeader(t.airQuality.co2TvocHistory, 2);
   if (data.airQuality.co2History.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -364,7 +370,7 @@ export const generatePdfReport = async ({
   }
 
   checkPageBreak(60);
-  drawHeader("Temperatura e Umidità", 2);
+  drawHeader(t.airQuality.tempHumidity, 2);
   if (data.airQuality.tempHumidity.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -379,7 +385,7 @@ export const generatePdfReport = async ({
   }
 
   checkPageBreak(60);
-  drawHeader("Particolato (PM2.5 / PM10)", 2);
+  drawHeader(t.airQuality.particulates, 2);
   if (data.airQuality.particulates.length > 0) {
     autoTable(doc, {
       startY: yPos,
@@ -396,15 +402,16 @@ export const generatePdfReport = async ({
   // ========== AI DIAGNOSIS SECTION ==========
   if (aiDiagnosis) {
     addPage();
-    drawHeader("🤖 Diagnosi Energetica AI", 1);
+    drawHeader(t.sections.aiDiagnosis, 1);
     drawSeparator();
     
     // Add AI badge
     doc.setFillColor(59, 130, 246); // Blue accent
-    doc.roundedRect(margin, yPos, 85, 8, 2, 2, "F");
+    const badgeWidth = language === 'it' ? 85 : 95;
+    doc.roundedRect(margin, yPos, badgeWidth, 8, 2, 2, "F");
     doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
-    doc.text("Generato con Intelligenza Artificiale", margin + 3, yPos + 5.5);
+    doc.text(t.aiSection.badge, margin + 3, yPos + 5.5);
     yPos += 15;
     
     // Parse and render the diagnosis text
@@ -465,16 +472,8 @@ export const generatePdfReport = async ({
     doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 15, 2, 2, "F");
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.secondary);
-    doc.text(
-      "⚠️ Questa diagnosi è generata automaticamente da un modello AI e ha finalità indicative.",
-      margin + 3,
-      yPos + 5
-    );
-    doc.text(
-      "Si consiglia la validazione da parte di un professionista qualificato.",
-      margin + 3,
-      yPos + 10
-    );
+    doc.text(t.aiSection.disclaimerLine1, margin + 3, yPos + 5);
+    doc.text(t.aiSection.disclaimerLine2, margin + 3, yPos + 10);
     yPos += 20;
   }
 
@@ -485,14 +484,14 @@ export const generatePdfReport = async ({
     doc.setFontSize(8);
     doc.setTextColor(...COLORS.secondary);
     doc.text(
-      `Pagina ${i} di ${totalPages} | ${project.name} | ${periodLabel}`,
+      `${t.footer.page} ${i} ${t.footer.of} ${totalPages} | ${project.name} | ${periodLabel}`,
       pageWidth / 2,
       pageHeight - 10,
       { align: "center" }
     );
   }
 
-  onProgress?.("Salvataggio PDF...");
+  onProgress?.(t.progress.savingPdf);
 
   // Save the PDF
   const filename = `Report_${project.name.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
@@ -503,12 +502,13 @@ export const generatePdfReport = async ({
 async function generateAiDiagnosis(
   project: Project,
   periodLabel: string,
-  data: ReportData
+  data: ReportData,
+  language: ReportLanguage
 ): Promise<string | null> {
   try {
     // Extract totals from consumption data
     const totalConsumption = data.energy.consumption.reduce((sum, row) => {
-      const val = row['Consumo (kWh)'] || row['consumption'] || row['value'] || 0;
+      const val = row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || row['value'] || 0;
       return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
     }, 0) || project.data.total * 24; // Fallback to daily estimate
 
@@ -522,16 +522,16 @@ async function generateAiDiagnosis(
 
     // Build device breakdown
     const deviceBreakdown = data.energy.devices.map(row => ({
-      name: String(row['Dispositivo'] || row['device'] || row['name'] || 'Unknown'),
+      name: String(row['Dispositivo'] || row['Device'] || row['device'] || row['name'] || 'Unknown'),
       consumption: typeof row['Consumo (kWh)'] === 'number' 
         ? row['Consumo (kWh)'] 
-        : parseFloat(String(row['Consumo (kWh)'] || row['consumption'] || 0)) || 0,
-      category: String(row['Categoria'] || row['category'] || '')
+        : parseFloat(String(row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || 0)) || 0,
+      category: String(row['Categoria'] || row['Category'] || row['category'] || '')
     }));
 
     // Water data
     const waterConsumption = data.water.consumption.reduce((sum, row) => {
-      const val = row['Consumo (L)'] || row['consumption'] || row['value'] || 0;
+      const val = row['Consumo (L)'] || row['Consumption (L)'] || row['consumption'] || row['value'] || 0;
       return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
     }, 0);
 
@@ -555,6 +555,7 @@ async function generateAiDiagnosis(
       deviceBreakdown: deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
       waterConsumption: waterConsumption > 0 ? waterConsumption : undefined,
       waterLeaks: waterLeaks > 0 ? waterLeaks : undefined,
+      language: language,
     };
 
     const result = await generateEnergyDiagnosis(diagnosisInput);
