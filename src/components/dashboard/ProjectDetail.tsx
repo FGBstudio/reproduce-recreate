@@ -1487,7 +1487,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     {
       // Pass the Single ID (Critical for the limit)
       device_ids: generalDeviceIds.length > 0 ? generalDeviceIds : undefined,
-      site_id: generalDeviceIds.length > 0 ? undefined : project?.siteId, 
+      site_id: undefined, // ✅ FORCE STRICT MODE, 
       
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
