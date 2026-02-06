@@ -1459,23 +1459,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [siteDevices]);
 
 
-  // ✅ FIX 2: Allow Hourly resolution for full 31-day months (The "30 to 31" fix)
+  // ✅ HEATMAP BUCKET LOGIC: Force correct resolution per view
+  // - TODAY: 1h (24 rows, single column)
+  // - WEEK: 1h (24 rows, 7 columns)
+  // - MONTH: 1h (24 rows, 30-31 columns)
+  // - YEAR: 1d (31 rows, 12 columns)
   const heatmapConfig = useMemo(() => {
     const baseParams = getTimeRangeParams(timePeriod, dateRange);
-    
-    // Recalculate bucket logic locally to override the default if needed
-    const durationMs = baseParams.end.getTime() - baseParams.start.getTime();
-    const durationHours = durationMs / (1000 * 60 * 60);
 
-    let bucket: '15m' | '1h' | '1d' = baseParams.bucket;
-    
-    // If it's a month view (approx 744 hours), force '1h' even if it's 31 days
-    if (timePeriod === 'month' || (durationHours > 24 && durationHours <= 24 * 32)) {
-        bucket = '1h';
-    }
+    // Force bucket based on timePeriod, ignoring duration-based defaults
+    let bucket: '15m' | '1h' | '1d';
     
     if (timePeriod === 'year') {
-        bucket = '1d';
+      // YEAR: Daily granularity for seasonal trends
+      bucket = '1d';
+    } else {
+      // TODAY, WEEK, MONTH: Always hourly for the heatmap
+      // This prevents the API from returning 15m data for "today" (≤24h)
+      bucket = '1h';
     }
     
     return { ...baseParams, bucket };

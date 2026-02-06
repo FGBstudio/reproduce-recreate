@@ -1,4 +1,4 @@
-import { jsPDF } from "jspdf";
+import { jsPDF, GState } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import { format } from "date-fns";
@@ -261,13 +261,13 @@ export const generatePdfReport = async ({
   const getTableOptions = () => ({
     styles: {
       font: "FuturaLT",
-      fontStyle: "normal",
+      fontStyle: "normal" as const,
       fontSize: 8,
       cellPadding: 3,
     },
     headStyles: { 
         font: "FuturaLT",
-        fontStyle: "bold",
+        fontStyle: "bold" as const,
         fillColor: COLORS.primary, 
         fontSize: 9,
         halign: 'left' as const
@@ -605,7 +605,7 @@ export const generatePdfReport = async ({
     // --- WATERMARK (favicon) ---
     if (watermarkData) {
       doc.saveGraphicsState();
-      doc.setGState(new doc.GState({ opacity: 0.05 }));
+      doc.setGState(new GState({ opacity: 0.05 }));
       
       const wWidth = 60; 
       const wHeight = 60; 
