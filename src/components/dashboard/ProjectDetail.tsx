@@ -2043,7 +2043,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const backgroundStyle = useMemo(() => {
     if (!project) return {};
 
-    // 1. Immagine Custom (o Unsplash legacy)
+    // 1. Immagine Custom del progetto (Priorità massima - vince su tutto)
     if (project.img) {
       return {
         backgroundImage: `url(${project.img})`,
@@ -2052,23 +2052,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       };
     }
 
-    // 2. Pattern del Brand (Fallback Smart)
-    if (brand?.logo) {
-      return {
-        // Overlay scuro leggero + pattern logo ripetuto
-        backgroundImage: `
-          linear-gradient(rgba(240,240,240,0.92), rgba(240,240,240,0.85)), 
-          url(${brand.logo})
-        `,
-        backgroundRepeat: 'repeat',
-        backgroundSize: '120px', // Dimensione logo nel pattern
-        backgroundPosition: 'center',
-      };
-    }
-
-    // 3. Fallback neutro
+    // 2. Fallback Colore Solido (Il pattern loghi lo aggiungiamo dopo nell'HTML)
+    // Usiamo un grigio chiarissimo FGB
     return { backgroundColor: '#f0f2f5' };
-  }, [project, brand]);
+  }, [project]);
 
   if (!project) return null;
 
@@ -2191,13 +2178,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   return (
     <div className="fixed inset-0 z-50 animate-slide-up bg-background">
       
-      {/* MODIFICA 4: Background Gestito Dinamicamente (Pattern o Immagine) */}
+      {/* CONTAINER SFONDO GENERALE */}
       <div 
-        className="absolute inset-0 transition-all duration-500"
-        style={backgroundStyle}
+        className="absolute inset-0 transition-all duration-500 overflow-hidden"
+        style={backgroundStyle} // Applica il colore di fondo o l'immagine Hero
       >
-        {/* Overlay gradient sempre presente per leggibilità */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/40 to-white/70" />
+        
+        {/* LIVELLO PATTERN LOGO (Visibile solo se NON c'è immagine progetto e C'È un logo brand) */}
+        {!project?.img && brand?.logo && (
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${brand.logo})`,
+              
+              // 1. SPAZIATURA: 'space' distanzia i loghi invece di affiancarli stretti
+              backgroundRepeat: 'space', 
+              
+              // 2. DIMENSIONE: 180px (1.5 volte più grande di prima)
+              backgroundSize: '180px',   
+              
+              backgroundPosition: 'center',
+              
+              // 3. TRASPARENZA: 0.03 = 3% di opacità. 
+              // Molto leggero ed elegante. Se lo vuoi più visibile metti 0.05 o 0.08
+              opacity: 0.03 
+            }}
+          />
+        )}
+
+        {/* LIVELLO OVERLAY SFUMATO (Migliora sempre la leggibilità) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/30 to-white/60 pointer-events-none" />
+        
       </div>
 
       {/* Header */}
