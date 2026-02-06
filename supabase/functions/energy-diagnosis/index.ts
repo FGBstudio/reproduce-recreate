@@ -5,173 +5,167 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type Language = 'en' | 'it';
+// --- INTERFACCE INPUT (Allineate con il frontend) ---
+interface EnergyPayload {
+  totalConsumption: number;
+  breakdown: Array<{ name: string; kwh: number }>;
+  co2Total: number;
+}
 
-interface EnergyData {
+interface WaterPayload {
+  totalConsumption: number;
+  leaksDetected: number;
+  avgPh?: number;
+  avgTurbidity?: number;
+}
+
+interface AirPayload {
+  avgTemp: number;
+  avgCo2: number;
+  avgAqi: string;
+  status: string;
+}
+
+interface ModuleConfig {
+  energy: boolean;
+  water: boolean;
+  air: boolean;
+}
+
+interface DiagnosisRequest {
   projectName: string;
   period: string;
-  totalConsumption: number;
-  hvacConsumption: number;
-  lightingConsumption: number;
-  co2Emissions: number;
-  avgTemperature: number;
-  avgCo2: number;
-  avgHumidity: number;
-  airQualityIndex: string;
-  area_m2?: number;
-  energy_price_kwh?: number;
-  deviceBreakdown?: Array<{ name: string; consumption: number; category?: string }>;
-  waterConsumption?: number;
-  waterLeaks?: number;
-  pm25?: number;
-  pm10?: number;
-  language?: Language;
+  language: 'en' | 'it';
+  modules: ModuleConfig;
+  energyData?: EnergyPayload | null;
+  waterData?: WaterPayload | null;
+  airData?: AirPayload | null;
 }
 
-function getSystemPrompt(lang: Language): string {
-  if (lang === 'it') {
-    return `Sei un esperto consulente energetico per edifici commerciali e retail. 
-Analizza i dati energetici forniti e genera una diagnosi professionale in italiano.
-
-La diagnosi deve includere:
-1. **Sintesi Prestazioni**: Valutazione generale delle prestazioni energetiche
-2. **Analisi Consumi**: Breakdown dei consumi per categoria (HVAC, illuminazione, altro)
-3. **Efficienza Energetica**: Calcolo e valutazione dell'intensità energetica (kWh/m²)
-4. **Impatto Ambientale**: Analisi delle emissioni CO₂ e confronto con benchmark di settore
-5. **Qualità Ambientale**: Valutazione di temperatura, CO₂, umidità e qualità dell'aria
-6. **Raccomandazioni**: 3-5 azioni concrete per migliorare l'efficienza
-7. **Priorità Interventi**: Classificazione interventi per impatto/costo
-8. **Risparmio Stimato**: Stima potenziale di risparmio energetico ed economico
-
-Rispondi in formato strutturato con sezioni chiare. Usa dati specifici quando disponibili.
-Mantieni un tono professionale ma accessibile.`;
-  }
-
-  return `You are an expert energy consultant for commercial and retail buildings.
-Analyze the provided energy data and generate a professional diagnosis in English.
-
-The diagnosis should include:
-1. **Performance Summary**: Overall assessment of energy performance
-2. **Consumption Analysis**: Breakdown of consumption by category (HVAC, lighting, other)
-3. **Energy Efficiency**: Calculation and evaluation of energy intensity (kWh/m²)
-4. **Environmental Impact**: CO₂ emissions analysis and comparison with industry benchmarks
-5. **Environmental Quality**: Assessment of temperature, CO₂, humidity, and air quality
-6. **Recommendations**: 3-5 concrete actions to improve efficiency
-7. **Intervention Priorities**: Classification of interventions by impact/cost
-8. **Estimated Savings**: Potential energy and economic savings estimate
-
-Respond in a structured format with clear sections. Use specific data when available.
-Maintain a professional but accessible tone.`;
-}
-
-function buildUserPrompt(data: EnergyData, lang: Language): string {
+// --- COSTRUZIONE PROMPT DINAMICO ---
+function buildSystemPrompt(lang: 'en' | 'it', modules: ModuleConfig): string {
   const isIt = lang === 'it';
-  const locale = isIt ? 'it-IT' : 'en-US';
-  const currency = isIt ? '€' : '$';
   
-  const labels = {
-    title: isIt ? 'Dati Energetici' : 'Energy Data',
-    period: isIt ? 'Periodo di riferimento' : 'Reference period',
-    consumption: isIt ? 'Consumi Energetici' : 'Energy Consumption',
-    total: isIt ? 'Consumo Totale' : 'Total Consumption',
-    hvac: 'HVAC',
-    lighting: isIt ? 'Illuminazione' : 'Lighting',
-    co2Emissions: isIt ? 'Emissioni CO₂' : 'CO₂ Emissions',
-    surface: isIt ? 'Superficie' : 'Floor Area',
-    intensity: isIt ? 'Intensità Energetica' : 'Energy Intensity',
-    energyCost: isIt ? 'Costo Energia' : 'Energy Cost',
-    totalCost: isIt ? 'Costo Totale Stimato' : 'Estimated Total Cost',
-    envQuality: isIt ? 'Qualità Ambientale' : 'Environmental Quality',
-    avgTemp: isIt ? 'Temperatura Media' : 'Average Temperature',
-    avgCo2: isIt ? 'CO₂ Medio' : 'Average CO₂',
-    avgHumidity: isIt ? 'Umidità Media' : 'Average Humidity',
-    aqIndex: isIt ? 'Indice Qualità Aria' : 'Air Quality Index',
-    deviceBreakdown: isIt ? 'Breakdown per Dispositivo' : 'Device Breakdown',
-    waterConsumption: isIt ? 'Consumi Idrici' : 'Water Consumption',
-    water: isIt ? 'Consumo Acqua' : 'Water Consumption',
-    leaksDetected: isIt ? '⚠️ Perdite Rilevate' : '⚠️ Leaks Detected',
-    generateDiagnosis: isIt 
-      ? 'Genera una diagnosi energetica completa basata su questi dati.'
-      : 'Generate a complete energy diagnosis based on this data.',
-  };
+  // Base del prompt
+  let prompt = isIt 
+    ? `Sei un esperto Facility Manager e Analista di Sostenibilità. Analizza i dati di telemetria forniti e genera una diagnosi completa in Italiano.\n\n`
+    : `You are an expert Facility Manager and Sustainability Analyst. Analyze the provided telemetry data and generate a comprehensive diagnosis in English.\n\n`;
 
-  const lines: string[] = [
-    `# ${labels.title}: ${data.projectName}`,
-    `**${labels.period}**: ${data.period}`,
-    "",
-    `## ${labels.consumption}`,
-    `- ${labels.total}: ${data.totalConsumption.toLocaleString(locale)} kWh`,
-    `- ${labels.hvac}: ${data.hvacConsumption.toLocaleString(locale)} kWh (${((data.hvacConsumption / data.totalConsumption) * 100).toFixed(1)}%)`,
-    `- ${labels.lighting}: ${data.lightingConsumption.toLocaleString(locale)} kWh (${((data.lightingConsumption / data.totalConsumption) * 100).toFixed(1)}%)`,
-    `- ${labels.co2Emissions}: ${data.co2Emissions.toLocaleString(locale)} kg`,
-  ];
+  prompt += isIt 
+    ? `STRUTTURA OBBLIGATORIA DEL REPORT:\n`
+    : `MANDATORY REPORT STRUCTURE:\n`;
 
-  if (data.area_m2) {
-    const intensity = data.totalConsumption / data.area_m2;
-    lines.push(`- ${labels.surface}: ${data.area_m2.toLocaleString(locale)} m²`);
-    lines.push(`- ${labels.intensity}: ${intensity.toFixed(2)} kWh/m²`);
+  // 1. Executive Summary (Sempre presente)
+  prompt += isIt 
+    ? `### 1. Sintesi Esecutiva\n[Breve riassunto dello stato generale dell'edificio. Menziona il problema più critico trovato.]\n\n`
+    : `### 1. Executive Summary\n[Brief high-level summary of building health. Mention the most critical issue found.]\n\n`;
+
+  // 2. Energia (Solo se attivo)
+  if (modules.energy) {
+    prompt += isIt 
+      ? `### 2. Prestazioni Energetiche\n[Analizza consumo totale, confronto con benchmark e ripartizione (HVAC vs Luci). Identifica anomalie.]\n\n`
+      : `### 2. Energy Performance\n[Analyze total consumption, benchmarks comparison, and breakdown (HVAC vs Lighting). Identify anomalies.]\n\n`;
   }
 
-  if (data.energy_price_kwh) {
-    const cost = data.totalConsumption * data.energy_price_kwh;
-    lines.push(`- ${labels.energyCost}: ${currency}${data.energy_price_kwh.toFixed(4)}/kWh`);
-    lines.push(`- ${labels.totalCost}: ${currency}${cost.toLocaleString(locale, { minimumFractionDigits: 2 })}`);
+  // 3. Acqua (Solo se attivo)
+  if (modules.water) {
+    prompt += isIt 
+      ? `### 3. Gestione Idrica\n[Analizza consumi e perdite. Se ci sono perdite ("Leaks Detected" > 0), segnalale con urgenza.]\n\n`
+      : `### 3. Water Management\n[Analyze consumption and leaks. If "Leaks Detected" > 0, flag this urgently.]\n\n`;
   }
 
-  lines.push("");
-  lines.push(`## ${labels.envQuality}`);
-  lines.push(`- ${labels.avgTemp}: ${data.avgTemperature}°C`);
-  lines.push(`- ${labels.avgCo2}: ${data.avgCo2} ppm`);
-  lines.push(`- ${labels.avgHumidity}: ${data.avgHumidity}%`);
-  lines.push(`- ${labels.aqIndex}: ${data.airQualityIndex}`);
-
-  if (data.pm25 !== undefined || data.pm10 !== undefined) {
-    const na = isIt ? "N/D" : "N/A";
-    lines.push(`- PM2.5: ${data.pm25 ?? na} µg/m³`);
-    lines.push(`- PM10: ${data.pm10 ?? na} µg/m³`);
+  // 4. Aria (Solo se attivo)
+  if (modules.air) {
+    prompt += isIt 
+      ? `### 4. Qualità Ambientale e Comfort\n[Valuta Temperatura, CO2 e Qualità dell'Aria (AQI). L'ambiente è salubre?]\n\n`
+      : `### 4. Environmental Quality & Comfort\n[Evaluate Temperature, CO2, and Air Quality (AQI). Is the environment healthy?]\n\n`;
   }
 
-  if (data.deviceBreakdown && data.deviceBreakdown.length > 0) {
-    lines.push("");
-    lines.push(`## ${labels.deviceBreakdown}`);
-    data.deviceBreakdown.forEach((device) => {
-      const pct = ((device.consumption / data.totalConsumption) * 100).toFixed(1);
-      lines.push(`- ${device.name}: ${device.consumption.toLocaleString(locale)} kWh (${pct}%)`);
-    });
-  }
+  // 5. Raccomandazioni (Sempre presente, misto)
+  prompt += isIt 
+    ? `### 5. Piano d'Azione Prioritario\n[Elenca 3-5 azioni concrete combinando tutte le discipline. Esempio: "Riparare perdita acqua" priorità alta, "Ottimizzare HVAC" media.]\n\n`
+    : `### 5. Consolidated Action Plan\n[List 3-5 concrete actions mixing all disciplines. E.g., "Fix water leak" high priority, "Optimize HVAC" medium.]\n\n`;
 
-  if (data.waterConsumption !== undefined) {
-    lines.push("");
-    lines.push(`## ${labels.waterConsumption}`);
-    lines.push(`- ${labels.water}: ${data.waterConsumption.toLocaleString(locale)} L`);
-    if (data.waterLeaks !== undefined && data.waterLeaks > 0) {
-      lines.push(`- ${labels.leaksDetected}: ${data.waterLeaks}`);
-    }
-  }
+  // Istruzioni finali
+  prompt += isIt 
+    ? `Usa formattazione Markdown (grassetti, elenchi). Sii professionale e diretto.`
+    : `Use Markdown formatting (bold, lists). Be professional and direct.`;
 
-  lines.push("");
-  lines.push(labels.generateDiagnosis);
-
-  return lines.join("\n");
+  return prompt;
 }
 
+function buildUserMessage(data: DiagnosisRequest): string {
+  const { projectName, period, energyData, waterData, airData, language } = data;
+  const isIt = language === 'it';
+
+  let msg = `Project: ${projectName}\nPeriod: ${period}\n\n`;
+
+  if (data.modules.energy && energyData) {
+    msg += `--- ENERGY DATA ---\n`;
+    msg += `Total Consumption: ${energyData.totalConsumption.toFixed(2)} kWh\n`;
+    msg += `CO2 Emissions: ${energyData.co2Total.toFixed(2)} kg\n`;
+    if (energyData.breakdown && energyData.breakdown.length > 0) {
+      msg += `Breakdown:\n`;
+      energyData.breakdown.forEach(d => msg += `- ${d.name}: ${d.kwh} kWh\n`);
+    }
+    msg += `\n`;
+  }
+
+  if (data.modules.water && waterData) {
+    msg += `--- WATER DATA ---\n`;
+    msg += `Total Consumption: ${waterData.totalConsumption.toFixed(2)} Liters\n`;
+    msg += `Leaks Detected: ${waterData.leaksDetected}\n`; // Importante per l'IA
+    msg += `\n`;
+  }
+
+  if (data.modules.air && airData) {
+    msg += `--- AIR QUALITY DATA ---\n`;
+    msg += `Avg Temperature: ${airData.avgTemp?.toFixed(1)}°C\n`;
+    msg += `Avg CO2: ${airData.avgCo2?.toFixed(0)} ppm\n`;
+    msg += `Air Quality Index (AQI): ${airData.avgAqi}\n`;
+    msg += `Status: ${airData.status}\n`;
+    msg += `\n`;
+  }
+
+  msg += isIt 
+    ? `Analizza questi dati e produci il report secondo la struttura richiesta.`
+    : `Analyze these data and produce the report following the requested structure.`;
+
+  return msg;
+}
+
+// --- SERVER PRINCIPALE ---
 serve(async (req) => {
+  // Gestione CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { energyData } = await req.json() as { energyData: EnergyData };
-    const language: Language = energyData.language || 'en';
+    // 1. Parsing del body della richiesta
+    const requestData = await req.json() as DiagnosisRequest;
     
+    // Validazione minima
+    if (!requestData.projectName || !requestData.modules) {
+      throw new Error("Missing required fields (projectName or modules)");
+    }
+
+    // Default language fallback
+    const language = requestData.language || 'en';
+
+    // 2. Recupero API Key
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = getSystemPrompt(language);
-    const userPrompt = buildUserPrompt(energyData, language);
+    // 3. Costruzione Prompts
+    const systemPrompt = buildSystemPrompt(language, requestData.modules);
+    const userMessage = buildUserMessage(requestData);
 
+    console.log("Sending prompt to AI:", userMessage.substring(0, 100) + "..."); // Debug log
+
+    // 4. Chiamata a Lovable/OpenAI Gateway
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -179,45 +173,42 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-3-flash-preview", // O gpt-4o, a seconda della tua config
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "user", content: userMessage },
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.5, 
+        max_tokens: 2500, // Aumentato per report più lunghi
       }),
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: language === 'it' ? "Limite richieste superato. Riprova più tardi." : "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: language === 'it' ? "Pagamento richiesto. Aggiungi crediti al workspace." : "Payment required. Please add credits to your workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+        // Gestione errori API specifica
+        if (response.status === 429) {
+            return new Response(
+                JSON.stringify({ error: language === 'it' ? "Troppe richieste. Riprova più tardi." : "Rate limit exceeded." }),
+                { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
+        const errText = await response.text();
+        console.error("AI Gateway Error:", errText);
+        throw new Error(`AI Gateway returned ${response.status}: ${errText}`);
     }
 
     const data = await response.json();
-    const diagnosis = data.choices?.[0]?.message?.content || (language === 'it' ? "Diagnosi non disponibile" : "Diagnosis not available");
+    const diagnosis = data.choices?.[0]?.message?.content || (language === 'it' ? "Diagnosi non disponibile." : "Diagnosis not available.");
 
+    // 5. Risposta al client
     return new Response(
       JSON.stringify({ diagnosis }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error) {
-    console.error("Energy diagnosis error:", error);
+    console.error("Energy Diagnosis Function Error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
