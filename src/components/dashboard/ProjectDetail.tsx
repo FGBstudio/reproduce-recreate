@@ -1440,9 +1440,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     );
   };
 
-  // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
+ // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
 
-  // 1. Find the General Device IDs first (To fix the 1000 row limit issue)
+  // 1. Find the General Device IDs first
   const generalDeviceIds = useMemo(() => {
     return siteDevices
       .filter(d => (d.category?.toLowerCase() === 'general'))
@@ -1452,21 +1452,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const heatmapConfig = useMemo(() => {
     const baseParams = getTimeRangeParams(timePeriod, dateRange);
     if (timePeriod === 'year') {
-        return { ...baseParams, bucket: '1d' }; // Scarica giorni per l'anno
+        return { ...baseParams, bucket: '1d' };
     }
-    return { ...baseParams, bucket: '1h' }; // Scarica ore per mese/settimana
+    return { ...baseParams, bucket: '1h' };
   }, [timePeriod, dateRange, getTimeRangeParams]);
 
   const { data: heatmapResp } = useEnergyTimeseries(
     {
-      // ✅ FIX: Ask ONLY for the General Meter ID. 
-      // This reduces rows from ~3,500 (Site) to ~720 (Device), fitting in the limit.
       device_ids: generalDeviceIds.length > 0 ? generalDeviceIds : undefined,
       site_id: generalDeviceIds.length > 0 ? undefined : project?.siteId,
       
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.active_energy', 'energy.power_kw'],
+      
+      // ✅ FIX: Request ONLY 'active_energy'.
+      // 1 Device * 1 Metric * 720 Hours = 720 Rows.
+      // This fits PERFECTLY in the default 1,000 row limit.
+      metrics: ['energy.active_energy'], 
+      
       bucket: heatmapConfig.bucket,
     },
     {
