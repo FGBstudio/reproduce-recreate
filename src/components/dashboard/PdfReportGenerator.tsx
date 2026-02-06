@@ -127,7 +127,7 @@ export const generatePdfReport = async ({
     const [fontRegular, fontBold, imgHeader, imgWatermark] = await Promise.all([
       loadFileAsBase64('/fonts/FuturaLT-Book.ttf'),
       loadFileAsBase64('/fonts/FuturaLT-Bold.ttf'),
-      loadFileAsBase64('/white.png').catch(() => null),
+      loadFileAsBase64('/white-logo.png').catch(() => null),
       loadFileAsBase64('/favicon.ico').catch(() => null)
     ]);
 
