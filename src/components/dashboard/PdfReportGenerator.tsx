@@ -5,8 +5,11 @@ import { format } from "date-fns";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
 import { TimePeriod } from "./TimePeriodSelector";
 import { DateRange, getPeriodLabel } from "@/hooks/useTimeFilteredData";
+// Nota: EnergyDiagnosisInput potrebbe non servire più qui se usiamo il payload custom, 
+// ma lo lasciamo per compatibilità con altre parti del codice se necessario.
 import { generateEnergyDiagnosis, EnergyDiagnosisInput } from "@/lib/energyDiagnosis";
 import { ReportLanguage, getTranslations, getDateLocale } from "@/lib/translations/pdfReport";
+import { supabase } from "@/integrations/supabase/client"; // Assicuriamoci di avere il client supabase
 
 // --- INTERFACCE DATI ---
 export interface ReportModuleConfig {
@@ -137,7 +140,7 @@ export const generatePdfReport = async ({
     const [fontRegular, fontBold, imgHeader, imgWatermark] = await Promise.all([
       loadFileAsBase64('/fonts/FuturaLT-Book.ttf'),
       loadFileAsBase64('/fonts/FuturaLT-Bold.ttf'),
-      loadFileAsBase64('/white.png').catch(() => null),
+      loadFileAsBase64('/whiteLogoPayoff.png').catch(() => null),
       loadFileAsBase64('/favicon.ico').catch(() => null)
     ]);
 
@@ -178,13 +181,14 @@ export const generatePdfReport = async ({
   let aiDiagnosis: string | null = null;
   if (includeAiDiagnosis) {
     onProgress?.(t.progress.generatingAiDiagnosis);
+    // Chiamata alla nuova funzione aggiornata
     const diagnosisResult = await generateAiDiagnosis(project, periodLabel, data, moduleConfig, language);
     if (diagnosisResult) {
       aiDiagnosis = diagnosisResult;
     }
   }
 
-  // Helpers disegno
+  // Helpers
   const addPage = () => {
     doc.addPage();
     yPos = margin;
@@ -274,7 +278,7 @@ export const generatePdfReport = async ({
 
   // ========== COVER PAGE ==========
   
-  // 1. Sfondo Verde Intestazione (Aumentato a 110mm)
+  // 1. Sfondo Verde Intestazione
   const headerHeight = 110; 
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 0, pageWidth, headerHeight, "F");
@@ -506,7 +510,7 @@ export const generatePdfReport = async ({
       }
   }
 
-  // ========== AI DIAGNOSIS SECTION (PARSER OTTIMIZZATO) ==========
+  // ========== AI DIAGNOSIS SECTION ==========
   if (aiDiagnosis) {
     addPage();
     drawHeader(t.sections.aiDiagnosis, 1);
@@ -633,7 +637,7 @@ export const generatePdfReport = async ({
   doc.save(filename);
 };
 
-// ... (Generate AI Diagnosis helper, invariato)
+// ========== AI DIAGNOSIS HELPER (AGGIORNATO) ==========
 async function generateAiDiagnosis(
   project: Project,
   periodLabel: string,
@@ -642,74 +646,60 @@ async function generateAiDiagnosis(
   language: ReportLanguage
 ): Promise<string | null> {
   try {
-    let totalConsumption = 0;
-    let deviceBreakdown = undefined;
-    let waterConsumption = undefined;
-    let waterLeaks = undefined;
+    // 1. Prepara i dati ENERGIA
+    const energyPayload = moduleConfig.energy.enabled ? {
+      totalConsumption: data.energy.consumption.reduce((sum, r) => sum + Number(r['value'] || r['Consumo (kWh)'] || 0), 0) || (project.data.total * 30),
+      breakdown: data.energy.devices.map(d => ({ name: String(d['name'] || d['Dispositivo']), kwh: Number(d['value'] || d['Consumo (kWh)']) })),
+      co2Total: data.energy.co2.reduce((sum, r) => sum + Number(r['value'] || r['CO₂ (kg)'] || 0), 0)
+    } : null;
 
-    if (moduleConfig.energy.enabled) {
-        totalConsumption = data.energy.consumption.reduce((sum, row) => {
-        const val = row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || row['value'] || 0;
-        return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-        }, 0) || project.data.total * 24;
+    // 2. Prepara i dati ACQUA
+    const waterPayload = moduleConfig.water.enabled ? {
+      totalConsumption: data.water.consumption.reduce((sum, r) => sum + Number(r['value'] || r['consumption'] || 0), 0),
+      leaksDetected: data.water.leaks.filter(l => l['status'] !== 'ok').length,
+      avgPh: 7.2, 
+      avgTurbidity: 0.8
+    } : null;
 
-        deviceBreakdown = data.energy.devices.map(row => ({
-        name: String(row['Dispositivo'] || row['Device'] || row['device'] || row['name'] || 'Unknown'),
-        consumption: typeof row['Consumo (kWh)'] === 'number' 
-            ? row['Consumo (kWh)'] 
-            : parseFloat(String(row['Consumo (kWh)'] || row['Consumption (kWh)'] || row['consumption'] || 0)) || 0,
-        category: String(row['Categoria'] || row['Category'] || row['category'] || '')
-        }));
-    }
-
-    const hvacConsumption = project.data.hvac * 24;
-    const lightingConsumption = project.data.light * 24;
-    
-    const co2Total = moduleConfig.energy.enabled ? (data.energy.co2.reduce((sum, row) => {
-      const val = row['CO₂ (kg)'] || row['co2'] || row['value'] || 0;
-      return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-    }, 0) || totalConsumption * 0.4) : 0;
-
-    if (moduleConfig.water.enabled) {
-        waterConsumption = data.water.consumption.reduce((sum, row) => {
-        const val = row['Consumo (L)'] || row['Consumption (L)'] || row['consumption'] || row['value'] || 0;
-        return sum + (typeof val === 'number' ? val : parseFloat(String(val)) || 0);
-        }, 0);
-
-        waterLeaks = data.water.leaks.filter(
-        leak => leak['status'] === 'warning' || leak['status'] === 'critical'
-        ).length;
-    }
-
-    const diagnosisInput: EnergyDiagnosisInput = {
-      projectName: project.name,
-      period: periodLabel,
-      totalConsumption: totalConsumption,
-      hvacConsumption,
-      lightingConsumption,
-      co2Emissions: co2Total,
-      avgTemperature: project.data.temp,
+    // 3. Prepara i dati ARIA
+    const airPayload = moduleConfig.air.enabled ? {
+      avgTemp: project.data.temp,
       avgCo2: project.data.co2,
-      avgHumidity: 45,
-      airQualityIndex: project.data.aq,
-      area_m2: project.area_m2,
-      energy_price_kwh: project.energy_price_kwh,
-      deviceBreakdown: deviceBreakdown && deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
-      waterConsumption: waterConsumption && waterConsumption > 0 ? waterConsumption : undefined,
-      waterLeaks: waterLeaks && waterLeaks > 0 ? waterLeaks : undefined,
-      language: language,
-    };
+      avgAqi: project.data.aq,
+      status: project.data.aq === 'EXCELLENT' || project.data.aq === 'GOOD' ? 'Optimal' : 'Needs Attention'
+    } : null;
 
-    const result = await generateEnergyDiagnosis(diagnosisInput);
-    
-    if (result.error) {
-      console.warn("AI diagnosis error:", result.error);
-      return null;
+    // 4. Chiama la Edge Function (usando supabase.functions.invoke che gestisce auth)
+    const { data: result, error } = await supabase.functions.invoke('energy-diagnosis', {
+        body: {
+            projectName: project.name,
+            period: periodLabel,
+            language: language,
+            modules: {
+              energy: moduleConfig.energy.enabled,
+              water: moduleConfig.water.enabled,
+              air: moduleConfig.air.enabled
+            },
+            energyData: energyPayload,
+            waterData: waterPayload,
+            airData: airPayload
+        }
+    });
+
+    if (error) {
+        console.error("AI Diagnosis function error:", error);
+        return null;
     }
-
+    
     return result.diagnosis;
+
   } catch (error) {
-    console.error("Failed to generate AI diagnosis:", error);
-    return null;
+    console.error("Failed to generate AI diagnosis (catch):", error);
+    // Fallback statico
+    return `
+# Diagnosis Unavailable
+Unable to generate AI diagnosis at this time.
+Please check your internet connection or try again later.
+    `;
   }
 }
