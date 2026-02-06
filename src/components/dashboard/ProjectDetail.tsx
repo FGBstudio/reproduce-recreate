@@ -2144,6 +2144,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         project,
         timePeriod,
         dateRange,
+        // --- MODIFICA: Passiamo la configurazione dei moduli ---
+        moduleConfig: resolvedModuleConfig,
+        // -------------------------------------------------------
         data: {
           energy: {
             consumption: filteredEnergyData as unknown as Record<string, unknown>[],
@@ -2173,7 +2176,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [project, timePeriod, dateRange, filteredEnergyData, filteredDeviceData, filteredCO2Data, filteredWaterData, waterQualityData, waterLeaksData, co2HistoryData, tempHumidityData, pm25Data, isGeneratingPdf]);
+  }, [
+    project, 
+    timePeriod, 
+    dateRange, 
+    resolvedModuleConfig, // <--- Importante: aggiunto alle dipendenze
+    filteredEnergyData, 
+    filteredDeviceData, 
+    filteredCO2Data, 
+    filteredWaterData, 
+    waterQualityData, 
+    waterLeaksData, 
+    co2HistoryData, 
+    tempHumidityData, 
+    pm25Data, 
+    isGeneratingPdf
+  ]);
 
   return (
     <div className="fixed inset-0 z-50 animate-slide-up bg-background">
