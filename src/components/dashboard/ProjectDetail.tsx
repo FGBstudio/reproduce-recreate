@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
@@ -1448,30 +1449,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return { ...baseParams, bucket: '1h' }; // Scarica ore per mese/settimana
   }, [timePeriod, dateRange, getTimeRangeParams]);
 
-// 1. Find the General Device IDs first
-const generalDeviceIds = useMemo(() => {
-  // Filter siteDevices to find only those with category 'general'
-  return siteDevices
-    .filter(d => (d.category?.toLowerCase() === 'general'))
-    .map(d => d.id);
-}, [siteDevices]);
-
-// 2. Pass device_ids instead of site_id
-const { data: heatmapResp } = useEnergyTimeseries(
-  {
-    // ✅ FIX: Use specific device IDs if found, otherwise fallback to site
-    device_ids: generalDeviceIds.length > 0 ? generalDeviceIds : undefined,
-    site_id: generalDeviceIds.length > 0 ? undefined : project?.siteId, 
-    
-    start: heatmapConfig.start.toISOString(),
-    end: heatmapConfig.end.toISOString(),
-    metrics: ['energy.active_energy', 'energy.power_kw'],
-    bucket: heatmapConfig.bucket,
-  },
-  {
-    enabled: !!project?.siteId && activeDashboard === 'energy',
-  }
-);
+  const { data: heatmapResp } = useEnergyTimeseries(
+    {
+      site_id: project?.siteId,
+      start: heatmapConfig.start.toISOString(),
+      end: heatmapConfig.end.toISOString(),
+      metrics: ['energy.active_energy', 'energy.power_kw'],
+      bucket: heatmapConfig.bucket,
+    },
+    {
+      enabled: !!project?.siteId && activeDashboard === 'energy',
+    }
+  );
 
   // B. Elaborazione Dati a Matrice
   const heatmapGrid = useMemo(() => {
