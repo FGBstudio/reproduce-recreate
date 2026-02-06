@@ -80,6 +80,17 @@ const loadFileAsBase64 = async (url: string): Promise<string> => {
   });
 };
 
+// Helper per ottenere le dimensioni originali dell'immagine (per mantenere aspect ratio)
+const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.src = `data:image/png;base64,${base64}`;
+  });
+};
+
 const captureChartAsImage = async (ref: React.RefObject<HTMLDivElement | null>): Promise<string | null> => {
   if (!ref?.current) return null;
   try {
@@ -264,21 +275,30 @@ export const generatePdfReport = async ({
 
   // ========== COVER PAGE ==========
   
-  // 1. Aumentiamo l'altezza della banda verde per farci stare il logo grande
+  // 1. Sfondo Verde Intestazione
   const headerHeight = 110; 
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 0, pageWidth, headerHeight, "F");
 
-  // 2. Logo Intestazione (white.png) - CENTRATO E GRANDE
+  // 2. Logo Intestazione (white.png) - CENTRATO CON ASPECT RATIO CORRETTO
   if (headerLogoData) {
-    const hLogoWidth = 60; // Larghezza aumentata
-    const hLogoHeight = 60; // Altezza (assumendo quadrato/proporzionale)
-    const hLogoX = (pageWidth - hLogoWidth) / 2; // Centrato orizzontalmente
+    const originalDims = await getImageDimensions(headerLogoData);
+    
+    // Larghezza fissa desiderata: 60mm
+    const targetWidth = 60; 
+    
+    // Calcoliamo l'altezza proporzionale: width * (h / w)
+    const aspectRatio = originalDims.height / originalDims.width;
+    const targetHeight = targetWidth * aspectRatio;
+
+    // Calcolo posizione X per centrare
+    const hLogoX = (pageWidth - targetWidth) / 2;
     const hLogoY = 15; // Margine dall'alto
-    doc.addImage(headerLogoData, 'PNG', hLogoX, hLogoY, hLogoWidth, hLogoHeight);
+    
+    doc.addImage(headerLogoData, 'PNG', hLogoX, hLogoY, targetWidth, targetHeight);
   }
 
-  // 3. Testi Cover - CENTRATI SOTTO IL LOGO
+  // 3. Testi Cover - CENTRATI
   doc.setTextColor(255, 255, 255);
   const centerX = pageWidth / 2;
   
@@ -296,13 +316,12 @@ export const generatePdfReport = async ({
   doc.setFontSize(11);
   doc.text(`${t.cover.period}: ${periodLabel}`, centerX, 102, { align: 'center' });
 
-  // 4. Box Info Progetto - Spostato più in basso per fare spazio
+  // 4. Box Info Progetto
   yPos = 125; 
   doc.setFillColor(...COLORS.lightGray);
   doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 50, 3, 3, "F");
 
   yPos += 10;
-  // Per il box info, torniamo all'allineamento a sinistra (standard di drawKeyValue)
   doc.setTextColor(...COLORS.text); 
   drawKeyValue(t.cover.address, project.address);
   if (brand) drawKeyValue(t.cover.brand, brand.name);
@@ -311,7 +330,7 @@ export const generatePdfReport = async ({
   drawKeyValue(t.cover.generatedOn, generatedDate);
 
   // --- KPI CARDS DINAMICHE ---
-  yPos = 190; // Spostiamo giù anche le KPI
+  yPos = 190;
   drawHeader(t.cover.currentKpis, 2);
   yPos += 5;
 
@@ -554,6 +573,7 @@ export const generatePdfReport = async ({
         yPos += splitText.length * 5;
       }
     }
+    
     yPos += 10;
     checkPageBreak(20);
     doc.setFillColor(...COLORS.lightGray);
@@ -570,11 +590,10 @@ export const generatePdfReport = async ({
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
 
-    // --- WATERMARK (favicon.ico come filigrana centrale) ---
+    // --- WATERMARK ---
     if (watermarkData) {
       doc.saveGraphicsState();
       
-      // Imposta trasparenza molto leggera
       doc.setGState(new doc.GState({ opacity: 0.05 }));
       
       const wWidth = 60; 
@@ -608,7 +627,7 @@ export const generatePdfReport = async ({
   doc.save(filename);
 };
 
-// ... (Resto del file: generateAiDiagnosis)
+// ... (Resto del file invariato: generateAiDiagnosis)
 async function generateAiDiagnosis(
   project: Project,
   periodLabel: string,
