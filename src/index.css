@@ -78,6 +78,14 @@
     --fgb-glass: 200 100% 11% / 0.75;
     --fgb-surface: 0 0% 100% / 0.08;
 
+    /* Heatmap scale (per-store, quantile-based) */
+    --heatmap-empty: 210 40% 98%;
+    --heatmap-1: 160 84% 94%;
+    --heatmap-2: 160 55% 80%;
+    --heatmap-3: 48 100% 80%;
+    --heatmap-4: 28 95% 70%;
+    --heatmap-5: 0 84% 60%;
+
     /* Success colors */
     --emerald: 160 84% 39%;
     --emerald-light: 160 84% 52%;
