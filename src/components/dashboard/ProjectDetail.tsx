@@ -1441,61 +1441,79 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
 
-  // ✅ FIX 1: Find the ONE true Main Meter (energy_monitor)
-  // This reduces row count from ~20,000 to ~720, fixing the "2 Weeks" cutoff.
-  const generalDeviceIds = useMemo(() => {
-    const candidates = siteDevices
-      .filter(d => (d.category?.toLowerCase() === 'general'));
-    
-    // Sort: Put 'energy_monitor' at the top
-    candidates.sort((a, b) => {
-        if (a.device_type === 'energy_monitor' && b.device_type !== 'energy_monitor') return -1;
-        if (a.device_type !== 'energy_monitor' && b.device_type === 'energy_monitor') return 1;
-        return 0;
-    });
+  // ✅ FIX 1: Selezione robusta del Main Meter (un SOLO device)
+  // Motivo: se la categoria "general" non è popolata, la heatmap risultava vuota.
+  const heatmapMainDeviceId = useMemo(() => {
+    if (!siteDevices || siteDevices.length === 0) return null;
 
-    // Take ONLY the first one
-    return candidates.length > 0 ? [candidates[0].id] : [];
-  }, [siteDevices]);
+    // 1) Preferisci sempre un energy_monitor
+    const monitor = siteDevices.find((d) => d.device_type === 'energy_monitor');
+    if (monitor) return monitor.id;
 
+    // 2) Fallback: un device marcato come "general"
+    const general = siteDevices.find((d) => (d.category || '').toLowerCase() === 'general');
+    if (general) return general.id;
 
-  // ✅ HEATMAP BUCKET LOGIC: Force correct resolution per view
-  // - TODAY: 1h (24 rows, single column)
-  // - WEEK: 1h (24 rows, 7 columns)
-  // - MONTH: 1h (24 rows, 30-31 columns)
-  // - YEAR: 1d (31 rows, 12 columns)
+    // 3) Ultimo fallback: qualunque device energia (meglio di niente)
+    const anyEnergy = siteDevices.find((d) => ENERGY_DEVICE_TYPES.includes(d.device_type));
+    return anyEnergy?.id ?? null;
+  }, [siteDevices, ENERGY_DEVICE_TYPES]);
+
+  // ✅ HEATMAP RANGE + BUCKET (solo per il widget heatmap)
+  // Obiettivo:
+  // - TODAY/WEEK/MONTH: bucket=1h
+  // - YEAR: bucket=1d
+  // + start/end allineati a confini di giorno/mese/anno per avere griglia stabile.
   const heatmapConfig = useMemo(() => {
-    const baseParams = getTimeRangeParams(timePeriod, dateRange);
+    const now = new Date();
 
-    // Force bucket based on timePeriod, ignoring duration-based defaults
-    let bucket: '15m' | '1h' | '1d';
-    
-    if (timePeriod === 'year') {
-      // YEAR: Daily granularity for seasonal trends
-      bucket = '1d';
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+    const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const startOfYear = (d: Date) => new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const endOfYear = (d: Date) => new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    let start: Date;
+    let end: Date;
+
+    if (timePeriod === 'custom' && dateRange) {
+      // Manteniamo l'intervallo selezionato dall'utente.
+      start = dateRange.from;
+      end = dateRange.to;
+    } else if (timePeriod === 'today') {
+      start = startOfDay(now);
+      end = endOfDay(now);
+    } else if (timePeriod === 'week') {
+      const s = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
+      start = s;
+      end = endOfDay(now);
+    } else if (timePeriod === 'month') {
+      start = startOfMonth(now);
+      end = endOfMonth(now);
     } else {
-      // TODAY, WEEK, MONTH: Always hourly for the heatmap
-      // This prevents the API from returning 15m data for "today" (≤24h)
-      bucket = '1h';
+      // year
+      start = startOfYear(now);
+      end = endOfYear(now);
     }
-    
-    return { ...baseParams, bucket };
-  }, [timePeriod, dateRange, getTimeRangeParams]);
 
+    const bucket: '15m' | '1h' | '1d' = timePeriod === 'year' ? '1d' : '1h';
+    return { start, end, bucket };
+  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   const { data: heatmapResp } = useEnergyTimeseries(
     {
-      // Pass the Single ID (Critical for the limit)
-      device_ids: generalDeviceIds.length > 0 ? generalDeviceIds : undefined,
-      site_id: undefined, // ✅ FORCE STRICT MODE, 
-      
+      device_ids: heatmapMainDeviceId ? [heatmapMainDeviceId] : undefined,
+      site_id: undefined, // 🔒 Strict: mai query per sito
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.active_energy'], 
+      metrics: ['energy.active_energy'],
       bucket: heatmapConfig.bucket,
     },
     {
-      enabled: !!project?.siteId && activeDashboard === 'energy',
+      enabled: !!heatmapMainDeviceId && activeDashboard === 'energy',
     }
   );
 
@@ -1503,29 +1521,58 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
     const isYearView = timePeriod === 'year';
+
+    const toLocalDateKey = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
     const valueMap = new Map<string, number>();
-    let maxVal = 0;
 
-    rawData.forEach(d => {
+    rawData.forEach((d) => {
       const val = Number(d.value_sum ?? d.value ?? 0);
-      if (val <= 0) return;
-      if (val > maxVal) maxVal = val; 
+      if (!Number.isFinite(val) || val <= 0) return;
 
-      const date = new Date(d.ts_bucket || d.ts);
-      let rowKey: number; 
-      let colKey: string; 
+      const parsed = parseTimestamp(d.ts_bucket || d.ts);
+      if (!parsed) return;
+
+      let rowKey: number;
+      let colKey: string;
 
       if (isYearView) {
-        rowKey = date.getDate(); // 1-31
-        colKey = String(date.getMonth()); // 0-11
+        rowKey = parsed.getDate(); // 1-31
+        colKey = String(parsed.getMonth()); // 0-11
       } else {
-        rowKey = date.getHours(); // 0-23
-        colKey = date.toISOString().slice(0, 10);
+        rowKey = parsed.getHours(); // 0-23 (LOCALE)
+        // ✅ FIX: colKey in LOCALE, non UTC (evita shift giorno/ora)
+        colKey = toLocalDateKey(parsed);
       }
 
       const cellKey = `${rowKey}_${colKey}`;
       valueMap.set(cellKey, (valueMap.get(cellKey) || 0) + val);
     });
+
+    // --- Scale per-store (quantili) ---
+    const values = Array.from(valueMap.values()).filter((v) => v > 0).sort((a, b) => a - b);
+    const minVal = values.length ? values[0] : 0;
+    const maxVal = values.length ? values[values.length - 1] : 0;
+
+    const quantile = (p: number) => {
+      if (!values.length) return 0;
+      const idx = Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * p)));
+      return values[idx];
+    };
+
+    const scale = {
+      min: minVal,
+      max: maxVal,
+      t1: quantile(0.2),
+      t2: quantile(0.4),
+      t3: quantile(0.6),
+      t4: quantile(0.8),
+    };
 
     let rows: number[] = [];
     let cols: { key: string; label: string }[] = [];
@@ -1534,39 +1581,65 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       rows = Array.from({ length: 31 }, (_, i) => i + 1);
       cols = Array.from({ length: 12 }, (_, i) => ({
         key: String(i),
-        label: new Date(2024, i, 1).toLocaleDateString('it-IT', { month: 'short' }).toUpperCase()
+        label: new Date(2024, i, 1)
+          .toLocaleDateString('it-IT', { month: 'short' })
+          .toUpperCase(),
       }));
     } else {
       rows = Array.from({ length: 24 }, (_, i) => i);
-      
-      // ✅ FIX 3: Loop through EVERY day to ensure no gaps
-      const current = new Date(heatmapConfig.start);
-      const end = heatmapConfig.end;
-      while (current <= end) {
-        const iso = current.toISOString().slice(0, 10);
+
+      // ✅ FIX: itera sui giorni locali (evita duplicati/skip per timezone)
+      const startDay = new Date(
+        heatmapConfig.start.getFullYear(),
+        heatmapConfig.start.getMonth(),
+        heatmapConfig.start.getDate()
+      );
+      const endDay = new Date(
+        heatmapConfig.end.getFullYear(),
+        heatmapConfig.end.getMonth(),
+        heatmapConfig.end.getDate()
+      );
+
+      const current = new Date(startDay);
+      while (current <= endDay) {
         cols.push({
-          key: iso,
-          label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+          key: toLocalDateKey(current),
+          label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
         });
         current.setDate(current.getDate() + 1);
       }
     }
 
-    return { rows, cols, valueMap, maxVal, isYearView };
+    return { rows, cols, valueMap, scale, isYearView };
   }, [heatmapResp, timePeriod, heatmapConfig]);
 
-  // C. Helper Colore (Scala Relativa al Max)
-  const getHeatmapColor = useCallback((val: number, max: number) => {
-      if (!val || val <= 0) return '#f9fafb'; // Grigio base (empty)
-      
-      const ratio = val / max;
-      // Scala FGB-like (Verde -> Giallo -> Arancio -> Rosso)
-      if (ratio < 0.2) return '#e8f5e9'; // Minimo
-      if (ratio < 0.4) return '#c8e6c9'; 
-      if (ratio < 0.6) return '#fff59d'; // Medio
-      if (ratio < 0.8) return '#ffcc80'; // Alto
-      return '#ef5350'; // Critico/Picco
-  }, []);
+  const heatmapLegendColors = useMemo(
+    () => [
+      'hsl(var(--heatmap-1))',
+      'hsl(var(--heatmap-2))',
+      'hsl(var(--heatmap-3))',
+      'hsl(var(--heatmap-4))',
+      'hsl(var(--heatmap-5))',
+    ],
+    []
+  );
+
+  // C. Helper Colore (Scala per-store: quantili + fallback)
+  const getHeatmapColor = useCallback(
+    (val: number, scale: { min: number; max: number; t1: number; t2: number; t3: number; t4: number }) => {
+      if (!val || val <= 0 || !Number.isFinite(val)) return 'hsl(var(--heatmap-empty))';
+
+      // Caso “piatto”: tutti i valori identici -> usa un tono medio (non rosso)
+      if (scale.max > 0 && scale.max === scale.min) return 'hsl(var(--heatmap-3))';
+
+      if (val <= scale.t1) return 'hsl(var(--heatmap-1))';
+      if (val <= scale.t2) return 'hsl(var(--heatmap-2))';
+      if (val <= scale.t3) return 'hsl(var(--heatmap-3))';
+      if (val <= scale.t4) return 'hsl(var(--heatmap-4))';
+      return 'hsl(var(--heatmap-5))';
+    },
+    []
+  );
 
   // --- 7. WIDGET: ACTUAL VS AVERAGE (Grafico Linee Comparativo) ---
 
@@ -2809,12 +2882,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           Energy Consumption Heatmap
                         </h3>
                         <div className="flex items-center gap-3">
-                          {/* Legendina minimale */}
+                          {/* Legendina minimale (scala per-store) */}
                           <div className="flex items-center gap-2 text-[10px] text-gray-500">
                             <span>Low</span>
                             <div className="flex gap-0.5">
-                              {['#e8f5e9', '#c8e6c9', '#fff59d', '#ffcc80', '#ef5350'].map(c => (
-                                  <div key={c} className="w-2 h-2 rounded-sm" style={{ backgroundColor: c }} />
+                              {heatmapLegendColors.map((c) => (
+                                <div key={c} className="w-2 h-2 rounded-sm" style={{ backgroundColor: c }} />
                               ))}
                             </div>
                             <span>High</span>
@@ -2858,7 +2931,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                           <div 
                                             key={`${row}-${col.key}`} 
                                             className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group"
-                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGrid.maxVal) }}
+                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGrid.scale) }}
                                           >
                                             {/* Tooltip on Hover */}
                                             {val > 0 && (
