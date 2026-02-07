@@ -20,41 +20,42 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
-  // Use combined real + mock projects and brands with loading state
+  // Usa hook combinati per dati reali + mock con stati di caricamento
   const { projects, isLoading, error, refetch } = useAllProjects();
   const { brands } = useAllBrands();
 
-  // Filter projects by region, monitoring type, holding, brand and search query
+  // Logica di filtraggio progetti
   const visibleProjects = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     
     return projects.filter(p => {
-      // 1. Region Filter
+      // 1. Filtro Regione
       const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
       
-      // 2. Monitoring Filter (CORRECTED LOGIC)
-      // Logic:
-      // - If no filters are active (length 0), standard behavior is often to show all (or none). 
-      //   Here we assume show all if nothing selected, OR you might want to show nothing. 
-      //   Let's keep "show all" for empty state or ensure default state has all selected.
-      // - If filters are active: Check if the project has AT LEAST ONE of the active monitoring types.
-      // - We use .toLowerCase() to ensure "Air" matches "air".
+      // 2. Filtro Monitoraggio (CORRETTO PER IL TUO DB)
+      // Logica:
+      // - Se activeFilters è vuoto (0), mostra TUTTI i progetti.
+      // - Altrimenti: Controlla se ALMENO UNO (some) dei filtri attivi ("energy", "air")
+      //   è contenuto dentro una delle stringhe del DB ("energy_monitor", "air_quality").
       const monitoringMatch = activeFilters.length === 0 || 
-        activeFilters.some(filter => 
-          p.monitoring && p.monitoring.some(m => m.toLowerCase() === filter.toLowerCase())
+        activeFilters.some(filterBtn => 
+          p.monitoring && p.monitoring.some(dbValue => 
+            // Esempio: dbValue è "air_quality", filterBtn è "air" -> TRUE
+            dbValue.toLowerCase().includes(filterBtn.toLowerCase())
+          )
         );
       
-      // 3. Holding Filter
+      // 3. Filtro Holding (usa i brand reali)
       let holdingMatch = true;
       if (selectedHolding) {
         const holdingBrands = brands.filter(b => b.holdingId === selectedHolding);
         holdingMatch = holdingBrands.some(b => b.id === p.brandId);
       }
       
-      // 4. Brand Filter
+      // 4. Filtro Brand
       const brandMatch = !selectedBrand || p.brandId === selectedBrand;
       
-      // 5. Search Filter
+      // 5. Filtro Ricerca (Nome o Indirizzo)
       const searchMatch = !query || 
         p.name.toLowerCase().includes(query) || 
         p.address.toLowerCase().includes(query);
@@ -63,7 +64,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     });
   }, [projects, brands, currentRegion, activeFilters, selectedHolding, selectedBrand, searchQuery]);
 
-  // Initialize map
+  // Inizializzazione Mappa
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -72,7 +73,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       zoom: 3,
       zoomControl: false,
       attributionControl: false,
-      minZoom: 2,
+      minZoom: 2, // Impedisce zoom out eccessivo
       maxBounds: [
         [-90, -180], 
         [90, 180]
@@ -81,11 +82,12 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       worldCopyJump: true,
     });
 
-    // Dark themed OpenStreetMap tiles
+    // Tile Layer Dark
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
     }).addTo(map.current);
 
+    // Controlli Mappa
     L.control.zoom({ position: "topright" }).addTo(map.current);
 
     L.control.attribution({ position: "bottomleft" })
@@ -98,7 +100,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     };
   }, []);
 
-  // Fly to region when changed
+  // Gestione movimento mappa al cambio regione
   useEffect(() => {
     if (!map.current) return;
 
@@ -110,15 +112,15 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     }
   }, [currentRegion]);
 
-  // Update markers
+  // Gestione Marker
   useEffect(() => {
     if (!map.current) return;
 
-    // Clear existing markers
+    // Rimuovi marker esistenti
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Custom icon definition
+    // Definizione Icona Personalizzata
     const createCustomIcon = () => {
       return L.divIcon({
         className: "custom-marker",
@@ -137,7 +139,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       });
     };
 
-    // Add markers for visible projects
+    // Aggiungi marker per i progetti visibili
     visibleProjects.forEach((project) => {
       const marker = L.marker([project.lat, project.lng], {
         icon: createCustomIcon(),
@@ -175,10 +177,13 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="absolute inset-0" />
       
+      {/* Overlay sfumato */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/60 md:from-background/40 via-transparent to-background/40 md:to-background/30" />
       
+      {/* Loading Skeleton */}
       {isLoading && <MapLoadingSkeleton />}
       
+      {/* Gestione Errori */}
       {error && !isLoading && (
         <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center pointer-events-auto z-[1000]">
           <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2">
@@ -191,6 +196,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         </div>
       )}
       
+      {/* Etichetta Regione */}
       {currentRegion !== "GLOBAL" && !isLoading && (
         <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none z-[1000]">
           <div className="text-fgb-accent text-xs md:text-sm font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase">
@@ -199,6 +205,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         </div>
       )}
 
+      {/* Stili CSS Personalizzati per Marker e Popup */}
       <style>{`
         .custom-marker {
           background: transparent;
