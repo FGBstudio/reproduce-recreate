@@ -29,21 +29,32 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     const query = searchQuery.toLowerCase().trim();
     
     return projects.filter(p => {
+      // 1. Region Filter
       const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
-      const monitoringMatch = activeFilters.length === 0 || 
-        activeFilters.some(filter => p.monitoring.includes(filter));
       
-      // Holding filter - use real brands from hook
+      // 2. Monitoring Filter (CORRECTED LOGIC)
+      // Logic:
+      // - If no filters are active (length 0), standard behavior is often to show all (or none). 
+      //   Here we assume show all if nothing selected, OR you might want to show nothing. 
+      //   Let's keep "show all" for empty state or ensure default state has all selected.
+      // - If filters are active: Check if the project has AT LEAST ONE of the active monitoring types.
+      // - We use .toLowerCase() to ensure "Air" matches "air".
+      const monitoringMatch = activeFilters.length === 0 || 
+        activeFilters.some(filter => 
+          p.monitoring && p.monitoring.some(m => m.toLowerCase() === filter.toLowerCase())
+        );
+      
+      // 3. Holding Filter
       let holdingMatch = true;
       if (selectedHolding) {
         const holdingBrands = brands.filter(b => b.holdingId === selectedHolding);
         holdingMatch = holdingBrands.some(b => b.id === p.brandId);
       }
       
-      // Brand filter
+      // 4. Brand Filter
       const brandMatch = !selectedBrand || p.brandId === selectedBrand;
       
-      // Search filter - match project name or address
+      // 5. Search Filter
       const searchMatch = !query || 
         p.name.toLowerCase().includes(query) || 
         p.address.toLowerCase().includes(query);
@@ -58,28 +69,25 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
 
     map.current = L.map(mapContainer.current, {
       center: [20, 30],
-      zoom: 3, // Ti consiglio di partire da 3 per evitare che sia troppo piccola all'inizio
+      zoom: 3,
       zoomControl: false,
       attributionControl: false,
-      // --- MODIFICHE QUI SOTTO ---
-      minZoom: 2, // 1. Impedisce di fare zoom out oltre questo livello (evita che la mappa diventi minuscola)
-      maxBounds: [ // 2. Definisce i confini del mondo (Sud-Ovest, Nord-Est)
+      minZoom: 2,
+      maxBounds: [
         [-90, -180], 
         [90, 180]
       ],
-      maxBoundsViscosity: 1.0, // 3. Rende i confini "solidi" (senza effetto elastico)
-      worldCopyJump: true, // Opzionale: se scorri orizzontalmente, il mondo si ripete all'infinito invece di finire
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: true,
     });
 
-    // Dark themed OpenStreetMap tiles (CartoDB Dark Matter - free)
+    // Dark themed OpenStreetMap tiles
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
     }).addTo(map.current);
 
-    // Add zoom control to top-right
     L.control.zoom({ position: "topright" }).addTo(map.current);
 
-    // Add attribution
     L.control.attribution({ position: "bottomleft" })
       .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>')
       .addTo(map.current);
@@ -110,7 +118,7 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Custom icon
+    // Custom icon definition
     const createCustomIcon = () => {
       return L.divIcon({
         className: "custom-marker",
@@ -135,7 +143,6 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         icon: createCustomIcon(),
       }).addTo(map.current!);
 
-      // Create popup content
       const popupContent = `
         <div class="leaflet-custom-popup">
           <div class="popup-title">${project.name}</div>
@@ -168,13 +175,10 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {/* Overlay gradient for better UI integration - stronger on mobile for nav visibility */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/60 md:from-background/40 via-transparent to-background/40 md:to-background/30" />
       
-      {/* Loading indicator */}
       {isLoading && <MapLoadingSkeleton />}
       
-      {/* Error state with retry */}
       {error && !isLoading && (
         <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center pointer-events-auto z-[1000]">
           <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2">
@@ -187,7 +191,6 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         </div>
       )}
       
-      {/* Region label - repositioned on mobile */}
       {currentRegion !== "GLOBAL" && !isLoading && (
         <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none z-[1000]">
           <div className="text-fgb-accent text-xs md:text-sm font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase">
@@ -196,7 +199,6 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         </div>
       )}
 
-      {/* Custom marker styles */}
       <style>{`
         .custom-marker {
           background: transparent;
@@ -219,28 +221,13 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
             height: 58px;
           }
         }
-        .marker-pulse {
-          position: absolute;
-          width: 48px;
-          height: 48px;
-          background: hsl(188, 100%, 19%, 0.3);
-          border-radius: 50%;
-          animation: pulse-ring 2s ease-out infinite;
-        }
-        @media (min-width: 768px) {
-          .marker-pulse {
-            width: 48px;
-            height: 48px;
-          }
-        }
         .marker-dot {
           position: relative;
-          width: 100%;   /* Adatta al contenitore */
-          height: 100%;  /* Adatta al contenitore */
+          width: 100%;
+          height: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
-          /* Rimosso background, border, box-shadow */
           transition: transform 0.3s ease;
           cursor: pointer;
         }
@@ -264,7 +251,6 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
           transform: scale(1.1);
         }
         
-        /* Custom popup styles */
         .custom-popup .leaflet-popup-content-wrapper {
           background: rgba(0, 20, 30, 0.95);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -290,7 +276,6 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
           margin-top: 2px;
         }
         
-        /* Leaflet control styles */
         .leaflet-control-zoom {
           background: rgba(0, 20, 30, 0.8) !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
