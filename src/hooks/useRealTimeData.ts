@@ -57,6 +57,28 @@ function transformBrand(apiBrand: ApiBrand): Brand {
  * Convert API site to frontend Project type
  * Sites from DB are given negative IDs to distinguish from mock projects
  */
+/**
+ * Map DB monitoring_types values to frontend MonitoringType
+ * DB stores: "energy_monitor", "air_quality", "water_monitor"
+ * Frontend uses: "energy", "air", "water"
+ */
+function mapDbMonitoringTypeToFrontend(dbType: string): MonitoringType | null {
+  const mapping: Record<string, MonitoringType> = {
+    'energy_monitor': 'energy',
+    'air_quality': 'air',
+    'water_monitor': 'water',
+    // Also support direct frontend values for backward compatibility
+    'energy': 'energy',
+    'air': 'air',
+    'water': 'water',
+  };
+  return mapping[dbType] || null;
+}
+
+/**
+ * Convert API site to frontend Project type
+ * Sites from DB are given negative IDs to distinguish from mock projects
+ */
 function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): Project {
   // Calculate ProjectData from latest telemetry or use defaults
   const data: ProjectData = {
@@ -70,8 +92,11 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
   };
 
   // Map monitoring_types from DB to frontend MonitoringType
+  // DB values: "energy_monitor", "air_quality", "water_monitor"
+  // Frontend values: "energy", "air", "water"
   const monitoring: MonitoringType[] = (apiSite.monitoring_types || [])
-    .filter((t): t is MonitoringType => ['energy', 'air', 'water'].includes(t));
+    .map(mapDbMonitoringTypeToFrontend)
+    .filter((t): t is MonitoringType => t !== null);
 
   // Map region from DB (or derive from country)
   const region = mapRegion(apiSite.region || apiSite.country);
@@ -87,14 +112,11 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
     lng: apiSite.lng ?? 0,
     address: [apiSite.city, apiSite.country].filter(Boolean).join(', ') || apiSite.address || '',
     
-    // --- MODIFICA APPLICATA QUI ---
-    // Rimosso il fallback su Unsplash. Se l'immagine manca, è undefined.
-    // Questo permette al componente ProjectDetail di attivare il pattern del brand.
+    // Se l'immagine manca, è undefined per attivare il pattern del brand
     img: apiSite.image_url || undefined,
-    // ------------------------------
 
     data,
-    monitoring: monitoring.length > 0 ? monitoring : ['energy'],
+    monitoring: monitoring.length > 0 ? monitoring : ['energy'], // Default to energy if empty
     brandId: apiSite.brand_id,
     siteId: apiSite.id, // Store original site_id for API calls and telemetry
     area_m2: apiSite.area_m2,
