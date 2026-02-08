@@ -54,13 +54,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   } = useAggregatedSiteData(filteredProjects);
 
   // Build chart data from REAL data only
+  // Now using weeklyKwh (kWh consumption) instead of instantaneous kW
   const energyComparisonData = useMemo(() => {
     return sitesWithEnergy.map(site => ({
       name: site.siteName.split(' ').slice(-1)[0],
       fullName: site.siteName,
-      hvac: site.energy.hvac ?? 0,
-      light: site.energy.lighting ?? 0,
-      total: site.energy.total ?? 0,
+      hvac: site.energy.hvacKwh ?? 0,
+      light: site.energy.lightingKwh ?? 0,
+      total: site.energy.weeklyKwh ?? 0,
     }));
   }, [sitesWithEnergy]);
 
@@ -89,7 +90,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const radarData = useMemo(() => {
     if (sitesWithBothData.length === 0) return [];
     
-    const maxEnergy = Math.max(...sitesWithBothData.map(s => s.energy.total || 1)) || 100;
+    const maxEnergy = Math.max(...sitesWithBothData.map(s => s.energy.weeklyKwh || 1)) || 100;
     const maxCo2 = Math.max(...sitesWithBothData.map(s => s.air.co2 || 1)) || 1000;
     
     return [
@@ -98,7 +99,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         ...Object.fromEntries(
           sitesWithBothData.map(s => [
             s.siteName.split(' ').slice(-1)[0], 
-            ((s.energy.total || 0) / maxEnergy) * 100
+            ((s.energy.weeklyKwh || 0) / maxEnergy) * 100
           ])
         ) 
       },
@@ -107,7 +108,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         ...Object.fromEntries(
           sitesWithBothData.map(s => [
             s.siteName.split(' ').slice(-1)[0], 
-            ((s.energy.hvac || 0) / (maxEnergy * 0.6)) * 100
+            ((s.energy.hvacKwh || 0) / (maxEnergy * 0.6)) * 100
           ])
         ) 
       },
@@ -116,7 +117,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         ...Object.fromEntries(
           sitesWithBothData.map(s => [
             s.siteName.split(' ').slice(-1)[0], 
-            ((s.energy.lighting || 0) / (maxEnergy * 0.5)) * 100
+            ((s.energy.lightingKwh || 0) / (maxEnergy * 0.5)) * 100
           ])
         ) 
       },
@@ -214,15 +215,15 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-foreground">
-                  {hasRealData ? totals.sitesCount : '—'}
+                  {hasRealData ? totals.sitesOnline : '—'}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Siti con dati</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Siti Online</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-foreground">
-                  {hasRealData && totals.energy > 0 ? totals.energy : '—'}
+                  {hasRealData && totals.weeklyEnergyKwh > 0 ? totals.weeklyEnergyKwh.toLocaleString() : '—'}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kW</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kWh (7gg)</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-foreground">
@@ -232,9 +233,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-foreground">
-                  {filteredProjects.length}
+                  {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0) 
+                    ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
+                    : '0'}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Total Sites</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Alert Attivi</div>
               </div>
             </div>
             
