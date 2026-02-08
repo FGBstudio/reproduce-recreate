@@ -1,343 +1,326 @@
-/**
- * Hooks for fetching real-time project and site data with React Query
- * Falls back to mock data when Supabase is not configured
- */
+import { useEffect, useRef, useMemo } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { regions, Project, MonitoringType } from "@/lib/data";
+import { useAllProjects, useAllBrands } from "@/hooks/useRealTimeData";
+import { MapLoadingSkeleton } from "./DashboardSkeleton";
+import markerPinIcon from '@/assets/marker.png';
 
-import { useMemo } from 'react';
-import { 
-  useSites, 
-  useBrands, 
-  useHoldings, 
-  useDevices,
-  useLatestTelemetry,
-  ApiSite,
-  ApiBrand,
-  ApiHolding,
-} from '@/lib/api';
-import { isSupabaseConfigured } from '@/lib/supabase';
-import { 
-  Project, 
-  Brand, 
-  Holding, 
-  ProjectData, 
-  MonitoringType,
-  projects as mockProjects,
-  brands as mockBrands,
-  holdings as mockHoldings,
-} from '@/lib/data';
-
-// =============================================================================
-// Transformation Helpers
-// =============================================================================
-
-/**
- * Convert API holding to frontend Holding type
- */
-function transformHolding(apiHolding: ApiHolding): Holding {
-  return {
-    id: apiHolding.id,
-    name: apiHolding.name,
-    logo: apiHolding.logo_url || 'https://via.placeholder.com/128?text=' + encodeURIComponent(apiHolding.name.substring(0, 2)),
-  };
+interface MapViewProps {
+  currentRegion: string;
+  onProjectSelect: (project: Project) => void;
+  activeFilters: MonitoringType[];
+  selectedHolding: string | null;
+  selectedBrand: string | null;
+  searchQuery?: string;
 }
 
-/**
- * Convert API brand to frontend Brand type
- */
-function transformBrand(apiBrand: ApiBrand): Brand {
-  return {
-    id: apiBrand.id,
-    name: apiBrand.name,
-    holdingId: apiBrand.holding_id,
-    logo: apiBrand.logo_url || 'https://via.placeholder.com/128?text=' + encodeURIComponent(apiBrand.name.substring(0, 2)),
-  };
-}
+const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHolding, selectedBrand, searchQuery = "" }: MapViewProps) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
 
-/**
- * Convert API site to frontend Project type
- * Sites from DB are given negative IDs to distinguish from mock projects
- */
-function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): Project {
-  // Calculate ProjectData from latest telemetry or use defaults
-  const data: ProjectData = {
-    hvac: latestData?.['energy.hvac_kw'] ?? Math.round(20 + Math.random() * 40),
-    light: latestData?.['energy.lighting_kw'] ?? Math.round(15 + Math.random() * 35),
-    total: latestData?.['energy.power_kw'] ?? Math.round(50 + Math.random() * 80),
-    co2: latestData?.['iaq.co2'] ?? Math.round(350 + Math.random() * 300),
-    temp: latestData?.['env.temperature'] ?? Math.round(19 + Math.random() * 6),
-    alerts: 0, // Would come from events table
-    aq: calculateAqIndex(latestData?.['iaq.co2']),
-  };
+  const { projects, isLoading, error, refetch } = useAllProjects();
+  const { brands } = useAllBrands();
 
-  // --- FIX FILTRI: MAPPING CORRETTO DB -> FRONTEND ---
-  // Il DB usa: "energy_monitor", "air_quality", "water_monitor"
-  // Il Frontend usa: "energy", "air", "water"
-  const rawMonitoring = apiSite.monitoring_types || [];
-  const monitoringList: MonitoringType[] = [];
-
-  rawMonitoring.forEach(t => {
-    const val = t.toLowerCase();
-    // Mappatura "intelligente" che cattura sia "energy" che "energy_monitor"
-    if (val.includes('energy')) monitoringList.push('energy');
-    if (val.includes('air')) monitoringList.push('air');
-    if (val.includes('water')) monitoringList.push('water');
-  });
-
-  // Rimuovi duplicati (Set) e trasforma in array
-  const monitoring = Array.from(new Set(monitoringList));
-  // ---------------------------------------------------
-
-  // Map region from DB (or derive from country)
-  const region = mapRegion(apiSite.region || apiSite.country);
-
-  // Generate a unique numeric ID from UUID for legacy compatibility
-  const numericId = apiSite.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
-  return {
-    id: -numericId, // Negative ID for real data
-    name: apiSite.name,
-    region,
-    lat: apiSite.lat ?? 0,
-    lng: apiSite.lng ?? 0,
-    address: [apiSite.city, apiSite.country].filter(Boolean).join(', ') || apiSite.address || '',
+  // Logica di filtraggio progetti
+  const visibleProjects = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
     
-    // Gestione Immagine: undefined permette il fallback al pattern del brand
-    img: apiSite.image_url || undefined,
+    return projects.filter(p => {
+      // 1. Filtro Regione
+      const regionMatch = currentRegion === "GLOBAL" || p.region === currentRegion;
+      
+      // 2. Filtro Monitoraggio
+      // Mappatura precisa tra pulsanti frontend e valori DB
+      // Pulsante 'energy' -> DB 'energy_monitor'
+      // Pulsante 'air'    -> DB 'air_quality'
+      // Pulsante 'water'  -> DB 'water_monitor'
+      
+      // Se non ci sono filtri attivi, mostra tutto (o niente, a seconda della UX desiderata - qui mostra tutto)
+      let monitoringMatch = true;
 
-    data,
-    // Se il mapping ha trovato qualcosa, usalo. Altrimenti fallback a energy (solo se veramente vuoto)
-    monitoring: monitoring.length > 0 ? monitoring : ['energy'],
-    
-    brandId: apiSite.brand_id,
-    siteId: apiSite.id, // Store original site_id for API calls and telemetry
-    area_m2: apiSite.area_m2,
-    energy_price_kwh: apiSite.energy_price_kwh,
-  };
-}
-
-/**
- * Calculate AQ index from CO2 level
- */
-function calculateAqIndex(co2?: number): string {
-  if (!co2) return 'GOOD';
-  if (co2 < 600) return 'EXCELLENT';
-  if (co2 < 800) return 'GOOD';
-  if (co2 < 1000) return 'MODERATE';
-  if (co2 < 1500) return 'POOR';
-  return 'CRITICAL';
-}
-
-/**
- * Map country/region string to dashboard region code
- */
-function mapRegion(regionOrCountry?: string): string {
-  if (!regionOrCountry) return 'EU';
-  
-  const lower = regionOrCountry.toLowerCase();
-  
-  // Europe
-  if (['italy', 'france', 'uk', 'germany', 'spain', 'eu', 'europe'].some(c => lower.includes(c))) {
-    return 'EU';
-  }
-  // Americas
-  if (['usa', 'canada', 'mexico', 'brazil', 'america', 'amer'].some(c => lower.includes(c))) {
-    return 'AMER';
-  }
-  // Asia Pacific
-  if (['japan', 'china', 'korea', 'australia', 'singapore', 'hong kong', 'asia', 'apac'].some(c => lower.includes(c))) {
-    return 'APAC';
-  }
-  // Middle East & Africa
-  if (['uae', 'dubai', 'saudi', 'africa', 'mea', 'middle east'].some(c => lower.includes(c))) {
-    return 'MEA';
-  }
-  
-  return 'EU';
-}
-
-// =============================================================================
-// Combined Data Hooks
-// =============================================================================
-
-/**
- * Hook to get all holdings (real + mock) with loading/error states
- */
-export function useAllHoldings() {
-  const { data: realHoldings, isLoading, error, refetch } = useHoldings();
-
-  return useMemo(() => {
-    const transformed = realHoldings?.map(transformHolding) || [];
-    
-    // Combine real holdings with mock holdings (avoiding duplicates by name)
-    const realNames = new Set(transformed.map(h => h.name.toLowerCase()));
-    const combined = [
-      ...transformed,
-      ...mockHoldings.filter(h => !realNames.has(h.name.toLowerCase())),
-    ];
-
-    return {
-      holdings: combined,
-      isLoading,
-      error: error as Error | null,
-      hasRealData: isSupabaseConfigured && transformed.length > 0,
-      refetch,
-    };
-  }, [realHoldings, isLoading, error, refetch]);
-}
-
-/**
- * Hook to get all brands (real + mock) with loading/error states
- */
-export function useAllBrands() {
-  const { data: realBrands, isLoading, error, refetch } = useBrands();
-
-  return useMemo(() => {
-    const transformed = realBrands?.map(transformBrand) || [];
-    
-    // Combine real brands with mock brands
-    const realNames = new Set(transformed.map(b => b.name.toLowerCase()));
-    const combined = [
-      ...transformed,
-      ...mockBrands.filter(b => !realNames.has(b.name.toLowerCase())),
-    ];
-
-    return {
-      brands: combined,
-      isLoading,
-      error: error as Error | null,
-      hasRealData: isSupabaseConfigured && transformed.length > 0,
-      refetch,
-    };
-  }, [realBrands, isLoading, error, refetch]);
-}
-
-/**
- * Hook to get all projects/sites (real + mock) with loading/error states
- */
-export function useAllProjects() {
-  const { data: realSites, isLoading: sitesLoading, error: sitesError, refetch: refetchSites } = useSites();
-  
-  // Get latest telemetry for all sites to populate project data
-  const siteIds = realSites?.map(s => s.id) || [];
-  const { data: latestData, refetch: refetchTelemetry } = useLatestTelemetry(
-    siteIds.length > 0 ? { site_id: siteIds[0] } : undefined,
-    { enabled: siteIds.length > 0 }
-  );
-
-  return useMemo(() => {
-    // Build a lookup of latest values by device
-    const latestByDevice: Record<string, Record<string, number>> = {};
-    if (latestData?.data) {
-      Object.entries(latestData.data).forEach(([deviceId, metrics]) => {
-        latestByDevice[deviceId] = {};
-        metrics.forEach(m => {
-          latestByDevice[deviceId][m.metric] = m.value;
-        });
-      });
-    }
-
-    const transformed = realSites?.map(site => transformSite(site)) || [];
-    
-    // Combine real sites with mock projects
-    const realNames = new Set(transformed.map(p => p.name.toLowerCase()));
-    const combined = [
-      ...transformed,
-      ...mockProjects.filter(p => !realNames.has(p.name.toLowerCase())),
-    ];
-
-    const refetch = () => {
-      refetchSites();
-      refetchTelemetry();
-    };
-
-    return {
-      projects: combined,
-      isLoading: sitesLoading,
-      error: sitesError as Error | null,
-      hasRealData: isSupabaseConfigured && transformed.length > 0,
-      refetch,
-    };
-  }, [realSites, latestData, sitesLoading, sitesError, refetchSites, refetchTelemetry]);
-}
-
-/**
- * Hook to get devices for a specific site
- */
-export function useSiteDevices(siteId?: string) {
-  const { data, isLoading, error } = useDevices(
-    siteId ? { site_id: siteId } : undefined,
-    { enabled: !!siteId }
-  );
-
-  return {
-    devices: data?.data || [],
-    total: data?.meta.total || 0,
-    isLoading,
-    error,
-  };
-}
-
-/**
- * Hook to get latest telemetry for a specific site
- */
-export function useSiteLatestTelemetry(siteId?: string) {
-  const { data, isLoading, error, refetch } = useLatestTelemetry(
-    siteId ? { site_id: siteId } : undefined,
-    { enabled: !!siteId }
-  );
-
-  return useMemo(() => {
-    // Flatten and aggregate metrics across all devices
-    const aggregated: Record<string, { value: number; count: number; unit?: string }> = {};
-    
-    if (data?.data) {
-      Object.values(data.data).forEach(deviceMetrics => {
-        deviceMetrics.forEach(m => {
-          if (!aggregated[m.metric]) {
-            aggregated[m.metric] = { value: 0, count: 0, unit: m.unit };
-          }
-          aggregated[m.metric].value += m.value;
-          aggregated[m.metric].count += 1;
-        });
-      });
-    }
-
-    // Calculate averages for certain metrics
-    const result: Record<string, number> = {};
-    Object.entries(aggregated).forEach(([metric, agg]) => {
-      // Sum for energy metrics, average for others
-      if (metric.startsWith('energy.')) {
-        result[metric] = agg.value;
-      } else {
-        result[metric] = agg.count > 0 ? agg.value / agg.count : 0;
+      if (activeFilters.length > 0) {
+        // Se il progetto non ha dati di monitoring, non può essere filtrato positivamente
+        if (!p.monitoring || !Array.isArray(p.monitoring)) {
+           monitoringMatch = false;
+        } else {
+           // Logica OR: Il progetto è visibile se ha ALMENO UNO dei moduli attivi richiesti
+           monitoringMatch = activeFilters.some(filterBtn => {
+              // Cerca corrispondenza nel DB per questo pulsante specifico
+              if (filterBtn === 'energy') {
+                 return p.monitoring.includes('energy_monitor');
+              }
+              if (filterBtn === 'air') {
+                 return p.monitoring.includes('air_quality');
+              }
+              if (filterBtn === 'water') {
+                 return p.monitoring.includes('water_monitor');
+              }
+              // Fallback per sicurezza (es. se i dati fossero già mappati puliti)
+              return p.monitoring.includes(filterBtn);
+           });
+        }
       }
+      
+      // 3. Filtro Holding
+      let holdingMatch = true;
+      if (selectedHolding) {
+        const holdingBrands = brands.filter(b => b.holdingId === selectedHolding);
+        holdingMatch = holdingBrands.some(b => b.id === p.brandId);
+      }
+      
+      // 4. Filtro Brand
+      const brandMatch = !selectedBrand || p.brandId === selectedBrand;
+      
+      // 5. Filtro Ricerca
+      const searchMatch = !query || 
+        p.name.toLowerCase().includes(query) || 
+        p.address.toLowerCase().includes(query);
+      
+      return regionMatch && monitoringMatch && holdingMatch && brandMatch && searchMatch;
+    });
+  }, [projects, brands, currentRegion, activeFilters, selectedHolding, selectedBrand, searchQuery]);
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return;
+
+    map.current = L.map(mapContainer.current, {
+      center: [20, 30],
+      zoom: 3,
+      zoomControl: false,
+      attributionControl: false,
+      minZoom: 2,
+      maxBounds: [
+        [-90, -180], 
+        [90, 180]
+      ],
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: true,
     });
 
-    return {
-      metrics: result,
-      raw: data?.data || {},
-      isLoading,
-      error,
-      refetch,
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+    }).addTo(map.current);
+
+    L.control.zoom({ position: "topright" }).addTo(map.current);
+
+    L.control.attribution({ position: "bottomleft" })
+      .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>')
+      .addTo(map.current);
+
+    return () => {
+      map.current?.remove();
+      map.current = null;
     };
-  }, [data, isLoading, error, refetch]);
-}
+  }, []);
 
-// =============================================================================
-// Helper to get site ID from Project
-// =============================================================================
+  // Fly to region when changed
+  useEffect(() => {
+    if (!map.current) return;
 
-/**
- * Extract the real site_id from a Project (if it's a real project)
- */
-export function getProjectSiteId(project: Project): string | undefined {
-  // Use siteId field directly (set for both real DB projects and some mock projects)
-  return project.siteId;
-}
+    if (currentRegion === "GLOBAL") {
+      map.current.flyTo([20, 30], 2, { duration: 1.5 });
+    } else {
+      const region = regions[currentRegion];
+      map.current.flyTo([region.center.lat, region.center.lng], region.zoom, { duration: 1.5 });
+    }
+  }, [currentRegion]);
 
-/**
- * Check if a project is from real data
- */
-export function isRealProject(project: Project): boolean {
-  return project.id < 0; // Real projects have negative IDs
-}
+  // Update markers
+  useEffect(() => {
+    if (!map.current) return;
+
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    const createCustomIcon = () => {
+      return L.divIcon({
+        className: "custom-marker",
+        html: `
+          <div class="marker-container">
+            <div class="marker-dot" style="background: transparent; border: none; box-shadow: none; border-radius: 0;">
+              <img 
+                src="${markerPinIcon}"  alt="marker" 
+                style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));"
+              />
+            </div>
+          </div>
+        `,
+        iconSize: [58, 58],
+        iconAnchor: [32, 32],
+      });
+    };
+
+    visibleProjects.forEach((project) => {
+      const marker = L.marker([project.lat, project.lng], {
+        icon: createCustomIcon(),
+      }).addTo(map.current!);
+
+      const popupContent = `
+        <div class="leaflet-custom-popup">
+          <div class="popup-title">${project.name}</div>
+          <div class="popup-address">${project.address}</div>
+        </div>
+      `;
+
+      marker.bindPopup(popupContent, {
+        className: "custom-popup",
+        closeButton: false,
+      });
+
+      marker.on("click", () => {
+        onProjectSelect(project);
+      });
+
+      marker.on("mouseover", () => {
+        marker.openPopup();
+      });
+
+      marker.on("mouseout", () => {
+        marker.closePopup();
+      });
+
+      markersRef.current.push(marker);
+    });
+  }, [visibleProjects, onProjectSelect, activeFilters, selectedHolding, selectedBrand]);
+
+  return (
+    <div className="absolute inset-0 z-0">
+      <div ref={mapContainer} className="absolute inset-0" />
+      
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/60 md:from-background/40 via-transparent to-background/40 md:to-background/30" />
+      
+      {isLoading && <MapLoadingSkeleton />}
+      
+      {error && !isLoading && (
+        <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center pointer-events-auto z-[1000]">
+          <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <span className="text-red-400 text-xs">Errore caricamento</span>
+            <button onClick={() => refetch()} className="text-fgb-accent text-xs hover:underline ml-2">
+              Riprova
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {currentRegion !== "GLOBAL" && !isLoading && (
+        <div className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 text-center animate-fade-in pointer-events-none z-[1000]">
+          <div className="text-fgb-accent text-xs md:text-sm font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase">
+            {regions[currentRegion].name}
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .custom-marker {
+          background: transparent;
+          border: none;
+          display: flex !important;
+          align-items: flex-end !important;
+          justify-content: center !important;
+        }
+        .marker-container {
+          position: relative;
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        @media (min-width: 768px) {
+          .marker-container {
+            width: 58px;
+            height: 58px;
+          }
+        }
+        .marker-dot {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.3s ease;
+          cursor: pointer;
+        }
+        @media (min-width: 768px) {
+          .marker-dot {
+            width: 36px;
+            height: 36px;
+          }
+        }
+        .marker-dot svg {
+          width: 12px;
+          height: 12px;
+        }
+        @media (min-width: 768px) {
+          .marker-dot svg {
+            width: 16px;
+            height: 16px;
+          }
+        }
+        .marker-container:hover .marker-dot {
+          transform: scale(1.1);
+        }
+        
+        .custom-popup .leaflet-popup-content-wrapper {
+          background: rgba(0, 20, 30, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        .custom-popup .leaflet-popup-tip {
+          background: rgba(0, 20, 30, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .leaflet-custom-popup {
+          padding: 4px 8px;
+        }
+        .popup-title {
+          color: hsl(50, 100%, 94%);
+          font-weight: 600;
+          font-size: 13px;
+        }
+        .popup-address {
+          color: hsl(188, 30%, 60%);
+          font-size: 11px;
+          margin-top: 2px;
+        }
+        
+        .leaflet-control-zoom {
+          background: rgba(0, 20, 30, 0.8) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          backdrop-filter: blur(10px);
+          border-radius: 8px !important;
+          overflow: hidden;
+        }
+        .leaflet-control-zoom a {
+          background: transparent !important;
+          color: hsl(50, 100%, 94%) !important;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        .leaflet-control-zoom a:hover {
+          background: rgba(255, 255, 255, 0.1) !important;
+        }
+        .leaflet-control-zoom a:last-child {
+          border-bottom: none !important;
+        }
+        .leaflet-control-attribution {
+          background: rgba(0, 20, 30, 0.7) !important;
+          color: rgba(255, 255, 255, 0.5) !important;
+          font-size: 10px !important;
+          backdrop-filter: blur(5px);
+        }
+        .leaflet-control-attribution a {
+          color: rgba(255, 255, 255, 0.6) !important;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default MapView;
