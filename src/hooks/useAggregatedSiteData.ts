@@ -1,6 +1,11 @@
 /**
  * Hook for fetching aggregated real telemetry data across multiple sites
  * Used by BrandOverlay and HoldingOverlay to display only real data from sites with active modules
+ * 
+ * REFACTORED:
+ * - Energy: SUM of kWh from energy_daily (last 7 days), NOT instantaneous kW
+ * - Online status: Any telemetry (energy OR air OR water) = site is ONLINE
+ * - Alerts: Real count from events table (status='active')
  */
 
 import { useMemo } from 'react';
@@ -16,14 +21,15 @@ import { Project } from '@/lib/data';
 export interface SiteRealData {
   siteId: string;
   siteName: string;
+  isOnline: boolean;
   hasEnergyData: boolean;
   hasAirData: boolean;
   hasWaterData: boolean;
   energy: {
-    total: number | null;
-    hvac: number | null;
-    lighting: number | null;
-    plugs: number | null;
+    weeklyKwh: number | null;  // SUM of kWh last 7 days
+    hvacKwh: number | null;
+    lightingKwh: number | null;
+    plugsKwh: number | null;
   };
   air: {
     co2: number | null;
@@ -34,6 +40,11 @@ export interface SiteRealData {
   water: {
     consumption: number | null;
   };
+  alerts: {
+    critical: number;
+    warning: number;
+    info: number;
+  };
 }
 
 export interface AggregatedOverlayData {
@@ -42,9 +53,12 @@ export interface AggregatedOverlayData {
   sitesWithAir: SiteRealData[];
   sitesWithWater: SiteRealData[];
   totals: {
-    energy: number;
+    weeklyEnergyKwh: number;  // Total kWh last 7 days
     avgCo2: number;
     sitesCount: number;
+    sitesOnline: number;
+    alertsCritical: number;
+    alertsWarning: number;
   };
   isLoading: boolean;
   isError: boolean;
@@ -52,186 +66,183 @@ export interface AggregatedOverlayData {
 }
 
 // =============================================================================
-// Fetch aggregated telemetry for multiple sites (from hourly/daily tables)
+// Data fetching functions
 // =============================================================================
 
-async function fetchAggregatedTelemetryForSites(siteIds: string[]): Promise<Map<string, Record<string, number>>> {
+interface SiteAggregatedData {
+  weeklyEnergy: Record<string, number>;  // site_id -> kWh
+  latestAir: Record<string, Record<string, number>>;  // site_id -> metrics
+  alerts: Record<string, { critical: number; warning: number; info: number }>;
+  onlineStatus: Record<string, boolean>;  // site_id -> isOnline
+}
+
+async function fetchAggregatedDataForSites(siteIds: string[]): Promise<SiteAggregatedData> {
   if (!supabase || siteIds.length === 0) {
-    return new Map();
+    return { weeklyEnergy: {}, latestAir: {}, alerts: {}, onlineStatus: {} };
   }
 
-  const siteData = new Map<string, Record<string, { sum: number; count: number }>>();
-
-  const ensure = (siteId: string, metric: string) => {
-    if (!siteData.has(siteId)) siteData.set(siteId, {});
-    const metrics = siteData.get(siteId)!;
-    if (!metrics[metric]) metrics[metric] = { sum: 0, count: 0 };
-    return metrics[metric];
+  const result: SiteAggregatedData = {
+    weeklyEnergy: {},
+    latestAir: {},
+    alerts: {},
+    onlineStatus: {},
   };
 
-  const add = (siteId: string, rawMetric: string, value: number | null) => {
-    if (value === null || value === undefined || !Number.isFinite(value)) return;
-    const metric = normalizeMetric(rawMetric);
-    const entry = ensure(siteId, metric);
-    entry.sum += value;
-    entry.count += 1;
-  };
+  // Calculate date boundaries
+  const now = new Date();
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+  
+  const sixtyMinutesAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
   // ---------------------------------------------------------------------------
-  // 1) ENERGY: Query energy_daily for recent data (last 30 days)
+  // 1) ENERGY: Sum kWh from energy_daily (last 7 days)
   // ---------------------------------------------------------------------------
-  const energyMetrics = ['energy.power_kw', 'energy.total_kw', 'energy.hvac_kw', 'energy.lighting_kw', 'energy.plugs_kw'];
+  try {
+    const { data: energyRows, error } = await supabase
+      .from('energy_daily')
+      .select('site_id, metric, value_sum')
+      .in('site_id', siteIds)
+      .gte('ts_day', sevenDaysAgoStr)
+      .in('metric', ['energy.active_energy', 'energy.total_kwh', 'energy.hvac_kwh', 'energy.lighting_kwh', 'energy.plugs_kwh']);
+
+    if (!error && energyRows) {
+      // Group by site and sum
+      const siteSums: Record<string, Record<string, number>> = {};
+      
+      energyRows.forEach((row: any) => {
+        if (!row.site_id || row.value_sum === null) return;
+        if (!siteSums[row.site_id]) siteSums[row.site_id] = {};
+        
+        const metric = row.metric;
+        if (!siteSums[row.site_id][metric]) siteSums[row.site_id][metric] = 0;
+        siteSums[row.site_id][metric] += Number(row.value_sum) || 0;
+      });
+
+      // Calculate total kWh per site
+      Object.entries(siteSums).forEach(([siteId, metrics]) => {
+        // Prefer active_energy, fallback to total_kwh
+        const total = metrics['energy.active_energy'] ?? metrics['energy.total_kwh'] ?? 0;
+        result.weeklyEnergy[siteId] = total;
+      });
+    }
+  } catch (e) {
+    console.warn('[useAggregatedSiteData] energy_daily query failed:', e);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2) AIR QUALITY: Latest values from telemetry_latest
+  // ---------------------------------------------------------------------------
+  const airMetrics = ['iaq.co2', 'iaq.voc', 'env.temperature', 'env.humidity', 'co2', 'CO2', 'voc', 'temp', 'temperature', 'humidity'];
   
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-    const { data: energyRows, error: energyError } = await supabase
-      .from('energy_daily')
-      .select('site_id, metric, value_avg, value_sum')
-      .in('site_id', siteIds)
-      .gte('ts_day', dateStr)
-      .order('ts_day', { ascending: false });
-
-    if (energyError) {
-      console.warn('[useAggregatedSiteData] energy_daily query failed:', energyError);
-    } else {
-      (energyRows || []).forEach((row: any) => {
-        if (!row.site_id) return;
-        // Use value_avg for power metrics
-        const val = row.value_avg ?? row.value_sum;
-        add(row.site_id, row.metric, val);
-      });
-    }
-  } catch (e) {
-    console.warn('[useAggregatedSiteData] energy_daily query threw:', e);
-  }
-
-  // Also try energy_hourly for more recent data
-  try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const { data: energyHourlyRows, error } = await supabase
-      .from('energy_hourly')
-      .select('site_id, metric, value_avg')
-      .in('site_id', siteIds)
-      .gte('ts_hour', sevenDaysAgo.toISOString())
-      .order('ts_hour', { ascending: false });
-
-    if (!error && energyHourlyRows) {
-      energyHourlyRows.forEach((row: any) => {
-        if (!row.site_id) return;
-        add(row.site_id, row.metric, row.value_avg);
-      });
-    }
-  } catch (e) {
-    console.warn('[useAggregatedSiteData] energy_hourly query threw:', e);
-  }
-
-  // ---------------------------------------------------------------------------
-  // 2) AIR/WATER: Query telemetry_daily + telemetry_hourly
-  // ---------------------------------------------------------------------------
-  const airWaterMetrics = [
-    'iaq.co2', 'iaq.voc', 'iaq.tvoc', 'iaq.pm25', 'iaq.pm10',
-    'env.temperature', 'env.humidity', 'env.temp', 'env.hum',
-    'water.consumption', 'water.flow',
-    'co2', 'CO2', 'voc', 'tvoc', 'temp', 'temperature', 'humidity', 'hum'
-  ];
-
-  // Query telemetry_daily
-  try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-    const { data: dailyRows, error } = await supabase
-      .from('telemetry_daily')
-      .select('site_id, metric, value_avg')
-      .in('site_id', siteIds)
-      .in('metric', airWaterMetrics)
-      .gte('ts_day', dateStr);
-
-    if (!error && dailyRows) {
-      dailyRows.forEach((row: any) => {
-        if (!row.site_id) return;
-        add(row.site_id, row.metric, row.value_avg);
-      });
-    }
-  } catch (e) {
-    console.warn('[useAggregatedSiteData] telemetry_daily query threw:', e);
-  }
-
-  // Query telemetry_hourly for more recent data
-  try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const { data: hourlyRows, error } = await supabase
-      .from('telemetry_hourly')
-      .select('site_id, metric, value_avg')
-      .in('site_id', siteIds)
-      .in('metric', airWaterMetrics)
-      .gte('ts_hour', sevenDaysAgo.toISOString());
-
-    if (!error && hourlyRows) {
-      hourlyRows.forEach((row: any) => {
-        if (!row.site_id) return;
-        add(row.site_id, row.metric, row.value_avg);
-      });
-    }
-  } catch (e) {
-    console.warn('[useAggregatedSiteData] telemetry_hourly query threw:', e);
-  }
-
-  // ---------------------------------------------------------------------------
-  // 3) Fallback: Also check _latest tables for any additional data
-  // ---------------------------------------------------------------------------
-  try {
-    const { data: energyLatest } = await supabase
-      .from('energy_latest')
-      .select('site_id, metric, value')
-      .in('site_id', siteIds);
-
-    (energyLatest || []).forEach((row: any) => {
-      if (!row.site_id) return;
-      add(row.site_id, row.metric, row.value);
-    });
-  } catch (e) { /* ignore */ }
-
-  try {
-    const { data: telemetryLatest } = await supabase
+    const { data: airRows, error } = await supabase
       .from('telemetry_latest')
-      .select('site_id, metric, value')
+      .select('site_id, metric, value, ts')
       .in('site_id', siteIds)
-      .in('metric', airWaterMetrics);
+      .in('metric', airMetrics);
 
-    (telemetryLatest || []).forEach((row: any) => {
-      if (!row.site_id) return;
-      add(row.site_id, row.metric, row.value);
-    });
+    if (!error && airRows) {
+      airRows.forEach((row: any) => {
+        if (!row.site_id || row.value === null) return;
+        
+        if (!result.latestAir[row.site_id]) result.latestAir[row.site_id] = {};
+        
+        // Normalize metric name
+        const normalized = normalizeMetric(row.metric);
+        result.latestAir[row.site_id][normalized] = Number(row.value);
+        
+        // Check if data is recent (for online status)
+        if (row.ts) {
+          const ts = new Date(row.ts);
+          if (ts >= sixtyMinutesAgo) {
+            result.onlineStatus[row.site_id] = true;
+          }
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('[useAggregatedSiteData] telemetry_latest air query failed:', e);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3) ONLINE STATUS: Check energy_latest and telemetry_latest for recent data
+  // ---------------------------------------------------------------------------
+  try {
+    // Check energy_latest for recent data
+    const { data: energyLatest, error } = await supabase
+      .from('energy_latest')
+      .select('site_id, ts')
+      .in('site_id', siteIds)
+      .gte('ts', sixtyMinutesAgo.toISOString());
+
+    if (!error && energyLatest) {
+      energyLatest.forEach((row: any) => {
+        if (row.site_id) {
+          result.onlineStatus[row.site_id] = true;
+        }
+      });
+    }
+  } catch (e) { /* ignore */ }
+
+  try {
+    // Also check telemetry_latest for ANY recent telemetry (air, water, etc.)
+    const { data: telemetryLatest, error } = await supabase
+      .from('telemetry_latest')
+      .select('site_id, ts')
+      .in('site_id', siteIds)
+      .gte('ts', sixtyMinutesAgo.toISOString());
+
+    if (!error && telemetryLatest) {
+      telemetryLatest.forEach((row: any) => {
+        if (row.site_id) {
+          result.onlineStatus[row.site_id] = true;
+        }
+      });
+    }
   } catch (e) { /* ignore */ }
 
   // ---------------------------------------------------------------------------
-  // Finalize: compute averages
+  // 4) ALERTS: Count from events table (status='active')
   // ---------------------------------------------------------------------------
-  const out = new Map<string, Record<string, number>>();
+  try {
+    const { data: eventsRows, error } = await supabase
+      .from('events')
+      .select('site_id, severity')
+      .in('site_id', siteIds)
+      .eq('status', 'active');
 
-  siteData.forEach((metrics, siteId) => {
-    const result: Record<string, number> = {};
-    Object.entries(metrics).forEach(([metric, { sum, count }]) => {
-      if (count > 0) {
-        result[metric] = sum / count;
-      }
-    });
-    if (Object.keys(result).length > 0) {
-      out.set(siteId, result);
+    if (!error && eventsRows) {
+      eventsRows.forEach((row: any) => {
+        if (!row.site_id) return;
+        
+        if (!result.alerts[row.site_id]) {
+          result.alerts[row.site_id] = { critical: 0, warning: 0, info: 0 };
+        }
+        
+        const severity = row.severity?.toLowerCase() || 'info';
+        if (severity === 'critical' || severity === 'error') {
+          result.alerts[row.site_id].critical++;
+        } else if (severity === 'warning' || severity === 'warn') {
+          result.alerts[row.site_id].warning++;
+        } else {
+          result.alerts[row.site_id].info++;
+        }
+      });
     }
+  } catch (e) {
+    console.warn('[useAggregatedSiteData] events query failed:', e);
+  }
+
+  console.log('[useAggregatedSiteData] Fetched data:', {
+    sitesWithEnergy: Object.keys(result.weeklyEnergy).length,
+    sitesWithAir: Object.keys(result.latestAir).length,
+    sitesOnline: Object.keys(result.onlineStatus).filter(k => result.onlineStatus[k]).length,
+    sitesWithAlerts: Object.keys(result.alerts).length,
   });
 
-  console.log('[useAggregatedSiteData] Fetched data for sites:', out.size, 'sites with data');
-  return out;
+  return result;
 }
 
 // =============================================================================
@@ -318,10 +329,10 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
     return config;
   }, [filteredProjects, adminProjects]);
 
-  // Fetch real telemetry data from aggregated tables
-  const { data: telemetryMap, isLoading, isError } = useQuery({
-    queryKey: ['aggregated-site-telemetry-v2', [...siteIds].sort().join(',')],
-    queryFn: () => fetchAggregatedTelemetryForSites(siteIds),
+  // Fetch real aggregated data
+  const { data: aggregatedData, isLoading, isError } = useQuery({
+    queryKey: ['aggregated-site-data-v3', [...siteIds].sort().join(',')],
+    queryFn: () => fetchAggregatedDataForSites(siteIds),
     enabled: isSupabaseConfigured && siteIds.length > 0,
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // 1 minute
@@ -337,62 +348,66 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       const modules = siteModuleConfig.get(project.siteId);
       if (!modules) return;
 
-      const metrics = telemetryMap?.get(project.siteId) || {};
+      const siteId = project.siteId;
+      const weeklyKwh = aggregatedData?.weeklyEnergy[siteId] ?? null;
+      const airMetrics = aggregatedData?.latestAir[siteId] || {};
+      const isOnline = aggregatedData?.onlineStatus[siteId] ?? false;
+      const alerts = aggregatedData?.alerts[siteId] ?? { critical: 0, warning: 0, info: 0 };
 
       // Check which data types have real values
-      const hasEnergyData = modules.energy && (
-        metrics['energy.power_kw'] !== undefined ||
-        metrics['energy.total_kw'] !== undefined ||
-        metrics['energy.hvac_kw'] !== undefined
-      );
-
+      const hasEnergyData = modules.energy && weeklyKwh !== null && weeklyKwh > 0;
+      
+      // FIX: Site has air data if ANY air metrics exist (not just if energy exists)
       const hasAirData = modules.air && (
-        metrics['iaq.co2'] !== undefined ||
-        metrics['env.temperature'] !== undefined
+        airMetrics['iaq.co2'] !== undefined ||
+        airMetrics['env.temperature'] !== undefined ||
+        airMetrics['env.humidity'] !== undefined
       );
 
-      const hasWaterData = modules.water && (
-        metrics['water.consumption'] !== undefined ||
-        metrics['water.flow'] !== undefined
-      );
+      const hasWaterData = modules.water && false; // TODO: add water data when available
 
-      // Only include site if it has at least one type of real data
-      if (!hasEnergyData && !hasAirData && !hasWaterData) {
+      // Include site if it has ANY type of real data OR is online
+      if (!hasEnergyData && !hasAirData && !hasWaterData && !isOnline) {
         return;
       }
 
       sites.push({
-        siteId: project.siteId,
+        siteId,
         siteName: project.name,
+        isOnline,
         hasEnergyData,
         hasAirData,
         hasWaterData,
         energy: {
-          total: metrics['energy.power_kw'] ?? metrics['energy.total_kw'] ?? null,
-          hvac: metrics['energy.hvac_kw'] ?? null,
-          lighting: metrics['energy.lighting_kw'] ?? null,
-          plugs: metrics['energy.plugs_kw'] ?? null,
+          weeklyKwh,
+          hvacKwh: null, // TODO: calculate from category breakdown
+          lightingKwh: null,
+          plugsKwh: null,
         },
         air: {
-          co2: metrics['iaq.co2'] ?? null,
-          temperature: metrics['env.temperature'] ?? null,
-          humidity: metrics['env.humidity'] ?? null,
-          voc: metrics['iaq.voc'] ?? null,
+          co2: airMetrics['iaq.co2'] ?? null,
+          temperature: airMetrics['env.temperature'] ?? null,
+          humidity: airMetrics['env.humidity'] ?? null,
+          voc: airMetrics['iaq.voc'] ?? null,
         },
         water: {
-          consumption: metrics['water.consumption'] ?? null,
+          consumption: null,
         },
+        alerts,
       });
     });
 
     const sitesWithEnergy = sites.filter(s => s.hasEnergyData);
     const sitesWithAir = sites.filter(s => s.hasAirData);
     const sitesWithWater = sites.filter(s => s.hasWaterData);
+    const sitesOnline = sites.filter(s => s.isOnline);
 
     // Calculate totals
-    const totalEnergy = sitesWithEnergy.reduce((sum, s) => sum + (s.energy.total || 0), 0);
+    const totalWeeklyKwh = sitesWithEnergy.reduce((sum, s) => sum + (s.energy.weeklyKwh || 0), 0);
     const totalCo2 = sitesWithAir.reduce((sum, s) => sum + (s.air.co2 || 0), 0);
     const avgCo2 = sitesWithAir.length > 0 ? Math.round(totalCo2 / sitesWithAir.length) : 0;
+    const alertsCritical = sites.reduce((sum, s) => sum + s.alerts.critical, 0);
+    const alertsWarning = sites.reduce((sum, s) => sum + s.alerts.warning, 0);
 
     return {
       sites,
@@ -400,15 +415,18 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       sitesWithAir,
       sitesWithWater,
       totals: {
-        energy: Math.round(totalEnergy),
+        weeklyEnergyKwh: Math.round(totalWeeklyKwh),
         avgCo2,
         sitesCount: sites.length,
+        sitesOnline: sitesOnline.length,
+        alertsCritical,
+        alertsWarning,
       },
       isLoading,
       isError,
       hasRealData: sites.length > 0,
     };
-  }, [filteredProjects, siteModuleConfig, telemetryMap, isLoading, isError]);
+  }, [filteredProjects, siteModuleConfig, aggregatedData, isLoading, isError]);
 }
 
 /**
