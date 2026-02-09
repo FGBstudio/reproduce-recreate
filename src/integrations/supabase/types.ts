@@ -1185,6 +1185,74 @@ export type Database = {
           },
         ]
       }
+      site_thresholds: {
+        Row: {
+          air_co2_critical_ppm: number | null
+          air_co2_warning_ppm: number | null
+          air_humidity_max_pct: number | null
+          air_humidity_min_pct: number | null
+          air_temp_max_c: number | null
+          air_temp_min_c: number | null
+          created_at: string
+          created_by: string | null
+          energy_anomaly_detection_enabled: boolean | null
+          energy_daily_budget_kwh: number | null
+          energy_power_limit_kw: number | null
+          id: string
+          site_id: string
+          updated_at: string
+          updated_by: string | null
+          water_daily_budget_liters: number | null
+          water_leak_threshold_lh: number | null
+        }
+        Insert: {
+          air_co2_critical_ppm?: number | null
+          air_co2_warning_ppm?: number | null
+          air_humidity_max_pct?: number | null
+          air_humidity_min_pct?: number | null
+          air_temp_max_c?: number | null
+          air_temp_min_c?: number | null
+          created_at?: string
+          created_by?: string | null
+          energy_anomaly_detection_enabled?: boolean | null
+          energy_daily_budget_kwh?: number | null
+          energy_power_limit_kw?: number | null
+          id?: string
+          site_id: string
+          updated_at?: string
+          updated_by?: string | null
+          water_daily_budget_liters?: number | null
+          water_leak_threshold_lh?: number | null
+        }
+        Update: {
+          air_co2_critical_ppm?: number | null
+          air_co2_warning_ppm?: number | null
+          air_humidity_max_pct?: number | null
+          air_humidity_min_pct?: number | null
+          air_temp_max_c?: number | null
+          air_temp_min_c?: number | null
+          created_at?: string
+          created_by?: string | null
+          energy_anomaly_detection_enabled?: boolean | null
+          energy_daily_budget_kwh?: number | null
+          energy_power_limit_kw?: number | null
+          id?: string
+          site_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          water_daily_budget_liters?: number | null
+          water_leak_threshold_lh?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_thresholds_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: true
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           address: string | null
