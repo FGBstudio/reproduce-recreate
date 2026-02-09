@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { Project } from "@/lib/data";
-import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal, Loader2 } from "lucide-react";
+import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal, Loader2, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { DataSourceBadge } from "./DataSourceBadge";
+import { useThresholdAlerts, getMetricStatus } from "@/hooks/useThresholdAlerts";
+import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -113,13 +115,14 @@ const MODULE_WEIGHTS = {
 const YEARLY_CO2_SAVED = 12450; // kg CO2 eq
 
 // Overall Performance Card - Full width, prominent
-const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData }: {
+const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData, alertStatus }: {
   status: ModuleStatus;
   moduleConfig: { energy: { enabled: boolean }; air: { enabled: boolean }; water: { enabled: boolean } };
   energyScore: number;
   airScore: number;
   waterScore: number;
   isRealData: boolean;
+  alertStatus: { criticalCount: number; warningCount: number; hasAlerts: boolean };
 }) => {
   return (
     <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
@@ -199,6 +202,30 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                 </div>
               )}
             </div>
+            
+            <div className="h-12 w-px bg-gray-200" />
+            
+            {/* Active Alerts from Thresholds */}
+            {alertStatus.hasAlerts ? (
+              <div className="text-center bg-red-50 rounded-xl px-4 py-2">
+                <div className="flex items-center gap-1 justify-center">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                  <span className="text-2xl md:text-3xl font-bold text-red-600">
+                    {alertStatus.criticalCount + alertStatus.warningCount}
+                  </span>
+                </div>
+                <div className="text-[10px] text-red-700 font-medium uppercase tracking-wide">
+                  {alertStatus.criticalCount > 0 ? `${alertStatus.criticalCount} critici` : ''}{alertStatus.criticalCount > 0 && alertStatus.warningCount > 0 ? ' + ' : ''}{alertStatus.warningCount > 0 ? `${alertStatus.warningCount} warning` : ''}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center bg-emerald-50 rounded-xl px-4 py-2">
+                <div className="text-2xl md:text-3xl font-bold text-emerald-600">0</div>
+                <div className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">
+                  Alert Attivi
+                </div>
+              </div>
+            )}
             
             <div className="h-12 w-px bg-gray-200" />
             
@@ -347,19 +374,19 @@ const EnergyCard = ({ status, enabled, onClick, liveData }: {
 };
 
 // Air Quality Card with all monitored parameters - connected to real-time data
-const AirCard = ({ status, enabled, project, onClick, liveData }: { 
+const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: { 
   status: ModuleStatus; 
   enabled: boolean; 
   project: Project; 
   onClick?: () => void;
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
+  thresholds?: ReturnType<typeof useSiteThresholds>['thresholds'];
 }) => {
-  // Use real-time data if available
+  // Use real-time data if available with threshold-based status
   const readings = useMemo(() => {
     const isReal = !!liveData?.isRealData;
     const m = isReal ? liveData!.metrics : {};
     const co2Val = isReal ? m['iaq.co2'] : undefined;
-    // DB normalizes TVOC as iaq.voc
     const tvocVal = isReal ? m['iaq.voc'] : undefined;
     const pm25Val = isReal ? m['iaq.pm25'] : undefined;
     const pm10Val = isReal ? m['iaq.pm10'] : undefined;
@@ -368,18 +395,18 @@ const AirCard = ({ status, enabled, project, onClick, liveData }: {
     const coVal = isReal ? m['iaq.co'] : undefined;
     const o3Val = isReal ? m['iaq.o3'] : undefined;
     
+    // Use configured thresholds for status evaluation
     return {
-      co2: { value: co2Val, unit: "ppm", status: typeof co2Val === 'number' ? (co2Val < 600 ? "good" as const : co2Val < 800 ? "warning" as const : "critical" as const) : "good" as const },
-      // Keep label 'TVOC' in UI, metric key is iaq.voc
+      co2: { value: co2Val, unit: "ppm", status: getMetricStatus('iaq.co2', co2Val, thresholds) },
       tvoc: { value: tvocVal, unit: "ppb", status: typeof tvocVal === 'number' ? (tvocVal < 200 ? "good" as const : tvocVal < 400 ? "warning" as const : "critical" as const) : "good" as const },
       pm25: { value: pm25Val, unit: "µg/m³", status: typeof pm25Val === 'number' ? (pm25Val < 15 ? "good" as const : pm25Val < 25 ? "warning" as const : "critical" as const) : "good" as const },
       pm10: { value: pm10Val, unit: "µg/m³", status: typeof pm10Val === 'number' ? (pm10Val < 25 ? "good" as const : pm10Val < 50 ? "warning" as const : "critical" as const) : "good" as const },
-      temp: { value: tempVal, unit: "°C", status: typeof tempVal === 'number' ? (tempVal > 18 && tempVal < 26 ? "good" as const : "warning" as const) : "good" as const },
-      humidity: { value: humidityVal, unit: "%", status: typeof humidityVal === 'number' ? (humidityVal > 30 && humidityVal < 60 ? "good" as const : "warning" as const) : "good" as const },
+      temp: { value: tempVal, unit: "°C", status: getMetricStatus('env.temperature', tempVal, thresholds) },
+      humidity: { value: humidityVal, unit: "%", status: getMetricStatus('env.humidity', humidityVal, thresholds) },
       co: { value: coVal, unit: "ppm", status: "good" as const },
       o3: { value: o3Val, unit: "ppb", status: "good" as const },
     };
-  }, [liveData]);
+  }, [liveData, thresholds]);
 
   if (!enabled) {
     return (
@@ -586,6 +613,10 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   // Fetch real-time telemetry data for this site
   const liveData = useRealTimeLatestData(project.siteId);
   
+  // Fetch site thresholds and evaluate alerts
+  const { thresholds } = useSiteThresholds(project.siteId);
+  const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics);
+  
   // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
     const powerKw = liveData.isRealData ? liveData.metrics['energy.power_kw'] : undefined;
@@ -671,6 +702,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           airScore={airStatus.score}
           waterScore={waterStatus.score}
           isRealData={liveData.isRealData}
+          alertStatus={alertStatus}
         />
         
         {/* Three detail cards below */}
@@ -686,6 +718,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           project={project}
           onClick={moduleConfig.air.enabled ? () => handleCardClick("air") : undefined}
           liveData={liveData}
+          thresholds={thresholds}
         />
         <WaterCard 
           status={waterStatus} 
