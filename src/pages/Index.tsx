@@ -116,7 +116,7 @@ const Index = () => {
               lng: parseFloat(String(site.lng)) || 0,
               address: `${site.address || ''}, ${site.city || ''}, ${site.country || ''}`,
               img: site.imageUrl || '',
-              data: { hvac: 0, light: 0, total: 0, co2: 0, temp: 0, alerts: 0, aq: 'GOOD' },
+              data: { hvac: 0, light: 0, total: 0, co2: 0, temp: 0, humidity: 0, alerts: 0, aq: 'GOOD' },
               monitoring: ['energy', 'air', 'water'],
               brandId: brand?.id || '',
               siteId: site.id, // Keep UUID reference for real-time data

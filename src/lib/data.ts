@@ -132,7 +132,7 @@ export const projects: Project[] = [
     lng: 2.3522, 
     address: "Paris, France", 
     img: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1920&h=1080&fit=crop",
-    data: { hvac: 40, light: 35, total: 95, co2: 500, temp: 21, alerts: 1, aq: "MODERATE" },
+    data: { hvac: 40, light: 35, total: 95, co2: 500, temp: 21, humidity: 45, alerts: 1, aq: "MODERATE" },
     monitoring: ["energy", "air"],
     brandId: "fgb",
     siteId: "s-dior-paris" // Maps to Dior Paris in seed data (closest match)
@@ -145,7 +145,7 @@ export const projects: Project[] = [
     lng: -0.1278, 
     address: "London, UK", 
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
-    data: { hvac: 38, light: 42, total: 92, co2: 480, temp: 21, alerts: 0, aq: "GOOD" },
+    data: { hvac: 38, light: 42, total: 92, co2: 480, temp: 21, humidity: 48, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air", "water"],
     brandId: "fgb",
     siteId: "s-dior-london" // Maps to Dior London in seed data
@@ -159,7 +159,7 @@ export const projects: Project[] = [
     lng: -74.0060, 
     address: "New York, USA", 
     img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1920&h=1080&fit=crop",
-    data: { hvac: 55, light: 50, total: 120, co2: 600, temp: 20, alerts: 2, aq: "MODERATE" },
+    data: { hvac: 55, light: 50, total: 120, co2: 600, temp: 20, humidity: 42, alerts: 2, aq: "MODERATE" },
     monitoring: ["energy", "water"],
     brandId: "fgb",
     siteId: "s-dior-nyc" // Maps to Dior New York in seed data
@@ -172,7 +172,7 @@ export const projects: Project[] = [
     lng: -118.2437, 
     address: "Los Angeles, USA", 
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
-    data: { hvac: 48, light: 38, total: 98, co2: 520, temp: 23, alerts: 1, aq: "GOOD" },
+    data: { hvac: 48, light: 38, total: 98, co2: 520, temp: 23, humidity: 38, alerts: 1, aq: "GOOD" },
     monitoring: ["energy", "air"],
     brandId: "fgb",
     // No siteId - will use mock data only
@@ -186,7 +186,7 @@ export const projects: Project[] = [
     lng: 139.6503, 
     address: "Tokyo, Japan", 
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
-    data: { hvac: 25, light: 30, total: 65, co2: 380, temp: 23, alerts: 0, aq: "EXCELLENT" },
+    data: { hvac: 25, light: 30, total: 65, co2: 380, temp: 23, humidity: 55, alerts: 0, aq: "EXCELLENT" },
     monitoring: ["energy", "air", "water"],
     brandId: "fgb",
     siteId: "s-fendi-tokyo" // Maps to Fendi Tokyo in seed data
@@ -199,7 +199,7 @@ export const projects: Project[] = [
     lng: 114.1694, 
     address: "Hong Kong", 
     img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop",
-    data: { hvac: 30, light: 28, total: 68, co2: 400, temp: 22, alerts: 0, aq: "GOOD" },
+    data: { hvac: 30, light: 28, total: 68, co2: 400, temp: 22, humidity: 52, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air"],
     brandId: "fgb",
     siteId: "s-gucci-shanghai" // Maps to Gucci Shanghai in seed data
@@ -213,7 +213,7 @@ export const projects: Project[] = [
     lng: 55.2744, 
     address: "Dubai, UAE", 
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
-    data: { hvac: 75, light: 42, total: 130, co2: 550, temp: 19, alerts: 3, aq: "POOR" },
+    data: { hvac: 75, light: 42, total: 130, co2: 550, temp: 19, humidity: 35, alerts: 3, aq: "POOR" },
     monitoring: ["energy"],
     brandId: "fgb",
     siteId: "s-fendi-dubai" // Maps to Fendi Dubai in seed data
