@@ -7,6 +7,7 @@ import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { useThresholdAlerts, getMetricStatus } from "@/hooks/useThresholdAlerts";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
+import { EVSWidget } from "./EVSWidget";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -111,11 +112,8 @@ const MODULE_WEIGHTS = {
   water: 0.15,
 };
 
-// Mock CO2 equivalent saved value (will be connected to backend later)
-const YEARLY_CO2_SAVED = 12450; // kg CO2 eq
-
 // Overall Performance Card - Full width, prominent
-const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData, alertStatus }: {
+const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData, alertStatus, liveData, onActivateModule }: {
   status: ModuleStatus;
   moduleConfig: { energy: { enabled: boolean }; air: { enabled: boolean }; water: { enabled: boolean } };
   energyScore: number;
@@ -123,6 +121,8 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
   waterScore: number;
   isRealData: boolean;
   alertStatus: { criticalCount: number; warningCount: number; hasAlerts: boolean };
+  liveData: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
+  onActivateModule?: (module: 'energy' | 'air' | 'water') => void;
 }) => {
   return (
     <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
@@ -160,15 +160,15 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
             
             <div className="h-12 w-px bg-gray-200" />
             
-            {/* CO2 Equivalent Saved */}
-            <div className="text-center bg-emerald-50 rounded-xl px-4 py-2">
-              <div className="text-2xl md:text-3xl font-bold text-emerald-600">
-                {YEARLY_CO2_SAVED.toLocaleString()}
-              </div>
-              <div className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">
-                Yearly kg CO₂ eq saved till today
-              </div>
-            </div>
+            {/* Environmental Visibility Score */}
+            <EVSWidget
+              modules={{
+                energy: { enabled: moduleConfig.energy.enabled, hasLiveData: liveData.isRealData && liveData.metrics['energy.power_kw'] != null },
+                air: { enabled: moduleConfig.air.enabled, hasLiveData: liveData.isRealData && liveData.metrics['iaq.co2'] != null },
+                water: { enabled: moduleConfig.water.enabled, hasLiveData: liveData.isRealData && liveData.metrics['water.flow_rate'] != null },
+              }}
+              onActivateModule={onActivateModule}
+            />
             
             <div className="h-12 w-px bg-gray-200" />
             
@@ -703,6 +703,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           waterScore={waterStatus.score}
           isRealData={liveData.isRealData}
           alertStatus={alertStatus}
+          liveData={liveData}
         />
         
         {/* Three detail cards below */}
