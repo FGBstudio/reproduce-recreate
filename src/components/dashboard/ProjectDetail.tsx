@@ -3324,19 +3324,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis 
+                            dataKey="time" 
+                            tick={axisStyle} 
+                            axisLine={{ stroke: '#e2e8f0' }} 
+                            tickLine={{ stroke: '#e2e8f0' }} 
+                            minTickGap={30}
+                          />
                           
-                          {/* Asse Sinistro: Potenza (kW) */}
+                          {/* Asse Sinistro: Potenza (kW) - Pulito senza decimali */}
                           <YAxis
                             yAxisId="power"
                             tick={axisStyle}
                             axisLine={{ stroke: '#e2e8f0' }}
                             tickLine={{ stroke: '#e2e8f0' }}
                             domain={autoDomainWithPadding}
+                            tickFormatter={(val) => Math.round(val).toString()}
                             label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
                           />
                           
-                          {/* Asse Destro: Meteo (°C / %) */}
+                          {/* Asse Destro: Meteo (°C / %) - Visibile e formattato */}
                           <YAxis
                             yAxisId="temp"
                             orientation="right"
@@ -3344,25 +3351,72 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             axisLine={{ stroke: '#e2e8f0' }}
                             tickLine={{ stroke: '#e2e8f0' }}
                             domain={['auto', 'auto']}
+                            tickFormatter={(val) => Math.round(val).toString()}
                             label={{ value: '°C / %', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }}
                           />
                           
-                          <Tooltip {...tooltipStyle} />
+                          {/* Tooltip: Pulito e senza decimali folli */}
+                          <Tooltip 
+                            {...tooltipStyle} 
+                            formatter={(value: number) => [Math.round(value * 100) / 100, ""]}
+                          />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           
-                          {/* LOGICA DINAMICA: Mostra HVAC/Lighting se ci sono dati, altrimenti Generale */}
-                          {hasSubMeters ? (
-                            <>
-                                <Line yAxisId="power" type="monotone" dataKey="hvac" stroke="#006367" strokeWidth={2.5} dot={false} name="HVAC (kW)" />
-                                <Line yAxisId="power" type="monotone" dataKey="lighting" stroke="#e63f26" strokeWidth={2.5} dot={false} name="Lighting (kW)" />
-                            </>
-                          ) : (
-                                <Line yAxisId="power" type="monotone" dataKey="general" stroke="#009193" strokeWidth={2.5} dot={false} name="General (kW)" />
+                          {/* Linee Energetiche (Asse Sinistro) */}
+                          <Line 
+                            yAxisId="power" 
+                            type="monotone" 
+                            dataKey="hvac" 
+                            stroke="#006367" 
+                            strokeWidth={2.5} 
+                            dot={false} 
+                            name="HVAC (kW)" 
+                            connectNulls
+                          />
+                          <Line 
+                            yAxisId="power" 
+                            type="monotone" 
+                            dataKey="lighting" 
+                            stroke="#e63f26" 
+                            strokeWidth={2.5} 
+                            dot={false} 
+                            name="Lighting (kW)" 
+                            connectNulls
+                          />
+                          {!hasSubMeters && (
+                            <Line 
+                              yAxisId="power" 
+                              type="monotone" 
+                              dataKey="general" 
+                              stroke="#009193" 
+                              strokeWidth={2.5} 
+                              dot={false} 
+                              name="General (kW)" 
+                              connectNulls
+                            />
                           )}
-                    
-                          {/* Linee Meteo (Sempre visibili se ci sono dati) */}
-                          <Line yAxisId="temp" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} dot={false} name="Temp (°C)" />
-                          <Line yAxisId="temp" type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Humidity (%)" />
+                        
+                          {/* Linee Meteo (Asse Destro) */}
+                          <Line 
+                            yAxisId="temp" 
+                            type="monotone" 
+                            dataKey="temperature" 
+                            stroke="#F59E0B" 
+                            strokeWidth={2} 
+                            dot={false} 
+                            name="Temp (°C)" 
+                            connectNulls
+                          />
+                          <Line 
+                            yAxisId="temp" 
+                            type="monotone" 
+                            dataKey="humidity" 
+                            stroke="#3b82f6" 
+                            strokeWidth={2} 
+                            dot={false} 
+                            name="Humidity (%)" 
+                            connectNulls
+                          />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
