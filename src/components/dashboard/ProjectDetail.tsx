@@ -1,6 +1,6 @@
 
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
@@ -24,6 +24,7 @@ import {
 import { useRealTimeEnergyData, useProjectTelemetry } from "@/hooks/useRealTimeTelemetry";
 import { generatePdfReport } from "./PdfReportGenerator";
 import { Button } from "@/components/ui/button";
+import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 import { ModuleGate } from "@/components/modules/ModuleGate";
 import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
 import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
@@ -194,6 +195,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
@@ -2444,6 +2446,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </>
                 )}
               </Button>
+              {/* Settings Button */}
+              <Button
+                onClick={() => setSettingsOpen(true)}
+                variant="outline"
+                size="sm"
+                className="h-7 md:h-9 w-7 md:w-9 p-0 bg-white/50 border-gray-200 rounded-full text-gray-700 hover:bg-fgb-secondary hover:text-white"
+                title="Impostazioni Progetto"
+              >
+                <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              </Button>
+              <ProjectSettingsDialog 
+                siteId={project?.siteId}
+                projectName={project?.name}
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+              />
             </div>
           </div>
           
