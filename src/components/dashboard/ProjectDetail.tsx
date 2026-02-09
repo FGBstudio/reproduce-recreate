@@ -3157,7 +3157,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                     </div>
                     {/* DEVICES CONSUMPTION (Stacked Bar Chart) - 2/3 width */}
-                    <div ref={deviceConsRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    <div ref={deviceConsRef} className="lg:col-span-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
