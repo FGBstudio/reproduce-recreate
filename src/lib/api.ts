@@ -49,7 +49,6 @@ export function parseTimestamp(ts: unknown): Date | null {
 // =============================================================================
 // Metric normalization (DB may store short names for backward compatibility)
 // =============================================================================
-// =============================================================================
 
 function normalizeMetric(metric: string): string {
   // Canonical -> canonical
@@ -391,11 +390,10 @@ export async function fetchLatestApi(params?: {
 /**
  * Smart table routing configuration
  * Routes queries to the optimal table based on time range duration
- * 
- * FORCED bucket selection (aligns with Edge Function spec):
- *   - ≤24 hours: 15m granularity → raw tables
- *   - >24h AND ≤30 days: 1h granularity → hourly tables  
- *   - >30 days: 1d granularity → daily tables
+ * * FORCED bucket selection (aligns with Edge Function spec):
+ * - ≤24 hours: 15m granularity → raw tables
+ * - >24h AND ≤30 days: 1h granularity → hourly tables  
+ * - >30 days: 1d granularity → daily tables
  */
 type TableRoute = 'raw' | 'hourly' | 'daily';
 type ForcedBucket = '15m' | '1h' | '1d';
@@ -450,13 +448,11 @@ function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
 
 /**
  * Fetch time-series telemetry data with smart table routing
- * 
- * Routing logic based on time range duration:
+ * * Routing logic based on time range duration:
  * - ≤24 hours: telemetry (raw) → maximum detail
  * - >24h AND ≤30 days: telemetry_hourly → hourly averages
  * - >30 days: telemetry_daily → daily averages
- * 
- * Includes fallback to raw + client-side aggregation if aggregate tables are empty
+ * * Includes fallback to raw + client-side aggregation if aggregate tables are empty
  */
 export async function fetchTimeseriesApi(params: {
   device_ids: string[];
@@ -682,8 +678,7 @@ export async function fetchTimeseriesApi(params: {
 /**
  * Fetch ENERGY time-series data from dedicated energy tables
  * Uses energy_telemetry, energy_hourly, energy_daily for better performance
- * 
- * Same routing logic as fetchTimeseriesApi but uses energy-specific tables
+ * * Same routing logic as fetchTimeseriesApi but uses energy-specific tables
  */
 export async function fetchEnergyTimeseriesApi(params: {
   site_id?: string;
@@ -974,6 +969,142 @@ export async function fetchEnergyTimeseriesApi(params: {
 }
 
 /**
+ * Fetch Weather Timeseries (from 'weather_data' table)
+ * Handles client-side downsampling for large ranges if hourly/daily tables don't exist
+ */
+export async function fetchWeatherTimeseriesApi(params: {
+  site_id: string;
+  start: string;
+  end: string;
+  bucket?: string;
+}): Promise<ApiTimeseriesResponse | null> {
+  if (!supabase) return null;
+
+  // Determine granularity based on duration
+  const startDate = new Date(params.start);
+  const endDate = new Date(params.end);
+  const durationMs = endDate.getTime() - startDate.getTime();
+  const durationHours = durationMs / (1000 * 60 * 60);
+
+  // We want raw data only for short periods (< 48h) to avoid heavy payload
+  const shouldAggregate = durationHours > 48;
+  const targetBucket: '1h' | '1d' = durationHours > 30 * 24 ? '1d' : '1h';
+
+  // 1. Fetch raw weather data
+  // Assuming 'weather_data' has columns: id, site_id, ts, temperature_c, humidity_percent
+  const { data, error } = await supabase
+    .from('weather_data')
+    .select('ts, temperature_c, humidity_percent')
+    .eq('site_id', params.site_id)
+    .gte('ts', params.start)
+    .lte('ts', params.end)
+    .order('ts', { ascending: true })
+    .limit(50000); // Safety limit
+
+  if (error) {
+    console.error('Weather Timeseries fetch error:', error);
+    return null;
+  }
+
+  const rawRows = (data || []) as any[];
+
+  // 2. Client-side aggregation helper (if needed)
+  const aggregateWeather = (rows: any[], bucket: '1h' | '1d') => {
+    const bucketIso = (tsIso: string) => {
+      const d = new Date(tsIso);
+      if (Number.isNaN(d.getTime())) return tsIso;
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const h = String(d.getUTCHours()).padStart(2, '0');
+      
+      if (bucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
+      return `${y}-${m}-${day}T00:00:00.000Z`;
+    };
+
+    const map = new Map<string, { tempSum: number, humSum: number, count: number }>();
+
+    for (const r of rows) {
+      const key = bucketIso(r.ts);
+      const entry = map.get(key);
+      if (!entry) {
+        map.set(key, { tempSum: r.temperature_c, humSum: r.humidity_percent, count: 1 });
+      } else {
+        entry.tempSum += r.temperature_c;
+        entry.humSum += r.humidity_percent;
+        entry.count += 1;
+      }
+    }
+
+    const aggregated = [];
+    for (const [ts, val] of map.entries()) {
+      const tempAvg = val.count ? val.tempSum / val.count : 0;
+      const humAvg = val.count ? val.humSum / val.count : 0;
+      
+      // Push two points per timestamp (one for temp, one for hum) to match standardized API format
+      aggregated.push({
+        ts_bucket: ts,
+        ts,
+        device_id: 'weather',
+        metric: 'weather.temperature',
+        value: tempAvg,
+        value_avg: tempAvg,
+        sample_count: val.count
+      });
+      aggregated.push({
+        ts_bucket: ts,
+        ts,
+        device_id: 'weather',
+        metric: 'weather.humidity',
+        value: humAvg,
+        value_avg: humAvg,
+        sample_count: val.count
+      });
+    }
+    return aggregated.sort((a, b) => (a.ts! < b.ts! ? -1 : 1));
+  };
+
+  let formattedData: ApiTimeseriesPoint[] = [];
+
+  if (shouldAggregate) {
+    formattedData = aggregateWeather(rawRows, targetBucket);
+  } else {
+    // Map raw data directly
+    formattedData = rawRows.flatMap(row => [
+      {
+        ts_bucket: row.ts,
+        ts: row.ts,
+        device_id: 'weather',
+        metric: 'weather.temperature',
+        value: row.temperature_c,
+        value_avg: row.temperature_c,
+        sample_count: 1
+      },
+      {
+        ts_bucket: row.ts,
+        ts: row.ts,
+        device_id: 'weather',
+        metric: 'weather.humidity',
+        value: row.humidity_percent,
+        value_avg: row.humidity_percent,
+        sample_count: 1
+      }
+    ]);
+  }
+
+  return {
+    data: formattedData,
+    meta: {
+      bucket: shouldAggregate ? targetBucket : 'raw',
+      source: 'weather_data',
+      start: params.start,
+      end: params.end,
+      point_count: formattedData.length,
+    },
+  };
+}
+
+/**
  * Fetch latest energy telemetry from dedicated energy_latest table
  */
 export async function fetchEnergyLatestApi(params?: {
@@ -1101,6 +1232,7 @@ export const queryKeys = {
   timeseries: (params: Record<string, unknown>) => ['timeseries', params] as const,
   energyTimeseries: (params: Record<string, unknown>) => ['energy-timeseries', params] as const,
   energyLatest: (params?: Record<string, unknown>) => ['energy-latest', params] as const,
+  weatherTimeseries: (params: Record<string, unknown>) => ['weather-timeseries', params] as const,
   sites: () => ['sites'] as const,
   brands: () => ['brands'] as const,
   holdings: () => ['holdings'] as const,
@@ -1188,6 +1320,22 @@ export function useEnergyLatest(
     enabled: isSupabaseConfigured,
     staleTime: 10 * 1000,
     refetchInterval: 30 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Hook to fetch Weather Timeseries data
+ */
+export function useWeatherTimeseries(
+  params: Parameters<typeof fetchWeatherTimeseriesApi>[0],
+  options?: Omit<UseQueryOptions<ApiTimeseriesResponse | null>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: queryKeys.weatherTimeseries(params),
+    queryFn: () => fetchWeatherTimeseriesApi(params),
+    enabled: isSupabaseConfigured && !!params.site_id,
+    staleTime: 15 * 60 * 1000, // Weather doesn't change every second, 15m cache is fine
     ...options,
   });
 }
