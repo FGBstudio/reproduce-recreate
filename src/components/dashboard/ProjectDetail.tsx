@@ -2550,7 +2550,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <button
                             onClick={() => setEnergyViewMode('category')}
                             className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                              energyViewMode === 'category' ? 'bg-white shadow text-fgb-secondary' : 'text-gray-500 hover:text-gray-700'
+                              energyViewMode === 'category' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
                             }`}
                           >
                             Categorie
@@ -2558,7 +2558,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <button
                             onClick={() => setEnergyViewMode('device')}
                             className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                              energyViewMode === 'device' ? 'bg-white shadow text-fgb-secondary' : 'text-gray-500 hover:text-gray-700'
+                              energyViewMode === 'device' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
                             }`}
                           >
                             Devices
@@ -2737,7 +2737,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           </ResponsiveContainer>
                           {/* Valore Centrale: Totale kWh */}
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-lg md:text-xl font-bold text-fgb-secondary">
+                            <span className="text-lg md:text-xl font-bold text-slate-900">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
                             <span className="text-[10px] md:text-xs text-gray-500 font-medium">Total kWh</span>
@@ -2750,7 +2750,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Energy Density</p>
-                        <p className="text-xl md:text-3xl font-bold text-fgb-secondary">{densityValue}</p>
+                        <p className="text-xl md:text-3xl font-bold text-slate-900">{densityValue}</p>
                         <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m²</p>
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
                         <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">in the selected period</div>
@@ -2814,7 +2814,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <div className="space-y-2">
                             {["Critical", "High", "Medium", "Low"].map(level => (
                               <div key={level} className="flex justify-between">
-                                <span className="text-sm text-fgb-secondary font-semibold">{level}</span>
+                                <span className="text-sm text-slate-900 font-semibold">{level}</span>
                                 <span className="text-sm text-gray-600">0</span>
                               </div>
                             ))}
@@ -3148,7 +3148,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               </ResponsiveContainer>
                               {/* Valore Centrale */}
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-lg md:text-xl font-bold text-fgb-secondary tabular-nums">
+                                <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                                   {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                 </span>
                                 <span className="text-[10px] text-gray-500 font-medium">kW</span>
