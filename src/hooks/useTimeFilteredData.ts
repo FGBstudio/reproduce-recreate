@@ -118,13 +118,28 @@ export const useEnergyWeatherAnalysis = (
 
     const map = new Map<string, any>();
 
-    // Helper to get or create entry
-    const getEntry = (ts: string) => {
+    // Helper per normalizzare il timestamp in base al bucket (Rende la logica elastica)
+    const getNormalizedTs = (rawTs: string) => {
+      const d = new Date(rawTs);
+      d.setSeconds(0, 0); // Azzera i secondi per tolleranza
+      if (bucket === '1h') d.setMinutes(0, 0, 0);
+      else if (bucket === '15m') d.setMinutes(Math.floor(d.getMinutes() / 15) * 15, 0, 0);
+      else if (bucket === '1d') d.setHours(0, 0, 0, 0);
+      return d.toISOString();
+    };
+
+    const getEntry = (rawTs: string) => {
+      const ts = getNormalizedTs(rawTs);
       if (!map.has(ts)) {
         map.set(ts, { 
           timestamp: ts,
-          // Format label based on bucket logic (simplified)
-          label: format(new Date(ts), bucket === '1d' ? 'dd MMM' : 'HH:mm', { locale: it }),
+          // Label dinamica: include la data se non è la vista giornaliera per evitare "1:00" ripetuti
+          label: format(
+            new Date(ts), 
+            bucket === '1d' ? 'dd MMM' : 
+            (timePeriod === 'today' ? 'HH:mm' : 'dd/MM HH:mm'), 
+            { locale: it }
+          ),
           hvac: null, 
           lighting: null, 
           general: null, 
@@ -137,10 +152,9 @@ export const useEnergyWeatherAnalysis = (
 
     // Process Energy
     energyResponse?.data.forEach(p => {
-      const ts = p.ts_bucket || p.ts;
+      const ts = p.ts_bucket || p.ts || (p as any).ts_hour || (p as any).ts_day;
       if (!ts) return;
       const entry = getEntry(ts);
-      // Use average for power (kW)
       const val = p.value_avg ?? p.value;
       
       if (p.metric === 'energy.hvac_kw') entry.hvac = val;
@@ -159,11 +173,10 @@ export const useEnergyWeatherAnalysis = (
       else if (p.metric === 'weather.humidity') entry.humidity = val;
     });
 
-    // Convert Map to sorted Array
     return Array.from(map.values())
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  }, [energyResponse, weatherResponse, bucket]);
+  }, [energyResponse, weatherResponse, bucket, timePeriod]);
 
   return {
     data: joinedData,
