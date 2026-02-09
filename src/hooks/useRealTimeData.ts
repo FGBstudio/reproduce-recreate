@@ -87,6 +87,7 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
     total: latestData?.['energy.power_kw'] ?? Math.round(50 + Math.random() * 80),
     co2: latestData?.['iaq.co2'] ?? Math.round(350 + Math.random() * 300),
     temp: latestData?.['env.temperature'] ?? Math.round(19 + Math.random() * 6),
+    humidity: latestData?.['env.humidity'] ?? Math.round(40 + Math.random() * 20),
     alerts: 0, // Would come from events table
     aq: calculateAqIndex(latestData?.['iaq.co2']),
   };
