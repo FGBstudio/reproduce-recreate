@@ -625,7 +625,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
     }
 
     const efficiency = Math.min(100, Math.max(0, 100 - (powerKw / 100) * 20));
-    const score = Math.min(100, Math.max(0, efficiency));
+    const score = Math.round(Math.min(100, Math.max(0, efficiency)));
     return {
       score,
       level: getStatusLevel(score),
