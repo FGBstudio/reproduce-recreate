@@ -35,6 +35,7 @@ export interface ProjectData {
   total: number;
   co2: number;
   temp: number;
+  humidity: number;
   alerts: number;
   aq: string;
   area_m2?: number;
@@ -118,7 +119,7 @@ export const projects: Project[] = [
     lng: 9.1900, 
     address: "Milan, Italy", 
     img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop",
-    data: { hvac: 32, light: 46, total: 89, co2: 420, temp: 22, alerts: 0, aq: "GOOD" },
+    data: { hvac: 32, light: 46, total: 89, co2: 420, temp: 22, humidity: 50, alerts: 0, aq: "GOOD" },
     monitoring: ["energy", "air", "water"],
     brandId: "fgb",
     siteId: "s-gucci-florence" // Maps to Gucci Garden Firenze in seed data
@@ -220,8 +221,10 @@ export const projects: Project[] = [
 ];
 
 // Helper functions
-export const getBrandById = (brandId: string): Brand | undefined => 
-  brands.find(b => b.id === brandId);
+export const getBrandById = (brandId: string | undefined): Brand | undefined => {
+  if (!brandId) return undefined;
+  return brands.find(b => b.id === brandId);
+};
 
 export const getHoldingById = (holdingId: string): Holding | undefined => 
   holdings.find(h => h.id === holdingId);
