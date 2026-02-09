@@ -19,6 +19,7 @@ import {
   useDeviceData, 
   useCO2Data, 
   useWaterData,
+  useEnergyWeatherAnalysis,
   getPeriodLabel 
 } from "@/hooks/useTimeFilteredData";
 import { useRealTimeEnergyData, useProjectTelemetry } from "@/hooks/useRealTimeTelemetry";
@@ -1080,27 +1081,41 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return out.length ? out : carbonData;
   }, [bucketHours, buildEnergySeriesSum, carbonData, isSupabaseConfigured]);
 
+  // 1. Chiamata all'hook che fa il join tra energia e meteo
+  const { data: energyOutdoorData, isLoading: isEnergyOutdoorLoading } = useEnergyWeatherAnalysis(
+    project?.siteId,
+    timePeriod,
+    dateRange
+  );
+
+  // 2. Preparazione dati per il grafico
   const energyOutdoorLiveData = useMemo(() => {
-    if (!isSupabaseConfigured) return outdoorData;
+    // Se non ho dati reali o API, uso i dati mock (adattandoli alla nuova struttura)
+    if (!isSupabaseConfigured || (!energyOutdoorData?.length && !isEnergyOutdoorLoading)) {
+      return outdoorData.map(d => ({
+        time: d.day,
+        hvac: d.hvacOffice, // map mock key
+        temperature: d.temperature,
+        humidity: 50 // mock humidity fisso
+      }));
+    }
+    
+    // Mapping dati reali
+    return energyOutdoorData.map(d => ({
+        time: d.label, 
+        hvac: d.hvac,         // kW
+        lighting: d.lighting, // kW
+        general: d.general,   // kW (Fallback)
+        temperature: d.temp,  // °C
+        humidity: d.humidity  // %
+    }));
+  }, [energyOutdoorData, outdoorData, isEnergyOutdoorLoading, isSupabaseConfigured]);
 
-    const hvac = buildEnergySeriesSum('energy.hvac_kw');
-    const temp = buildEnergySeriesSum('env.temperature');
-
-    const map = new Map<string, Record<string, unknown>>();
-    hvac.forEach((r: any) => {
-      const label = String(r.label);
-      if (!map.has(label)) map.set(label, { day: label });
-      map.get(label)!.hvacOffice = r.value;
-    });
-    temp.forEach((r: any) => {
-      const label = String(r.label);
-      if (!map.has(label)) map.set(label, { day: label });
-      map.get(label)!.temperature = r.value;
-    });
-
-    const out = Array.from(map.values());
-    return out.length ? out : outdoorData;
-  }, [buildEnergySeriesSum, isSupabaseConfigured, outdoorData]);
+  // 3. Helper per decidere quali linee mostrare (Se ho sottocontatori mostro quelli, altrimenti Generale)
+  const hasSubMeters = useMemo(() => {
+    if (!energyOutdoorData) return false;
+    return energyOutdoorData.some(d => (d.hvac !== null && d.hvac > 0) || (d.lighting !== null && d.lighting > 0));
+  }, [energyOutdoorData]);
 
   // Water dashboard data
   const waterConsumptionData = useMemo(() => [
@@ -3309,18 +3324,45 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          
+                          {/* Asse Sinistro: Potenza (kW) */}
                           <YAxis
+                            yAxisId="power"
                             tick={axisStyle}
                             axisLine={{ stroke: '#e2e8f0' }}
                             tickLine={{ stroke: '#e2e8f0' }}
                             domain={autoDomainWithPadding}
                             label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
                           />
+                          
+                          {/* Asse Destro: Meteo (°C / %) */}
+                          <YAxis
+                            yAxisId="temp"
+                            orientation="right"
+                            tick={axisStyle}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={['auto', 'auto']}
+                            label={{ value: '°C / %', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }}
+                          />
+                          
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Line type="monotone" dataKey="hvacOffice" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={{ fill: 'hsl(188, 100%, 19%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }} name="HVAC Office" />
-                          <Line type="monotone" dataKey="temperature" stroke="hsl(338, 50%, 45%)" strokeWidth={2.5} dot={{ fill: 'hsl(338, 50%, 45%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }} name="Temperature" />
+                          
+                          {/* LOGICA DINAMICA: Mostra HVAC/Lighting se ci sono dati, altrimenti Generale */}
+                          {hasSubMeters ? (
+                            <>
+                                <Line yAxisId="power" type="monotone" dataKey="hvac" stroke="#006367" strokeWidth={2.5} dot={false} name="HVAC (kW)" />
+                                <Line yAxisId="power" type="monotone" dataKey="lighting" stroke="#e63f26" strokeWidth={2.5} dot={false} name="Lighting (kW)" />
+                            </>
+                          ) : (
+                                <Line yAxisId="power" type="monotone" dataKey="general" stroke="#009193" strokeWidth={2.5} dot={false} name="General (kW)" />
+                          )}
+                    
+                          {/* Linee Meteo (Sempre visibili se ci sono dati) */}
+                          <Line yAxisId="temp" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} dot={false} name="Temp (°C)" />
+                          <Line yAxisId="temp" type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Humidity (%)" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
