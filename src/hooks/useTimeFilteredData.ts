@@ -1,6 +1,23 @@
 import { useMemo } from "react";
-import { format, subDays, subWeeks, subMonths, eachDayOfInterval, eachHourOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfDay, endOfDay, startOfWeek, startOfMonth, startOfYear, endOfYear } from "date-fns";
+import { 
+  format, 
+  subDays, 
+  subWeeks, 
+  subMonths, 
+  eachDayOfInterval, 
+  eachHourOfInterval, 
+  eachWeekOfInterval, 
+  eachMonthOfInterval, 
+  startOfDay, 
+  endOfDay, 
+  startOfWeek, 
+  startOfMonth, 
+  startOfYear, 
+  endOfYear,
+  differenceInDays 
+} from "date-fns";
 import { it } from "date-fns/locale";
+import { useEnergyTimeseries, useWeatherTimeseries } from "../lib/api";
 
 export type TimePeriod = "today" | "week" | "month" | "year" | "custom";
 
@@ -8,6 +25,156 @@ export interface DateRange {
   from: Date;
   to: Date;
 }
+
+// =============================================================================
+// Helper: Calculate API params from TimePeriod
+// =============================================================================
+export const getTimeRangeParams = (timePeriod: TimePeriod, dateRange?: DateRange) => {
+  const now = new Date();
+  let start = startOfDay(now);
+  let end = now;
+  let bucket = "1h"; // default granularity
+
+  switch (timePeriod) {
+    case "today":
+      start = startOfDay(now);
+      end = now;
+      bucket = "15m";
+      break;
+    case "week":
+      start = subDays(now, 7);
+      end = now;
+      bucket = "1h";
+      break;
+    case "month":
+      start = subMonths(now, 1);
+      end = now;
+      bucket = "1h"; // Hourly resolution for month view provides better detail
+      break;
+    case "year":
+      start = startOfYear(now);
+      end = now;
+      bucket = "1d"; // Daily averages for year view
+      break;
+    case "custom":
+      if (dateRange?.from && dateRange?.to) {
+        start = dateRange.from;
+        end = dateRange.to;
+        const days = differenceInDays(end, start);
+        if (days <= 1) bucket = "15m";
+        else if (days <= 60) bucket = "1h";
+        else bucket = "1d";
+      }
+      break;
+  }
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+    bucket
+  };
+};
+
+// =============================================================================
+// Real Data Hooks (Synced with API)
+// =============================================================================
+
+/**
+ * Hook for Energy vs Outdoor Conditions Chart
+ * Fetches Energy (HVAC, Lighting, Total) + Weather (Temp, Humidity)
+ * Joins data on timestamp
+ */
+export const useEnergyWeatherAnalysis = (
+  siteId: string | undefined, 
+  timePeriod: TimePeriod, 
+  dateRange?: DateRange
+) => {
+  const { start, end, bucket } = useMemo(
+    () => getTimeRangeParams(timePeriod, dateRange),
+    [timePeriod, dateRange]
+  );
+
+  // 1. Fetch Energy Data
+  const { data: energyResponse, isLoading: isEnergyLoading } = useEnergyTimeseries({
+    site_id: siteId,
+    // Request specific sub-meters + total power for fallback
+    metrics: ['energy.hvac_kw', 'energy.lighting_kw', 'energy.power_kw'],
+    start,
+    end,
+    bucket
+  });
+
+  // 2. Fetch Weather Data (from weather_data table)
+  const { data: weatherResponse, isLoading: isWeatherLoading } = useWeatherTimeseries({
+    site_id: siteId || '',
+    start,
+    end,
+    bucket
+  });
+
+  // 3. Join & Format Data
+  const joinedData = useMemo(() => {
+    if (!energyResponse?.data && !weatherResponse?.data) return [];
+
+    const map = new Map<string, any>();
+
+    // Helper to get or create entry
+    const getEntry = (ts: string) => {
+      if (!map.has(ts)) {
+        map.set(ts, { 
+          timestamp: ts,
+          // Format label based on bucket logic (simplified)
+          label: format(new Date(ts), bucket === '1d' ? 'dd MMM' : 'HH:mm', { locale: it }),
+          hvac: null, 
+          lighting: null, 
+          general: null, 
+          temp: null, 
+          humidity: null 
+        });
+      }
+      return map.get(ts);
+    };
+
+    // Process Energy
+    energyResponse?.data.forEach(p => {
+      const ts = p.ts_bucket || p.ts;
+      if (!ts) return;
+      const entry = getEntry(ts);
+      // Use average for power (kW)
+      const val = p.value_avg ?? p.value;
+      
+      if (p.metric === 'energy.hvac_kw') entry.hvac = val;
+      else if (p.metric === 'energy.lighting_kw') entry.lighting = val;
+      else if (p.metric === 'energy.power_kw') entry.general = val;
+    });
+
+    // Process Weather
+    weatherResponse?.data.forEach(p => {
+      const ts = p.ts_bucket || p.ts;
+      if (!ts) return;
+      const entry = getEntry(ts);
+      const val = p.value_avg ?? p.value;
+
+      if (p.metric === 'weather.temperature') entry.temp = val;
+      else if (p.metric === 'weather.humidity') entry.humidity = val;
+    });
+
+    // Convert Map to sorted Array
+    return Array.from(map.values())
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  }, [energyResponse, weatherResponse, bucket]);
+
+  return {
+    data: joinedData,
+    isLoading: isEnergyLoading || isWeatherLoading,
+    isEmpty: joinedData.length === 0
+  };
+};
+
+// =============================================================================
+// Mock Data Generators (Legacy / Demo Mode)
+// =============================================================================
 
 // Generate random value with some variation based on seed
 const seededRandom = (seed: number) => {
