@@ -3432,7 +3432,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <>
                 {/* Slide 1: Overview + CO2 + TVOC */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Air Quality Overview Card */}
                     <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
                       <div className="absolute top-4 right-4">
