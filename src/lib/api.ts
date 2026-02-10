@@ -687,6 +687,7 @@ export async function fetchEnergyTimeseriesApi(params: {
   start: string;
   end: string;
   bucket?: string;
+  force_table?: 'raw' | 'hourly' | 'daily';
 }): Promise<ApiTimeseriesResponse | null> {
   if (!supabase) return null;
 
@@ -765,7 +766,17 @@ export async function fetchEnergyTimeseriesApi(params: {
   // Parse dates and determine optimal table routing
   const startDate = new Date(params.start);
   const endDate = new Date(params.end);
-  const route = getTableRoute(startDate, endDate);
+  let route = getTableRoute(startDate, endDate);
+
+  // Allow callers to force a specific table (e.g., heatmap needs hourly even for ≤24h)
+  if (params.force_table) {
+    const forceMap: Record<string, TableRouteConfig> = {
+      raw: { table: 'raw', source: 'telemetry', tsColumn: 'ts', valueColumn: 'value', hasMinMax: false, forcedBucket: '15m' },
+      hourly: { table: 'hourly', source: 'telemetry_hourly', tsColumn: 'ts_hour', valueColumn: 'value_avg', hasMinMax: true, forcedBucket: '1h' },
+      daily: { table: 'daily', source: 'telemetry_daily', tsColumn: 'ts_day', valueColumn: 'value_avg', hasMinMax: true, forcedBucket: '1d' },
+    };
+    route = forceMap[params.force_table];
+  }
 
   // Prepare date filters
   const startDay = startDate.toISOString().slice(0, 10);

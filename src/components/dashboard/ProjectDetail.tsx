@@ -1521,7 +1521,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
 
     const bucket: '15m' | '1h' | '1d' = timePeriod === 'year' ? '1d' : '1h';
-    return { start, end, bucket };
+    // Force the correct table: hourly for today/week/month, daily for year
+    const force_table: 'hourly' | 'daily' = timePeriod === 'year' ? 'daily' : 'hourly';
+    return { start, end, bucket, force_table };
   }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   const { data: heatmapResp } = useEnergyTimeseries(
@@ -1532,6 +1534,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       end: heatmapConfig.end.toISOString(),
       metrics: ['energy.active_energy'],
       bucket: heatmapConfig.bucket,
+      force_table: heatmapConfig.force_table,
     },
     {
       enabled: !!heatmapMainDeviceId && activeDashboard === 'energy',
