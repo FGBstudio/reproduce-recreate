@@ -1716,6 +1716,8 @@ export type Database = {
           created_at: string | null
           humidity_percent: number | null
           id: string
+          pm10: number | null
+          pm2_5: number | null
           site_id: string | null
           temperature_c: number | null
           timestamp: string
@@ -1724,6 +1726,8 @@ export type Database = {
           created_at?: string | null
           humidity_percent?: number | null
           id?: string
+          pm10?: number | null
+          pm2_5?: number | null
           site_id?: string | null
           temperature_c?: number | null
           timestamp: string
@@ -1732,6 +1736,8 @@ export type Database = {
           created_at?: string | null
           humidity_percent?: number | null
           id?: string
+          pm10?: number | null
+          pm2_5?: number | null
           site_id?: string | null
           temperature_c?: number | null
           timestamp?: string
