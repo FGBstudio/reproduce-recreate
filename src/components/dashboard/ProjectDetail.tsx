@@ -1462,29 +1462,25 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
 
-  // ✅ FIX 1: Selezione robusta del Main Meter (un SOLO device)
-  // Motivo: se la categoria "general" non è popolata, la heatmap risultava vuota.
-  const heatmapMainDeviceId = useMemo(() => {
-    if (!siteDevices || siteDevices.length === 0) return null;
+  // ✅ FIX 1: Selezione dei device "general" (tutti i meter principali del sito)
+  // I sensori live producono energy.power_kw (non active_energy), quindi li sommiamo tutti.
+  const heatmapDeviceIds = useMemo(() => {
+    if (!siteDevices || siteDevices.length === 0) return [];
 
-    // 1) Preferisci sempre un energy_monitor
-    const monitor = siteDevices.find((d) => d.device_type === 'energy_monitor');
-    if (monitor) return monitor.id;
+    // 1) Preferisci energy_monitor
+    const monitors = siteDevices.filter((d) => d.device_type === 'energy_monitor');
+    if (monitors.length > 0) return monitors.map((d) => d.id);
 
-    // 2) Fallback: un device marcato come "general"
-    const general = siteDevices.find((d) => (d.category || '').toLowerCase() === 'general');
-    if (general) return general.id;
+    // 2) Tutti i device "general" (i 3 PAN12 + Virtual Meter)
+    const generals = siteDevices.filter((d) => (d.category || '').toLowerCase() === 'general');
+    if (generals.length > 0) return generals.map((d) => d.id);
 
-    // 3) Ultimo fallback: qualunque device energia (meglio di niente)
-    const anyEnergy = siteDevices.find((d) => ENERGY_DEVICE_TYPES.includes(d.device_type));
-    return anyEnergy?.id ?? null;
+    // 3) Fallback: qualunque device energia
+    const anyEnergy = siteDevices.filter((d) => ENERGY_DEVICE_TYPES.includes(d.device_type));
+    return anyEnergy.map((d) => d.id);
   }, [siteDevices, ENERGY_DEVICE_TYPES]);
 
   // ✅ HEATMAP RANGE + BUCKET (solo per il widget heatmap)
-  // Obiettivo:
-  // - TODAY/WEEK/MONTH: bucket=1h
-  // - YEAR: bucket=1d
-  // + start/end allineati a confini di giorno/mese/anno per avere griglia stabile.
   const heatmapConfig = useMemo(() => {
     const now = new Date();
 
@@ -1501,7 +1497,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     let end: Date;
 
     if (timePeriod === 'custom' && dateRange) {
-      // Manteniamo l'intervallo selezionato dall'utente.
       start = dateRange.from;
       end = dateRange.to;
     } else if (timePeriod === 'today') {
@@ -1521,23 +1516,25 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
 
     const bucket: '15m' | '1h' | '1d' = timePeriod === 'year' ? '1d' : '1h';
-    // Force the correct table: hourly for today/week/month, daily for year
     const force_table: 'hourly' | 'daily' = timePeriod === 'year' ? 'daily' : 'hourly';
     return { start, end, bucket, force_table };
   }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
+  // ✅ FIX: Query BOTH energy.active_energy AND energy.power_kw
+  // I sensori live hanno solo power_kw, i Virtual Meter storici hanno active_energy.
+  // Il frontend sommerà per timestamp per ottenere il consumo totale dell'edificio.
   const { data: heatmapResp } = useEnergyTimeseries(
     {
-      device_ids: heatmapMainDeviceId ? [heatmapMainDeviceId] : undefined,
-      site_id: undefined, // 🔒 Strict: mai query per sito
+      device_ids: heatmapDeviceIds.length > 0 ? heatmapDeviceIds : undefined,
+      site_id: undefined,
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.active_energy'],
+      metrics: ['energy.active_energy', 'energy.power_kw'],
       bucket: heatmapConfig.bucket,
       force_table: heatmapConfig.force_table,
     },
     {
-      enabled: !!heatmapMainDeviceId && activeDashboard === 'energy',
+      enabled: heatmapDeviceIds.length > 0 && activeDashboard === 'energy',
     }
   );
 
@@ -1556,11 +1553,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const valueMap = new Map<string, number>();
 
     rawData.forEach((d) => {
-      const val = Number(d.value_sum ?? d.value ?? 0);
+      // Per active_energy usa value_sum (kWh già cumulato)
+      // Per power_kw usa value_avg × bucket_hours per convertire kW → kWh
+      const metric = d.metric || '';
+      let val: number;
+      if (metric.includes('active_energy')) {
+        val = Number(d.value_sum ?? d.value ?? 0);
+      } else {
+        // power_kw: kWh = avg_kw × ore_bucket
+        const avgKw = Number(d.value_avg ?? d.value ?? 0);
+        const bucketHours = isYearView ? 24 : 1; // daily=24h, hourly=1h
+        val = avgKw * bucketHours;
+      }
       if (!Number.isFinite(val) || val <= 0) return;
 
       const parsed = parseTimestamp(d.ts_bucket || d.ts);
       if (!parsed) return;
+      // Scarta timestamp futuri
+      if (parsed > new Date()) return;
 
       let rowKey: number;
       let colKey: string;
@@ -1570,7 +1580,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         colKey = String(parsed.getMonth()); // 0-11
       } else {
         rowKey = parsed.getHours(); // 0-23 (LOCALE)
-        // ✅ FIX: colKey in LOCALE, non UTC (evita shift giorno/ora)
         colKey = toLocalDateKey(parsed);
       }
 
