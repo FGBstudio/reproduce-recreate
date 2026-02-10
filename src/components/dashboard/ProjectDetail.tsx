@@ -1359,7 +1359,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       site_id: project?.siteId,
       start: `${energyPeriodsYear}-01-01T00:00:00.000Z`,
       end: `${energyPeriodsYear}-12-31T23:59:59.999Z`,
-      metrics: ['energy.active_energy', 'energy.power_kw'],
+      metrics: ['energy.active_energy'],
       bucket: '1d',
     },
     {
@@ -1390,13 +1390,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const now = new Date();
 
     rawData.forEach(d => {
-      // 1. Filtra solo General (come per gli altri KPI)
+      // 1. Filtra solo dispositivi "general" (Main Meter / Totale sito)
       const info = deviceMap.get(d.device_id);
-      const isGeneral = (info && info.category === 'general') || 
-                        (!info && (d.metric === 'energy.power_kw' || d.metric === 'energy.active_energy'));
+      const isGeneral = (info && info.category === 'general') || !info;
       if (!isGeneral) return;
 
-      // 2. Recupera Valore (kWh) - I dati daily sono già somme, ma usiamo la logica robusta
+      // 2. Recupera Valore kWh dal campo value_sum (somma giornaliera da energy_daily)
       const kwh = Number(d.value_sum ?? d.value ?? 0);
       if (kwh <= 0) return; // Ignora zero o negativi
 
