@@ -1387,6 +1387,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       }>
     }>();
 
+    const now = new Date();
+
     rawData.forEach(d => {
       // 1. Filtra solo General (come per gli altri KPI)
       const info = deviceMap.get(d.device_id);
@@ -1402,6 +1404,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const ts = d.ts_bucket || d.ts;
       if (!ts) return;
       const date = new Date(ts);
+
+      // 3b. Scarta date future (protezione anti-anomalie)
+      if (date > now) return;
       
       const monthKey = date.toISOString().slice(0, 7); // "2025-03"
       const dayKey = date.toISOString().slice(0, 10);  // "2025-03-01"
