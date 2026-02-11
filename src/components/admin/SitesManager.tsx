@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2, Award } from 'lucide-react';
+import { CertificationsDialog } from './CertificationsDialog';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { AdminSite, RegionCode } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ export const SitesManager = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [certDialogSite, setCertDialogSite] = useState<{ id: string; name: string } | null>(null);
 
   const handleOpenCreate = () => {
     setEditingSite(null);
@@ -427,6 +429,9 @@ export const SitesManager = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" title="Certificazione WELL" onClick={() => setCertDialogSite({ id: site.id, name: site.name })}>
+                        <Award className="w-4 h-4 text-rose-500" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(site)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -470,6 +475,15 @@ export const SitesManager = () => {
           </TableBody>
         </Table>
       </CardContent>
+
+      {certDialogSite && (
+        <CertificationsDialog
+          siteId={certDialogSite.id}
+          siteName={certDialogSite.name}
+          open={!!certDialogSite}
+          onOpenChange={(open) => !open && setCertDialogSite(null)}
+        />
+      )}
     </Card>
   );
 };
