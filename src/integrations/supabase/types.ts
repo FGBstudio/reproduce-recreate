@@ -1266,6 +1266,12 @@ export type Database = {
           image_url: string | null
           lat: number | null
           lng: number | null
+          module_air_enabled: boolean | null
+          module_air_show_demo: boolean | null
+          module_energy_enabled: boolean | null
+          module_energy_show_demo: boolean | null
+          module_water_enabled: boolean | null
+          module_water_show_demo: boolean | null
           monitoring_types: string[] | null
           name: string
           region: string | null
@@ -1285,6 +1291,12 @@ export type Database = {
           image_url?: string | null
           lat?: number | null
           lng?: number | null
+          module_air_enabled?: boolean | null
+          module_air_show_demo?: boolean | null
+          module_energy_enabled?: boolean | null
+          module_energy_show_demo?: boolean | null
+          module_water_enabled?: boolean | null
+          module_water_show_demo?: boolean | null
           monitoring_types?: string[] | null
           name: string
           region?: string | null
@@ -1304,6 +1316,12 @@ export type Database = {
           image_url?: string | null
           lat?: number | null
           lng?: number | null
+          module_air_enabled?: boolean | null
+          module_air_show_demo?: boolean | null
+          module_energy_enabled?: boolean | null
+          module_energy_show_demo?: boolean | null
+          module_water_enabled?: boolean | null
+          module_water_show_demo?: boolean | null
           monitoring_types?: string[] | null
           name?: string
           region?: string | null
