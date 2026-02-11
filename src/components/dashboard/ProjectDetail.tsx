@@ -35,6 +35,7 @@ import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useWellCertification } from "@/hooks/useCertifications";
+import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 
 
 // Dashboard types
@@ -204,6 +205,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   
   // WELL certification data
   const { wellCert, milestones: wellMilestones } = useWellCertification(project?.siteId);
+  
+  // Certifications configured in admin panel for this project
+  const projectCertifications = useProjectCertifications(project);
+  const hasCertifications = projectCertifications.length > 0;
+  const hasLEED = projectCertifications.includes('LEED');
+  const hasBREEAM = projectCertifications.includes('BREEAM');
+  const hasWELL = projectCertifications.includes('WELL');
 
   // Get module configuration for this project
   const moduleConfig = useProjectModuleConfig(project);
@@ -2444,17 +2452,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             >
               <Droplet className="w-4 h-4 md:w-5 md:h-5" />
             </button>
-            <button 
-              onClick={() => handleDashboardChange("certification")}
-              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
-                activeDashboard === "certification" 
-                  ? "bg-fgb-secondary text-white" 
-                  : "bg-white/50 text-gray-600 hover:bg-white/80"
-              }`}
-              title="Certification Dashboard"
-            >
-              <Award className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
+            {hasCertifications && (
+              <button 
+                onClick={() => handleDashboardChange("certification")}
+                className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                  activeDashboard === "certification" 
+                    ? "bg-fgb-secondary text-white" 
+                    : "bg-white/50 text-gray-600 hover:bg-white/80"
+                }`}
+                title="Certification Dashboard"
+              >
+                <Award className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            )}
             {/* Time Period Selector & Export */}
             <div className="ml-auto flex items-center gap-1.5 md:gap-3 flex-shrink-0">
               <span className="text-sm text-gray-600 font-medium hidden lg:inline">{periodLabel}</span>
@@ -4111,11 +4121,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             )}
             
             {/* CERTIFICATION DASHBOARD - Slide 1: Overview */}
-            {activeDashboard === "certification" && currentSlide === 0 && (
+            {activeDashboard === "certification" && currentSlide === 0 && hasCertifications && (
               <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
                   {/* LEED Card */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasLEED && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
                         <span className="text-white font-black text-lg">LEED</span>
@@ -4146,10 +4156,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <span>Certificato dal 2023</span>
                       </div>
                     </div>
-                  </div>
+                  </div>}
 
                   {/* BREEAM Card */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasBREEAM && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg">
                         <span className="text-white font-black text-xs">BREEAM</span>
@@ -4181,10 +4191,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <span>Rinnovo: Dic 2025</span>
                       </div>
                     </div>
-                  </div>
+                  </div>}
 
                   {/* WELL Card - Dynamic */}
-                  {(() => {
+                  {hasWELL && (() => {
                     const wScore = wellCert?.score ?? 54;
                     const wTarget = wellCert?.target_score ?? 100;
                     const wType = wellCert?.cert_type ?? 'WELL v2';
@@ -4284,7 +4294,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                    <div className="text-3xl font-black text-emerald-500">3</div>
+                    <div className="text-3xl font-black text-emerald-500">{projectCertifications.length}</div>
                     <div className="text-sm text-gray-600 mt-1">Certificazioni Attive</div>
                   </div>
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
@@ -4304,11 +4314,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             )}
 
             {/* CERTIFICATION DASHBOARD - Slide 2: Milestones */}
-            {activeDashboard === "certification" && currentSlide === 1 && (
+            {activeDashboard === "certification" && currentSlide === 1 && hasCertifications && (
               <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
                   {/* LEED Milestones */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasLEED && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
                         <span className="text-white font-bold text-xs">LEED</span>
@@ -4336,10 +4346,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div>}
 
                   {/* BREEAM Milestones */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasBREEAM && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
                         <span className="text-white font-bold text-[8px]">BREEAM</span>
@@ -4369,10 +4379,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div>}
 
                   {/* WELL Milestones */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasWELL && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
                         <span className="text-white font-bold text-xs">WELL</span>
@@ -4403,7 +4413,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div>}
                 </div>
 
                 {/* Timeline */}
@@ -4421,7 +4431,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         { date: 'Giu 2024', event: 'Mid-Year Performance Review', type: 'all' },
                         { date: 'Dic 2025', event: 'BREEAM Renewal Due', type: 'breeam' },
                         { date: 'Mar 2026', event: 'LEED Recertification', type: 'leed' },
-                      ].map((item, idx) => (
+                      ].filter(item => item.type === 'all' || (item.type === 'leed' && hasLEED) || (item.type === 'breeam' && hasBREEAM) || (item.type === 'well' && hasWELL)).map((item, idx) => (
                         <div key={idx} className="relative pl-10">
                           <div className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white shadow ${
                             item.type === 'leed' ? 'bg-emerald-500' :
