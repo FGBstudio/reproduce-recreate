@@ -191,6 +191,20 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       // Module configuration comes ONLY from sites table (DB is source of truth)
       // No localStorage override - ensures consistency across devices
       
+      // Fetch certifications for all sites
+      const { data: certsData } = await supabase
+        .from('certifications')
+        .select('site_id, cert_type');
+
+      const certsBySite: Record<string, CertificationType[]> = {};
+      (certsData || []).forEach(c => {
+        if (!certsBySite[c.site_id]) certsBySite[c.site_id] = [];
+        const certType = c.cert_type as CertificationType;
+        if (!certsBySite[c.site_id].includes(certType)) {
+          certsBySite[c.site_id].push(certType);
+        }
+      });
+
       const siteProjects: AdminProject[] = (sitesData || []).map(s => {
         // Build modules directly from DB columns (auto-enabled by device assignment trigger)
         const modules: ProjectModules = {
@@ -217,7 +231,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
           name: s.name,
           status: 'active' as const,
           modules,
-          certifications: [] as CertificationType[],
+          certifications: certsBySite[s.id] || [],
           createdAt: new Date(s.created_at),
           updatedAt: new Date(s.updated_at),
         };
@@ -583,9 +597,26 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
         return null;
       }
     }
+
+    // Sync certifications to DB
+    if (isSupabaseConfigured && supabase && data.certifications && data.certifications.length > 0) {
+      try {
+        const rows = data.certifications.map(cert_type => ({
+          site_id: siteId,
+          cert_type,
+          status: 'in_progress',
+        }));
+        const { error } = await supabase
+          .from('certifications')
+          .upsert(rows, { onConflict: 'site_id,cert_type', ignoreDuplicates: true });
+        if (error) throw error;
+      } catch (err: any) {
+        console.error('Error syncing certifications:', err);
+      }
+    }
     
     const newProject: AdminProject = {
-      id: siteId, // Use site ID as project ID
+      id: siteId,
       siteId: siteId,
       name: data.name || site.name,
       status: data.status || 'active',
@@ -596,7 +627,6 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
     };
     
     setProjects(prev => {
-      // Replace if exists, otherwise add
       const exists = prev.find(p => p.siteId === siteId);
       if (exists) {
         return prev.map(p => p.siteId === siteId ? newProject : p);
@@ -640,6 +670,43 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       } catch (err: any) {
         console.error('Error updating project:', err);
         toast.error(`Errore: ${err.message}`);
+        return;
+      }
+    }
+
+    // Sync certifications to DB
+    if (isSupabaseConfigured && supabase && data.certifications !== undefined) {
+      try {
+        const newCerts = data.certifications;
+        const oldCerts = project.certifications;
+
+        // Remove certifications that were unchecked
+        const toRemove = oldCerts.filter(c => !newCerts.includes(c));
+        if (toRemove.length > 0) {
+          const { error } = await supabase
+            .from('certifications')
+            .delete()
+            .eq('site_id', id)
+            .in('cert_type', toRemove);
+          if (error) throw error;
+        }
+
+        // Add new certifications
+        const toAdd = newCerts.filter(c => !oldCerts.includes(c));
+        if (toAdd.length > 0) {
+          const rows = toAdd.map(cert_type => ({
+            site_id: id,
+            cert_type,
+            status: 'in_progress',
+          }));
+          const { error } = await supabase
+            .from('certifications')
+            .insert(rows);
+          if (error) throw error;
+        }
+      } catch (err: any) {
+        console.error('Error syncing certifications:', err);
+        toast.error(`Errore certificazioni: ${err.message}`);
         return;
       }
     }
