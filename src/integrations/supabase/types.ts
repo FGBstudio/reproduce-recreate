@@ -2124,8 +2124,8 @@ export type Database = {
       sync_telemetry_to_energy: {
         Args: { p_since?: string }
         Returns: {
-          synced_derived: number
-          synced_direct: number
+          derived_from_power: number
+          direct_synced: number
         }[]
       }
     }
