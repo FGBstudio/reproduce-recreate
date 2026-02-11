@@ -60,6 +60,15 @@ Deno.serve(async (req) => {
         results.push({ job: 'hourly', status: 'success', details: data })
       }
 
+      // Sync telemetry to energy tables (direct + derived from power)
+      const { data: syncData, error: syncError } = await supabase.rpc('sync_telemetry_to_energy')
+      
+      if (syncError) {
+        results.push({ job: 'energy_sync', status: 'error', details: syncError.message })
+      } else {
+        results.push({ job: 'energy_sync', status: 'success', details: syncData })
+      }
+
       // Run hourly energy aggregation
       const { data: energyData, error: energyError } = await supabase.rpc('aggregate_energy_hourly')
       
