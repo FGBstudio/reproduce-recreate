@@ -8,6 +8,7 @@ import { DataSourceBadge } from "./DataSourceBadge";
 import { useThresholdAlerts, getMetricStatus } from "@/hooks/useThresholdAlerts";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 import { EVSWidget } from "./EVSWidget";
+import { useEnergyPowerByCategory, EnergyPowerBreakdown } from "@/hooks/useEnergyPowerByCategory";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -244,46 +245,40 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
 };
 
 // Energy Card with detailed readings - connected to real-time data
-const EnergyCard = ({ status, enabled, onClick, liveData }: { 
+const EnergyCard = ({ status, enabled, onClick, powerData }: { 
   status: ModuleStatus; 
   enabled: boolean; 
   onClick?: () => void;
-  liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
+  powerData?: EnergyPowerBreakdown;
 }) => {
-  // Use real-time data if available, otherwise use mock
   const readings = useMemo(() => {
-    const isReal = !!liveData?.isRealData;
-    const m = isReal ? liveData!.metrics : {};
-
-    const totalPower = isReal ? m['energy.power_kw'] : undefined;
-    const hvacValue = isReal ? m['energy.hvac_kw'] : undefined;
-    const lightingValue = isReal ? m['energy.lighting_kw'] : undefined;
-    const plugsValue = isReal ? m['energy.plugs_kw'] : undefined;
-    const otherValue =
-      typeof totalPower === 'number' &&
-      typeof hvacValue === 'number' &&
-      typeof lightingValue === 'number' &&
-      typeof plugsValue === 'number'
-        ? Math.max(0, totalPower - hvacValue - lightingValue - plugsValue)
-        : undefined;
+    if (!powerData?.isRealData && !powerData?.isStale) {
+      return {
+        totalPower: undefined,
+        hvac: { value: undefined, status: "good" as const },
+        lighting: { value: undefined, status: "good" as const },
+        plugs: { value: undefined, status: "good" as const },
+        other: { value: undefined, status: "good" as const },
+      };
+    }
 
     return {
-      totalPower,
+      totalPower: powerData.totalGeneral,
       hvac: {
-        value: hvacValue,
-        status: typeof hvacValue === 'number' && hvacValue > 30 ? "warning" as const : "good" as const,
+        value: powerData.hvac,
+        status: typeof powerData.hvac === 'number' && powerData.hvac > 30 ? "warning" as const : "good" as const,
       },
       lighting: {
-        value: lightingValue,
-        status: typeof lightingValue === 'number' && lightingValue > 20 ? "warning" as const : "good" as const,
+        value: powerData.lighting,
+        status: typeof powerData.lighting === 'number' && powerData.lighting > 20 ? "warning" as const : "good" as const,
       },
       plugs: {
-        value: plugsValue,
-        status: typeof plugsValue === 'number' && plugsValue > 12 ? "warning" as const : "good" as const,
+        value: powerData.plugs,
+        status: typeof powerData.plugs === 'number' && powerData.plugs > 12 ? "warning" as const : "good" as const,
       },
-      other: { value: otherValue, status: "good" as const },
+      other: { value: powerData.other, status: "good" as const },
     };
-  }, [liveData]);
+  }, [powerData]);
 
   if (!enabled) {
     return (
@@ -304,26 +299,35 @@ const EnergyCard = ({ status, enabled, onClick, liveData }: {
     );
   }
 
+  const isStale = powerData?.isStale ?? false;
+
   return (
-    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full cursor-pointer`} onClick={onClick}>
+    <Card className={`bg-white border ${isStale ? 'border-amber-500/40' : getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl h-full cursor-pointer`} onClick={onClick}>
       <CardContent className="p-4 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
+            <div className={`w-10 h-10 rounded-full ${isStale ? 'bg-amber-100' : getStatusIconBg(status.level)} flex items-center justify-center ${isStale ? 'text-amber-500' : getStatusColor(status.level)}`}>
               <Zap className="w-5 h-5" />
             </div>
-            <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-              LIVE
+            <Badge className={`${isStale ? 'bg-amber-500 text-white' : getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
+              {isStale ? 'STALE' : 'LIVE'}
             </Badge>
           </div>
           <div className="text-right">
-            <div className={`text-xl font-bold ${getStatusColor(status.level)}`}>{status.level}</div>
+            <div className={`text-xl font-bold ${isStale ? 'text-amber-500' : getStatusColor(status.level)}`}>{isStale ? 'WARNING' : status.level}</div>
             <div className="text-[10px] text-gray-500 uppercase">Score {status.score}</div>
           </div>
         </div>
         
         <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">ENERGY PERFORMANCE</div>
+        
+        {isStale && (
+          <div className="bg-amber-50 text-amber-700 text-[10px] rounded-md px-2 py-1 mb-3 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            Dati non aggiornati ({">"} 2 giorni)
+          </div>
+        )}
         
         {/* Total consumption highlight */}
         <div className="bg-white/60 rounded-lg p-3 mb-3">
@@ -613,14 +617,18 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   // Fetch real-time telemetry data for this site
   const liveData = useRealTimeLatestData(project.siteId);
   
+  // Fetch energy power by category from energy_latest
+  const powerData = useEnergyPowerByCategory(project.siteId);
+  
   // Fetch site thresholds and evaluate alerts
   const { thresholds } = useSiteThresholds(project.siteId);
   const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics);
   
   // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
-    const powerKw = liveData.isRealData ? liveData.metrics['energy.power_kw'] : undefined;
-    if (typeof powerKw !== 'number') {
+    // Use power data from energy_latest
+    const powerKw = powerData.totalGeneral;
+    if (typeof powerKw !== 'number' || !powerData.isRealData) {
       return { score: 0, level: getStatusLevel(0), isLive: false };
     }
 
@@ -629,10 +637,10 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
     return {
       score,
       level: getStatusLevel(score),
-      isLive: true,
-      lastUpdate: new Date().toISOString(),
+      isLive: !powerData.isStale,
+      lastUpdate: powerData.lastUpdate,
     };
-  }, [project, liveData]);
+  }, [powerData]);
 
   const airStatus = useMemo<ModuleStatus>(() => {
     const co2 = liveData.isRealData ? liveData.metrics['iaq.co2'] : undefined;
@@ -643,7 +651,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
     const co2Score = Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100));
     const score = Math.round(co2Score);
     return { score, level: getStatusLevel(score), isLive: true };
-  }, [project, liveData]);
+  }, [liveData]);
 
   const waterStatus = useMemo<ModuleStatus>(() => {
     const flowRate = liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined;
@@ -653,10 +661,9 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
 
     const score = flowRate > 0 ? 85 : 60;
     return { score, level: getStatusLevel(score), isLive: flowRate > 0 };
-  }, [project, liveData]);
+  }, [liveData]);
 
   const overallStatus = useMemo<ModuleStatus>(() => {
-    // Weighted average: Energy 80%, Air 5%, Water 15%
     let totalWeight = 0;
     let weightedSum = 0;
     
@@ -673,7 +680,6 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
       totalWeight += MODULE_WEIGHTS.water;
     }
     
-    // Normalize the weighted average based on active modules
     const avgScore = totalWeight > 0 
       ? Math.round(weightedSum / totalWeight)
       : 0;
@@ -701,7 +707,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           energyScore={energyStatus.score}
           airScore={airStatus.score}
           waterScore={waterStatus.score}
-          isRealData={liveData.isRealData}
+          isRealData={liveData.isRealData || powerData.isRealData}
           alertStatus={alertStatus}
           liveData={liveData}
         />
@@ -711,7 +717,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           status={energyStatus} 
           enabled={moduleConfig.energy.enabled} 
           onClick={moduleConfig.energy.enabled ? () => handleCardClick("energy") : undefined}
-          liveData={liveData}
+          powerData={powerData}
         />
         <AirCard 
           status={airStatus} 
