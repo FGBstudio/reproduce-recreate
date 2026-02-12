@@ -1,4 +1,7 @@
-import { regions } from "@/lib/data";
+import { useMemo } from "react";
+import { regions, projects as allProjects } from "@/lib/data";
+import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
+import { useAllProjects } from "@/hooks/useRealTimeData";
 
 interface RegionOverlayProps {
   currentRegion: string;
@@ -8,14 +11,59 @@ interface RegionOverlayProps {
 const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) => {
   const region = regions[currentRegion];
   
-  if (currentRegion === "GLOBAL" || !region?.kpi) return null;
+  // Get all projects (real + mock merged)
+  const { projects: mergedProjects } = useAllProjects();
+
+  // Filter projects belonging to this region
+  const regionProjects = useMemo(() => {
+    const source = mergedProjects.length > 0 ? mergedProjects : allProjects;
+    return source.filter(p => p.region === currentRegion);
+  }, [mergedProjects, currentRegion]);
+
+  // Get real aggregated data for region's sites
+  const aggregated = useAggregatedSiteData(regionProjects);
+
+  // Energy intensity: avg kWh/m² across sites with area
+  const avgIntensity = useMemo(() => {
+    if (aggregated.sitesWithEnergy.length === 0) return null;
+    let totalIntensity = 0;
+    let count = 0;
+    aggregated.sitesWithEnergy.forEach(site => {
+      const project = regionProjects.find(p => p.siteId === site.siteId);
+      const area = project?.area_m2;
+      if (area && area > 0 && site.energy.weeklyKwh) {
+        totalIntensity += site.energy.weeklyKwh / area;
+        count++;
+      }
+    });
+    return count > 0 ? Math.round(totalIntensity / count * 10) / 10 : null;
+  }, [aggregated.sitesWithEnergy, regionProjects]);
+
+  // Air quality score based on avg CO2
+  const avgCo2 = aggregated.totals.avgCo2;
+  const aqScore = useMemo(() => {
+    if (!avgCo2 || avgCo2 === 0) return null;
+    if (avgCo2 < 400) return "EXCELLENT";
+    if (avgCo2 < 600) return "GOOD";
+    if (avgCo2 < 1000) return "MODERATE";
+    return "POOR";
+  }, [avgCo2]);
+
+  if (currentRegion === "GLOBAL" || !region) return null;
+
+  // Use real data if available, fallback to static
+  const sitesCount = regionProjects.length;
+  const displayIntensity = avgIntensity ?? region.kpi?.intensity ?? 0;
+  const displayAq = aqScore ?? region.kpi?.aq ?? "GOOD";
+  const displayOnline = aggregated.hasRealData ? aggregated.totals.sitesOnline : (region.kpi?.online ?? 0);
+  const displayCritical = aggregated.hasRealData ? aggregated.totals.alertsCritical : (region.kpi?.critical ?? 0);
 
   const aqColorClass = {
     EXCELLENT: "text-emerald-400",
     GOOD: "text-emerald-400",
     MODERATE: "text-yellow-400",
     POOR: "text-rose-400",
-  }[region.kpi.aq] || "text-muted-foreground";
+  }[displayAq] || "text-muted-foreground";
 
   return (
     <div 
@@ -37,13 +85,13 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
             <div className="flex justify-between items-end mb-1">
               <span className="text-sm text-muted-foreground">Avg. Energy Intensity</span>
               <span className="text-xl font-bold text-foreground">
-                {region.kpi.intensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
+                {displayIntensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
               </span>
             </div>
             <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
               <div 
                 className="bg-emerald-400 h-full transition-all duration-700"
-                style={{ width: `${Math.min(region.kpi.intensity, 100)}%` }}
+                style={{ width: `${Math.min(displayIntensity, 100)}%` }}
               />
             </div>
           </div>
@@ -51,23 +99,28 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
           <div className="bg-white/5 p-4 rounded-xl border border-white/10">
             <div className="flex justify-between items-end mb-1">
               <span className="text-sm text-muted-foreground">Air Quality Score</span>
-              <span className={`text-xl font-bold ${aqColorClass}`}>{region.kpi.aq}</span>
+              <span className={`text-xl font-bold ${aqColorClass}`}>{displayAq}</span>
             </div>
+            {avgCo2 > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Avg CO₂: {avgCo2} ppm
+              </div>
+            )}
             <div className="flex gap-1 mt-2">
-              <span className={`h-2 flex-1 rounded-sm ${region.kpi.aq === "EXCELLENT" || region.kpi.aq === "GOOD" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
-              <span className={`h-2 flex-1 rounded-sm ${region.kpi.aq === "EXCELLENT" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
+              <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" || displayAq === "GOOD" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
+              <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
               <span className="h-2 flex-1 rounded-sm bg-emerald-500/30" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="text-center p-3 rounded-lg bg-white/5">
-              <div className="text-2xl font-bold text-foreground">{region.kpi.online}</div>
+              <div className="text-2xl font-bold text-foreground">{displayOnline}</div>
               <div className="text-[10px] uppercase text-muted-foreground">Active Sites</div>
             </div>
             <div className="text-center p-3 rounded-lg bg-white/5">
-              <div className={`text-2xl font-bold ${region.kpi.critical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
-                {region.kpi.critical}
+              <div className={`text-2xl font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                {displayCritical}
               </div>
               <div className="text-[10px] uppercase text-muted-foreground">Critical Alerts</div>
             </div>
@@ -76,7 +129,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
 
         <div className="mt-6 pt-4 border-t border-white/10 text-center">
           <p className="text-xs text-muted-foreground italic">
-            Select a pin on the map to view project details.
+            {aggregated.hasRealData ? `${sitesCount} sites in region · Live data` : "Select a pin on the map to view project details."}
           </p>
         </div>
       </div>
