@@ -36,6 +36,7 @@ import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, use
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
+import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 
 
 // Dashboard types
@@ -456,6 +457,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     project?.siteId ? { site_id: project.siteId } : undefined,
     { enabled: isSupabaseConfigured && !!project?.siteId }
   );
+
+  // Shared hook for Power Consumption widget (energy_latest + device categories)
+  const energyPowerBreakdown = useEnergyPowerByCategory(project?.siteId);
 
   const { data: airLatestResp } = useLatestTelemetry(
     selectedAirDeviceIds.length
@@ -1796,120 +1800,50 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [energyTimeseriesResp, project, timePeriod, deviceMap]);
 
   // --- 8. WIDGET: POWER CONSUMPTION (Real-time Donut kW) ---
+  // Uses shared hook energyPowerBreakdown (from useEnergyPowerByCategory)
 
-  // A. Fetch Dati Live (Tabella energy_latest)
-  const { data: latestEnergyResp } = useEnergyLatest({
-    site_id: project?.siteId,
-    // Cerchiamo le metriche di potenza tipiche
-    metrics: ['energy.power_kw', 'energy.active_power', 'power'] 
-  }, {
-    enabled: !!project?.siteId && activeDashboard === 'energy',
-    refetchInterval: 30000, // Aggiorna ogni 30 secondi
-  });
-
-  // B. Elaborazione Dati (Simile a Energy Breakdown ma per Potenza)
+  // B. Elaborazione Dati per il Donut Chart
   const powerDistributionData = useMemo(() => {
-    const devicesData = latestEnergyResp?.data;
-    if (!devicesData) return [];
+    const bp = energyPowerBreakdown;
+    if (!bp.isRealData && !bp.isStale) return [];
 
-    let totalGeneral = 0;
-    let totalHVAC = 0;
-    let totalLighting = 0;
-    let totalPlugs = 0;
-    let totalOtherDefined = 0;
-    
-    const deviceTotals = new Map<string, number>();
-
-    // 1. Itera su tutti i device trovati nel latest
-    Object.entries(devicesData).forEach(([deviceId, metrics]) => {
-        const info = deviceMap.get(deviceId);
-        if (!info) return; // Ignora device sconosciuti
-
-        // Trova la metrica di potenza (kW)
-        const powerMetric = metrics.find(m => 
-            m.metric === 'energy.power_kw' || 
-            m.metric === 'energy.active_power' ||
-            m.metric === 'power'
-        );
-        
-        const val = Number(powerMetric?.value || 0);
-        if (val <= 0) return;
-
-        // 2. Accumula per Categoria
-        if (info.category === 'general') totalGeneral += val;
-        else if (info.category === 'hvac') totalHVAC += val;
-        else if (info.category === 'lighting') totalLighting += val;
-        else if (info.category === 'plugs') totalPlugs += val;
-        else totalOtherDefined += val;
-
-        // 3. Accumula per Device (escluso general per evitare duplicati nella view device)
-        if (info.category !== 'general') {
-             deviceTotals.set(info.label, val);
-        }
-    });
-
-    // 4. Costruzione Segmenti Grafico
-    let segments = [];
+    let segments: { name: string; value: number; color: string }[] = [];
 
     if (energyViewMode === 'category') {
-        const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
-        
-        // Se non ho sottocontatori ma ho il generale -> 100% General
-        if (subTotal === 0 && totalGeneral > 0) {
-            segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
-        } else {
-            // Ho sottocontatori -> Mostro breakdown
-            if (totalHVAC > 0) segments.push({ name: 'HVAC', value: totalHVAC, color: '#006367' });
-            if (totalLighting > 0) segments.push({ name: 'Lighting', value: totalLighting, color: '#e63f26' });
-            if (totalPlugs > 0) segments.push({ name: 'Plugs & Loads', value: totalPlugs, color: '#f8cbcc' });
-            if (totalOtherDefined > 0) segments.push({ name: 'Other Devices', value: totalOtherDefined, color: '#911140' });
-
-            // Il "Resto" è Other
-            const remainder = Math.max(0, totalGeneral - subTotal);
-            if (remainder > 0.1) { // Soglia minima 100W per mostrare "Other"
-                 segments.push({ name: 'Other', value: remainder, color: '#a0d5d6' });
-            }
-        }
+      const hasSubMeters = (bp.hvac !== undefined || bp.lighting !== undefined || bp.plugs !== undefined);
+      
+      if (!hasSubMeters && bp.totalGeneral !== undefined) {
+        segments.push({ name: 'General', value: bp.totalGeneral, color: '#009193' });
+      } else {
+        if (bp.hvac !== undefined && bp.hvac > 0) segments.push({ name: 'HVAC', value: bp.hvac, color: '#006367' });
+        if (bp.lighting !== undefined && bp.lighting > 0) segments.push({ name: 'Lighting', value: bp.lighting, color: '#e63f26' });
+        if (bp.plugs !== undefined && bp.plugs > 0) segments.push({ name: 'Plugs & Loads', value: bp.plugs, color: '#f8cbcc' });
+        if (bp.other !== undefined && bp.other > 0.1) segments.push({ name: 'Other', value: bp.other, color: '#a0d5d6' });
+      }
     } else {
-        // Vista Device: Lista piatta dei carichi
-        // Se ho solo il generale, mostro quello
-        if (deviceTotals.size === 0 && totalGeneral > 0) {
-             segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
-        } else {
-            const sortedDevices = Array.from(deviceTotals.entries()).sort((a, b) => b[1] - a[1]);
-            sortedDevices.forEach((entry, index) => {
-                segments.push({
-                    name: entry[0],
-                    value: entry[1],
-                    color: FGB_PALETTE[index % FGB_PALETTE.length]
-                });
-            });
-        }
+      // Vista Device
+      if (bp.deviceBreakdown.size === 0 && bp.totalGeneral !== undefined) {
+        segments.push({ name: 'General', value: bp.totalGeneral, color: '#009193' });
+      } else {
+        const entries = Array.from(bp.deviceBreakdown.values())
+          .filter(d => d.category !== 'general')
+          .sort((a, b) => b.value - a.value);
+        entries.forEach((entry, index) => {
+          segments.push({
+            name: entry.label,
+            value: entry.value,
+            color: FGB_PALETTE[index % FGB_PALETTE.length]
+          });
+        });
+      }
     }
     return segments;
-  }, [latestEnergyResp, energyViewMode, deviceMap, FGB_PALETTE]);
+  }, [energyPowerBreakdown, energyViewMode, FGB_PALETTE]);
 
-  // C. Calcolo Totale KW (Centro del Donut)
+  // C. Calcolo Totale KW (Centro del Donut) - from shared hook
   const totalPowerKw = useMemo(() => {
-      const devicesData = latestEnergyResp?.data;
-      if (!devicesData) return 0;
-
-      // Cerca il valore del meter "General"
-      let generalVal = 0;
-      let sumSub = 0;
-
-      Object.entries(devicesData).forEach(([deviceId, metrics]) => {
-          const powerMetric = metrics.find(m => m.metric === 'energy.power_kw' || m.metric === 'energy.active_power');
-          const val = Number(powerMetric?.value || 0);
-          
-          const info = deviceMap.get(deviceId);
-          if (info?.category === 'general') generalVal = val;
-          else sumSub += val;
-      });
-
-      // Se c'è il generale, è la verità. Altrimenti somma parziali.
-      return generalVal > 0 ? generalVal : sumSub;
-  }, [latestEnergyResp, deviceMap]);
+    return energyPowerBreakdown.totalGeneral ?? 0;
+  }, [energyPowerBreakdown]);
 
   // --- 9. WIDGET: DEVICES CONSUMPTION (Stacked Bar Chart) ---
   const deviceConsumptionData = useMemo(() => {
