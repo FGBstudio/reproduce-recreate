@@ -1428,157 +1428,158 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     );
   };
 
-// --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
+// --- 6. WIDGET: HEATMAP (Refactoring Completo) ---
 
-  // ✅ FIX: Selezione ESCLUSIVA dei device con category='general'
-  // Solo i meter principali (PAN12 fisici) del sito, NO Virtual Meter per evitare doppi conteggi
+  // 1. SELEZIONE DISPOSITIVI: Inclusione Virtual Meter + Category 'general'
+  // FIX: Rimossa l'esclusione di 'VIRT-' per supportare i main meter virtuali (es. FGB Milan)
   const heatmapDeviceIds = useMemo(() => {
     if (!siteDevices || siteDevices.length === 0) return [];
-
-    // 1) SOLO device con category = 'general' (esclude Virtual Meter e sotto-circuiti)
+    
+    // Cerchiamo SOLO i dispositivi taggati come 'general' (Main Meters)
     const generals = siteDevices.filter(
       (d) => (d.category || '').toLowerCase() === 'general'
     );
-    if (generals.length > 0) return generals.map((d) => d.id);
 
-    // 2) Fallback: qualunque device energia
-    const anyEnergy = siteDevices.filter((d) => ENERGY_DEVICE_TYPES.includes(d.device_type));
-    return anyEnergy.map((d) => d.id);
+    if (generals.length > 0) return generals.map((d) => d.id);
+    
+    // Fallback: se non c'è un general, usa tutti i monitor energetici fisici
+    return siteDevices
+      .filter((d) => ENERGY_DEVICE_TYPES.includes(d.device_type))
+      .map((d) => d.id);
   }, [siteDevices, ENERGY_DEVICE_TYPES]);
 
-  // ✅ HEATMAP RANGE + BUCKET (solo per il widget heatmap)
+  // 2. CONFIGURAZIONE TEMPORALE & DATA SOURCE SWITCHING
   const heatmapConfig = useMemo(() => {
     const now = new Date();
+    let start: Date, end: Date;
 
-    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-    const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-
-    const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-    const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-
-    const startOfYear = (d: Date) => new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
-    const endOfYear = (d: Date) => new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
-
-    let start: Date;
-    let end: Date;
-
+    // Logica standard date (invariata)
     if (timePeriod === 'custom' && dateRange) {
       start = dateRange.from;
       end = dateRange.to;
-    } else if (timePeriod === 'today') {
-      start = startOfDay(now);
-      end = endOfDay(now);
-    } else if (timePeriod === 'week') {
-      const s = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
-      start = s;
-      end = endOfDay(now);
+    } else if (timePeriod === 'year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
     } else if (timePeriod === 'month') {
-      start = startOfMonth(now);
-      end = endOfMonth(now);
-    } else {
-      // year
-      start = startOfYear(now);
-      end = endOfYear(now);
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    } else if (timePeriod === 'week') {
+      start = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+      end = now;
+    } else { // Today
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     }
 
-    const bucket: '15m' | '1h' | '1d' = timePeriod === 'year' ? '1d' : '1h';
-    const force_table: 'hourly' | 'daily' = timePeriod === 'year' ? 'daily' : 'hourly';
-    return { start, end, bucket, force_table };
-  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+    // CALCOLO DURATA PER SWITCH LOGICO (Short vs Long Term)
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  // Query energy.power_kw (kW) from the correct source table
-  // power_kw has continuous hourly data; active_energy is sparse
-  // For 1h bucket: avg kW ≈ kWh consumed in that hour
+    // LOGICA CORE: > 31gg = Daily (Tabella energy_daily), <= 31gg = Hourly (Tabella energy_hourly)
+    const isLongTerm = diffDays > 31;
+
+    return { 
+      start, 
+      end, 
+      // Scenario A (Short): Bucket 1h, Tabella 'hourly'
+      // Scenario B (Long): Bucket 1d, Tabella 'daily'
+      bucket: isLongTerm ? '1d' : '1h',
+      force_table: isLongTerm ? 'daily' : 'hourly',
+      isLongTerm 
+    };
+  }, [timePeriod, dateRange]);
+
+  // 3. DATA FETCHING: Query su 'energy.active_energy' (Consumo Reale)
+  // FIX: Usiamo active_energy che supporta la somma (value_sum) nel backend
   const { data: heatmapResp } = useEnergyTimeseries(
     {
       device_ids: heatmapDeviceIds.length > 0 ? heatmapDeviceIds : undefined,
       site_id: project?.siteId,
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.power_kw'],
-      bucket: heatmapConfig.bucket,
-      force_table: heatmapConfig.force_table,
+      metrics: ['energy.active_energy'], // TARGET METRIC CORRETTA
+      bucket: heatmapConfig.bucket as any,
+      force_table: heatmapConfig.force_table as any, // FORZA TABELLA CORRETTA
     },
     {
       enabled: heatmapDeviceIds.length > 0 && activeDashboard === 'energy',
     }
   );
 
-  // B. Elaborazione Dati a Matrice (timezone-aware)
+  // 4. MAPPING MATRICE (Population Logic)
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
-    const isYearView = timePeriod === 'year';
+    const { isLongTerm } = heatmapConfig;
     const tz = resolveTimezone(project?.timezone);
-
-    // Step 1: Aggregate all points by (device, hourBucket/dayBucket) → sum kWh
-    // This handles sub-hourly data (e.g., 30min records) by summing into the hour bucket
     const bucketMap = new Map<string, number>();
 
     rawData.forEach((d) => {
-      // For power_kw: value_avg (kW) ≈ kWh consumed in 1h bucket
-      // Sum across all general devices to get total site consumption per hour
-      const val = Number(d.value_avg ?? d.value ?? 0);
-      if (!Number.isFinite(val) || val <= 0) return;
+      // FIX: Usiamo value_sum. Se i dati arrivano a pacchetti (es. 3 entry da 20min),
+      // la somma ricostruisce correttamente l'ora intera, evitando i buchi.
+      const val = Number(d.value_sum ?? d.value ?? 0);
+      if (val <= 0) return;
 
+      // Parsing robusto del timestamp (che viene dal DB, non dalla ricezione)
       const parsed = parseTimestamp(d.ts_bucket || d.ts);
       if (!parsed) return;
-      if (parsed > new Date()) return; // discard future timestamps
+      if (parsed > new Date()) return; // Ignora futuro
 
+      // Conversione Timezone locale del sito
       const p = getPartsInTz(parsed, tz);
-
-      // Build a unique bucket key per cell using site-local time
       let bucketKey: string;
-      if (isYearView) {
-        // Daily granularity: cell = month(col) × day(row)
-        bucketKey = `${p.day}_${p.month - 1}`; // row=day(1-31), col=month(0-11)
+
+      if (isLongTerm) {
+        // SCENARIO B: Long-Term (Anno) -> Asse X: Mese, Asse Y: Giorno
+        bucketKey = `${p.day}_${p.month - 1}`; 
       } else {
-        // Hourly granularity: cell = date(col) × hour(row)
+        // SCENARIO A: Short-Term (Giorno/Settimana) -> Asse X: Giorno, Asse Y: Ora
         const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
-        bucketKey = `${p.hour}_${dateKey}`; // row=hour(0-23), col=dateKey
+        bucketKey = `${p.hour}_${dateKey}`; 
       }
 
-      // Sum across all devices and sub-bucket records for the same cell
+      // Somma cumulativa nella cella (gestisce aggregazioni multiple nello stesso slot)
       bucketMap.set(bucketKey, (bucketMap.get(bucketKey) || 0) + val);
     });
 
-    // Step 2: Quantile-based color scale
-    const values = Array.from(bucketMap.values()).filter((v) => v > 0).sort((a, b) => a - b);
-    const minVal = values.length ? values[0] : 0;
-    const maxVal = values.length ? values[values.length - 1] : 0;
-
-    const quantile = (pct: number) => {
+    // 5. COSTRUZIONE SCALA COLORI & ASSI
+    const values = Array.from(bucketMap.values()).sort((a, b) => a - b);
+    
+    // Calcolo Quantili (adattivi per ogni sito)
+    const quantile = (q: number) => {
       if (!values.length) return 0;
-      const idx = Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * pct)));
-      return values[idx];
+      const pos = (values.length - 1) * q;
+      const base = Math.floor(pos);
+      return values[base];
     };
 
     const scale = {
-      min: minVal,
-      max: maxVal,
+      min: values[0] || 0,
+      max: values[values.length - 1] || 0,
       t1: quantile(0.2),
       t2: quantile(0.4),
       t3: quantile(0.6),
       t4: quantile(0.8),
     };
 
-    // Step 3: Build rows/cols axes
+    // Costruzione Assi
     let rows: number[] = [];
     let cols: { key: string; label: string }[] = [];
 
-    if (isYearView) {
-      rows = Array.from({ length: 31 }, (_, i) => i + 1); // days 1-31
+    if (isLongTerm) {
+      // Righe 1-31, Colonne Gen-Dic
+      rows = Array.from({ length: 31 }, (_, i) => i + 1);
       cols = Array.from({ length: 12 }, (_, i) => ({
         key: String(i),
-        label: new Date(2024, i, 1)
-          .toLocaleDateString('it-IT', { month: 'short' })
-          .toUpperCase(),
-      })); // months Jan-Dec
+        label: new Date(2024, i, 1).toLocaleDateString('it-IT', { month: 'short' }).toUpperCase(),
+      }));
     } else {
-      rows = Array.from({ length: 24 }, (_, i) => i); // hours 0-23
-
-      // Generate columns from start to end using site timezone
+      // Righe 0-23, Colonne Date nel range
+      rows = Array.from({ length: 24 }, (_, i) => i);
+      
       const dayMs = 24 * 60 * 60 * 1000;
-      const cursor = new Date(heatmapConfig.start.getTime());
+      const cursor = new Date(heatmapConfig.start);
+      cursor.setHours(0,0,0,0); // Normalizza a mezzanotte
+      
       while (cursor <= heatmapConfig.end) {
         const cp = getPartsInTz(cursor, tz);
         const dateKey = `${cp.year}-${String(cp.month).padStart(2, '0')}-${String(cp.day).padStart(2, '0')}`;
@@ -1590,36 +1591,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       }
     }
 
-    return { rows, cols, valueMap: bucketMap, scale, isYearView };
-  }, [heatmapResp, timePeriod, heatmapConfig, project?.timezone]);
-
-  const heatmapLegendColors = useMemo(
-    () => [
-      'hsl(var(--heatmap-1))',
-      'hsl(var(--heatmap-2))',
-      'hsl(var(--heatmap-3))',
-      'hsl(var(--heatmap-4))',
-      'hsl(var(--heatmap-5))',
-    ],
-    []
-  );
-
-  // C. Helper Colore (Scala per-store: quantili + fallback)
-  const getHeatmapColor = useCallback(
-    (val: number, scale: { min: number; max: number; t1: number; t2: number; t3: number; t4: number }) => {
-      if (!val || val <= 0 || !Number.isFinite(val)) return 'hsl(var(--heatmap-empty))';
-
-      // Caso “piatto”: tutti i valori identici -> usa un tono medio (non rosso)
-      if (scale.max > 0 && scale.max === scale.min) return 'hsl(var(--heatmap-3))';
-
-      if (val <= scale.t1) return 'hsl(var(--heatmap-1))';
-      if (val <= scale.t2) return 'hsl(var(--heatmap-2))';
-      if (val <= scale.t3) return 'hsl(var(--heatmap-3))';
-      if (val <= scale.t4) return 'hsl(var(--heatmap-4))';
-      return 'hsl(var(--heatmap-5))';
-    },
-    []
-  );
+    return { rows, cols, valueMap: bucketMap, scale, isYearView: isLongTerm };
+  }, [heatmapResp, heatmapConfig, project?.timezone]);
 
   // --- 7. WIDGET: ACTUAL VS AVERAGE (Grafico Linee Comparativo) ---
 
