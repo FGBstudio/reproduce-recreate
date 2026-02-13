@@ -1488,16 +1488,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return { start, end, bucket, force_table };
   }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
-  // ✅ FIX: Query BOTH energy.active_energy AND energy.power_kw
-  // I sensori live hanno solo power_kw, i Virtual Meter storici hanno active_energy.
-  // Il frontend sommerà per timestamp per ottenere il consumo totale dell'edificio.
+  // Query ONLY energy.active_energy (kWh) from the correct source table
   const { data: heatmapResp } = useEnergyTimeseries(
     {
       device_ids: heatmapDeviceIds.length > 0 ? heatmapDeviceIds : undefined,
       site_id: undefined,
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.active_energy', 'energy.power_kw'],
+      metrics: ['energy.active_energy'],
       bucket: heatmapConfig.bucket,
       force_table: heatmapConfig.force_table,
     },
@@ -1506,63 +1504,50 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   );
 
-  // B. Elaborazione Dati a Matrice
+  // B. Elaborazione Dati a Matrice (timezone-aware)
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
     const isYearView = timePeriod === 'year';
+    const tz = resolveTimezone(project?.timezone);
 
-    const toLocalDateKey = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
-
-    const valueMap = new Map<string, number>();
+    // Step 1: Aggregate all points by (device, hourBucket/dayBucket) → sum kWh
+    // This handles sub-hourly data (e.g., 30min records) by summing into the hour bucket
+    const bucketMap = new Map<string, number>();
 
     rawData.forEach((d) => {
-      // Per active_energy usa value_sum (kWh già cumulato)
-      // Per power_kw usa value_avg × bucket_hours per convertire kW → kWh
-      const metric = d.metric || '';
-      let val: number;
-      if (metric.includes('active_energy')) {
-        val = Number(d.value_sum ?? d.value ?? 0);
-      } else {
-        // power_kw: kWh = avg_kw × ore_bucket
-        const avgKw = Number(d.value_avg ?? d.value ?? 0);
-        const bucketHours = isYearView ? 24 : 1; // daily=24h, hourly=1h
-        val = avgKw * bucketHours;
-      }
+      // Use value_sum for active_energy (kWh already accumulated), fallback to value
+      const val = Number(d.value_sum ?? d.value ?? 0);
       if (!Number.isFinite(val) || val <= 0) return;
 
       const parsed = parseTimestamp(d.ts_bucket || d.ts);
       if (!parsed) return;
-      // Scarta timestamp futuri
-      if (parsed > new Date()) return;
+      if (parsed > new Date()) return; // discard future timestamps
 
-      let rowKey: number;
-      let colKey: string;
+      const p = getPartsInTz(parsed, tz);
 
+      // Build a unique bucket key per cell using site-local time
+      let bucketKey: string;
       if (isYearView) {
-        rowKey = parsed.getDate(); // 1-31
-        colKey = String(parsed.getMonth()); // 0-11
+        // Daily granularity: cell = month(col) × day(row)
+        bucketKey = `${p.day}_${p.month - 1}`; // row=day(1-31), col=month(0-11)
       } else {
-        rowKey = parsed.getHours(); // 0-23 (LOCALE)
-        colKey = toLocalDateKey(parsed);
+        // Hourly granularity: cell = date(col) × hour(row)
+        const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+        bucketKey = `${p.hour}_${dateKey}`; // row=hour(0-23), col=dateKey
       }
 
-      const cellKey = `${rowKey}_${colKey}`;
-      valueMap.set(cellKey, (valueMap.get(cellKey) || 0) + val);
+      // Sum across all devices and sub-bucket records for the same cell
+      bucketMap.set(bucketKey, (bucketMap.get(bucketKey) || 0) + val);
     });
 
-    // --- Scale per-store (quantili) ---
-    const values = Array.from(valueMap.values()).filter((v) => v > 0).sort((a, b) => a - b);
+    // Step 2: Quantile-based color scale
+    const values = Array.from(bucketMap.values()).filter((v) => v > 0).sort((a, b) => a - b);
     const minVal = values.length ? values[0] : 0;
     const maxVal = values.length ? values[values.length - 1] : 0;
 
-    const quantile = (p: number) => {
+    const quantile = (pct: number) => {
       if (!values.length) return 0;
-      const idx = Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * p)));
+      const idx = Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * pct)));
       return values[idx];
     };
 
@@ -1575,44 +1560,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       t4: quantile(0.8),
     };
 
+    // Step 3: Build rows/cols axes
     let rows: number[] = [];
     let cols: { key: string; label: string }[] = [];
 
     if (isYearView) {
-      rows = Array.from({ length: 31 }, (_, i) => i + 1);
+      rows = Array.from({ length: 31 }, (_, i) => i + 1); // days 1-31
       cols = Array.from({ length: 12 }, (_, i) => ({
         key: String(i),
         label: new Date(2024, i, 1)
           .toLocaleDateString('it-IT', { month: 'short' })
           .toUpperCase(),
-      }));
+      })); // months Jan-Dec
     } else {
-      rows = Array.from({ length: 24 }, (_, i) => i);
+      rows = Array.from({ length: 24 }, (_, i) => i); // hours 0-23
 
-      // ✅ FIX: itera sui giorni locali (evita duplicati/skip per timezone)
-      const startDay = new Date(
-        heatmapConfig.start.getFullYear(),
-        heatmapConfig.start.getMonth(),
-        heatmapConfig.start.getDate()
-      );
-      const endDay = new Date(
-        heatmapConfig.end.getFullYear(),
-        heatmapConfig.end.getMonth(),
-        heatmapConfig.end.getDate()
-      );
-
-      const current = new Date(startDay);
-      while (current <= endDay) {
+      // Generate columns from start to end using site timezone
+      const dayMs = 24 * 60 * 60 * 1000;
+      const cursor = new Date(heatmapConfig.start.getTime());
+      while (cursor <= heatmapConfig.end) {
+        const cp = getPartsInTz(cursor, tz);
+        const dateKey = `${cp.year}-${String(cp.month).padStart(2, '0')}-${String(cp.day).padStart(2, '0')}`;
         cols.push({
-          key: toLocalDateKey(current),
-          label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
+          key: dateKey,
+          label: `${String(cp.day).padStart(2, '0')}/${String(cp.month).padStart(2, '0')}`,
         });
-        current.setDate(current.getDate() + 1);
+        cursor.setTime(cursor.getTime() + dayMs);
       }
     }
 
-    return { rows, cols, valueMap, scale, isYearView };
-  }, [heatmapResp, timePeriod, heatmapConfig]);
+    return { rows, cols, valueMap: bucketMap, scale, isYearView };
+  }, [heatmapResp, timePeriod, heatmapConfig, project?.timezone]);
 
   const heatmapLegendColors = useMemo(
     () => [
