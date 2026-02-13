@@ -1430,6 +1430,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // --- 6. WIDGET: HEATMAP (Refactoring Completo) ---
 
+  // Helper per espandere/collassare (usato nel rendering UI)
+  const togglePeriodExpand = (monthKey: string) => {
+    setExpandedMonths(prev => 
+      prev.includes(monthKey) ? prev.filter(k => k !== monthKey) : [...prev, monthKey]
+    );
+  };
+
   // 1. SELEZIONE DISPOSITIVI: Inclusione Virtual Meter + Category 'general'
   // FIX: Rimossa l'esclusione di 'VIRT-' per supportare i main meter virtuali (es. FGB Milan)
   const heatmapDeviceIds = useMemo(() => {
@@ -1593,6 +1600,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     return { rows, cols, valueMap: bucketMap, scale, isYearView: isLongTerm };
   }, [heatmapResp, heatmapConfig, project?.timezone]);
+
+  // --- DEFINIZIONE COLORI MANCANTI (Fix ReferenceError) ---
+  const heatmapLegendColors = useMemo(
+    () => [
+      'hsl(var(--heatmap-1))',
+      'hsl(var(--heatmap-2))',
+      'hsl(var(--heatmap-3))',
+      'hsl(var(--heatmap-4))',
+      'hsl(var(--heatmap-5))',
+    ],
+    []
+  );
+
+  const getHeatmapColor = useCallback(
+    (val: number, scale: { min: number; max: number; t1: number; t2: number; t3: number; t4: number }) => {
+      if (!val || val <= 0 || !Number.isFinite(val)) return 'hsl(var(--heatmap-empty))';
+      if (scale.max > 0 && scale.max === scale.min) return 'hsl(var(--heatmap-3))';
+      if (val <= scale.t1) return 'hsl(var(--heatmap-1))';
+      if (val <= scale.t2) return 'hsl(var(--heatmap-2))';
+      if (val <= scale.t3) return 'hsl(var(--heatmap-3))';
+      if (val <= scale.t4) return 'hsl(var(--heatmap-4))';
+      return 'hsl(var(--heatmap-5))';
+    },
+    []
+  );
 
   // --- 7. WIDGET: ACTUAL VS AVERAGE (Grafico Linee Comparativo) ---
 
