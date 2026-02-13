@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, The
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
+import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -34,6 +35,9 @@ import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { useWellCertification } from "@/hooks/useCertifications";
+import { useProjectCertifications } from "@/hooks/useProjectCertifications";
+import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 
 
 // Dashboard types
@@ -201,6 +205,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
   
+  // WELL certification data
+  const { wellCert, milestones: wellMilestones } = useWellCertification(project?.siteId);
+  
+  // Certifications configured in admin panel for this project
+  const projectCertifications = useProjectCertifications(project);
+  const hasCertifications = projectCertifications.length > 0;
+  const hasLEED = projectCertifications.includes('LEED');
+  const hasBREEAM = projectCertifications.includes('BREEAM');
+  const hasWELL = projectCertifications.includes('WELL');
 
   // Get module configuration for this project
   const moduleConfig = useProjectModuleConfig(project);
@@ -219,8 +232,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   
   // Dynamic data based on time period - use real-time data if available, otherwise mock
   // Fetch real-time telemetry for this project's site
-  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange);
-  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange);
+  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange, project?.timezone);
+  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange, project?.timezone);
 
   // ---------------------------------------------------------------------------
   // Air module: multi-device selection (per ambiente/location)
@@ -446,6 +459,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     { enabled: isSupabaseConfigured && !!project?.siteId }
   );
 
+  // Shared hook for Power Consumption widget (energy_latest + device categories)
+  const energyPowerBreakdown = useEnergyPowerByCategory(project?.siteId);
+
   const { data: airLatestResp } = useLatestTelemetry(
     selectedAirDeviceIds.length
       ? {
@@ -487,36 +503,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         return keySuffix ? `${base}_${keySuffix}` : base;
       };
       
+      // Resolve site timezone for chart labels
+      const siteTz = resolveTimezone(project?.timezone);
+
       /**
-       * Label formatting based on FORCED bucket (from timeRange.bucket):
-       *   - 15m bucket: "HH:MM" (e.g., "14:30")
+       * Label formatting using SITE timezone (not browser locale):
+       *   - 15m bucket: "HH:MM" in site tz
        *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
        *   - 1d bucket: "dd/MM"
        */
       const labelOf = (ts: Date) => {
-        const pad = (n: number) => String(n).padStart(2, "0");
-        const bucket = timeRange.bucket;
-        
-        if (bucket === '15m') {
-          // 15-minute granularity: show HH:MM
-          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
-        }
-        
-        if (bucket === '1h') {
-          // Hourly granularity
-          if (timePeriod === "today") {
-            return `${pad(ts.getHours())}:00`;
-          }
-          // Week/month: show date + hour
-          const day = pad(ts.getDate());
-          const month = pad(ts.getMonth() + 1);
-          return `${day}/${month} ${pad(ts.getHours())}:00`;
-        }
-        
-        // Daily granularity: show dd/MM
-        const day = pad(ts.getDate());
-        const month = pad(ts.getMonth() + 1);
-        return `${day}/${month}`;
+        return formatChartLabel(ts, timeRange.bucket, siteTz, timePeriod as any);
       };
 
       const points = airTimeseriesResp?.data ?? [];
@@ -533,7 +530,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(map.values());
     },
-    [airTimeseriesResp, timePeriod, timeRange.bucket]
+    [airTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
   );
   
   // Always call hooks unconditionally to comply with React rules
@@ -862,17 +859,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       // C. Chiave Raggruppamento Temporale
       const tsKey = dateObj.toISOString();
+      const siteTz = resolveTimezone(project?.timezone);
       
       // Inizializza l'oggetto per questo timestamp se non esiste
       if (!groupedMap.has(tsKey)) {
-        let label = "";
-        if (timePeriod === 'today') {
-            label = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        } else if (timePeriod === 'week' || timePeriod === 'month') {
-            label = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-        } else {
-            label = dateObj.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
-        }
+        const label = formatChartLabel(dateObj, timeRange.bucket, siteTz, timePeriod as any);
 
         groupedMap.set(tsKey, {
           ts: tsKey,
@@ -911,7 +902,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return Array.from(groupedMap.values()).sort((a, b) => 
       new Date(a.ts).getTime() - new Date(b.ts).getTime()
     );
-  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap]);
+  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap, project?.timezone, timeRange.bucket]);
 
   // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
   const deviceKeys = useMemo(() => {
@@ -940,33 +931,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const filtered = points.filter((p) => p.metric === metric);
       if (filtered.length === 0) return [] as Array<Record<string, unknown>>;
 
-      /**
-       * Label formatting based on FORCED bucket (from timeRange.bucket):
-       *   - 15m bucket: "HH:MM"
-       *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
-       *   - 1d bucket: "dd/MM"
-       */
+      const siteTz = resolveTimezone(project?.timezone);
+
       const labelOf = (ts: Date) => {
-        const pad = (n: number) => String(n).padStart(2, '0');
-        const bucket = timeRange.bucket;
-        
-        if (bucket === '15m') {
-          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
-        }
-        
-        if (bucket === '1h') {
-          if (timePeriod === 'today') {
-            return `${pad(ts.getHours())}:00`;
-          }
-          const day = pad(ts.getDate());
-          const month = pad(ts.getMonth() + 1);
-          return `${day}/${month} ${pad(ts.getHours())}:00`;
-        }
-        
-        // Daily: dd/MM
-        const day = pad(ts.getDate());
-        const month = pad(ts.getMonth() + 1);
-        return `${day}/${month}`;
+        return formatChartLabel(ts, timeRange.bucket, siteTz, timePeriod as any);
       };
 
       const byLabel = new Map<string, number>();
@@ -977,7 +945,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(byLabel.entries()).map(([label, value]) => ({ label, value }));
     },
-    [energyTimeseriesResp, timePeriod, timeRange.bucket]
+    [energyTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
   );
 
   const energyTrendLiveData = useMemo(() => {
@@ -1462,20 +1430,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
 
-  // ✅ FIX 1: Selezione dei device "general" (tutti i meter principali del sito)
-  // I sensori live producono energy.power_kw (non active_energy), quindi li sommiamo tutti.
+  // ✅ FIX: Selezione ESCLUSIVA dei device con category='general'
+  // Solo i meter principali (PAN12 fisici) del sito, NO Virtual Meter per evitare doppi conteggi
   const heatmapDeviceIds = useMemo(() => {
     if (!siteDevices || siteDevices.length === 0) return [];
 
-    // 1) Preferisci energy_monitor
-    const monitors = siteDevices.filter((d) => d.device_type === 'energy_monitor');
-    if (monitors.length > 0) return monitors.map((d) => d.id);
-
-    // 2) Tutti i device "general" (i 3 PAN12 + Virtual Meter)
-    const generals = siteDevices.filter((d) => (d.category || '').toLowerCase() === 'general');
+    // 1) SOLO device con category = 'general' (esclude Virtual Meter e sotto-circuiti)
+    const generals = siteDevices.filter(
+      (d) => (d.category || '').toLowerCase() === 'general'
+    );
     if (generals.length > 0) return generals.map((d) => d.id);
 
-    // 3) Fallback: qualunque device energia
+    // 2) Fallback: qualunque device energia
     const anyEnergy = siteDevices.filter((d) => ENERGY_DEVICE_TYPES.includes(d.device_type));
     return anyEnergy.map((d) => d.id);
   }, [siteDevices, ENERGY_DEVICE_TYPES]);
@@ -1520,16 +1486,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return { start, end, bucket, force_table };
   }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
-  // ✅ FIX: Query BOTH energy.active_energy AND energy.power_kw
-  // I sensori live hanno solo power_kw, i Virtual Meter storici hanno active_energy.
-  // Il frontend sommerà per timestamp per ottenere il consumo totale dell'edificio.
+  // Query energy.power_kw (kW) from the correct source table
+  // power_kw has continuous hourly data; active_energy is sparse
+  // For 1h bucket: avg kW ≈ kWh consumed in that hour
   const { data: heatmapResp } = useEnergyTimeseries(
     {
       device_ids: heatmapDeviceIds.length > 0 ? heatmapDeviceIds : undefined,
-      site_id: undefined,
+      site_id: project?.siteId,
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.active_energy', 'energy.power_kw'],
+      metrics: ['energy.power_kw'],
       bucket: heatmapConfig.bucket,
       force_table: heatmapConfig.force_table,
     },
@@ -1538,63 +1504,51 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   );
 
-  // B. Elaborazione Dati a Matrice
+  // B. Elaborazione Dati a Matrice (timezone-aware)
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
     const isYearView = timePeriod === 'year';
+    const tz = resolveTimezone(project?.timezone);
 
-    const toLocalDateKey = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
-
-    const valueMap = new Map<string, number>();
+    // Step 1: Aggregate all points by (device, hourBucket/dayBucket) → sum kWh
+    // This handles sub-hourly data (e.g., 30min records) by summing into the hour bucket
+    const bucketMap = new Map<string, number>();
 
     rawData.forEach((d) => {
-      // Per active_energy usa value_sum (kWh già cumulato)
-      // Per power_kw usa value_avg × bucket_hours per convertire kW → kWh
-      const metric = d.metric || '';
-      let val: number;
-      if (metric.includes('active_energy')) {
-        val = Number(d.value_sum ?? d.value ?? 0);
-      } else {
-        // power_kw: kWh = avg_kw × ore_bucket
-        const avgKw = Number(d.value_avg ?? d.value ?? 0);
-        const bucketHours = isYearView ? 24 : 1; // daily=24h, hourly=1h
-        val = avgKw * bucketHours;
-      }
+      // For power_kw: value_avg (kW) ≈ kWh consumed in 1h bucket
+      // Sum across all general devices to get total site consumption per hour
+      const val = Number(d.value_avg ?? d.value ?? 0);
       if (!Number.isFinite(val) || val <= 0) return;
 
       const parsed = parseTimestamp(d.ts_bucket || d.ts);
       if (!parsed) return;
-      // Scarta timestamp futuri
-      if (parsed > new Date()) return;
+      if (parsed > new Date()) return; // discard future timestamps
 
-      let rowKey: number;
-      let colKey: string;
+      const p = getPartsInTz(parsed, tz);
 
+      // Build a unique bucket key per cell using site-local time
+      let bucketKey: string;
       if (isYearView) {
-        rowKey = parsed.getDate(); // 1-31
-        colKey = String(parsed.getMonth()); // 0-11
+        // Daily granularity: cell = month(col) × day(row)
+        bucketKey = `${p.day}_${p.month - 1}`; // row=day(1-31), col=month(0-11)
       } else {
-        rowKey = parsed.getHours(); // 0-23 (LOCALE)
-        colKey = toLocalDateKey(parsed);
+        // Hourly granularity: cell = date(col) × hour(row)
+        const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+        bucketKey = `${p.hour}_${dateKey}`; // row=hour(0-23), col=dateKey
       }
 
-      const cellKey = `${rowKey}_${colKey}`;
-      valueMap.set(cellKey, (valueMap.get(cellKey) || 0) + val);
+      // Sum across all devices and sub-bucket records for the same cell
+      bucketMap.set(bucketKey, (bucketMap.get(bucketKey) || 0) + val);
     });
 
-    // --- Scale per-store (quantili) ---
-    const values = Array.from(valueMap.values()).filter((v) => v > 0).sort((a, b) => a - b);
+    // Step 2: Quantile-based color scale
+    const values = Array.from(bucketMap.values()).filter((v) => v > 0).sort((a, b) => a - b);
     const minVal = values.length ? values[0] : 0;
     const maxVal = values.length ? values[values.length - 1] : 0;
 
-    const quantile = (p: number) => {
+    const quantile = (pct: number) => {
       if (!values.length) return 0;
-      const idx = Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * p)));
+      const idx = Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * pct)));
       return values[idx];
     };
 
@@ -1607,44 +1561,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       t4: quantile(0.8),
     };
 
+    // Step 3: Build rows/cols axes
     let rows: number[] = [];
     let cols: { key: string; label: string }[] = [];
 
     if (isYearView) {
-      rows = Array.from({ length: 31 }, (_, i) => i + 1);
+      rows = Array.from({ length: 31 }, (_, i) => i + 1); // days 1-31
       cols = Array.from({ length: 12 }, (_, i) => ({
         key: String(i),
         label: new Date(2024, i, 1)
           .toLocaleDateString('it-IT', { month: 'short' })
           .toUpperCase(),
-      }));
+      })); // months Jan-Dec
     } else {
-      rows = Array.from({ length: 24 }, (_, i) => i);
+      rows = Array.from({ length: 24 }, (_, i) => i); // hours 0-23
 
-      // ✅ FIX: itera sui giorni locali (evita duplicati/skip per timezone)
-      const startDay = new Date(
-        heatmapConfig.start.getFullYear(),
-        heatmapConfig.start.getMonth(),
-        heatmapConfig.start.getDate()
-      );
-      const endDay = new Date(
-        heatmapConfig.end.getFullYear(),
-        heatmapConfig.end.getMonth(),
-        heatmapConfig.end.getDate()
-      );
-
-      const current = new Date(startDay);
-      while (current <= endDay) {
+      // Generate columns from start to end using site timezone
+      const dayMs = 24 * 60 * 60 * 1000;
+      const cursor = new Date(heatmapConfig.start.getTime());
+      while (cursor <= heatmapConfig.end) {
+        const cp = getPartsInTz(cursor, tz);
+        const dateKey = `${cp.year}-${String(cp.month).padStart(2, '0')}-${String(cp.day).padStart(2, '0')}`;
         cols.push({
-          key: toLocalDateKey(current),
-          label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
+          key: dateKey,
+          label: `${String(cp.day).padStart(2, '0')}/${String(cp.month).padStart(2, '0')}`,
         });
-        current.setDate(current.getDate() + 1);
+        cursor.setTime(cursor.getTime() + dayMs);
       }
     }
 
-    return { rows, cols, valueMap, scale, isYearView };
-  }, [heatmapResp, timePeriod, heatmapConfig]);
+    return { rows, cols, valueMap: bucketMap, scale, isYearView };
+  }, [heatmapResp, timePeriod, heatmapConfig, project?.timezone]);
 
   const heatmapLegendColors = useMemo(
     () => [
@@ -1708,21 +1655,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         if (val <= 0) return;
 
         const date = new Date(d.ts_bucket || d.ts);
+        const siteTz = resolveTimezone(project?.timezone);
+        const p = getPartsInTz(date, siteTz);
         let key: string;
         let label: string;
 
         if (isYear) {
-            key = date.toISOString().slice(0, 7); // YYYY-MM
-            label = date.toLocaleDateString('it-IT', { month: 'short' });
+            key = `${p.year}-${String(p.month).padStart(2,'0')}`; // YYYY-MM
+            label = formatChartLabel(date, '1d', siteTz);
         } else if (isToday) {
-            // Raggruppa per ora
-            const h = String(date.getHours()).padStart(2, '0');
-            key = `${date.toISOString().slice(0, 10)}T${h}`; 
+            const h = String(p.hour).padStart(2, '0');
+            key = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`; 
             label = `${h}:00`;
         } else {
-            // Mese/Settimana -> Giorni
-            key = date.toISOString().slice(0, 10); // YYYY-MM-DD
-            label = date.getDate().toString();
+            key = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
+            label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
         }
 
         if (!groupedMap.has(key)) {
@@ -1785,120 +1732,50 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [energyTimeseriesResp, project, timePeriod, deviceMap]);
 
   // --- 8. WIDGET: POWER CONSUMPTION (Real-time Donut kW) ---
+  // Uses shared hook energyPowerBreakdown (from useEnergyPowerByCategory)
 
-  // A. Fetch Dati Live (Tabella energy_latest)
-  const { data: latestEnergyResp } = useEnergyLatest({
-    site_id: project?.siteId,
-    // Cerchiamo le metriche di potenza tipiche
-    metrics: ['energy.power_kw', 'energy.active_power', 'power'] 
-  }, {
-    enabled: !!project?.siteId && activeDashboard === 'energy',
-    refetchInterval: 30000, // Aggiorna ogni 30 secondi
-  });
-
-  // B. Elaborazione Dati (Simile a Energy Breakdown ma per Potenza)
+  // B. Elaborazione Dati per il Donut Chart
   const powerDistributionData = useMemo(() => {
-    const devicesData = latestEnergyResp?.data;
-    if (!devicesData) return [];
+    const bp = energyPowerBreakdown;
+    if (!bp.isRealData && !bp.isStale) return [];
 
-    let totalGeneral = 0;
-    let totalHVAC = 0;
-    let totalLighting = 0;
-    let totalPlugs = 0;
-    let totalOtherDefined = 0;
-    
-    const deviceTotals = new Map<string, number>();
-
-    // 1. Itera su tutti i device trovati nel latest
-    Object.entries(devicesData).forEach(([deviceId, metrics]) => {
-        const info = deviceMap.get(deviceId);
-        if (!info) return; // Ignora device sconosciuti
-
-        // Trova la metrica di potenza (kW)
-        const powerMetric = metrics.find(m => 
-            m.metric === 'energy.power_kw' || 
-            m.metric === 'energy.active_power' ||
-            m.metric === 'power'
-        );
-        
-        const val = Number(powerMetric?.value || 0);
-        if (val <= 0) return;
-
-        // 2. Accumula per Categoria
-        if (info.category === 'general') totalGeneral += val;
-        else if (info.category === 'hvac') totalHVAC += val;
-        else if (info.category === 'lighting') totalLighting += val;
-        else if (info.category === 'plugs') totalPlugs += val;
-        else totalOtherDefined += val;
-
-        // 3. Accumula per Device (escluso general per evitare duplicati nella view device)
-        if (info.category !== 'general') {
-             deviceTotals.set(info.label, val);
-        }
-    });
-
-    // 4. Costruzione Segmenti Grafico
-    let segments = [];
+    let segments: { name: string; value: number; color: string }[] = [];
 
     if (energyViewMode === 'category') {
-        const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
-        
-        // Se non ho sottocontatori ma ho il generale -> 100% General
-        if (subTotal === 0 && totalGeneral > 0) {
-            segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
-        } else {
-            // Ho sottocontatori -> Mostro breakdown
-            if (totalHVAC > 0) segments.push({ name: 'HVAC', value: totalHVAC, color: '#006367' });
-            if (totalLighting > 0) segments.push({ name: 'Lighting', value: totalLighting, color: '#e63f26' });
-            if (totalPlugs > 0) segments.push({ name: 'Plugs & Loads', value: totalPlugs, color: '#f8cbcc' });
-            if (totalOtherDefined > 0) segments.push({ name: 'Other Devices', value: totalOtherDefined, color: '#911140' });
-
-            // Il "Resto" è Other
-            const remainder = Math.max(0, totalGeneral - subTotal);
-            if (remainder > 0.1) { // Soglia minima 100W per mostrare "Other"
-                 segments.push({ name: 'Other', value: remainder, color: '#a0d5d6' });
-            }
-        }
+      const hasSubMeters = (bp.hvac !== undefined || bp.lighting !== undefined || bp.plugs !== undefined);
+      
+      if (!hasSubMeters && bp.totalGeneral !== undefined) {
+        segments.push({ name: 'General', value: bp.totalGeneral, color: '#009193' });
+      } else {
+        if (bp.hvac !== undefined && bp.hvac > 0) segments.push({ name: 'HVAC', value: bp.hvac, color: '#006367' });
+        if (bp.lighting !== undefined && bp.lighting > 0) segments.push({ name: 'Lighting', value: bp.lighting, color: '#e63f26' });
+        if (bp.plugs !== undefined && bp.plugs > 0) segments.push({ name: 'Plugs & Loads', value: bp.plugs, color: '#f8cbcc' });
+        if (bp.other !== undefined && bp.other > 0.1) segments.push({ name: 'Other', value: bp.other, color: '#a0d5d6' });
+      }
     } else {
-        // Vista Device: Lista piatta dei carichi
-        // Se ho solo il generale, mostro quello
-        if (deviceTotals.size === 0 && totalGeneral > 0) {
-             segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
-        } else {
-            const sortedDevices = Array.from(deviceTotals.entries()).sort((a, b) => b[1] - a[1]);
-            sortedDevices.forEach((entry, index) => {
-                segments.push({
-                    name: entry[0],
-                    value: entry[1],
-                    color: FGB_PALETTE[index % FGB_PALETTE.length]
-                });
-            });
-        }
+      // Vista Device
+      if (bp.deviceBreakdown.size === 0 && bp.totalGeneral !== undefined) {
+        segments.push({ name: 'General', value: bp.totalGeneral, color: '#009193' });
+      } else {
+        const entries = Array.from(bp.deviceBreakdown.values())
+          .filter(d => d.category !== 'general')
+          .sort((a, b) => b.value - a.value);
+        entries.forEach((entry, index) => {
+          segments.push({
+            name: entry.label,
+            value: entry.value,
+            color: FGB_PALETTE[index % FGB_PALETTE.length]
+          });
+        });
+      }
     }
     return segments;
-  }, [latestEnergyResp, energyViewMode, deviceMap, FGB_PALETTE]);
+  }, [energyPowerBreakdown, energyViewMode, FGB_PALETTE]);
 
-  // C. Calcolo Totale KW (Centro del Donut)
+  // C. Calcolo Totale KW (Centro del Donut) - from shared hook
   const totalPowerKw = useMemo(() => {
-      const devicesData = latestEnergyResp?.data;
-      if (!devicesData) return 0;
-
-      // Cerca il valore del meter "General"
-      let generalVal = 0;
-      let sumSub = 0;
-
-      Object.entries(devicesData).forEach(([deviceId, metrics]) => {
-          const powerMetric = metrics.find(m => m.metric === 'energy.power_kw' || m.metric === 'energy.active_power');
-          const val = Number(powerMetric?.value || 0);
-          
-          const info = deviceMap.get(deviceId);
-          if (info?.category === 'general') generalVal = val;
-          else sumSub += val;
-      });
-
-      // Se c'è il generale, è la verità. Altrimenti somma parziali.
-      return generalVal > 0 ? generalVal : sumSub;
-  }, [latestEnergyResp, deviceMap]);
+    return energyPowerBreakdown.totalGeneral ?? 0;
+  }, [energyPowerBreakdown]);
 
   // --- 9. WIDGET: DEVICES CONSUMPTION (Stacked Bar Chart) ---
   const deviceConsumptionData = useMemo(() => {
@@ -1915,19 +1792,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
         // Determina il Bucket (X-Axis)
         const date = new Date(d.ts_bucket || d.ts);
+        const siteTz = resolveTimezone(project?.timezone);
+        const p = getPartsInTz(date, siteTz);
         let timeKey = '';
         let label = '';
 
         if (timePeriod === 'year') {
-             timeKey = date.toISOString().slice(0, 7); // YYYY-MM
-             label = date.toLocaleDateString('it-IT', { month: 'short' });
+             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}`;
+             label = formatChartLabel(date, '1d', siteTz);
         } else if (timePeriod === 'today' || timeRange.bucket === '1h') {
-             const h = String(date.getHours()).padStart(2, '0');
-             timeKey = `${date.toISOString().slice(0, 10)}T${h}`;
+             const h = String(p.hour).padStart(2, '0');
+             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`;
              label = `${h}:00`;
         } else {
-             timeKey = date.toISOString().slice(0, 10); // YYYY-MM-DD
-             label = date.getDate().toString();
+             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
+             label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
         }
 
         if (!grouped.has(timeKey)) {
@@ -2441,17 +2320,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             >
               <Droplet className="w-4 h-4 md:w-5 md:h-5" />
             </button>
-            <button 
-              onClick={() => handleDashboardChange("certification")}
-              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
-                activeDashboard === "certification" 
-                  ? "bg-fgb-secondary text-white" 
-                  : "bg-white/50 text-gray-600 hover:bg-white/80"
-              }`}
-              title="Certification Dashboard"
-            >
-              <Award className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
+            {hasCertifications && (
+              <button 
+                onClick={() => handleDashboardChange("certification")}
+                className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                  activeDashboard === "certification" 
+                    ? "bg-fgb-secondary text-white" 
+                    : "bg-white/50 text-gray-600 hover:bg-white/80"
+                }`}
+                title="Certification Dashboard"
+              >
+                <Award className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            )}
             {/* Time Period Selector & Export */}
             <div className="ml-auto flex items-center gap-1.5 md:gap-3 flex-shrink-0">
               <span className="text-sm text-gray-600 font-medium hidden lg:inline">{periodLabel}</span>
@@ -4108,11 +3989,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             )}
             
             {/* CERTIFICATION DASHBOARD - Slide 1: Overview */}
-            {activeDashboard === "certification" && currentSlide === 0 && (
+            {activeDashboard === "certification" && currentSlide === 0 && hasCertifications && (
               <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
                   {/* LEED Card */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasLEED && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
                         <span className="text-white font-black text-lg">LEED</span>
@@ -4143,10 +4024,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <span>Certificato dal 2023</span>
                       </div>
                     </div>
-                  </div>
+                  </div>}
 
                   {/* BREEAM Card */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasBREEAM && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg">
                         <span className="text-white font-black text-xs">BREEAM</span>
@@ -4178,47 +4059,110 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <span>Rinnovo: Dic 2025</span>
                       </div>
                     </div>
-                  </div>
+                  </div>}
 
-                  {/* WELL Card */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
-                        <span className="text-white font-black text-lg">WELL</span>
+                  {/* WELL Card - Dynamic */}
+                  {hasWELL && (() => {
+                    const wScore = wellCert?.score ?? 54;
+                    const wTarget = wellCert?.target_score ?? 100;
+                    const wType = wellCert?.cert_type ?? 'WELL v2';
+                    const wLevel = wellCert?.level ?? 'Silver';
+                    const wPercent = wTarget > 0 ? Math.round((wScore / wTarget) * 100) : 0;
+                    const levelThresholds = [
+                      { label: 'Bronze', value: 40 },
+                      { label: 'Silver', value: 50 },
+                      { label: 'Gold', value: 60 },
+                      { label: 'Platinum', value: 80 },
+                    ];
+
+                    return (
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                        {/* Header with target badge */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
+                              <span className="text-white font-black text-lg">WELL</span>
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-800">{wType}</h3>
+                              <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm font-semibold">{wLevel}</span>
+                            </div>
+                          </div>
+                          {/* TARGETED POINTS badge */}
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Targeted Points</div>
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm font-bold shadow">
+                              <Gauge className="w-3.5 h-3.5" />
+                              {wTarget} POINTS
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Score bar */}
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Punti ottenuti</span>
+                            <span className="font-bold text-gray-800">{wScore} / {wTarget}</span>
+                          </div>
+                          <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all" style={{ width: `${wPercent}%` }} />
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-500 mt-2">
+                            {levelThresholds.map(t => (
+                              <span key={t.label} className={wLevel === t.label ? 'font-bold text-gray-700' : ''}>
+                                {t.label} ({t.value})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Milestones modules */}
+                        {wellMilestones.length > 0 && (
+                          <div className="mt-5 grid grid-cols-1 gap-3">
+                            {wellMilestones.map((m) => {
+                              const mPercent = m.max_score && m.max_score > 0 ? Math.round(((m.score || 0) / m.max_score) * 100) : 0;
+                              return (
+                                <div key={m.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                  {/* Circular progress */}
+                                  <div className="relative w-12 h-12 flex-shrink-0">
+                                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
+                                      <circle cx="18" cy="18" r="15" fill="none" stroke="#e5e7eb" strokeWidth="3" />
+                                      <circle cx="18" cy="18" r="15" fill="none" stroke="#009193" strokeWidth="3"
+                                        strokeDasharray={`${mPercent * 0.9425} 94.25`}
+                                        strokeLinecap="round" />
+                                    </svg>
+                                    <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-gray-700">
+                                      {mPercent}%
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-bold text-gray-800 uppercase">{m.category}</div>
+                                    <div className="text-[10px] text-gray-500">{m.score || 0}/{m.max_score || 0} Points</div>
+                                    <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                                      <div className="h-full bg-sky-500 rounded-full" style={{ width: `${mPercent}%` }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div className="mt-4 pt-3 border-t border-gray-100">
+                          <div className="flex items-center gap-2 text-sm text-amber-600">
+                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span>In corso verso {wLevel === 'Platinum' ? 'Platinum' : levelThresholds.find(t => t.label === wLevel) ? levelThresholds[levelThresholds.findIndex(t => t.label === wLevel) + 1]?.label || wLevel : 'Gold'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-800">WELL v2</h3>
-                        <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm font-semibold">Silver</span>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Punti ottenuti</span>
-                        <span className="font-bold text-gray-800">54 / 100</span>
-                      </div>
-                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all" style={{ width: '54%' }} />
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>Bronze (40)</span>
-                        <span className="font-bold text-gray-600">Silver (50)</span>
-                        <span>Gold (60)</span>
-                        <span>Platinum (80)</span>
-                      </div>
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-sm text-amber-600">
-                        <div className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span>In corso verso Gold</span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                    <div className="text-3xl font-black text-emerald-500">3</div>
+                    <div className="text-3xl font-black text-emerald-500">{projectCertifications.length}</div>
                     <div className="text-sm text-gray-600 mt-1">Certificazioni Attive</div>
                   </div>
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
@@ -4238,11 +4182,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             )}
 
             {/* CERTIFICATION DASHBOARD - Slide 2: Milestones */}
-            {activeDashboard === "certification" && currentSlide === 1 && (
+            {activeDashboard === "certification" && currentSlide === 1 && hasCertifications && (
               <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
                   {/* LEED Milestones */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasLEED && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
                         <span className="text-white font-bold text-xs">LEED</span>
@@ -4270,10 +4214,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div>}
 
                   {/* BREEAM Milestones */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasBREEAM && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
                         <span className="text-white font-bold text-[8px]">BREEAM</span>
@@ -4303,10 +4247,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div>}
 
                   {/* WELL Milestones */}
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                  {hasWELL && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
                         <span className="text-white font-bold text-xs">WELL</span>
@@ -4337,7 +4281,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div>}
                 </div>
 
                 {/* Timeline */}
@@ -4355,7 +4299,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         { date: 'Giu 2024', event: 'Mid-Year Performance Review', type: 'all' },
                         { date: 'Dic 2025', event: 'BREEAM Renewal Due', type: 'breeam' },
                         { date: 'Mar 2026', event: 'LEED Recertification', type: 'leed' },
-                      ].map((item, idx) => (
+                      ].filter(item => item.type === 'all' || (item.type === 'leed' && hasLEED) || (item.type === 'breeam' && hasBREEAM) || (item.type === 'well' && hasWELL)).map((item, idx) => (
                         <div key={idx} className="relative pl-10">
                           <div className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white shadow ${
                             item.type === 'leed' ? 'bg-emerald-500' :
