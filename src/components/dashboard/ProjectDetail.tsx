@@ -484,13 +484,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Build air quality series
   const airSeries = useMemo(() => {
     if (!airTimeseriesResp) return {};
-    return buildSeriesByMetric(airTimeseriesResp, airMetrics, selectedAirDeviceIds);
+    return buildSeriesByMetric(airTimeseriesResp?.data ?? [], airMetrics, selectedAirDeviceIds);
   }, [airTimeseriesResp, airMetrics, selectedAirDeviceIds]);
 
   // Build energy series
   const energySeries = useMemo(() => {
     if (!energyTimeseriesResp) return {};
-    return buildSeriesByMetric(energyTimeseriesResp, energyMetrics, siteDeviceIds);
+    return buildSeriesByMetric(energyTimeseriesResp?.data ?? [], energyMetrics, siteDeviceIds);
   }, [energyTimeseriesResp, energyMetrics, siteDeviceIds]);
 
   // Build water series (similar approach, omitted for brevity)
@@ -529,7 +529,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }), [heatmapDeviceIds, timeRange]);
 
   const heatmapResp = useTimeseries(heatmapConfig, { enabled: heatmapDeviceIds.length > 0 && isSupabaseConfigured });
-  const heatmapData = heatmapResp.data || [];
+  const heatmapData = heatmapResp.data?.data ?? [];
 
   // Build heatmap grid data structure: rows = hours/days, columns = days/months depending on bucket
   // For simplicity, assume bucket 15m or 1h or 1d and build accordingly
@@ -585,25 +585,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <main className="p-4 overflow-auto">
         {activeDashboard === "overview" && (
           <OverviewSection
-            project={project}
-            energyData={energyTimeseriesResp}
-            airData={airTimeseriesResp}
-            waterData={null} // Placeholder
-            timePeriod={timePeriod}
-            onTimePeriodChange={setTimePeriod}
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
+            project={project!}
+            moduleConfig={resolvedModuleConfig}
+            onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
           />
         )}
 
         {activeDashboard === "energy" && (
-          <ModuleGate module="energy" enabled={resolvedModuleConfig.energy.enabled}>
+          <ModuleGate module="energy" config={resolvedModuleConfig.energy}>
             {/* Energy charts and widgets */}
             {/* Example: Power consumption bar chart */}
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-2">Power Consumption</h2>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={energyTimeseriesResp || []}>
+                <BarChart data={energyTimeseriesResp?.data ?? []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="ts" tickFormatter={(ts) => formatChartLabel(ts, timePeriod, project?.timezone)} />
                   <YAxis domain={autoDomainWithPadding} />
@@ -614,7 +609,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               </ResponsiveContainer>
               <ExportButtons
                 chartRef={null}
-                data={energyTimeseriesResp || []}
+                data={(energyTimeseriesResp?.data ?? []) as unknown as Record<string, unknown>[]}
                 filename={`${project?.name || "project"}_energy`}
               />
             </div>
@@ -622,11 +617,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         )}
 
         {activeDashboard === "air" && (
-          <ModuleGate module="air" enabled={resolvedModuleConfig.air.enabled}>
+          <ModuleGate module="air" config={resolvedModuleConfig.air}>
             {/* Air quality charts */}
             <AirDeviceSelector
               devices={airDevices}
-              selectedDeviceIds={selectedAirDeviceIds}
+              selectedIds={selectedAirDeviceIds}
               onChange={setSelectedAirDeviceIds}
             />
             {airMetrics.map((metric) => (
@@ -663,32 +658,29 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         )}
 
         {activeDashboard === "water" && (
-          <ModuleGate module="water" enabled={resolvedModuleConfig.water.enabled}>
+          <ModuleGate module="water" config={resolvedModuleConfig.water}>
             {/* Water charts and widgets */}
             <WaterDemoContent />
           </ModuleGate>
         )}
 
         {activeDashboard === "certification" && (
-          <ModuleGate module="certification" enabled={hasCertifications}>
-            {/* Certification details */}
-            <div className="space-y-4">
-              {hasLEED && <div>LEED Certification details here</div>}
-              {hasBREEAM && <div>BREEAM Certification details here</div>}
-              {hasWELL && (
-                <div>
-                  <h3>WELL Certification</h3>
-                  <pre>{JSON.stringify(wellCert, null, 2)}</pre>
-                  <h4>Milestones</h4>
-                  <ul>
-                    {wellMilestones.map((m) => (
-                      <li key={m.id}>{m.name} - {m.status}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </ModuleGate>
+          <div className="space-y-4">
+            {hasLEED && <div>LEED Certification details here</div>}
+            {hasBREEAM && <div>BREEAM Certification details here</div>}
+            {hasWELL && (
+              <div>
+                <h3>WELL Certification</h3>
+                <pre>{JSON.stringify(wellCert, null, 2)}</pre>
+                <h4>Milestones</h4>
+                <ul>
+                  {wellMilestones.map((m) => (
+                    <li key={m.id}>{m.requirement} - {m.status}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Heatmap widget */}
@@ -717,8 +709,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       <ProjectSettingsDialog
         open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        project={project}
+        onOpenChange={setSettingsOpen}
+        siteId={project?.siteId}
+        projectName={project?.name}
       />
 
       <ChartFullscreenModal
@@ -726,7 +719,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title={fullscreenChart || ""}
       >
-        {/* Render fullscreen chart content based on fullscreenChart state */}
+        <div />
       </ChartFullscreenModal>
     </div>
   );
