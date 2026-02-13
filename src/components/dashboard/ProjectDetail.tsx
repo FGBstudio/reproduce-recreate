@@ -4,7 +4,6 @@ import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, The
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
-import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -232,8 +231,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   
   // Dynamic data based on time period - use real-time data if available, otherwise mock
   // Fetch real-time telemetry for this project's site
-  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange, project?.timezone);
-  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange, project?.timezone);
+  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange);
+  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange);
 
   // ---------------------------------------------------------------------------
   // Air module: multi-device selection (per ambiente/location)
@@ -503,17 +502,36 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         return keySuffix ? `${base}_${keySuffix}` : base;
       };
       
-      // Resolve site timezone for chart labels
-      const siteTz = resolveTimezone(project?.timezone);
-
       /**
-       * Label formatting using SITE timezone (not browser locale):
-       *   - 15m bucket: "HH:MM" in site tz
+       * Label formatting based on FORCED bucket (from timeRange.bucket):
+       *   - 15m bucket: "HH:MM" (e.g., "14:30")
        *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
        *   - 1d bucket: "dd/MM"
        */
       const labelOf = (ts: Date) => {
-        return formatChartLabel(ts, timeRange.bucket, siteTz, timePeriod as any);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const bucket = timeRange.bucket;
+        
+        if (bucket === '15m') {
+          // 15-minute granularity: show HH:MM
+          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
+        }
+        
+        if (bucket === '1h') {
+          // Hourly granularity
+          if (timePeriod === "today") {
+            return `${pad(ts.getHours())}:00`;
+          }
+          // Week/month: show date + hour
+          const day = pad(ts.getDate());
+          const month = pad(ts.getMonth() + 1);
+          return `${day}/${month} ${pad(ts.getHours())}:00`;
+        }
+        
+        // Daily granularity: show dd/MM
+        const day = pad(ts.getDate());
+        const month = pad(ts.getMonth() + 1);
+        return `${day}/${month}`;
       };
 
       const points = airTimeseriesResp?.data ?? [];
@@ -530,7 +548,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(map.values());
     },
-    [airTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
+    [airTimeseriesResp, timePeriod, timeRange.bucket]
   );
   
   // Always call hooks unconditionally to comply with React rules
@@ -859,11 +877,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       // C. Chiave Raggruppamento Temporale
       const tsKey = dateObj.toISOString();
-      const siteTz = resolveTimezone(project?.timezone);
       
       // Inizializza l'oggetto per questo timestamp se non esiste
       if (!groupedMap.has(tsKey)) {
-        const label = formatChartLabel(dateObj, timeRange.bucket, siteTz, timePeriod as any);
+        let label = "";
+        if (timePeriod === 'today') {
+            label = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        } else if (timePeriod === 'week' || timePeriod === 'month') {
+            label = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        } else {
+            label = dateObj.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
+        }
 
         groupedMap.set(tsKey, {
           ts: tsKey,
@@ -902,7 +926,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return Array.from(groupedMap.values()).sort((a, b) => 
       new Date(a.ts).getTime() - new Date(b.ts).getTime()
     );
-  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap, project?.timezone, timeRange.bucket]);
+  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap]);
 
   // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
   const deviceKeys = useMemo(() => {
@@ -931,10 +955,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const filtered = points.filter((p) => p.metric === metric);
       if (filtered.length === 0) return [] as Array<Record<string, unknown>>;
 
-      const siteTz = resolveTimezone(project?.timezone);
-
+      /**
+       * Label formatting based on FORCED bucket (from timeRange.bucket):
+       *   - 15m bucket: "HH:MM"
+       *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
+       *   - 1d bucket: "dd/MM"
+       */
       const labelOf = (ts: Date) => {
-        return formatChartLabel(ts, timeRange.bucket, siteTz, timePeriod as any);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const bucket = timeRange.bucket;
+        
+        if (bucket === '15m') {
+          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
+        }
+        
+        if (bucket === '1h') {
+          if (timePeriod === 'today') {
+            return `${pad(ts.getHours())}:00`;
+          }
+          const day = pad(ts.getDate());
+          const month = pad(ts.getMonth() + 1);
+          return `${day}/${month} ${pad(ts.getHours())}:00`;
+        }
+        
+        // Daily: dd/MM
+        const day = pad(ts.getDate());
+        const month = pad(ts.getMonth() + 1);
+        return `${day}/${month}`;
       };
 
       const byLabel = new Map<string, number>();
@@ -945,7 +992,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(byLabel.entries()).map(([label, value]) => ({ label, value }));
     },
-    [energyTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
+    [energyTimeseriesResp, timePeriod, timeRange.bucket]
   );
 
   const energyTrendLiveData = useMemo(() => {
@@ -1428,172 +1475,191 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     );
   };
 
-// --- 6. WIDGET: HEATMAP (Refactoring Completo & Corretto) ---
+// --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
 
-  // 1. SELEZIONE DISPOSITIVI: Inclusione Virtual Meter + Category 'general'
-  // FIX: Rimossa l'esclusione di 'VIRT-' per supportare i main meter virtuali (es. FGB Milan)
+  // ✅ FIX 1: Selezione dei device "general" (tutti i meter principali del sito)
+  // I sensori live producono energy.power_kw (non active_energy), quindi li sommiamo tutti.
   const heatmapDeviceIds = useMemo(() => {
     if (!siteDevices || siteDevices.length === 0) return [];
-    
-    // Cerchiamo SOLO i dispositivi taggati come 'general' (Main Meters)
-    const generals = siteDevices.filter(
-      (d) => (d.category || '').toLowerCase() === 'general'
-    );
 
+    // 1) Preferisci energy_monitor
+    const monitors = siteDevices.filter((d) => d.device_type === 'energy_monitor');
+    if (monitors.length > 0) return monitors.map((d) => d.id);
+
+    // 2) Tutti i device "general" (i 3 PAN12 + Virtual Meter)
+    const generals = siteDevices.filter((d) => (d.category || '').toLowerCase() === 'general');
     if (generals.length > 0) return generals.map((d) => d.id);
-    
-    // Fallback: se non c'è un general, usa tutti i monitor energetici fisici
-    return siteDevices
-      .filter((d) => ENERGY_DEVICE_TYPES.includes(d.device_type))
-      .map((d) => d.id);
+
+    // 3) Fallback: qualunque device energia
+    const anyEnergy = siteDevices.filter((d) => ENERGY_DEVICE_TYPES.includes(d.device_type));
+    return anyEnergy.map((d) => d.id);
   }, [siteDevices, ENERGY_DEVICE_TYPES]);
 
-  // 2. CONFIGURAZIONE TEMPORALE & DATA SOURCE SWITCHING
+  // ✅ HEATMAP RANGE + BUCKET (solo per il widget heatmap)
   const heatmapConfig = useMemo(() => {
     const now = new Date();
-    let start: Date, end: Date;
 
-    // Logica standard date (invariata)
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+    const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const startOfYear = (d: Date) => new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const endOfYear = (d: Date) => new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    let start: Date;
+    let end: Date;
+
     if (timePeriod === 'custom' && dateRange) {
       start = dateRange.from;
       end = dateRange.to;
-    } else if (timePeriod === 'year') {
-      start = new Date(now.getFullYear(), 0, 1);
-      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-    } else if (timePeriod === 'month') {
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    } else if (timePeriod === 'today') {
+      start = startOfDay(now);
+      end = endOfDay(now);
     } else if (timePeriod === 'week') {
-      start = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-      end = now;
-    } else { // Today
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const s = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
+      start = s;
+      end = endOfDay(now);
+    } else if (timePeriod === 'month') {
+      start = startOfMonth(now);
+      end = endOfMonth(now);
+    } else {
+      // year
+      start = startOfYear(now);
+      end = endOfYear(now);
     }
 
-    // CALCOLO DURATA PER SWITCH LOGICO (Short vs Long Term)
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const bucket: '15m' | '1h' | '1d' = timePeriod === 'year' ? '1d' : '1h';
+    const force_table: 'hourly' | 'daily' = timePeriod === 'year' ? 'daily' : 'hourly';
+    return { start, end, bucket, force_table };
+  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
-    // LOGICA CORE: > 31gg = Daily (Tabella energy_daily), <= 31gg = Hourly (Tabella energy_hourly)
-    const isLongTerm = diffDays > 31;
-
-    return { 
-      start, 
-      end, 
-      // Scenario A (Short): Bucket 1h, Tabella 'hourly'
-      // Scenario B (Long): Bucket 1d, Tabella 'daily'
-      bucket: isLongTerm ? '1d' : '1h',
-      force_table: isLongTerm ? 'daily' : 'hourly',
-      isLongTerm 
-    };
-  }, [timePeriod, dateRange]);
-
-  // 3. DATA FETCHING: Query su 'energy.active_energy' (Consumo Reale)
-  // FIX: Usiamo active_energy che supporta la somma (value_sum) nel backend
+  // ✅ FIX: Query BOTH energy.active_energy AND energy.power_kw
+  // I sensori live hanno solo power_kw, i Virtual Meter storici hanno active_energy.
+  // Il frontend sommerà per timestamp per ottenere il consumo totale dell'edificio.
   const { data: heatmapResp } = useEnergyTimeseries(
     {
       device_ids: heatmapDeviceIds.length > 0 ? heatmapDeviceIds : undefined,
-      site_id: project?.siteId,
+      site_id: undefined,
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.active_energy'], // TARGET METRIC CORRETTA
-      bucket: heatmapConfig.bucket as any,
-      force_table: heatmapConfig.force_table as any, // FORZA TABELLA CORRETTA
+      metrics: ['energy.active_energy', 'energy.power_kw'],
+      bucket: heatmapConfig.bucket,
+      force_table: heatmapConfig.force_table,
     },
     {
       enabled: heatmapDeviceIds.length > 0 && activeDashboard === 'energy',
     }
   );
 
-  // 4. MAPPING MATRICE (Population Logic)
+  // B. Elaborazione Dati a Matrice
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
-    const { isLongTerm } = heatmapConfig;
-    const tz = resolveTimezone(project?.timezone);
-    const bucketMap = new Map<string, number>();
+    const isYearView = timePeriod === 'year';
+
+    const toLocalDateKey = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const valueMap = new Map<string, number>();
 
     rawData.forEach((d) => {
-      // FIX: Usiamo value_sum. Se i dati arrivano a pacchetti (es. 3 entry da 20min),
-      // la somma ricostruisce correttamente l'ora intera, evitando i buchi.
-      const val = Number(d.value_sum ?? d.value ?? 0);
-      if (val <= 0) return;
+      // Per active_energy usa value_sum (kWh già cumulato)
+      // Per power_kw usa value_avg × bucket_hours per convertire kW → kWh
+      const metric = d.metric || '';
+      let val: number;
+      if (metric.includes('active_energy')) {
+        val = Number(d.value_sum ?? d.value ?? 0);
+      } else {
+        // power_kw: kWh = avg_kw × ore_bucket
+        const avgKw = Number(d.value_avg ?? d.value ?? 0);
+        const bucketHours = isYearView ? 24 : 1; // daily=24h, hourly=1h
+        val = avgKw * bucketHours;
+      }
+      if (!Number.isFinite(val) || val <= 0) return;
 
-      // Parsing robusto del timestamp (che viene dal DB, non dalla ricezione)
       const parsed = parseTimestamp(d.ts_bucket || d.ts);
       if (!parsed) return;
-      if (parsed > new Date()) return; // Ignora futuro
+      // Scarta timestamp futuri
+      if (parsed > new Date()) return;
 
-      // Conversione Timezone locale del sito
-      const p = getPartsInTz(parsed, tz);
-      let bucketKey: string;
+      let rowKey: number;
+      let colKey: string;
 
-      if (isLongTerm) {
-        // SCENARIO B: Long-Term (Anno) -> Asse X: Mese, Asse Y: Giorno
-        // Nota: p.month è 1-12, l'indice array per le colonne è 0-11
-        bucketKey = `${p.day}_${p.month - 1}`; 
+      if (isYearView) {
+        rowKey = parsed.getDate(); // 1-31
+        colKey = String(parsed.getMonth()); // 0-11
       } else {
-        // SCENARIO A: Short-Term (Giorno/Settimana) -> Asse X: Giorno, Asse Y: Ora
-        const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
-        bucketKey = `${p.hour}_${dateKey}`; 
+        rowKey = parsed.getHours(); // 0-23 (LOCALE)
+        colKey = toLocalDateKey(parsed);
       }
 
-      // Somma cumulativa nella cella (gestisce aggregazioni multiple nello stesso slot)
-      bucketMap.set(bucketKey, (bucketMap.get(bucketKey) || 0) + val);
+      const cellKey = `${rowKey}_${colKey}`;
+      valueMap.set(cellKey, (valueMap.get(cellKey) || 0) + val);
     });
 
-    // 5. COSTRUZIONE SCALA COLORI & ASSI
-    const values = Array.from(bucketMap.values()).sort((a, b) => a - b);
-    
-    // Calcolo Quantili (adattivi per ogni sito)
-    const quantile = (q: number) => {
+    // --- Scale per-store (quantili) ---
+    const values = Array.from(valueMap.values()).filter((v) => v > 0).sort((a, b) => a - b);
+    const minVal = values.length ? values[0] : 0;
+    const maxVal = values.length ? values[values.length - 1] : 0;
+
+    const quantile = (p: number) => {
       if (!values.length) return 0;
-      const pos = (values.length - 1) * q;
-      const base = Math.floor(pos);
-      return values[base];
+      const idx = Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * p)));
+      return values[idx];
     };
 
     const scale = {
-      min: values[0] || 0,
-      max: values[values.length - 1] || 0,
+      min: minVal,
+      max: maxVal,
       t1: quantile(0.2),
       t2: quantile(0.4),
       t3: quantile(0.6),
       t4: quantile(0.8),
     };
 
-    // Costruzione Assi
     let rows: number[] = [];
     let cols: { key: string; label: string }[] = [];
 
-    if (isLongTerm) {
-      // Righe 1-31, Colonne Gen-Dic
+    if (isYearView) {
       rows = Array.from({ length: 31 }, (_, i) => i + 1);
       cols = Array.from({ length: 12 }, (_, i) => ({
         key: String(i),
-        label: new Date(2024, i, 1).toLocaleDateString('it-IT', { month: 'short' }).toUpperCase(),
+        label: new Date(2024, i, 1)
+          .toLocaleDateString('it-IT', { month: 'short' })
+          .toUpperCase(),
       }));
     } else {
-      // Righe 0-23, Colonne Date nel range
       rows = Array.from({ length: 24 }, (_, i) => i);
-      
-      const dayMs = 24 * 60 * 60 * 1000;
-      const cursor = new Date(heatmapConfig.start);
-      cursor.setHours(0,0,0,0); // Normalizza a mezzanotte
-      
-      while (cursor <= heatmapConfig.end) {
-        const cp = getPartsInTz(cursor, tz);
-        const dateKey = `${cp.year}-${String(cp.month).padStart(2, '0')}-${String(cp.day).padStart(2, '0')}`;
+
+      // ✅ FIX: itera sui giorni locali (evita duplicati/skip per timezone)
+      const startDay = new Date(
+        heatmapConfig.start.getFullYear(),
+        heatmapConfig.start.getMonth(),
+        heatmapConfig.start.getDate()
+      );
+      const endDay = new Date(
+        heatmapConfig.end.getFullYear(),
+        heatmapConfig.end.getMonth(),
+        heatmapConfig.end.getDate()
+      );
+
+      const current = new Date(startDay);
+      while (current <= endDay) {
         cols.push({
-          key: dateKey,
-          label: `${String(cp.day).padStart(2, '0')}/${String(cp.month).padStart(2, '0')}`,
+          key: toLocalDateKey(current),
+          label: current.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
         });
-        cursor.setTime(cursor.getTime() + dayMs);
+        current.setDate(current.getDate() + 1);
       }
     }
 
-    return { rows, cols, valueMap: bucketMap, scale, isYearView: isLongTerm };
-  }, [heatmapResp, heatmapConfig, project?.timezone]);
+    return { rows, cols, valueMap, scale, isYearView };
+  }, [heatmapResp, timePeriod, heatmapConfig]);
 
   const heatmapLegendColors = useMemo(
     () => [
@@ -1657,21 +1723,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         if (val <= 0) return;
 
         const date = new Date(d.ts_bucket || d.ts);
-        const siteTz = resolveTimezone(project?.timezone);
-        const p = getPartsInTz(date, siteTz);
         let key: string;
         let label: string;
 
         if (isYear) {
-            key = `${p.year}-${String(p.month).padStart(2,'0')}`; // YYYY-MM
-            label = formatChartLabel(date, '1d', siteTz);
+            key = date.toISOString().slice(0, 7); // YYYY-MM
+            label = date.toLocaleDateString('it-IT', { month: 'short' });
         } else if (isToday) {
-            const h = String(p.hour).padStart(2, '0');
-            key = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`; 
+            // Raggruppa per ora
+            const h = String(date.getHours()).padStart(2, '0');
+            key = `${date.toISOString().slice(0, 10)}T${h}`; 
             label = `${h}:00`;
         } else {
-            key = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
-            label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
+            // Mese/Settimana -> Giorni
+            key = date.toISOString().slice(0, 10); // YYYY-MM-DD
+            label = date.getDate().toString();
         }
 
         if (!groupedMap.has(key)) {
@@ -1794,21 +1860,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
         // Determina il Bucket (X-Axis)
         const date = new Date(d.ts_bucket || d.ts);
-        const siteTz = resolveTimezone(project?.timezone);
-        const p = getPartsInTz(date, siteTz);
         let timeKey = '';
         let label = '';
 
         if (timePeriod === 'year') {
-             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}`;
-             label = formatChartLabel(date, '1d', siteTz);
+             timeKey = date.toISOString().slice(0, 7); // YYYY-MM
+             label = date.toLocaleDateString('it-IT', { month: 'short' });
         } else if (timePeriod === 'today' || timeRange.bucket === '1h') {
-             const h = String(p.hour).padStart(2, '0');
-             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`;
+             const h = String(date.getHours()).padStart(2, '0');
+             timeKey = `${date.toISOString().slice(0, 10)}T${h}`;
              label = `${h}:00`;
         } else {
-             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
-             label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
+             timeKey = date.toISOString().slice(0, 10); // YYYY-MM-DD
+             label = date.getDate().toString();
         }
 
         if (!grouped.has(timeKey)) {
