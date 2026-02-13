@@ -9,6 +9,7 @@ import { it } from "date-fns/locale";
 import { useTimeseries,useEnergyTimeseries, ApiTimeseriesPoint, useDevices, useLatestTelemetry } from '@/lib/api';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { TimePeriod, DateRange } from '@/hooks/useTimeFilteredData';
+import { formatChartLabel, resolveTimezone } from '@/lib/timezoneUtils';
 
 // =============================================================================
 // Types
@@ -114,45 +115,37 @@ function getTimeRangeParams(timePeriod: TimePeriod, dateRange?: DateRange) {
 function transformTimeseriesData(
   points: ApiTimeseriesPoint[],
   timePeriod: TimePeriod,
-  dateRange?: DateRange
+  dateRange?: DateRange,
+  siteTimezone?: string
 ): { labels: string[]; dataByMetric: Record<string, number[]> } {
   if (!points || points.length === 0) {
     return { labels: [], dataByMetric: {} };
   }
 
-  // Group by timestamp bucket
+  const tz = resolveTimezone(siteTimezone);
+
+  // Determine bucket from time range (same logic as backend)
+  const getBucketFromPeriod = (): '15m' | '1h' | '1d' => {
+    if (timePeriod === 'today') return '1h';
+    if (timePeriod === 'week') return '1d';
+    if (timePeriod === 'month') return '1d';
+    if (timePeriod === 'year') return '1d';
+    if (timePeriod === 'custom' && dateRange) {
+      const diffH = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60);
+      if (diffH <= 24) return '15m';
+      if (diffH <= 24 * 31) return '1h';
+      return '1d';
+    }
+    return '1d';
+  };
+  const bucket = getBucketFromPeriod();
+
+  // Group by timestamp bucket — labels in site timezone
   const bucketMap = new Map<string, Record<string, number>>();
   
   points.forEach(point => {
     const ts = new Date(point.ts_bucket);
-    let label: string;
-    
-    switch (timePeriod) {
-      case "today":
-        label = format(ts, "HH:mm");
-        break;
-      case "week":
-        label = format(ts, "EEE", { locale: it });
-        break;
-      case "month":
-        label = format(ts, "dd/MM");
-        break;
-      case "year":
-        label = format(ts, "MMM", { locale: it });
-        break;
-      case "custom":
-        if (dateRange) {
-          const daysDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysDiff <= 1) label = format(ts, "HH:mm");
-          else if (daysDiff <= 90) label = format(ts, "dd/MM");
-          else label = format(ts, "MMM yy", { locale: it });
-        } else {
-          label = format(ts, "dd/MM");
-        }
-        break;
-      default:
-        label = format(ts, "dd/MM");
-    }
+    const label = formatChartLabel(ts, bucket, tz, timePeriod as any);
 
     if (!bucketMap.has(label)) {
       bucketMap.set(label, {});
@@ -262,7 +255,8 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
 export function useRealTimeEnergyData(
   siteId: string | undefined,
   timePeriod: TimePeriod,
-  dateRange?: DateRange
+  dateRange?: DateRange,
+  siteTimezone?: string
 ): UseTimeseriesDataResult<EnergyDataPoint> {
   // Use memoized time range to prevent unnecessary refetches
   const dateRangeFromTime = dateRange?.from?.getTime() ?? 0;
@@ -333,7 +327,8 @@ export function useRealTimeEnergyData(
     const { labels, dataByMetric } = transformTimeseriesData(
       timeseriesData.data,
       timePeriod,
-      dateRange
+      dateRange,
+      siteTimezone
     );
 
     console.log('[useRealTimeEnergyData] Real data found:', {
@@ -359,7 +354,7 @@ export function useRealTimeEnergyData(
       lastUpdate: timeseriesData.meta?.end,
       refetch,
     };
-  }, [timeseriesData, siteId, timePeriod, dateRange, isLoading, isError, error, refetch]);
+  }, [timeseriesData, siteId, timePeriod, dateRange, isLoading, isError, error, refetch, siteTimezone]);
 }
 
 /**
@@ -414,8 +409,8 @@ export function useRealTimeLatestData(siteId: string | undefined) {
 /**
  * Combined hook for project detail with all telemetry types
  */
-export function useProjectTelemetry(siteId: string | undefined, timePeriod: TimePeriod, dateRange?: DateRange) {
-  const energyData = useRealTimeEnergyData(siteId, timePeriod, dateRange);
+export function useProjectTelemetry(siteId: string | undefined, timePeriod: TimePeriod, dateRange?: DateRange, siteTimezone?: string) {
+  const energyData = useRealTimeEnergyData(siteId, timePeriod, dateRange, siteTimezone);
   const latestData = useRealTimeLatestData(siteId);
 
   const isLoading = energyData.isLoading || latestData.isLoading;

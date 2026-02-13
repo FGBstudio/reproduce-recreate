@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, The
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
+import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -231,8 +232,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   
   // Dynamic data based on time period - use real-time data if available, otherwise mock
   // Fetch real-time telemetry for this project's site
-  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange);
-  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange);
+  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange, project?.timezone);
+  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange, project?.timezone);
 
   // ---------------------------------------------------------------------------
   // Air module: multi-device selection (per ambiente/location)
@@ -502,36 +503,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         return keySuffix ? `${base}_${keySuffix}` : base;
       };
       
+      // Resolve site timezone for chart labels
+      const siteTz = resolveTimezone(project?.timezone);
+
       /**
-       * Label formatting based on FORCED bucket (from timeRange.bucket):
-       *   - 15m bucket: "HH:MM" (e.g., "14:30")
+       * Label formatting using SITE timezone (not browser locale):
+       *   - 15m bucket: "HH:MM" in site tz
        *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
        *   - 1d bucket: "dd/MM"
        */
       const labelOf = (ts: Date) => {
-        const pad = (n: number) => String(n).padStart(2, "0");
-        const bucket = timeRange.bucket;
-        
-        if (bucket === '15m') {
-          // 15-minute granularity: show HH:MM
-          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
-        }
-        
-        if (bucket === '1h') {
-          // Hourly granularity
-          if (timePeriod === "today") {
-            return `${pad(ts.getHours())}:00`;
-          }
-          // Week/month: show date + hour
-          const day = pad(ts.getDate());
-          const month = pad(ts.getMonth() + 1);
-          return `${day}/${month} ${pad(ts.getHours())}:00`;
-        }
-        
-        // Daily granularity: show dd/MM
-        const day = pad(ts.getDate());
-        const month = pad(ts.getMonth() + 1);
-        return `${day}/${month}`;
+        return formatChartLabel(ts, timeRange.bucket, siteTz, timePeriod as any);
       };
 
       const points = airTimeseriesResp?.data ?? [];
@@ -548,7 +530,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(map.values());
     },
-    [airTimeseriesResp, timePeriod, timeRange.bucket]
+    [airTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
   );
   
   // Always call hooks unconditionally to comply with React rules
@@ -877,17 +859,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       // C. Chiave Raggruppamento Temporale
       const tsKey = dateObj.toISOString();
+      const siteTz = resolveTimezone(project?.timezone);
       
       // Inizializza l'oggetto per questo timestamp se non esiste
       if (!groupedMap.has(tsKey)) {
-        let label = "";
-        if (timePeriod === 'today') {
-            label = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        } else if (timePeriod === 'week' || timePeriod === 'month') {
-            label = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-        } else {
-            label = dateObj.toLocaleDateString('it-IT', { month: 'short', day: 'numeric' });
-        }
+        const label = formatChartLabel(dateObj, timeRange.bucket, siteTz, timePeriod as any);
 
         groupedMap.set(tsKey, {
           ts: tsKey,
@@ -926,7 +902,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return Array.from(groupedMap.values()).sort((a, b) => 
       new Date(a.ts).getTime() - new Date(b.ts).getTime()
     );
-  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap]);
+  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap, project?.timezone, timeRange.bucket]);
 
   // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
   const deviceKeys = useMemo(() => {
@@ -955,33 +931,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const filtered = points.filter((p) => p.metric === metric);
       if (filtered.length === 0) return [] as Array<Record<string, unknown>>;
 
-      /**
-       * Label formatting based on FORCED bucket (from timeRange.bucket):
-       *   - 15m bucket: "HH:MM"
-       *   - 1h bucket: "dd/MM HH:00" for week/month, "HH:00" for today
-       *   - 1d bucket: "dd/MM"
-       */
+      const siteTz = resolveTimezone(project?.timezone);
+
       const labelOf = (ts: Date) => {
-        const pad = (n: number) => String(n).padStart(2, '0');
-        const bucket = timeRange.bucket;
-        
-        if (bucket === '15m') {
-          return `${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
-        }
-        
-        if (bucket === '1h') {
-          if (timePeriod === 'today') {
-            return `${pad(ts.getHours())}:00`;
-          }
-          const day = pad(ts.getDate());
-          const month = pad(ts.getMonth() + 1);
-          return `${day}/${month} ${pad(ts.getHours())}:00`;
-        }
-        
-        // Daily: dd/MM
-        const day = pad(ts.getDate());
-        const month = pad(ts.getMonth() + 1);
-        return `${day}/${month}`;
+        return formatChartLabel(ts, timeRange.bucket, siteTz, timePeriod as any);
       };
 
       const byLabel = new Map<string, number>();
@@ -992,7 +945,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
       return Array.from(byLabel.entries()).map(([label, value]) => ({ label, value }));
     },
-    [energyTimeseriesResp, timePeriod, timeRange.bucket]
+    [energyTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
   );
 
   const energyTrendLiveData = useMemo(() => {
@@ -1723,21 +1676,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         if (val <= 0) return;
 
         const date = new Date(d.ts_bucket || d.ts);
+        const siteTz = resolveTimezone(project?.timezone);
+        const p = getPartsInTz(date, siteTz);
         let key: string;
         let label: string;
 
         if (isYear) {
-            key = date.toISOString().slice(0, 7); // YYYY-MM
-            label = date.toLocaleDateString('it-IT', { month: 'short' });
+            key = `${p.year}-${String(p.month).padStart(2,'0')}`; // YYYY-MM
+            label = formatChartLabel(date, '1d', siteTz);
         } else if (isToday) {
-            // Raggruppa per ora
-            const h = String(date.getHours()).padStart(2, '0');
-            key = `${date.toISOString().slice(0, 10)}T${h}`; 
+            const h = String(p.hour).padStart(2, '0');
+            key = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`; 
             label = `${h}:00`;
         } else {
-            // Mese/Settimana -> Giorni
-            key = date.toISOString().slice(0, 10); // YYYY-MM-DD
-            label = date.getDate().toString();
+            key = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
+            label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
         }
 
         if (!groupedMap.has(key)) {
@@ -1860,19 +1813,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
         // Determina il Bucket (X-Axis)
         const date = new Date(d.ts_bucket || d.ts);
+        const siteTz = resolveTimezone(project?.timezone);
+        const p = getPartsInTz(date, siteTz);
         let timeKey = '';
         let label = '';
 
         if (timePeriod === 'year') {
-             timeKey = date.toISOString().slice(0, 7); // YYYY-MM
-             label = date.toLocaleDateString('it-IT', { month: 'short' });
+             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}`;
+             label = formatChartLabel(date, '1d', siteTz);
         } else if (timePeriod === 'today' || timeRange.bucket === '1h') {
-             const h = String(date.getHours()).padStart(2, '0');
-             timeKey = `${date.toISOString().slice(0, 10)}T${h}`;
+             const h = String(p.hour).padStart(2, '0');
+             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`;
              label = `${h}:00`;
         } else {
-             timeKey = date.toISOString().slice(0, 10); // YYYY-MM-DD
-             label = date.getDate().toString();
+             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
+             label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
         }
 
         if (!grouped.has(timeKey)) {
