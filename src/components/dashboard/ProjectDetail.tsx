@@ -1430,20 +1430,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // --- 6. WIDGET: HEATMAP (Matrice Temporale Dinamica) ---
 
-  // ✅ FIX 1: Selezione dei device "general" (tutti i meter principali del sito)
-  // I sensori live producono energy.power_kw (non active_energy), quindi li sommiamo tutti.
+  // ✅ FIX: Selezione ESCLUSIVA dei device con category='general'
+  // Solo i meter principali (PAN12 fisici) del sito, NO Virtual Meter per evitare doppi conteggi
   const heatmapDeviceIds = useMemo(() => {
     if (!siteDevices || siteDevices.length === 0) return [];
 
-    // 1) Preferisci energy_monitor
-    const monitors = siteDevices.filter((d) => d.device_type === 'energy_monitor');
-    if (monitors.length > 0) return monitors.map((d) => d.id);
-
-    // 2) Tutti i device "general" (i 3 PAN12 + Virtual Meter)
-    const generals = siteDevices.filter((d) => (d.category || '').toLowerCase() === 'general');
+    // 1) SOLO device con category = 'general' (esclude Virtual Meter e sotto-circuiti)
+    const generals = siteDevices.filter(
+      (d) => (d.category || '').toLowerCase() === 'general' && !(d.device_id || '').startsWith('VIRT-')
+    );
     if (generals.length > 0) return generals.map((d) => d.id);
 
-    // 3) Fallback: qualunque device energia
+    // 2) Fallback: qualunque device energia
     const anyEnergy = siteDevices.filter((d) => ENERGY_DEVICE_TYPES.includes(d.device_type));
     return anyEnergy.map((d) => d.id);
   }, [siteDevices, ENERGY_DEVICE_TYPES]);
@@ -1488,14 +1486,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return { start, end, bucket, force_table };
   }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
-  // Query ONLY energy.active_energy (kWh) from the correct source table
+  // Query energy.power_kw (kW) from the correct source table
+  // power_kw has continuous hourly data; active_energy is sparse
+  // For 1h bucket: avg kW ≈ kWh consumed in that hour
   const { data: heatmapResp } = useEnergyTimeseries(
     {
       device_ids: heatmapDeviceIds.length > 0 ? heatmapDeviceIds : undefined,
-      site_id: undefined,
+      site_id: project?.siteId,
       start: heatmapConfig.start.toISOString(),
       end: heatmapConfig.end.toISOString(),
-      metrics: ['energy.active_energy'],
+      metrics: ['energy.power_kw'],
       bucket: heatmapConfig.bucket,
       force_table: heatmapConfig.force_table,
     },
@@ -1515,8 +1515,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const bucketMap = new Map<string, number>();
 
     rawData.forEach((d) => {
-      // Use value_sum for active_energy (kWh already accumulated), fallback to value
-      const val = Number(d.value_sum ?? d.value ?? 0);
+      // For power_kw: value_avg (kW) ≈ kWh consumed in 1h bucket
+      // Sum across all general devices to get total site consumption per hour
+      const val = Number(d.value_avg ?? d.value ?? 0);
       if (!Number.isFinite(val) || val <= 0) return;
 
       const parsed = parseTimestamp(d.ts_bucket || d.ts);
