@@ -1437,7 +1437,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     // 1) SOLO device con category = 'general' (esclude Virtual Meter e sotto-circuiti)
     const generals = siteDevices.filter(
-      (d) => (d.category || '').toLowerCase() === 'general' && !(d.device_id || '').startsWith('VIRT-')
+      (d) => (d.category || '').toLowerCase() === 'general'
     );
     if (generals.length > 0) return generals.map((d) => d.id);
 
