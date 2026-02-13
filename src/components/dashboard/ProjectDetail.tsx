@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
@@ -33,7 +34,6 @@ import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { useWellCertification } from "@/hooks/useCertifications";
 
 
 // Dashboard types
@@ -201,8 +201,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
   
-  // WELL certification data
-  const { wellCert, milestones: wellMilestones } = useWellCertification(project?.siteId);
 
   // Get module configuration for this project
   const moduleConfig = useProjectModuleConfig(project);
@@ -4182,102 +4180,39 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
                   </div>
 
-                  {/* WELL Card - Dynamic */}
-                  {(() => {
-                    const wScore = wellCert?.score ?? 54;
-                    const wTarget = wellCert?.target_score ?? 100;
-                    const wType = wellCert?.cert_type ?? 'WELL v2';
-                    const wLevel = wellCert?.level ?? 'Silver';
-                    const wPercent = wTarget > 0 ? Math.round((wScore / wTarget) * 100) : 0;
-                    const levelThresholds = [
-                      { label: 'Bronze', value: 40 },
-                      { label: 'Silver', value: 50 },
-                      { label: 'Gold', value: 60 },
-                      { label: 'Platinum', value: 80 },
-                    ];
-
-                    return (
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                        {/* Header with target badge */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
-                              <span className="text-white font-black text-lg">WELL</span>
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-bold text-gray-800">{wType}</h3>
-                              <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm font-semibold">{wLevel}</span>
-                            </div>
-                          </div>
-                          {/* TARGETED POINTS badge */}
-                          <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Targeted Points</div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm font-bold shadow">
-                              <Gauge className="w-3.5 h-3.5" />
-                              {wTarget} POINTS
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Score bar */}
-                        <div className="space-y-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Punti ottenuti</span>
-                            <span className="font-bold text-gray-800">{wScore} / {wTarget}</span>
-                          </div>
-                          <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all" style={{ width: `${wPercent}%` }} />
-                          </div>
-                          <div className="flex justify-between text-xs text-gray-500 mt-2">
-                            {levelThresholds.map(t => (
-                              <span key={t.label} className={wLevel === t.label ? 'font-bold text-gray-700' : ''}>
-                                {t.label} ({t.value})
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Milestones modules */}
-                        {wellMilestones.length > 0 && (
-                          <div className="mt-5 grid grid-cols-1 gap-3">
-                            {wellMilestones.map((m) => {
-                              const mPercent = m.max_score && m.max_score > 0 ? Math.round(((m.score || 0) / m.max_score) * 100) : 0;
-                              return (
-                                <div key={m.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                  {/* Circular progress */}
-                                  <div className="relative w-12 h-12 flex-shrink-0">
-                                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
-                                      <circle cx="18" cy="18" r="15" fill="none" stroke="#e5e7eb" strokeWidth="3" />
-                                      <circle cx="18" cy="18" r="15" fill="none" stroke="#009193" strokeWidth="3"
-                                        strokeDasharray={`${mPercent * 0.9425} 94.25`}
-                                        strokeLinecap="round" />
-                                    </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-gray-700">
-                                      {mPercent}%
-                                    </span>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-bold text-gray-800 uppercase">{m.category}</div>
-                                    <div className="text-[10px] text-gray-500">{m.score || 0}/{m.max_score || 0} Points</div>
-                                    <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                      <div className="h-full bg-sky-500 rounded-full" style={{ width: `${mPercent}%` }} />
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        <div className="mt-4 pt-3 border-t border-gray-100">
-                          <div className="flex items-center gap-2 text-sm text-amber-600">
-                            <div className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span>In corso verso {wLevel === 'Platinum' ? 'Platinum' : levelThresholds.find(t => t.label === wLevel) ? levelThresholds[levelThresholds.findIndex(t => t.label === wLevel) + 1]?.label || wLevel : 'Gold'}</span>
-                          </div>
-                        </div>
+                  {/* WELL Card */}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
+                        <span className="text-white font-black text-lg">WELL</span>
                       </div>
-                    );
-                  })()}
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">WELL v2</h3>
+                        <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm font-semibold">Silver</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Punti ottenuti</span>
+                        <span className="font-bold text-gray-800">54 / 100</span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all" style={{ width: '54%' }} />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>Bronze (40)</span>
+                        <span className="font-bold text-gray-600">Silver (50)</span>
+                        <span>Gold (60)</span>
+                        <span>Platinum (80)</span>
+                      </div>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-sm text-amber-600">
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span>In corso verso Gold</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Summary Stats */}
