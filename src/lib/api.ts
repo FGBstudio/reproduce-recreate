@@ -813,7 +813,8 @@ export async function fetchEnergyTimeseriesApi(params: {
       .select('ts_hour, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true });
+      .order('ts_hour', { ascending: true })
+      .limit(10000);
 
     query = buildQuery(query);
     const resp = await query;
@@ -825,7 +826,8 @@ export async function fetchEnergyTimeseriesApi(params: {
       .select('ts_day, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true });
+      .order('ts_day', { ascending: true })
+      .limit(10000);
 
     query = buildQuery(query);
     const resp = await query;
