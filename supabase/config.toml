@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.timeseries]
 verify_jwt = false
+
+[functions.geo-timezone]
+verify_jwt = false
