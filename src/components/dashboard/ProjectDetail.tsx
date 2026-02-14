@@ -1050,7 +1050,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [bucketHours, buildEnergySeriesSum, carbonData, isSupabaseConfigured]);
 
   // 1. Chiamata all'hook che fa il join tra energia e meteo
-  const { data: energyOutdoorData, isLoading: isEnergyOutdoorLoading } = useEnergyWeatherAnalysis(
+  const { data: energyOutdoorData, isLoading: isEnergyOutdoorLoading, categoryLabel: energyCategoryLabel } = useEnergyWeatherAnalysis(
     project?.siteId,
     timePeriod,
     dateRange
@@ -1058,32 +1058,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // 2. Preparazione dati per il grafico
   const energyOutdoorLiveData = useMemo(() => {
-    // Se non ho dati reali o API, uso i dati mock (adattandoli alla nuova struttura)
+    // Se non ho dati reali o API, uso i dati mock
     if (!isSupabaseConfigured || (!energyOutdoorData?.length && !isEnergyOutdoorLoading)) {
       return outdoorData.map(d => ({
         time: d.day,
-        hvac: d.hvacOffice, // map mock key
+        energy: d.hvacOffice,
         temperature: d.temperature,
-        humidity: 50 // mock humidity fisso
+        humidity: 50
       }));
     }
     
-    // Mapping dati reali
-    return energyOutdoorData.map(d => ({
-        time: d.label, 
-        hvac: d.hvac,         // kW
-        lighting: d.lighting, // kW
-        general: d.general,   // kW (Fallback)
-        temperature: d.temp,  // °C
-        humidity: d.humidity  // %
-    }));
+    // Real data is already formatted by the hook
+    return energyOutdoorData;
   }, [energyOutdoorData, outdoorData, isEnergyOutdoorLoading, isSupabaseConfigured]);
-
-  // 3. Helper per decidere quali linee mostrare (Se ho sottocontatori mostro quelli, altrimenti Generale)
-  const hasSubMeters = useMemo(() => {
-    if (!energyOutdoorData) return false;
-    return energyOutdoorData.some(d => (d.hvac !== null && d.hvac > 0) || (d.lighting !== null && d.lighting > 0));
-  }, [energyOutdoorData]);
 
   // Water dashboard data
   const waterConsumptionData = useMemo(() => [
@@ -3219,7 +3206,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis 
                             dataKey="time" 
@@ -3229,71 +3216,64 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             minTickGap={30}
                           />
                           
-                          {/* Asse Sinistro: Potenza (kW) - Pulito senza decimali */}
+                          {/* Left Y-Axis: Energy (kWh) */}
                           <YAxis
-                            yAxisId="power"
+                            yAxisId="energy"
                             tick={axisStyle}
                             axisLine={{ stroke: '#e2e8f0' }}
                             tickLine={{ stroke: '#e2e8f0' }}
                             domain={autoDomainWithPadding}
                             tickFormatter={(val) => Math.round(val).toString()}
-                            label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
+                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
                           />
                           
-                          {/* Asse Destro: Meteo (°C / %) - Visibile e formattato */}
+                          {/* Right Y-Axis 1: Temperature (°C) */}
                           <YAxis
                             yAxisId="temp"
                             orientation="right"
-                            tick={axisStyle}
-                            axisLine={{ stroke: '#e2e8f0' }}
-                            tickLine={{ stroke: '#e2e8f0' }}
+                            tick={{ ...axisStyle, fill: '#F59E0B' }}
+                            axisLine={{ stroke: '#F59E0B' }}
+                            tickLine={{ stroke: '#F59E0B' }}
                             domain={['auto', 'auto']}
-                            tickFormatter={(val) => Math.round(val).toString()}
-                            label={{ value: '°C / %', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }}
+                            tickFormatter={(val) => `${Math.round(val)}°`}
                           />
                           
-                          {/* Tooltip: Pulito e senza decimali folli */}
+                          {/* Right Y-Axis 2: Humidity (%) — offset to avoid overlap */}
+                          <YAxis
+                            yAxisId="humidity"
+                            orientation="right"
+                            tick={{ ...axisStyle, fill: '#3b82f6' }}
+                            axisLine={{ stroke: '#3b82f6' }}
+                            tickLine={{ stroke: '#3b82f6' }}
+                            domain={[0, 100]}
+                            tickFormatter={(val) => `${val}%`}
+                            width={40}
+                          />
+                          
                           <Tooltip 
                             {...tooltipStyle} 
-                            formatter={(value: number) => [Math.round(value * 100) / 100, ""]}
+                            formatter={(value: number, name: string) => {
+                              if (name.includes('kWh')) return [`${(Math.round(value * 100) / 100).toLocaleString()} kWh`, name];
+                              if (name.includes('°C')) return [`${Math.round(value * 10) / 10} °C`, name];
+                              if (name.includes('%')) return [`${Math.round(value)}%`, name];
+                              return [value, name];
+                            }}
                           />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           
-                          {/* Linee Energetiche (Asse Sinistro) */}
+                          {/* Energy line (Left axis) */}
                           <Line 
-                            yAxisId="power" 
+                            yAxisId="energy" 
                             type="monotone" 
-                            dataKey="hvac" 
+                            dataKey="energy" 
                             stroke="#006367" 
                             strokeWidth={2.5} 
                             dot={false} 
-                            name="HVAC (kW)" 
+                            name={`${energyCategoryLabel ?? 'HVAC'} (kWh)`}
                             connectNulls
                           />
-                          <Line 
-                            yAxisId="power" 
-                            type="monotone" 
-                            dataKey="lighting" 
-                            stroke="#e63f26" 
-                            strokeWidth={2.5} 
-                            dot={false} 
-                            name="Lighting (kW)" 
-                            connectNulls
-                          />
-                          {!hasSubMeters && (
-                            <Line 
-                              yAxisId="power" 
-                              type="monotone" 
-                              dataKey="general" 
-                              stroke="#009193" 
-                              strokeWidth={2.5} 
-                              dot={false} 
-                              name="General (kW)" 
-                              connectNulls
-                            />
-                          )}
                         
-                          {/* Linee Meteo (Asse Destro) */}
+                          {/* Temperature (Right axis 1) */}
                           <Line 
                             yAxisId="temp" 
                             type="monotone" 
@@ -3304,8 +3284,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             name="Temp (°C)" 
                             connectNulls
                           />
+                          {/* Humidity (Right axis 2) */}
                           <Line 
-                            yAxisId="temp" 
+                            yAxisId="humidity" 
                             type="monotone" 
                             dataKey="humidity" 
                             stroke="#3b82f6" 
@@ -3313,6 +3294,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             dot={false} 
                             name="Humidity (%)" 
                             connectNulls
+                            strokeDasharray="4 2"
                           />
                         </LineChart>
                       </ResponsiveContainer>
@@ -4536,15 +4518,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title="Energy vs Outdoor Condition"
       >
         <ResponsiveContainer width="100%" height={500}>
-          <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 80, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis yAxisId="left" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" />
-            <YAxis yAxisId="right" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" °C" />
+            <YAxis yAxisId="energy" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft' }} />
+            <YAxis yAxisId="temp" orientation="right" tick={{ ...axisStyle, fill: '#F59E0B' }} axisLine={{ stroke: '#F59E0B' }} tickLine={{ stroke: '#F59E0B' }} tickFormatter={(val) => `${Math.round(val)}°`} />
+            <YAxis yAxisId="humidity" orientation="right" tick={{ ...axisStyle, fill: '#3b82f6' }} axisLine={{ stroke: '#3b82f6' }} tickLine={{ stroke: '#3b82f6' }} domain={[0, 100]} tickFormatter={(val) => `${val}%`} width={40} />
             <Tooltip {...tooltipStyle} />
             <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="energy" stroke="#129E97" strokeWidth={2} name="Energy (kWh)" />
-            <Line yAxisId="right" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} name="Temperature (°C)" />
+            <Line yAxisId="energy" type="monotone" dataKey="energy" stroke="#006367" strokeWidth={2} dot={false} name={`${energyCategoryLabel ?? 'HVAC'} (kWh)`} connectNulls />
+            <Line yAxisId="temp" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} dot={false} name="Temp (°C)" connectNulls />
+            <Line yAxisId="humidity" type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Humidity (%)" connectNulls strokeDasharray="4 2" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>

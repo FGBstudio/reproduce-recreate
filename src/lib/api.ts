@@ -1007,11 +1007,11 @@ export async function fetchWeatherTimeseriesApi(params: {
   // Assuming 'weather_data' has columns: id, site_id, ts, temperature_c, humidity_percent
   const { data, error } = await supabase
     .from('weather_data')
-    .select('ts, temperature_c, humidity_percent')
+    .select('timestamp, temperature_c, humidity_percent')
     .eq('site_id', params.site_id)
-    .gte('ts', params.start)
-    .lte('ts', params.end)
-    .order('ts', { ascending: true })
+    .gte('timestamp', params.start)
+    .lte('timestamp', params.end)
+    .order('timestamp', { ascending: true })
     .limit(50000); // Safety limit
 
   if (error) {
@@ -1038,7 +1038,7 @@ export async function fetchWeatherTimeseriesApi(params: {
     const map = new Map<string, { tempSum: number, humSum: number, count: number }>();
 
     for (const r of rows) {
-      const key = bucketIso(r.ts);
+      const key = bucketIso(r.timestamp);
       const entry = map.get(key);
       if (!entry) {
         map.set(key, { tempSum: r.temperature_c, humSum: r.humidity_percent, count: 1 });
@@ -1085,8 +1085,8 @@ export async function fetchWeatherTimeseriesApi(params: {
     // Map raw data directly
     formattedData = rawRows.flatMap(row => [
       {
-        ts_bucket: row.ts,
-        ts: row.ts,
+        ts_bucket: row.timestamp,
+        ts: row.timestamp,
         device_id: 'weather',
         metric: 'weather.temperature',
         value: row.temperature_c,
@@ -1094,8 +1094,8 @@ export async function fetchWeatherTimeseriesApi(params: {
         sample_count: 1
       },
       {
-        ts_bucket: row.ts,
-        ts: row.ts,
+        ts_bucket: row.timestamp,
+        ts: row.timestamp,
         device_id: 'weather',
         metric: 'weather.humidity',
         value: row.humidity_percent,

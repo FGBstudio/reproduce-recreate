@@ -18,6 +18,8 @@ import {
 } from "date-fns";
 import { it } from "date-fns/locale";
 import { useEnergyTimeseries, useWeatherTimeseries } from "../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export type TimePeriod = "today" | "week" | "month" | "year" | "custom";
 
@@ -81,8 +83,8 @@ export const getTimeRangeParams = (timePeriod: TimePeriod, dateRange?: DateRange
 
 /**
  * Hook for Energy vs Outdoor Conditions Chart
- * Fetches Energy (HVAC, Lighting, Total) + Weather (Temp, Humidity)
- * Joins data on timestamp
+ * Fetches HVAC energy (kWh) from energy_hourly/energy_daily + Weather (Temp, Humidity) from weather_data
+ * Falls back to 'general' category if no HVAC devices exist for the site
  */
 export const useEnergyWeatherAnalysis = (
   siteId: string | undefined, 
@@ -94,17 +96,74 @@ export const useEnergyWeatherAnalysis = (
     [timePeriod, dateRange]
   );
 
-  // 1. Fetch Energy Data
-  const { data: energyResponse, isLoading: isEnergyLoading } = useEnergyTimeseries({
-    site_id: siteId,
-    // Request specific sub-meters + total power for fallback
-    metrics: ['energy.hvac_kw', 'energy.lighting_kw', 'energy.power_kw'],
-    start,
-    end,
-    bucket
+  // Determine table routing: ≤31 days → energy_hourly, >31 days → energy_daily
+  const startDate = useMemo(() => new Date(start), [start]);
+  const endDate = useMemo(() => new Date(end), [end]);
+  const diffDays = useMemo(() => (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24), [startDate, endDate]);
+  const useDaily = diffDays > 31;
+
+  // 1. Fetch devices for this site: prefer HVAC, fallback to general
+  const { data: deviceInfo } = useQuery({
+    queryKey: ['outdoor-chart-devices', siteId],
+    queryFn: async () => {
+      if (!supabase || !siteId) return null;
+      const { data: devices } = await supabase
+        .from('devices')
+        .select('id, category')
+        .eq('site_id', siteId)
+        .in('category', ['hvac', 'general']);
+      if (!devices || devices.length === 0) return null;
+      const hvacDevices = devices.filter(d => d.category === 'hvac');
+      const generalDevices = devices.filter(d => d.category === 'general');
+      const useHvac = hvacDevices.length > 0;
+      return {
+        deviceIds: useHvac ? hvacDevices.map(d => d.id) : generalDevices.map(d => d.id),
+        category: useHvac ? 'hvac' as const : 'general' as const,
+      };
+    },
+    enabled: !!siteId,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // 2. Fetch Weather Data (from weather_data table)
+  // 2. Fetch energy data from energy_hourly or energy_daily
+  const { data: energyRows, isLoading: isEnergyLoading } = useQuery({
+    queryKey: ['outdoor-chart-energy', siteId, deviceInfo?.deviceIds, start, end, useDaily],
+    queryFn: async () => {
+      if (!supabase || !deviceInfo?.deviceIds?.length) return [];
+      const table = useDaily ? 'energy_daily' : 'energy_hourly';
+      const tsCol = useDaily ? 'ts_day' : 'ts_hour';
+      const metrics = deviceInfo.category === 'hvac' 
+        ? ['energy.hvac_kw', 'energy.active_energy'] 
+        : ['energy.power_kw', 'energy.active_energy'];
+      
+      // Batch device IDs to avoid URL limits
+      const allRows: any[] = [];
+      const batchSize = 30;
+      for (let i = 0; i < deviceInfo.deviceIds.length; i += batchSize) {
+        const batch = deviceInfo.deviceIds.slice(i, i + batchSize);
+        const selectCols = useDaily
+          ? `${tsCol}, device_id, metric, value_avg, value_sum`
+          : `${tsCol}, device_id, metric, value_avg, value_sum`;
+        
+        const { data, error } = await supabase
+          .from(table)
+          .select(selectCols)
+          .in('device_id', batch)
+          .in('metric', metrics)
+          .gte(tsCol, useDaily ? start.slice(0, 10) : start)
+          .lt(tsCol, useDaily ? end.slice(0, 10) : end)
+          .order(tsCol, { ascending: true })
+          .limit(10000);
+        
+        if (!error && data) allRows.push(...data);
+      }
+      return allRows;
+    },
+    enabled: !!deviceInfo?.deviceIds?.length,
+    staleTime: 60 * 1000,
+  });
+
+  // 3. Fetch Weather Data
   const { data: weatherResponse, isLoading: isWeatherLoading } = useWeatherTimeseries({
     site_id: siteId || '',
     start,
@@ -112,76 +171,87 @@ export const useEnergyWeatherAnalysis = (
     bucket
   });
 
-  // 3. Join & Format Data
-  const joinedData = useMemo(() => {
-    if (!energyResponse?.data && !weatherResponse?.data) return [];
+  // 4. Join & Format
+  const { joinedData, categoryLabel } = useMemo(() => {
+    const map = new Map<string, { timestamp: string; energy: number; temp: number | null; humidity: number | null }>();
+    const tsCol = useDaily ? 'ts_day' : 'ts_hour';
 
-    const map = new Map<string, any>();
-
-    // Helper per normalizzare il timestamp in base al bucket (Rende la logica elastica)
-    const getNormalizedTs = (rawTs: string) => {
-      const d = new Date(rawTs);
-      d.setSeconds(0, 0); // Azzera i secondi per tolleranza
-      if (bucket === '1h') d.setMinutes(0, 0, 0);
-      else if (bucket === '15m') d.setMinutes(Math.floor(d.getMinutes() / 15) * 15, 0, 0);
-      else if (bucket === '1d') d.setHours(0, 0, 0, 0);
+    // Normalize timestamp to bucket boundary
+    const normTs = (raw: string) => {
+      const d = new Date(raw);
+      if (useDaily) {
+        // Daily: normalize to YYYY-MM-DDT00:00:00.000Z
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}T00:00:00.000Z`;
+      }
+      // Hourly
+      d.setUTCMinutes(0, 0, 0);
       return d.toISOString();
     };
 
     const getEntry = (rawTs: string) => {
-      const ts = getNormalizedTs(rawTs);
+      const ts = normTs(rawTs);
       if (!map.has(ts)) {
-        map.set(ts, { 
-          timestamp: ts,
-          // Label dinamica: include la data se non è la vista giornaliera per evitare "1:00" ripetuti
-          label: format(
-            new Date(ts), 
-            bucket === '1d' ? 'dd MMM' : 
-            (timePeriod === 'today' ? 'HH:mm' : 'dd/MM HH:mm'), 
-            { locale: it }
-          ),
-          hvac: null, 
-          lighting: null, 
-          general: null, 
-          temp: null, 
-          humidity: null 
-        });
+        map.set(ts, { timestamp: ts, energy: 0, temp: null, humidity: null });
       }
-      return map.get(ts);
+      return map.get(ts)!;
     };
 
-    // Process Energy
-    energyResponse?.data.forEach(p => {
-      const ts = p.ts_bucket || p.ts || (p as any).ts_hour || (p as any).ts_day;
-      if (!ts) return;
-      const entry = getEntry(ts);
-      const val = p.value_avg ?? p.value;
-      
-      if (p.metric === 'energy.hvac_kw') entry.hvac = val;
-      else if (p.metric === 'energy.lighting_kw') entry.lighting = val;
-      else if (p.metric === 'energy.power_kw') entry.general = val;
-    });
+    // Process energy: sum value_sum (kWh) across devices per bucket
+    // For hourly tables: kWh ≈ kW * 1 (1 hour bucket) → value_avg is in kW, so kWh = value_avg * 1
+    // For daily tables: value_sum contains total kWh
+    if (energyRows && energyRows.length > 0) {
+      for (const row of energyRows) {
+        const ts = row[tsCol];
+        if (!ts) continue;
+        const entry = getEntry(ts);
+        // Prefer value_sum for kWh; fallback to value_avg (kW) * bucket_hours
+        const kWh = row.value_sum != null ? Number(row.value_sum) 
+          : row.value_avg != null ? Number(row.value_avg) * (useDaily ? 24 : 1) 
+          : 0;
+        entry.energy += kWh;
+      }
+    }
 
-    // Process Weather
-    weatherResponse?.data.forEach(p => {
-      const ts = p.ts_bucket || p.ts;
-      if (!ts) return;
-      const entry = getEntry(ts);
-      const val = p.value_avg ?? p.value;
+    // Process weather
+    if (weatherResponse?.data) {
+      for (const p of weatherResponse.data) {
+        const ts = p.ts_bucket || p.ts;
+        if (!ts) continue;
+        const entry = getEntry(ts);
+        const val = p.value_avg ?? p.value;
+        if (p.metric === 'weather.temperature') entry.temp = val != null ? Number(val) : null;
+        else if (p.metric === 'weather.humidity') entry.humidity = val != null ? Number(val) : null;
+      }
+    }
 
-      if (p.metric === 'weather.temperature') entry.temp = val;
-      else if (p.metric === 'weather.humidity') entry.humidity = val;
-    });
-
-    return Array.from(map.values())
+    // Format for chart
+    const sorted = Array.from(map.values())
+      .filter(e => e.energy > 0 || e.temp !== null || e.humidity !== null)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  }, [energyResponse, weatherResponse, bucket, timePeriod]);
+    const formatted = sorted.map(e => ({
+      time: format(
+        new Date(e.timestamp),
+        useDaily ? 'dd MMM' : (timePeriod === 'today' ? 'HH:mm' : 'dd/MM HH:mm'),
+        { locale: it }
+      ),
+      timestamp: e.timestamp,
+      energy: e.energy > 0 ? Math.round(e.energy * 100) / 100 : null,
+      temperature: e.temp !== null ? Math.round(e.temp * 10) / 10 : null,
+      humidity: e.humidity !== null ? Math.round(e.humidity) : null,
+    }));
+
+    return {
+      joinedData: formatted,
+      categoryLabel: deviceInfo?.category === 'hvac' ? 'HVAC' : 'General',
+    };
+  }, [energyRows, weatherResponse, useDaily, timePeriod, deviceInfo]);
 
   return {
     data: joinedData,
     isLoading: isEnergyLoading || isWeatherLoading,
-    isEmpty: joinedData.length === 0
+    isEmpty: joinedData.length === 0,
+    categoryLabel,
   };
 };
 
