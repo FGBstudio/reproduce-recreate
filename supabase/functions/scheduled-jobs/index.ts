@@ -69,13 +69,24 @@ Deno.serve(async (req) => {
         results.push({ job: 'energy_sync', status: 'success', details: syncData })
       }
 
-      // Run hourly energy aggregation
-      const { data: energyData, error: energyError } = await supabase.rpc('aggregate_energy_hourly')
-      
-      if (energyError) {
-        results.push({ job: 'energy_hourly', status: 'error', details: energyError.message })
-      } else {
-        results.push({ job: 'energy_hourly', status: 'success', details: energyData })
+      // Run energy hourly aggregation for the LAST 6 HOURS
+      // This covers retroactive data uploaded every 3h that includes previous hours
+      const now = new Date()
+      for (let i = 1; i <= 6; i++) {
+        const hourToAggregate = new Date(now)
+        hourToAggregate.setMinutes(0, 0, 0)
+        hourToAggregate.setHours(hourToAggregate.getHours() - i)
+        const hourISO = hourToAggregate.toISOString()
+        
+        const { data: energyData, error: energyError } = await supabase.rpc('aggregate_energy_hourly', {
+          p_hour: hourISO
+        })
+        
+        if (energyError) {
+          results.push({ job: `energy_hourly_h-${i}`, status: 'error', details: energyError.message })
+        } else {
+          results.push({ job: `energy_hourly_h-${i}`, status: 'success', details: energyData })
+        }
       }
     }
 
@@ -89,13 +100,22 @@ Deno.serve(async (req) => {
         results.push({ job: 'daily', status: 'success', details: data })
       }
 
-      // Run daily energy aggregation
-      const { data: energyData, error: energyError } = await supabase.rpc('aggregate_energy_daily')
-      
-      if (energyError) {
-        results.push({ job: 'energy_daily', status: 'error', details: energyError.message })
-      } else {
-        results.push({ job: 'energy_daily', status: 'success', details: energyData })
+      // Run energy daily aggregation for the LAST 3 DAYS
+      // This covers retroactive data and ensures no gaps in daily aggregates
+      for (let i = 0; i < 3; i++) {
+        const dayToAggregate = new Date()
+        dayToAggregate.setDate(dayToAggregate.getDate() - i)
+        const dayISO = dayToAggregate.toISOString().split('T')[0] // YYYY-MM-DD
+        
+        const { data: energyData, error: energyError } = await supabase.rpc('aggregate_energy_daily', {
+          p_date: dayISO
+        })
+        
+        if (energyError) {
+          results.push({ job: `energy_daily_d-${i}`, status: 'error', details: energyError.message })
+        } else {
+          results.push({ job: `energy_daily_d-${i}`, status: 'success', details: energyData })
+        }
       }
     }
 
