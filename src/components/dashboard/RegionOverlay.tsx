@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { regions, projects as allProjects } from "@/lib/data";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import { useAllProjects } from "@/hooks/useRealTimeData";
+import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
 
 interface RegionOverlayProps {
   currentRegion: string;
@@ -23,21 +24,8 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
   // Get real aggregated data for region's sites
   const aggregated = useAggregatedSiteData(regionProjects);
 
-  // Energy intensity: avg kWh/m² across sites with area
-  const avgIntensity = useMemo(() => {
-    if (aggregated.sitesWithEnergy.length === 0) return null;
-    let totalIntensity = 0;
-    let count = 0;
-    aggregated.sitesWithEnergy.forEach(site => {
-      const project = regionProjects.find(p => p.siteId === site.siteId);
-      const area = project?.area_m2;
-      if (area && area > 0 && site.energy.weeklyKwh) {
-        totalIntensity += site.energy.weeklyKwh / area;
-        count++;
-      }
-    });
-    return count > 0 ? Math.round(totalIntensity / count * 10) / 10 : null;
-  }, [aggregated.sitesWithEnergy, regionProjects]);
+  // Get REAL energy intensity from dedicated hook (category=general, 30 days, kWh/m²)
+  const { intensityByRegion, siteCountByRegion } = useRegionEnergyIntensity();
 
   // Air quality score based on avg CO2
   const avgCo2 = aggregated.totals.avgCo2;
@@ -51,9 +39,12 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
 
   if (currentRegion === "GLOBAL" || !region) return null;
 
-  // Use real data if available, fallback to static
+  // Use REAL intensity from dedicated hook, fallback to static only if no real data
+  const realIntensity = intensityByRegion[currentRegion];
+  const realSiteCount = siteCountByRegion[currentRegion] ?? 0;
   const sitesCount = regionProjects.length;
-  const displayIntensity = avgIntensity ?? region.kpi?.intensity ?? 0;
+  const displayIntensity = realIntensity ?? region.kpi?.intensity ?? 0;
+  const hasRealIntensity = realIntensity !== undefined;
   const displayAq = aqScore ?? region.kpi?.aq ?? "GOOD";
   const displayOnline = aggregated.hasRealData ? aggregated.totals.sitesOnline : (region.kpi?.online ?? 0);
   const displayCritical = aggregated.hasRealData ? aggregated.totals.alertsCritical : (region.kpi?.critical ?? 0);
@@ -129,7 +120,11 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
 
         <div className="mt-6 pt-4 border-t border-white/10 text-center">
           <p className="text-xs text-muted-foreground italic">
-            {aggregated.hasRealData ? `${sitesCount} sites in region · Live data` : "Select a pin on the map to view project details."}
+            {hasRealIntensity 
+              ? `${realSiteCount} sites with energy data · 30-day avg · Live` 
+              : aggregated.hasRealData 
+                ? `${sitesCount} sites in region · Live data` 
+                : "Select a pin on the map to view project details."}
           </p>
         </div>
       </div>
