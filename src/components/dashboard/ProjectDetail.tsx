@@ -34,7 +34,7 @@ import { OverviewSection } from "./OverviewSection";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
@@ -204,7 +204,23 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
-  
+
+  // Fetch latest outdoor temperature from weather_data
+  const [outdoorTemp, setOutdoorTemp] = useState<number | null>(null);
+  useEffect(() => {
+    if (!project?.siteId || !isSupabaseConfigured || !supabase) return;
+    supabase
+      .from('weather_data')
+      .select('temperature_c')
+      .eq('site_id', project.siteId)
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0 && data[0].temperature_c != null) {
+          setOutdoorTemp(Math.round(data[0].temperature_c));
+        }
+      });
+  }, [project?.siteId]);
   // WELL certification data
   const { wellCert, milestones: wellMilestones } = useWellCertification(project?.siteId);
   
@@ -2369,7 +2385,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <span className="truncate max-w-[150px] md:max-w-none">{project.address}</span>
             <span className="text-gray-400 hidden sm:inline">|</span>
             <span className="flex items-center gap-1">
-              {project.data.temp}° <Cloud className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              {outdoorTemp ?? project.data.temp}° <Cloud className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </span>
             {/* Brand & Holding Info - Dinamico */}
             {brand && (
