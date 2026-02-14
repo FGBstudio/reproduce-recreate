@@ -46,30 +46,38 @@ async function fetchRegionIntensities(): Promise<{
     return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
   }
 
+  // Build a siteId→site map for quick lookup
+  const allSiteMap = new Map(allSites.map(s => [s.id, s]));
+
   // Sites with area for energy intensity
   const sitesWithArea = allSites.filter(s => s.area_m2 && Number(s.area_m2) > 0);
-  const allSiteIds = allSites.map(s => s.id);
   const siteIdsWithArea = sitesWithArea.map(s => s.id);
 
-  // 2) Get devices with category='general' for energy
-  const { data: devices, error: devError } = await supabase
-    .from('devices')
-    .select('id, site_id')
-    .in('site_id', siteIdsWithArea)
-    .eq('category', 'general');
+  // 2) Get devices with category='general' for energy (batched to avoid URL length limits)
+  let devices: { id: string; site_id: string | null }[] = [];
+  const energyBatchSize = 50;
+  for (let i = 0; i < siteIdsWithArea.length; i += energyBatchSize) {
+    const batch = siteIdsWithArea.slice(i, i + energyBatchSize);
+    const { data, error } = await supabase
+      .from('devices')
+      .select('id, site_id')
+      .in('site_id', batch)
+      .eq('category', 'general');
+    if (!error && data) devices = devices.concat(data);
+  }
 
-  // 3) Get air quality devices for CO2
-  const { data: aqDevices, error: aqDevError } = await supabase
+  // 3) Get ALL air quality devices (no site filter to avoid URL length issues)
+  const { data: aqDevices, error: aqDevErr } = await supabase
     .from('devices')
     .select('id, site_id')
-    .in('site_id', allSiteIds)
-    .eq('device_type', 'air_quality');
+    .eq('device_type', 'air_quality')
+    .not('site_id', 'is', null);
 
   // --- ENERGY INTENSITY ---
   const intensityByRegion: Record<string, number> = {};
   const siteCountByRegion: Record<string, number> = {};
 
-  if (!devError && devices && devices.length > 0) {
+  if (devices && devices.length > 0) {
     const deviceIds = devices.map(d => d.id);
     const deviceToSite: Record<string, string> = {};
     devices.forEach(d => { deviceToSite[d.id] = d.site_id!; });
@@ -94,10 +102,10 @@ async function fetchRegionIntensities(): Promise<{
       siteKwh[siteId] = (siteKwh[siteId] || 0) + Number(row.value_sum);
     });
 
-    const siteMap = new Map(sitesWithArea.map(s => [s.id, s]));
+    const siteMapEnergy = new Map(sitesWithArea.map(s => [s.id, s]));
     const regionIntensities: Record<string, number[]> = {};
     Object.entries(siteKwh).forEach(([siteId, kwh]) => {
-      const site = siteMap.get(siteId);
+      const site = siteMapEnergy.get(siteId);
       if (!site || !site.region || !site.area_m2 || site.area_m2 <= 0) return;
       if (kwh <= 0) return;
       const intensity = kwh / Number(site.area_m2);
@@ -116,10 +124,12 @@ async function fetchRegionIntensities(): Promise<{
   const avgCo2ByRegion: Record<string, number> = {};
   const co2SiteCountByRegion: Record<string, number> = {};
 
-  if (!aqDevError && aqDevices && aqDevices.length > 0) {
-    const aqDeviceIds = aqDevices.map(d => d.id);
+  if (!aqDevErr && aqDevices && aqDevices.length > 0) {
+    // Filter to only devices whose site has a region
+    const aqDevicesInRegion = aqDevices.filter(d => d.site_id && allSiteMap.has(d.site_id));
+    const aqDeviceIds = aqDevicesInRegion.map(d => d.id);
     const aqDeviceToSite: Record<string, string> = {};
-    aqDevices.forEach(d => { aqDeviceToSite[d.id] = d.site_id!; });
+    aqDevicesInRegion.forEach(d => { aqDeviceToSite[d.id] = d.site_id!; });
 
     // Fetch avg CO2 from telemetry_daily (last 30 days, metric = 'iaq.co2' or 'CO2')
     let co2Rows: any[] = [];
@@ -147,10 +157,9 @@ async function fetchRegionIntensities(): Promise<{
     });
 
     // Avg CO2 per site → then avg per region
-    const siteMap = new Map(allSites.map(s => [s.id, s]));
     const regionCo2: Record<string, number[]> = {};
     Object.entries(siteCo2Values).forEach(([siteId, values]) => {
-      const site = siteMap.get(siteId);
+      const site = allSiteMap.get(siteId);
       if (!site || !site.region) return;
       const siteAvg = values.reduce((a, b) => a + b, 0) / values.length;
       if (!regionCo2[site.region]) regionCo2[site.region] = [];
