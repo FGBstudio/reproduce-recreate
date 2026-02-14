@@ -46,8 +46,19 @@ async function fetchRegionIntensities(): Promise<{
     return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
   }
 
-  // Build a siteId→site map for quick lookup
-  const allSiteMap = new Map(allSites.map(s => [s.id, s]));
+  // Normalize region names to dashboard codes
+  const normalizeRegion = (r: string | null): string | null => {
+    if (!r) return null;
+    const upper = r.toUpperCase();
+    if (upper === 'EUROPE' || upper === 'EU') return 'EU';
+    if (upper === 'AMERICA' || upper === 'AMER' || upper === 'AMERICAS') return 'AMER';
+    if (upper === 'APAC' || upper === 'ASIA-PACIFIC' || upper === 'ASIA PACIFIC') return 'APAC';
+    if (upper === 'MEA' || upper === 'MIDDLE EAST' || upper === 'MIDDLE-EAST') return 'MEA';
+    return r;
+  };
+
+  // Build a siteId→site map with normalized regions
+  const allSiteMap = new Map(allSites.map(s => [s.id, { ...s, region: normalizeRegion(s.region) }]));
 
   // Sites with area for energy intensity
   const sitesWithArea = allSites.filter(s => s.area_m2 && Number(s.area_m2) > 0);
@@ -102,11 +113,10 @@ async function fetchRegionIntensities(): Promise<{
       siteKwh[siteId] = (siteKwh[siteId] || 0) + Number(row.value_sum);
     });
 
-    const siteMapEnergy = new Map(sitesWithArea.map(s => [s.id, s]));
     const regionIntensities: Record<string, number[]> = {};
     Object.entries(siteKwh).forEach(([siteId, kwh]) => {
-      const site = siteMapEnergy.get(siteId);
-      if (!site || !site.region || !site.area_m2 || site.area_m2 <= 0) return;
+      const site = allSiteMap.get(siteId);
+      if (!site || !site.region || !site.area_m2 || Number(site.area_m2) <= 0) return;
       if (kwh <= 0) return;
       const intensity = kwh / Number(site.area_m2);
       if (!regionIntensities[site.region]) regionIntensities[site.region] = [];
