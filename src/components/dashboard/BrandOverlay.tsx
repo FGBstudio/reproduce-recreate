@@ -54,15 +54,23 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   } = useAggregatedSiteData(filteredProjects);
 
   // Build chart data from REAL data only
-  // Now using weeklyKwh (kWh consumption) instead of instantaneous kW
+  // Energy in kWh (7 days) — show total per site, with HVAC/Lighting breakdown if available
   const energyComparisonData = useMemo(() => {
-    return sitesWithEnergy.map(site => ({
-      name: site.siteName.split(' ').slice(-1)[0],
-      fullName: site.siteName,
-      hvac: site.energy.hvacKwh ?? 0,
-      light: site.energy.lightingKwh ?? 0,
-      total: site.energy.weeklyKwh ?? 0,
-    }));
+    return sitesWithEnergy.map(site => {
+      const hvac = site.energy.hvacKwh ?? 0;
+      const light = site.energy.lightingKwh ?? 0;
+      const total = site.energy.weeklyKwh ?? 0;
+      // "Other" = total minus known sub-categories
+      const other = Math.max(0, total - hvac - light);
+      return {
+        name: site.siteName.split(' ').slice(-1)[0],
+        fullName: site.siteName,
+        hvac,
+        light,
+        other,
+        total,
+      };
+    });
   }, [sitesWithEnergy]);
 
   const airQualityComparisonData = useMemo(() => {
@@ -74,11 +82,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
     }));
   }, [sitesWithAir]);
 
-  // Radar chart combines sites that have both energy AND air data
+  // Radar chart: use all sites with energy data, enriched with air data if available
   const sitesWithBothData = useMemo(() => {
-    return sitesWithEnergy.filter(site => 
-      sitesWithAir.some(airSite => airSite.siteId === site.siteId)
-    ).map(site => {
+    return sitesWithEnergy.map(site => {
       const airData = sitesWithAir.find(s => s.siteId === site.siteId);
       return {
         ...site,
@@ -158,9 +164,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   }
 
   // Show charts only if we have real data from multiple sites
-  const showEnergyChart = energyComparisonData.length > 1;
-  const showAirChart = airQualityComparisonData.length > 1;
-  const showRadarChart = sitesWithBothData.length > 1;
+  const showEnergyChart = energyComparisonData.length >= 1;
+  const showAirChart = airQualityComparisonData.length >= 1;
+  const showRadarChart = sitesWithBothData.length >= 2;
   const showAnyChart = showEnergyChart || showAirChart || showRadarChart;
 
   return (
@@ -287,7 +293,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {showEnergyChart && (
               <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
                 <div className="flex items-center gap-2 mb-2 md:mb-3">
-                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Energy Consumption (kW)</h4>
+                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Energy Consumption (kWh, 7gg)</h4>
                   <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
                 </div>
                 <ResponsiveContainer width="100%" height={120} className="md:hidden">
@@ -301,7 +307,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                       itemStyle={{ color: '#64748b' }}
                     />
                     <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="other" stackId="a" fill="hsl(43, 70%, 50%)" name="Other" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
                 <ResponsiveContainer width="100%" height={180} className="hidden md:block">
@@ -315,7 +322,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                       itemStyle={{ color: '#64748b' }}
                     />
                     <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 35%)" name="HVAC" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="light" stackId="a" fill="hsl(338, 50%, 50%)" name="Lighting" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="other" stackId="a" fill="hsl(43, 70%, 50%)" name="Other" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
