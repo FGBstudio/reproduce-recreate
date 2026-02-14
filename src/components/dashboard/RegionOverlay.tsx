@@ -25,17 +25,21 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
   const aggregated = useAggregatedSiteData(regionProjects);
 
   // Get REAL energy intensity from dedicated hook (category=general, 30 days, kWh/m²)
-  const { intensityByRegion, siteCountByRegion } = useRegionEnergyIntensity();
+  const { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion } = useRegionEnergyIntensity();
+
+  // Use REAL CO2 from dedicated hook
+  const realAvgCo2 = avgCo2ByRegion[currentRegion];
+  const hasRealCo2 = realAvgCo2 !== undefined;
+  const displayCo2 = realAvgCo2 ?? aggregated.totals.avgCo2 ?? 0;
 
   // Air quality score based on avg CO2
-  const avgCo2 = aggregated.totals.avgCo2;
   const aqScore = useMemo(() => {
-    if (!avgCo2 || avgCo2 === 0) return null;
-    if (avgCo2 < 400) return "EXCELLENT";
-    if (avgCo2 < 600) return "GOOD";
-    if (avgCo2 < 1000) return "MODERATE";
+    if (!displayCo2 || displayCo2 === 0) return null;
+    if (displayCo2 < 400) return "EXCELLENT";
+    if (displayCo2 < 600) return "GOOD";
+    if (displayCo2 < 1000) return "MODERATE";
     return "POOR";
-  }, [avgCo2]);
+  }, [displayCo2]);
 
   if (currentRegion === "GLOBAL" || !region) return null;
 
@@ -92,9 +96,9 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
               <span className="text-sm text-muted-foreground">Air Quality Score</span>
               <span className={`text-xl font-bold ${aqColorClass}`}>{displayAq}</span>
             </div>
-            {avgCo2 > 0 && (
+            {displayCo2 > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
-                Avg CO₂: {avgCo2} ppm
+                Avg CO₂: {displayCo2} ppm{hasRealCo2 ? ` · ${co2SiteCountByRegion[currentRegion] ?? 0} sites` : ''}
               </div>
             )}
             <div className="flex gap-1 mt-2">
@@ -120,8 +124,8 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
 
         <div className="mt-6 pt-4 border-t border-white/10 text-center">
           <p className="text-xs text-muted-foreground italic">
-            {hasRealIntensity 
-              ? `${realSiteCount} sites with energy data · 30-day avg · Live` 
+            {(hasRealIntensity || hasRealCo2)
+              ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} sites with real data · 30-day avg · Live` 
               : aggregated.hasRealData 
                 ? `${sitesCount} sites in region · Live data` 
                 : "Select a pin on the map to view project details."}

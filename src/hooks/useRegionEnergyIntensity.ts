@@ -16,101 +16,157 @@ export interface RegionIntensityData {
   intensityByRegion: Record<string, number>;
   /** region code → number of sites considered */
   siteCountByRegion: Record<string, number>;
+  /** region code → avg CO2 ppm */
+  avgCo2ByRegion: Record<string, number>;
+  /** region code → number of sites with CO2 data */
+  co2SiteCountByRegion: Record<string, number>;
   isLoading: boolean;
 }
 
 async function fetchRegionIntensities(): Promise<{
   intensityByRegion: Record<string, number>;
   siteCountByRegion: Record<string, number>;
+  avgCo2ByRegion: Record<string, number>;
+  co2SiteCountByRegion: Record<string, number>;
 }> {
-  if (!supabase) return { intensityByRegion: {}, siteCountByRegion: {} };
+  if (!supabase) return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-  // 1) Get all sites with area
-  const { data: sites, error: sitesError } = await supabase
+  // 1) Get ALL sites with region (for both energy + AQ)
+  const { data: allSites, error: sitesError } = await supabase
     .from('sites')
     .select('id, region, area_m2')
-    .not('area_m2', 'is', null)
-    .gt('area_m2', 0);
+    .not('region', 'is', null);
 
-  if (sitesError || !sites || sites.length === 0) {
-    console.warn('[useRegionEnergyIntensity] No sites with area_m2:', sitesError);
-    return { intensityByRegion: {}, siteCountByRegion: {} };
+  if (sitesError || !allSites || allSites.length === 0) {
+    console.warn('[useRegionEnergyIntensity] No sites:', sitesError);
+    return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
   }
 
-  const siteIds = sites.map(s => s.id);
+  // Sites with area for energy intensity
+  const sitesWithArea = allSites.filter(s => s.area_m2 && Number(s.area_m2) > 0);
+  const allSiteIds = allSites.map(s => s.id);
+  const siteIdsWithArea = sitesWithArea.map(s => s.id);
 
-  // 2) Get devices with category='general' for those sites
+  // 2) Get devices with category='general' for energy
   const { data: devices, error: devError } = await supabase
     .from('devices')
     .select('id, site_id')
-    .in('site_id', siteIds)
+    .in('site_id', siteIdsWithArea)
     .eq('category', 'general');
 
-  if (devError || !devices || devices.length === 0) {
-    console.warn('[useRegionEnergyIntensity] No general devices:', devError);
-    return { intensityByRegion: {}, siteCountByRegion: {} };
-  }
+  // 3) Get air quality devices for CO2
+  const { data: aqDevices, error: aqDevError } = await supabase
+    .from('devices')
+    .select('id, site_id')
+    .in('site_id', allSiteIds)
+    .eq('device_type', 'air_quality');
 
-  const deviceIds = devices.map(d => d.id);
-  const deviceToSite: Record<string, string> = {};
-  devices.forEach(d => { deviceToSite[d.id] = d.site_id!; });
-
-  // 3) Fetch energy_daily for those devices, last 30 days
-  // Query in batches if needed (Supabase 1000 row limit)
-  let allRows: any[] = [];
-  const batchSize = 50; // device IDs per batch
-  for (let i = 0; i < deviceIds.length; i += batchSize) {
-    const batch = deviceIds.slice(i, i + batchSize);
-    const { data: rows, error } = await supabase
-      .from('energy_daily')
-      .select('device_id, value_sum')
-      .in('device_id', batch)
-      .gte('ts_day', thirtyDaysAgoStr);
-
-    if (!error && rows) {
-      allRows = allRows.concat(rows);
-    }
-  }
-
-  // 4) Sum kWh per site
-  const siteKwh: Record<string, number> = {};
-  allRows.forEach((row: any) => {
-    if (row.value_sum === null) return;
-    const siteId = deviceToSite[row.device_id];
-    if (!siteId) return;
-    siteKwh[siteId] = (siteKwh[siteId] || 0) + Number(row.value_sum);
-  });
-
-  // 5) Compute intensity per site, then average per region
-  const siteMap = new Map(sites.map(s => [s.id, s]));
-  const regionIntensities: Record<string, number[]> = {};
-
-  Object.entries(siteKwh).forEach(([siteId, kwh]) => {
-    const site = siteMap.get(siteId);
-    if (!site || !site.region || !site.area_m2 || site.area_m2 <= 0) return;
-    if (kwh <= 0) return;
-
-    const intensity = kwh / Number(site.area_m2);
-    if (!regionIntensities[site.region]) regionIntensities[site.region] = [];
-    regionIntensities[site.region].push(intensity);
-  });
-
+  // --- ENERGY INTENSITY ---
   const intensityByRegion: Record<string, number> = {};
   const siteCountByRegion: Record<string, number> = {};
 
-  Object.entries(regionIntensities).forEach(([region, values]) => {
-    const avg = values.reduce((a, b) => a + b, 0) / values.length;
-    intensityByRegion[region] = Math.round(avg * 10) / 10;
-    siteCountByRegion[region] = values.length;
-  });
+  if (!devError && devices && devices.length > 0) {
+    const deviceIds = devices.map(d => d.id);
+    const deviceToSite: Record<string, string> = {};
+    devices.forEach(d => { deviceToSite[d.id] = d.site_id!; });
 
-  console.log('[useRegionEnergyIntensity] Results:', { intensityByRegion, siteCountByRegion });
+    let allRows: any[] = [];
+    const batchSize = 50;
+    for (let i = 0; i < deviceIds.length; i += batchSize) {
+      const batch = deviceIds.slice(i, i + batchSize);
+      const { data: rows, error } = await supabase
+        .from('energy_daily')
+        .select('device_id, value_sum')
+        .in('device_id', batch)
+        .gte('ts_day', thirtyDaysAgoStr);
+      if (!error && rows) allRows = allRows.concat(rows);
+    }
 
-  return { intensityByRegion, siteCountByRegion };
+    const siteKwh: Record<string, number> = {};
+    allRows.forEach((row: any) => {
+      if (row.value_sum === null) return;
+      const siteId = deviceToSite[row.device_id];
+      if (!siteId) return;
+      siteKwh[siteId] = (siteKwh[siteId] || 0) + Number(row.value_sum);
+    });
+
+    const siteMap = new Map(sitesWithArea.map(s => [s.id, s]));
+    const regionIntensities: Record<string, number[]> = {};
+    Object.entries(siteKwh).forEach(([siteId, kwh]) => {
+      const site = siteMap.get(siteId);
+      if (!site || !site.region || !site.area_m2 || site.area_m2 <= 0) return;
+      if (kwh <= 0) return;
+      const intensity = kwh / Number(site.area_m2);
+      if (!regionIntensities[site.region]) regionIntensities[site.region] = [];
+      regionIntensities[site.region].push(intensity);
+    });
+
+    Object.entries(regionIntensities).forEach(([region, values]) => {
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      intensityByRegion[region] = Math.round(avg * 10) / 10;
+      siteCountByRegion[region] = values.length;
+    });
+  }
+
+  // --- AIR QUALITY (avg CO2 per region) ---
+  const avgCo2ByRegion: Record<string, number> = {};
+  const co2SiteCountByRegion: Record<string, number> = {};
+
+  if (!aqDevError && aqDevices && aqDevices.length > 0) {
+    const aqDeviceIds = aqDevices.map(d => d.id);
+    const aqDeviceToSite: Record<string, string> = {};
+    aqDevices.forEach(d => { aqDeviceToSite[d.id] = d.site_id!; });
+
+    // Fetch avg CO2 from telemetry_daily (last 30 days, metric = 'iaq.co2' or 'CO2')
+    let co2Rows: any[] = [];
+    const batchSize = 50;
+    for (let i = 0; i < aqDeviceIds.length; i += batchSize) {
+      const batch = aqDeviceIds.slice(i, i + batchSize);
+      // Try both metric names
+      const { data: rows, error } = await supabase
+        .from('telemetry_daily')
+        .select('device_id, metric, value_avg')
+        .in('device_id', batch)
+        .gte('ts_day', thirtyDaysAgoStr)
+        .in('metric', ['iaq.co2', 'CO2', 'co2']);
+      if (!error && rows) co2Rows = co2Rows.concat(rows);
+    }
+
+    // Average CO2 per site
+    const siteCo2Values: Record<string, number[]> = {};
+    co2Rows.forEach((row: any) => {
+      if (row.value_avg === null) return;
+      const siteId = aqDeviceToSite[row.device_id];
+      if (!siteId) return;
+      if (!siteCo2Values[siteId]) siteCo2Values[siteId] = [];
+      siteCo2Values[siteId].push(Number(row.value_avg));
+    });
+
+    // Avg CO2 per site → then avg per region
+    const siteMap = new Map(allSites.map(s => [s.id, s]));
+    const regionCo2: Record<string, number[]> = {};
+    Object.entries(siteCo2Values).forEach(([siteId, values]) => {
+      const site = siteMap.get(siteId);
+      if (!site || !site.region) return;
+      const siteAvg = values.reduce((a, b) => a + b, 0) / values.length;
+      if (!regionCo2[site.region]) regionCo2[site.region] = [];
+      regionCo2[site.region].push(siteAvg);
+    });
+
+    Object.entries(regionCo2).forEach(([region, values]) => {
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      avgCo2ByRegion[region] = Math.round(avg);
+      co2SiteCountByRegion[region] = values.length;
+    });
+  }
+
+  console.log('[useRegionEnergyIntensity] Results:', { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion });
+
+  return { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion };
 }
 
 export function useRegionEnergyIntensity(): RegionIntensityData {
@@ -125,6 +181,8 @@ export function useRegionEnergyIntensity(): RegionIntensityData {
   return {
     intensityByRegion: data?.intensityByRegion ?? {},
     siteCountByRegion: data?.siteCountByRegion ?? {},
+    avgCo2ByRegion: data?.avgCo2ByRegion ?? {},
+    co2SiteCountByRegion: data?.co2SiteCountByRegion ?? {},
     isLoading,
   };
 }
