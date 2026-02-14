@@ -2011,6 +2011,7 @@ export type Database = {
           power_w: number
         }[]
       }
+      delete_stale_energy_latest: { Args: never; Returns: undefined }
       extract_mqtt_timestamp: {
         Args: { p_fallback: string; p_payload: Json }
         Returns: string
