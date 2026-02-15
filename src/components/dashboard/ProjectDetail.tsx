@@ -511,6 +511,62 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return out;
   }, [airLatestResp]);
 
+  // ---------------------------------------------------------------------------
+  // Indoor averages from timeseries (time-period aware) for PM2.5, PM10, CO, O3
+  // ---------------------------------------------------------------------------
+  const airIndoorAvg = useMemo(() => {
+    const out: Record<string, number | null> = { 'iaq.pm25': null, 'iaq.pm10': null, 'iaq.co': null, 'iaq.o3': null };
+    const points = airTimeseriesResp?.data;
+    if (!points || !Array.isArray(points)) return out;
+
+    for (const metric of Object.keys(out)) {
+      const vals = points.filter(p => p.metric === metric && p.value_avg != null).map(p => Number(p.value_avg));
+      if (vals.length > 0) {
+        out[metric] = vals.reduce((a, b) => a + b, 0) / vals.length;
+      }
+    }
+    return out;
+  }, [airTimeseriesResp]);
+
+  // ---------------------------------------------------------------------------
+  // Outdoor averages from weather_data (time-period aware) for PM2.5, PM10
+  // ---------------------------------------------------------------------------
+  const [outdoorAirAvg, setOutdoorAirAvg] = useState<{ pm2_5: number | null; pm10: number | null }>({ pm2_5: null, pm10: null });
+  useEffect(() => {
+    if (!project?.siteId || !isSupabaseConfigured || !supabase) return;
+    const startStr = airStart.toISOString();
+    const endStr = airEnd.toISOString();
+    supabase
+      .from('weather_data')
+      .select('pm2_5, pm10')
+      .eq('site_id', project.siteId)
+      .gte('timestamp', startStr)
+      .lte('timestamp', endStr)
+      .then(({ data }) => {
+        if (!data || data.length === 0) {
+          setOutdoorAirAvg({ pm2_5: null, pm10: null });
+          return;
+        }
+        let pm25Sum = 0, pm25Count = 0, pm10Sum = 0, pm10Count = 0;
+        data.forEach(r => {
+          if (r.pm2_5 != null) { pm25Sum += Number(r.pm2_5); pm25Count++; }
+          if (r.pm10 != null) { pm10Sum += Number(r.pm10); pm10Count++; }
+        });
+        setOutdoorAirAvg({
+          pm2_5: pm25Count > 0 ? pm25Sum / pm25Count : null,
+          pm10: pm10Count > 0 ? pm10Sum / pm10Count : null,
+        });
+      });
+  }, [project?.siteId, airStart.getTime(), airEnd.getTime()]);
+
+  // Helper: quality label & color for PM/gas values
+  const getAirQualityLabel = (value: number | null, limits: { good: number; moderate: number }) => {
+    if (value == null) return { label: '—', color: 'text-gray-400' };
+    if (value <= limits.good) return { label: 'Ottimo', color: 'text-emerald-500' };
+    if (value <= limits.moderate) return { label: 'Moderato', color: 'text-yellow-500' };
+    return { label: 'Scarso', color: 'text-red-500' };
+  };
+
   const buildSeriesByMetric = useCallback(
     (metric: string, limitValue?: number, keySuffix?: string) => {
       // shape: { time: string, limit?: number, d_<id>[_suffix]: number }
@@ -3576,26 +3632,50 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                     {/* Real-time PM indicators */}
                     <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <div className="text-3xl font-bold text-emerald-500">12</div>
-                        <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Indoor</div>
-                        <div className="text-[10px] text-emerald-500 mt-1">● Ottimo</div>
-                      </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <div className="text-3xl font-bold text-yellow-500">28</div>
-                        <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Outdoor</div>
-                        <div className="text-[10px] text-yellow-500 mt-1">● Moderato</div>
-                      </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <div className="text-3xl font-bold text-emerald-500">22</div>
-                        <div className="text-xs text-gray-500 uppercase mt-1">PM10 Indoor</div>
-                        <div className="text-[10px] text-emerald-500 mt-1">● Ottimo</div>
-                      </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <div className="text-3xl font-bold text-yellow-500">45</div>
-                        <div className="text-xs text-gray-500 uppercase mt-1">PM10 Outdoor</div>
-                        <div className="text-[10px] text-yellow-500 mt-1">● Moderato</div>
-                      </div>
+                      {(() => {
+                        const pm25In = airIndoorAvg['iaq.pm25'];
+                        const q = getAirQualityLabel(pm25In, { good: 15, moderate: 25 });
+                        return (
+                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                            <div className={`text-3xl font-bold ${q.color}`}>{pm25In != null ? Math.round(pm25In) : '—'}</div>
+                            <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Indoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                          </div>
+                        );
+                      })()}
+                      {(() => {
+                        const pm25Out = outdoorAirAvg.pm2_5;
+                        const q = getAirQualityLabel(pm25Out, { good: 15, moderate: 25 });
+                        return (
+                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                            <div className={`text-3xl font-bold ${q.color}`}>{pm25Out != null ? Math.round(pm25Out) : '—'}</div>
+                            <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Outdoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                          </div>
+                        );
+                      })()}
+                      {(() => {
+                        const pm10In = airIndoorAvg['iaq.pm10'];
+                        const q = getAirQualityLabel(pm10In, { good: 25, moderate: 50 });
+                        return (
+                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                            <div className={`text-3xl font-bold ${q.color}`}>{pm10In != null ? Math.round(pm10In) : '—'}</div>
+                            <div className="text-xs text-gray-500 uppercase mt-1">PM10 Indoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                          </div>
+                        );
+                      })()}
+                      {(() => {
+                        const pm10Out = outdoorAirAvg.pm10;
+                        const q = getAirQualityLabel(pm10Out, { good: 25, moderate: 50 });
+                        return (
+                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                            <div className={`text-3xl font-bold ${q.color}`}>{pm10Out != null ? Math.round(pm10Out) : '—'}</div>
+                            <div className="text-xs text-gray-500 uppercase mt-1">PM10 Outdoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -3650,41 +3730,57 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     {/* Real-time Gas indicators */}
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">CO - Monossido di Carbonio</h3>
-                      <div className="flex items-center gap-6">
-                        <div className="flex-1">
-                          <div className="text-4xl font-bold text-emerald-500">0.8</div>
-                          <div className="text-sm text-gray-500">ppm (attuale)</div>
+                    {(() => {
+                      const coVal = airIndoorAvg['iaq.co'];
+                      const coLimit = 9;
+                      const coPct = coVal != null ? Math.min((coVal / coLimit) * 100, 100) : 0;
+                      const coQ = getAirQualityLabel(coVal, { good: 4, moderate: 9 });
+                      return (
+                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                          <h3 className="text-lg font-bold text-gray-800 mb-4">CO - Monossido di Carbonio</h3>
+                          <div className="flex items-center gap-6">
+                            <div className="flex-1">
+                              <div className={`text-4xl font-bold ${coQ.color}`}>{coVal != null ? coVal.toFixed(1) : '—'}</div>
+                              <div className="text-sm text-gray-500">ppm ({periodLabel})</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500 mb-1">Limite sicurezza</div>
+                              <div className="text-lg font-semibold text-gray-700">{coLimit} ppm</div>
+                              <div className={`text-xs ${coQ.color} mt-1`}>● {coQ.label}</div>
+                            </div>
+                          </div>
+                          <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: `${coPct}%` }} />
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Limite sicurezza</div>
-                          <div className="text-lg font-semibold text-gray-700">9 ppm</div>
-                          <div className="text-xs text-emerald-500 mt-1">● Sicuro</div>
-                        </div>
-                      </div>
-                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: '9%' }} />
-                      </div>
-                    </div>
+                      );
+                    })()}
 
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">O₃ - Ozono</h3>
-                      <div className="flex items-center gap-6">
-                        <div className="flex-1">
-                          <div className="text-4xl font-bold text-emerald-500">25</div>
-                          <div className="text-sm text-gray-500">ppb (attuale)</div>
+                    {(() => {
+                      const o3Val = airIndoorAvg['iaq.o3'];
+                      const o3Limit = 100;
+                      const o3Pct = o3Val != null ? Math.min((o3Val / o3Limit) * 100, 100) : 0;
+                      const o3Q = getAirQualityLabel(o3Val, { good: 50, moderate: 100 });
+                      return (
+                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                          <h3 className="text-lg font-bold text-gray-800 mb-4">O₃ - Ozono</h3>
+                          <div className="flex items-center gap-6">
+                            <div className="flex-1">
+                              <div className={`text-4xl font-bold ${o3Q.color}`}>{o3Val != null ? Math.round(o3Val) : '—'}</div>
+                              <div className="text-sm text-gray-500">ppb ({periodLabel})</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500 mb-1">Limite OMS</div>
+                              <div className="text-lg font-semibold text-gray-700">{o3Limit} ppb</div>
+                              <div className={`text-xs ${o3Q.color} mt-1`}>● {o3Q.label}</div>
+                            </div>
+                          </div>
+                          <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: `${o3Pct}%` }} />
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Limite OMS</div>
-                          <div className="text-lg font-semibold text-gray-700">100 ppb</div>
-                          <div className="text-xs text-emerald-500 mt-1">● Ottimo</div>
-                        </div>
-                      </div>
-                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: '25%' }} />
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </>
