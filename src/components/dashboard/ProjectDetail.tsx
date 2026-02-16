@@ -1,6 +1,6 @@
 
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Sun, Moon, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
@@ -1022,34 +1022,42 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     [energyTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
   );
 
-// 1. Calculates the daily breakdown (For the Fullscreen Bar Chart)
+// --- NEW DAY VS NIGHT DATA CALCULATION ---
   const dayNightData = useMemo(() => {
-    // Use your built-in helper to reliably get the General power data!
-    const generalData = buildEnergySeriesSum('energy.power_kw');
-    
-    if (!generalData || generalData.length === 0) return [];
+    if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
 
+    // Ensure we use the SITE'S timezone, not the browser's timezone!
     const siteTz = resolveTimezone(project?.timezone);
     const DAY_START = 8; 
     const DAY_END = 20;
 
+    // We use a Map to group hourly data into Daily buckets, so they can stack on top of each other
     const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
 
-    generalData.forEach((point: any) => {
-      // Get local time based on the building's timezone
+    energyConsumptionData.forEach(point => {
       const dateObj = new Date(point.ts);
+      // Extracts the accurate hour based on the building's official timezone
       const parts = getPartsInTz(dateObj, siteTz);
-      const isDay = parts.hour >= DAY_START && parts.hour < DAY_END;
+      const hour = parts.hour; 
 
-      // Convert Power (kW) to Energy (kWh)
-      const kwh = (Number(point.value) || 0) * bucketHours;
+      let totalKw = point.General || 0;
+      if (!totalKw) {
+          Object.keys(point).forEach(k => {
+              if (k !== 'ts' && k !== 'label' && typeof point[k] === 'number') {
+                  totalKw += point[k] as number;
+              }
+          });
+      }
 
-      // Group by X-axis label
-      const label = String(point.label);
-      const tsKey = dateObj.getTime();
+      // Convert kW (Power) to kWh (Energy)
+      const kwh = totalKw * bucketHours;
+      const isDay = hour >= DAY_START && hour < DAY_END;
+
+      // Group by the X-axis label (e.g., "16 Feb")
+      const label = point.label;
       
       if (!map.has(label)) {
-          map.set(label, { label, dayKwh: 0, nightKwh: 0, ts: tsKey });
+          map.set(label, { label, dayKwh: 0, nightKwh: 0, ts: dateObj.getTime() });
       }
       
       const entry = map.get(label)!;
@@ -1061,32 +1069,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     });
 
     return Array.from(map.values()).sort((a, b) => a.ts - b.ts);
-  }, [buildEnergySeriesSum, project?.timezone, bucketHours]);
-
-  // 2. Calculates the overall totals and percentages (For the Circular Widget)
-  const dayNightSummary = useMemo(() => {
-    let dayTotal = 0;
-    let nightTotal = 0;
-    
-    dayNightData.forEach(d => {
-      dayTotal += d.dayKwh;
-      nightTotal += d.nightKwh;
-    });
-
-    const total = dayTotal + nightTotal;
-    
-    return {
-      dayTotal,
-      nightTotal,
-      total,
-      dayPct: total > 0 ? Math.round((dayTotal / total) * 100) : 0,
-      nightPct: total > 0 ? Math.round((nightTotal / total) * 100) : 0,
-      chartData: [
-        { name: 'Day', value: dayTotal, fill: '#38bdf8' }, // Sky Blue
-        { name: 'Night', value: nightTotal, fill: '#334155' } // Slate Grey
-      ]
-    };
-  }, [dayNightData]);
+  }, [energyConsumptionData, project?.timezone, bucketHours]);
 
   const energyDeviceConsumptionLiveData = useMemo(() => {
     if (!isSupabaseConfigured) return filteredDeviceData;
@@ -3288,91 +3271,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </ResponsiveContainer>
                       </div>
                     </div>
-                  {/* HIGH-TECH CIRCULAR DAY/NIGHT WIDGET */}
-                    <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col relative overflow-hidden">
-                      <div className="flex justify-between items-center mb-2 relative z-10">
+                  {/* DAY VS NIGHT CONSUMPTION WIDGET */}
+                    <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                      <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-base md:text-lg font-bold text-gray-800">24-Hour Energy Cycle</h3>
-                          <p className="text-xs text-gray-500">Day vs Night Consumption Ratio</p>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Day vs Night Energy Consumption</h3>
+                          <p className="text-xs text-gray-500">Analysis of usage by local time period (kWh)</p>
                         </div>
-                        <ExportButtons chartRef={trendRef} data={dayNightData} filename="energy-cycle" onExpand={() => setFullscreenChart('trend')} />
+                        <ExportButtons 
+                          chartRef={trendRef} 
+                          data={dayNightData} 
+                          filename={`day-night-consumption-${timePeriod}`} 
+                          onExpand={() => setFullscreenChart('trend')} 
+                        />
                       </div>
-
-                      <div className="flex-1 flex flex-col items-center justify-center relative z-10 mt-2">
-                        {/* MAIN CIRCULAR DIAL */}
-                        <div className="relative w-48 h-48 md:w-52 md:h-52 drop-shadow-md">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={dayNightSummary.chartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius="75%"
-                                outerRadius="100%"
-                                stroke="none"
-                                dataKey="value"
-                                startAngle={90}
-                                endAngle={-270}
-                              >
-                                {dayNightSummary.chartData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                                ))}
-                              </Pie>
-                              <Tooltip 
-                                formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' kWh', 'Total']}
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-
-                          {/* CENTER TOTAL */}
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                            <div className="flex items-center gap-1 bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider mb-1">
-                              <RefreshCw size={10} /> 24H CYCLE
-                            </div>
-                            <span className="text-3xl font-black text-gray-800 tracking-tight">
-                              {dayNightSummary.total.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
-                            </span>
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">kWh Total</span>
-                          </div>
-                        </div>
-
-                        {/* BOTTOM 2 RINGS */}
-                        <div className="flex w-full justify-around mt-4 pt-4 border-t border-gray-100">
-                          {/* DAY */}
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              <Sun size={14} className="text-amber-500" />
-                              <span className="text-xs font-bold text-gray-700">DAY</span>
-                            </div>
-                            <div className="relative w-16 h-16">
-                              <svg width="64" height="64" className="-rotate-90">
-                                <circle cx="32" cy="32" r="28" stroke="#f1f5f9" strokeWidth="5" fill="none" />
-                                <circle cx="32" cy="32" r="28" stroke="#38bdf8" strokeWidth="5" fill="none" strokeDasharray="175.9" strokeDashoffset={175.9 - (dayNightSummary.dayPct / 100) * 175.9} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                              </svg>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-sm font-black text-gray-800">{dayNightSummary.dayPct}%</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* NIGHT */}
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              <Moon size={14} className="text-slate-600" />
-                              <span className="text-xs font-bold text-gray-700">NIGHT</span>
-                            </div>
-                            <div className="relative w-16 h-16">
-                              <svg width="64" height="64" className="-rotate-90">
-                                <circle cx="32" cy="32" r="28" stroke="#f1f5f9" strokeWidth="5" fill="none" />
-                                <circle cx="32" cy="32" r="28" stroke="#334155" strokeWidth="5" fill="none" strokeDasharray="175.9" strokeDashoffset={175.9 - (dayNightSummary.nightPct / 100) * 175.9} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                              </svg>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-sm font-black text-gray-800">{dayNightSummary.nightPct}%</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                      <div className="flex-1 w-full min-h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={dayNightData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
+                            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={45} unit=" kWh" />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day' : 'Night']}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)'} />
+                            
+                            {/* Night FIRST puts it on the bottom, Day SECOND stacks it on top */}
+                            <Area type="monotone" dataKey="nightKwh" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="nightKwh" />
+                            <Area type="monotone" dataKey="dayKwh" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="dayKwh" />
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
                     <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
@@ -4779,27 +4708,27 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
-    {/* ENERGY: Day vs Night Fullscreen (Stacked Bar Chart History) */}
+    {/* ENERGY: Day vs Night consumption Fullscreen */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'trend'}
         onClose={() => setFullscreenChart(null)}
-        title="Day vs Night Energy History"
+        title="Day vs Night Energy Consumption"
       >
         <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={dayNightData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barGap={0} barCategoryGap="10%">
+          <AreaChart data={dayNightData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" />
             <Tooltip 
-              cursor={{ fill: '#f9fafb', opacity: 0.5 }}
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)']}
+              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day' : 'Night']}
             />
             <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)'} />
             
-            <Bar dataKey="nightKwh" stackId="1" fill="#64748b" name="nightKwh" radius={[0, 0, 4, 4]} maxBarSize={80} />
-            <Bar dataKey="dayKwh" stackId="1" fill="#38bdf8" name="dayKwh" radius={[4, 4, 0, 0]} maxBarSize={80} />
-          </BarChart>
+            {/* Night FIRST puts it on the bottom, Day SECOND stacks it on top */}
+            <Area type="monotone" dataKey="nightKwh" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="nightKwh" />
+            <Area type="monotone" dataKey="dayKwh" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="dayKwh" />
+          </AreaChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
