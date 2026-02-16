@@ -1022,31 +1022,39 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     [energyTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
   );
 
-  const energyTrendLiveData = useMemo(() => {
-    if (!isSupabaseConfigured) return trendData;
+ // --- NEW DAY VS NIGHT DATA CALCULATION ---
+  const dayNightData = useMemo(() => {
+    if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
 
-    const general = buildEnergySeriesSum('energy.power_kw');
-    const hvac = buildEnergySeriesSum('energy.hvac_kw');
-    const lights = buildEnergySeriesSum('energy.lighting_kw');
-    const plugs = buildEnergySeriesSum('energy.plugs_kw');
+    // Define operating hours (Site Local Time)
+    const DAY_START = 8; 
+    const DAY_END = 20;
 
-    const map = new Map<string, Record<string, unknown>>();
-    const merge = (rows: Array<Record<string, unknown>>, key: string) => {
-      rows.forEach((r) => {
-        const label = String(r.label);
-        if (!map.has(label)) map.set(label, { day: label });
-        map.get(label)![key] = r.value;
-      });
-    };
+    return energyConsumptionData.map(point => {
+      // Point.ts is already a valid Date object from your existing processing logic
+      const date = new Date(point.ts);
+      const hour = date.getHours(); 
 
-    merge(general as any, 'general');
-    merge(hvac as any, 'hvac');
-    merge(lights as any, 'lights');
-    merge(plugs as any, 'plugs');
+      let totalKw = point.General || 0;
+      if (!totalKw) {
+          Object.keys(point).forEach(k => {
+              if (k !== 'ts' && k !== 'label' && typeof point[k] === 'number') {
+                  totalKw += point[k] as number;
+              }
+          });
+      }
 
-    const out = Array.from(map.values());
-    return out.length ? out : trendData;
-  }, [buildEnergySeriesSum, isSupabaseConfigured, trendData]);
+      const isDay = hour >= DAY_START && hour < DAY_END;
+
+      return {
+        label: point.label,
+        ts: point.ts,
+        dayKw: isDay ? totalKw : 0,
+        nightKw: !isDay ? totalKw : 0,
+        totalKw: totalKw
+      };
+    });
+  }, [energyConsumptionData]);
 
   const energyDeviceConsumptionLiveData = useMemo(() => {
     if (!isSupabaseConfigured) return filteredDeviceData;
@@ -3248,30 +3256,38 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </ResponsiveContainer>
                       </div>
                     </div>
-                    <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                   {/* DAY VS NIGHT CONSUMPTION WIDGET */}
+                    <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Energy Trend Over Time</h3>
-                        <ExportButtons chartRef={trendRef} data={energyTrendLiveData as any} filename="energy-trend" onExpand={() => setFullscreenChart('trend')} />
+                        <div>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Day vs Night consumption</h3>
+                          <p className="text-xs text-gray-500">Analysis of usage by local time period (kW)</p>
+                        </div>
+                        <ExportButtons 
+                          chartRef={trendRef} 
+                          data={dayNightData} 
+                          filename={`day-night-consumption-${timePeriod}`} 
+                          onExpand={() => setFullscreenChart('trend')} 
+                        />
                       </div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={energyTrendLiveData as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="day" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis
-                            tick={axisStyle}
-                            axisLine={{ stroke: '#e2e8f0' }}
-                            tickLine={{ stroke: '#e2e8f0' }}
-                            domain={autoDomainWithPadding}
-                            label={{ value: 'kW', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
-                          />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Area type="monotone" dataKey="general" stackId="1" stroke="hsl(188, 100%, 19%)" fill="hsl(188, 100%, 19%)" fillOpacity={0.7} name="General" />
-                          <Area type="monotone" dataKey="hvac" stackId="2" stroke="hsl(338, 50%, 45%)" fill="hsl(338, 50%, 45%)" fillOpacity={0.7} name="HVAC" />
-                          <Area type="monotone" dataKey="lights" stackId="3" stroke="hsl(188, 100%, 35%)" fill="hsl(188, 100%, 35%)" fillOpacity={0.5} name="Lights" />
-                          <Area type="monotone" dataKey="plugs" stackId="4" stroke="hsl(338, 50%, 75%)" fill="hsl(338, 50%, 75%)" fillOpacity={0.5} name="Plugs" />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                      <div className="flex-1 w-full min-h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={dayNightData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
+                            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={35} unit=" kW" />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', name === 'dayKw' ? 'Day' : 'Night']}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            
+                            {/* NEW COLORS: Light Blue for Day, Grey for Night */}
+                            <Area type="monotone" dataKey="dayKw" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="Day (08:00 - 20:00)" />
+                            <Area type="monotone" dataKey="nightKw" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="Night (20:00 - 08:00)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                     <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
@@ -4677,21 +4693,27 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
-      {/* ENERGY: Energy Trend */}
+     {/* ENERGY: Day vs Night consumption Fullscreen */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'trend'}
         onClose={() => setFullscreenChart(null)}
-        title="Energy Trend Over Time"
+        title="Day vs Night consumption"
       >
         <ResponsiveContainer width="100%" height={500}>
-          <LineChart data={energyTrendLiveData as any} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-            <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" />
-            <Tooltip {...tooltipStyle} />
-            <Legend />
-            <Line type="monotone" dataKey="value" stroke="#129E97" strokeWidth={3} dot={{ r: 3, fill: '#129E97' }} name="Energy" />
-          </LineChart>
+          <AreaChart data={dayNightData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kW" />
+            <Tooltip 
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', name === 'dayKw' ? 'Day' : 'Night']}
+            />
+            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} />
+            
+            {/* NEW COLORS: Light Blue for Day, Grey for Night */}
+            <Area type="monotone" dataKey="dayKw" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="Day (08:00 - 20:00)" />
+            <Area type="monotone" dataKey="nightKw" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="Night (20:00 - 08:00)" />
+          </AreaChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
