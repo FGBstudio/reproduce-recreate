@@ -165,7 +165,7 @@ export const generatePdfReport = async ({
 
   const brand = getBrandById(project.brandId);
   const holding = brand ? getHoldingById(brand.holdingId) : null;
-  const periodLabel = getPeriodLabel(timePeriod, dateRange);
+  const periodLabel = getPeriodLabel(timePeriod, dateRange, language);
   const dateFormat = language === 'it' ? "dd MMMM yyyy, HH:mm" : "MMMM dd, yyyy, HH:mm";
   const generatedDate = format(new Date(), dateFormat, { locale: dateLocale });
 

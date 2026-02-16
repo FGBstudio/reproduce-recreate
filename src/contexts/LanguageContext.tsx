@@ -288,6 +288,18 @@ const translations: Record<string, Record<Language, string>> = {
   // No data
   'pd.no_data': { en: 'No data available', it: 'Nessun dato disponibile' },
   'pd.no_realtime_data': { en: 'No real-time data', it: 'Nessun dato in tempo reale' },
+
+  // Time period selector
+  'time.today': { en: 'Today', it: 'Oggi' },
+  'time.week': { en: 'Week', it: 'Settimana' },
+  'time.month': { en: 'Month', it: 'Mese' },
+  'time.year': { en: 'Year', it: 'Anno' },
+  'time.custom': { en: 'Custom', it: 'Personalizzato' },
+  'time.custom_ellipsis': { en: 'Custom...', it: 'Personalizzato...' },
+  'time.select_date_range': { en: 'Select date range', it: 'Seleziona intervallo date' },
+  'time.cancel': { en: 'Cancel', it: 'Annulla' },
+  'time.apply': { en: 'Apply', it: 'Applica' },
+  'time.dates': { en: 'Dates', it: 'Date' },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
