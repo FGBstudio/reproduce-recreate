@@ -1022,18 +1022,23 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     [energyTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
   );
 
- // --- NEW DAY VS NIGHT DATA CALCULATION ---
+// --- NEW DAY VS NIGHT DATA CALCULATION ---
   const dayNightData = useMemo(() => {
     if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
 
-    // Define operating hours (Site Local Time)
+    // Ensure we use the SITE'S timezone, not the browser's timezone!
+    const siteTz = resolveTimezone(project?.timezone);
     const DAY_START = 8; 
     const DAY_END = 20;
 
-    return energyConsumptionData.map(point => {
-      // Point.ts is already a valid Date object from your existing processing logic
-      const date = new Date(point.ts);
-      const hour = date.getHours(); 
+    // We use a Map to group hourly data into Daily buckets, so they can stack on top of each other
+    const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
+
+    energyConsumptionData.forEach(point => {
+      const dateObj = new Date(point.ts);
+      // Extracts the accurate hour based on the building's official timezone
+      const parts = getPartsInTz(dateObj, siteTz);
+      const hour = parts.hour; 
 
       let totalKw = point.General || 0;
       if (!totalKw) {
@@ -1044,17 +1049,27 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           });
       }
 
+      // Convert kW (Power) to kWh (Energy)
+      const kwh = totalKw * bucketHours;
       const isDay = hour >= DAY_START && hour < DAY_END;
 
-      return {
-        label: point.label,
-        ts: point.ts,
-        dayKw: isDay ? totalKw : 0,
-        nightKw: !isDay ? totalKw : 0,
-        totalKw: totalKw
-      };
+      // Group by the X-axis label (e.g., "16 Feb")
+      const label = point.label;
+      
+      if (!map.has(label)) {
+          map.set(label, { label, dayKwh: 0, nightKwh: 0, ts: dateObj.getTime() });
+      }
+      
+      const entry = map.get(label)!;
+      if (isDay) {
+          entry.dayKwh += kwh;
+      } else {
+          entry.nightKwh += kwh;
+      }
     });
-  }, [energyConsumptionData]);
+
+    return Array.from(map.values()).sort((a, b) => a.ts - b.ts);
+  }, [energyConsumptionData, project?.timezone, bucketHours]);
 
   const energyDeviceConsumptionLiveData = useMemo(() => {
     if (!isSupabaseConfigured) return filteredDeviceData;
@@ -3256,12 +3271,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </ResponsiveContainer>
                       </div>
                     </div>
-                   {/* DAY VS NIGHT CONSUMPTION WIDGET */}
+                  {/* DAY VS NIGHT CONSUMPTION WIDGET */}
                     <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-base md:text-lg font-bold text-gray-800">Day vs Night consumption</h3>
-                          <p className="text-xs text-gray-500">Analysis of usage by local time period (kW)</p>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">Day vs Night Energy Consumption</h3>
+                          <p className="text-xs text-gray-500">Analysis of usage by local time period (kWh)</p>
                         </div>
                         <ExportButtons 
                           chartRef={trendRef} 
@@ -3275,16 +3290,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <AreaChart data={dayNightData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
-                            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={35} unit=" kW" />
+                            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} width={45} unit=" kWh" />
                             <Tooltip 
                               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', name === 'dayKw' ? 'Day' : 'Night']}
+                              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day' : 'Night']}
                             />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)'} />
                             
-                            {/* NEW COLORS: Light Blue for Day, Grey for Night */}
-                            <Area type="monotone" dataKey="dayKw" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="Day (08:00 - 20:00)" />
-                            <Area type="monotone" dataKey="nightKw" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="Night (20:00 - 08:00)" />
+                            {/* Night FIRST puts it on the bottom, Day SECOND stacks it on top */}
+                            <Area type="monotone" dataKey="nightKwh" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="nightKwh" />
+                            <Area type="monotone" dataKey="dayKwh" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="dayKwh" />
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
@@ -4693,26 +4708,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
-     {/* ENERGY: Day vs Night consumption Fullscreen */}
+    {/* ENERGY: Day vs Night consumption Fullscreen */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'trend'}
         onClose={() => setFullscreenChart(null)}
-        title="Day vs Night consumption"
+        title="Day vs Night Energy Consumption"
       >
         <ResponsiveContainer width="100%" height={500}>
           <AreaChart data={dayNightData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kW" />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" />
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', name === 'dayKw' ? 'Day' : 'Night']}
+              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day' : 'Night']}
             />
-            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} />
+            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)'} />
             
-            {/* NEW COLORS: Light Blue for Day, Grey for Night */}
-            <Area type="monotone" dataKey="dayKw" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="Day (08:00 - 20:00)" />
-            <Area type="monotone" dataKey="nightKw" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="Night (20:00 - 08:00)" />
+            {/* Night FIRST puts it on the bottom, Day SECOND stacks it on top */}
+            <Area type="monotone" dataKey="nightKwh" stackId="1" stroke="#64748b" fill="#64748b" fillOpacity={0.7} name="nightKwh" />
+            <Area type="monotone" dataKey="dayKwh" stackId="1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.6} name="dayKwh" />
           </AreaChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
