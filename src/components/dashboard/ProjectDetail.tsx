@@ -38,7 +38,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
-
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
@@ -201,6 +201,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { language, t } = useLanguage();
 
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
@@ -562,9 +563,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Helper: quality label & color for PM/gas values
   const getAirQualityLabel = (value: number | null, limits: { good: number; moderate: number }) => {
     if (value == null) return { label: '—', color: 'text-gray-400' };
-    if (value <= limits.good) return { label: 'Ottimo', color: 'text-emerald-500' };
-    if (value <= limits.moderate) return { label: 'Moderato', color: 'text-yellow-500' };
-    return { label: 'Scarso', color: 'text-red-500' };
+    if (value <= limits.good) return { label: t('pd.quality_excellent'), color: 'text-emerald-500' };
+    if (value <= limits.moderate) return { label: t('pd.quality_moderate'), color: 'text-yellow-500' };
+    return { label: t('pd.quality_poor'), color: 'text-red-500' };
   };
 
   const buildSeriesByMetric = useCallback(
@@ -2189,7 +2190,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   };
 
   // Heatmap legend labels based on qualitative judgments
-  const heatmapLegendLabels = ['Ottimo', 'Buono', 'Moderato', 'Elevato', 'Critico'];
+  const heatmapLegendLabels = [t('pd.hm_excellent'), t('pd.hm_good'), t('pd.hm_moderate'), t('pd.hm_high'), t('pd.hm_critical')];
   const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
 
   // Air quality data for export
@@ -2209,9 +2210,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         project,
         timePeriod,
         dateRange,
-        // --- MODIFICA: Passiamo la configurazione dei moduli ---
         moduleConfig: resolvedModuleConfig,
-        // -------------------------------------------------------
         data: {
           energy: {
             consumption: filteredEnergyData as unknown as Record<string, unknown>[],
@@ -2235,6 +2234,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           waterChart: waterConsumptionRef,
           airQualityChart: co2TrendRef,
         },
+        language: language,
       });
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -2301,12 +2301,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold transition-all group border border-black/10"
         >
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="hidden sm:inline">Back to Region</span>
+          <span className="hidden sm:inline">{t('pd.back_to_region')}</span>
         </button>
         {/* Change Background Button */}
         <label className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs font-medium transition-all cursor-pointer border border-black/10">
           <Image className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          <span className="hidden md:inline">Cambia Sfondo</span>
+          <span className="hidden md:inline">{t('pd.change_bg')}</span>
           <input 
             type="file" 
             accept="image/*" 
@@ -2414,7 +2414,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 ) : (
                   <>
                     <FileText className="w-3.5 h-3.5 md:w-4 md:h-4 md:mr-2" />
-                    <span className="hidden md:inline">Esporta PDF</span>
+                    <span className="hidden md:inline">{t('pd.export_pdf')}</span>
                   </>
                 )}
               </Button>
@@ -2424,7 +2424,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 variant="outline"
                 size="sm"
                 className="h-7 md:h-9 w-7 md:w-9 p-0 bg-white/50 border-gray-200 rounded-full text-gray-700 hover:bg-fgb-secondary hover:text-white"
-                title="Impostazioni Progetto"
+                title={t('pd.project_settings')}
               >
                 <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
               </Button>
@@ -2494,9 +2494,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="flex items-center gap-2">
                           <div>
                             {/* TITOLO RINOMINATO */}
-                            <h3 className="text-base md:text-lg font-bold text-gray-800">Energy consumption over time</h3>
+                            <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_over_time')}</h3>
                             <p className="text-[10px] md:text-xs text-gray-500">
-                              {timeRange.bucket === '1d' ? 'Energia Giornaliera (kWh)' : 'Potenza Media (kW)'}
+                              {timeRange.bucket === '1d' ? t('pd.daily_energy_kwh') : t('pd.avg_power_kw')}
                             </p>
                           </div>
                           <DataSourceBadge isRealData={realTimeEnergy.isRealData} isLoading={realTimeEnergy.isLoading} />
@@ -2510,7 +2510,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               energyViewMode === 'category' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
                             }`}
                           >
-                            Categorie
+                            {t('pd.categories')}
                           </button>
                           <button
                             onClick={() => setEnergyViewMode('device')}
@@ -2649,7 +2649,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* Energy Consumption Breakdown Chart */}
                     <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-3 md:mb-4">
-                        <h3 className="text-base md:text-lg font-bold text-gray-800">Energy consumption breakdown</h3>
+                        <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_breakdown')}</h3>
                         <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-breakdown" />
                       </div>
                       <div className="flex items-center gap-4 md:gap-6">
@@ -2697,7 +2697,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <span className="text-lg md:text-xl font-bold text-slate-900">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] md:text-xs text-gray-500 font-medium">Total kWh</span>
+                            <span className="text-[10px] md:text-xs text-gray-500 font-medium">{t('pd.total_kwh')}</span>
                           </div>
                         </div>
                       </div>
@@ -2706,11 +2706,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Energy Density</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
                         <p className="text-xl md:text-3xl font-bold text-slate-900">{densityValue}</p>
                         <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m²</p>
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">in the selected period</div>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">{t('pd.in_selected_period')}</div>
                       </div>
                       {/* Widget Costo Stimato */}
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
@@ -2740,10 +2740,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-blue-500 font-medium">↑ 3%</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Active Alerts</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
                         <p className="text-xl md:text-3xl font-bold text-amber-500">{project.data.alerts}</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">anomalies</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">⚠ Attention</div>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
                       </div>
                     </div>
                   </div>
