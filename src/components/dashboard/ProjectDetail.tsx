@@ -2715,7 +2715,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       {/* Widget Costo Stimato */}
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">
-                          Costo Stimato ({periodLabel})
+                          Estimated Cost ({periodLabel})
                         </p>
                         
                         <p className="text-xl md:text-3xl font-bold text-gray-800">
@@ -2726,24 +2726,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         
                         <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">
                           {estimatedCostData 
-                            ? `Consumo × €${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
-                            : 'Prezzo energia non configurato'}
+                            ? `Consumption × €${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
+                            : 'Energy price not configured'}
                         </p>
                         
                         {/* Indicatore Trend (Statico o da calcolare in futuro) */}
                         {/* <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficienza</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficiency</p>
                         <p className="text-xl md:text-3xl font-bold text-emerald-500">87%</p>
                         <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">rating</p>
                         <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-blue-500 font-medium">↑ 3%</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Alert Attivi</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Active Alerts</p>
                         <p className="text-xl md:text-3xl font-bold text-amber-500">{project.data.alerts}</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">anomalie</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">⚠ Attenzione</div>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">anomalies</p>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">⚠ Attention</div>
                       </div>
                     </div>
                   </div>
@@ -2814,7 +2814,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             {energyPeriodsData.length === 0 ? (
                               <tr>
                                 <td colSpan={3} className="px-3 py-8 text-center text-gray-400 italic">
-                                  Nessun dato disponibile per il {energyPeriodsYear}
+                                  No data available for {energyPeriodsYear}
                                 </td>
                               </tr>
                             ) : (
@@ -3428,7 +3428,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Droplets className="w-4 h-4 text-cyan-500 mx-auto mb-1" />
                           <div className="text-lg font-bold text-gray-800">{airLatestByMetric["env.humidity"] == null ? "—" : Math.round(airLatestByMetric["env.humidity"])}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">% Umidità</div>
+                          <div className="text-[9px] text-gray-500 uppercase">% Humidity</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Cloud className="w-4 h-4 text-amber-600 mx-auto mb-1" />
@@ -3506,7 +3506,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name={airDeviceLabelById.get(d.id) || d.id}
                             />
                           ))}
-                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limit" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -3514,7 +3514,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* Temperature & Humidity Chart - Full Width */}
                     <div ref={tempHumidityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Temperatura & Umidità Relativa ({periodLabel})</h3>
+                        <h3 className="text-lg font-bold text-gray-800">Temperature & Relative Humidity ({periodLabel})</h3>
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
@@ -3547,7 +3547,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               strokeWidth={2.25}
                               strokeDasharray="4 4"
                               dot={false}
-                              name={`${airDeviceLabelById.get(d.id) || d.id} · Umidità`}
+                              name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`}
                             />
                           ))}
                         </LineChart>
@@ -3563,7 +3563,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={pm25Ref} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">PM2.5 - Particolato Fine</h3>
+                          <h3 className="text-lg font-bold text-gray-800">PM2.5 - Fine Particulate</h3>
                           <p className="text-xs text-gray-500">Trend ({periodLabel})</p>
                         </div>
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
@@ -3586,12 +3586,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name={airDeviceLabelById.get(d.id) || d.id}
                             />
                           ))}
-                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
                         </LineChart>
                       </ResponsiveContainer>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                         <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
-                        <span>Limite OMS: 25 μg/m³</span>
+                        <span>WHO Limit: 25 μg/m³</span>
                       </div>
                     </div>
 
@@ -3599,7 +3599,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={pm10Ref} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">PM10 - Particolato Grossolano</h3>
+                          <h3 className="text-lg font-bold text-gray-800">PM10 - Coarse Particulate</h3>
                           <p className="text-xs text-gray-500">Trend ({periodLabel})</p>
                         </div>
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
@@ -3622,12 +3622,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name={airDeviceLabelById.get(d.id) || d.id}
                             />
                           ))}
-                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
                         </LineChart>
                       </ResponsiveContainer>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                         <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
-                        <span>Limite OMS: 50 μg/m³</span>
+                        <span>WHO Limit: 50 μg/m³</span>
                       </div>
                     </div>
 
@@ -3688,8 +3688,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={coO3Ref} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Monossido di Carbonio (CO) & Ozono (O₃)</h3>
-                          <p className="text-xs text-gray-500">Trend giornaliero</p>
+                          <h3 className="text-lg font-bold text-gray-800">Carbon Monoxide (CO) & Ozone (O₃)</h3>
+                          <p className="text-xs text-gray-500">Daily trend</p>
                         </div>
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
@@ -3738,14 +3738,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       const coQ = getAirQualityLabel(coVal, { good: 4, moderate: 9 });
                       return (
                         <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                          <h3 className="text-lg font-bold text-gray-800 mb-4">CO - Monossido di Carbonio</h3>
+                          <h3 className="text-lg font-bold text-gray-800 mb-4">CO - Carbon Monoxide</h3>
                           <div className="flex items-center gap-6">
                             <div className="flex-1">
                               <div className={`text-4xl font-bold ${coQ.color}`}>{coVal != null ? coVal.toFixed(1) : '—'}</div>
                               <div className="text-sm text-gray-500">ppm ({periodLabel})</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-gray-500 mb-1">Limite sicurezza</div>
+                              <div className="text-xs text-gray-500 mb-1">Safety limit</div>
                               <div className="text-lg font-semibold text-gray-700">{coLimit} ppm</div>
                               <div className={`text-xs ${coQ.color} mt-1`}>● {coQ.label}</div>
                             </div>
@@ -3764,7 +3764,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       const o3Q = getAirQualityLabel(o3Val, { good: 50, moderate: 100 });
                       return (
                         <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                          <h3 className="text-lg font-bold text-gray-800 mb-4">O₃ - Ozono</h3>
+                          <h3 className="text-lg font-bold text-gray-800 mb-4">O₃ - Ozone</h3>
                           <div className="flex items-center gap-6">
                             <div className="flex-1">
                               <div className={`text-4xl font-bold ${o3Q.color}`}>{o3Val != null ? Math.round(o3Val) : '—'}</div>
@@ -3817,9 +3817,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'm³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Area type="monotone" dataKey="consumption" stroke="hsl(200, 80%, 50%)" strokeWidth={2.5} fill="url(#waterGradient)" name="Consumo Attuale" />
+                          <Area type="monotone" dataKey="consumption" stroke="hsl(200, 80%, 50%)" strokeWidth={2.5} fill="url(#waterGradient)" name="Current Consumption" />
                           <Line type="monotone" dataKey="target" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
-                          <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Anno Precedente" />
+                          <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Previous Year" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -3827,7 +3827,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* Distribuzione consumo */}
                     <div ref={waterDistributionRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Distribuzione Consumo</h3>
+                        <h3 className="text-lg font-bold text-gray-800">Consumption Distribution</h3>
                         <ExportButtons chartRef={waterDistributionRef} data={waterDistributionData} filename="water-distribution" />
                       </div>
                       <div className="flex items-center gap-6">
@@ -3861,28 +3861,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Consumo Totale</p>
+                        <p className="text-sm text-gray-500 mb-1">Total Consumption</p>
                         <p className="text-3xl font-bold text-blue-500">18,740</p>
-                        <p className="text-xs text-gray-500 mt-1">m³ / anno</p>
-                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ 12% vs anno scorso</div>
+                        <p className="text-xs text-gray-500 mt-1">m³ / year</p>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ 12% vs last year</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Costo Stimato</p>
+                        <p className="text-sm text-gray-500 mb-1">Estimated Cost</p>
                         <p className="text-3xl font-bold text-gray-800">€24,562</p>
-                        <p className="text-xs text-gray-500 mt-1">/ anno</p>
-                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 risparmiati</div>
+                        <p className="text-xs text-gray-500 mt-1">/ year</p>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 saved</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Efficienza</p>
+                        <p className="text-sm text-gray-500 mb-1">Efficiency</p>
                         <p className="text-3xl font-bold text-emerald-500">82%</p>
-                        <p className="text-xs text-gray-500 mt-1">utilizzo efficiente</p>
-                        <div className="mt-2 text-xs text-blue-500 font-medium">↑ 5% vs mese scorso</div>
+                        <p className="text-xs text-gray-500 mt-1">efficient use</p>
+                        <div className="mt-2 text-xs text-blue-500 font-medium">↑ 5% vs last month</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Perdite Rilevate</p>
+                        <p className="text-sm text-gray-500 mb-1">Leaks Detected</p>
                         <p className="text-3xl font-bold text-amber-500">2</p>
-                        <p className="text-xs text-gray-500 mt-1">zone con anomalie</p>
-                        <div className="mt-2 text-xs text-red-500 font-medium">⚠ Richiede attenzione</div>
+                        <p className="text-xs text-gray-500 mt-1">zones with anomalies</p>
+                        <div className="mt-2 text-xs text-red-500 font-medium">⚠ Requires attention</div>
                       </div>
                     </div>
                   </div>
@@ -3895,8 +3895,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={waterLeaksRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Rilevamento Perdite</h3>
-                          <p className="text-xs text-gray-500">Monitoraggio zone critiche</p>
+                          <h3 className="text-lg font-bold text-gray-800">Leak Detection</h3>
+                          <p className="text-xs text-gray-500">Critical zones monitoring</p>
                         </div>
                         <ExportButtons chartRef={waterLeaksRef} data={waterLeaksData} filename="water-leaks" />
                       </div>
@@ -3910,7 +3910,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <div className="flex-1">
                               <div className="text-sm font-medium text-gray-700">{zone.zone}</div>
                               <div className="text-xs text-gray-500">
-                                {zone.status === 'ok' ? 'Nessuna anomalia' : `Rilevato: ${zone.detected}`}
+                                {zone.status === 'ok' ? 'No anomaly' : `Detected: ${zone.detected}`}
                               </div>
                             </div>
                             <div className="text-right">
@@ -3918,7 +3918,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 zone.status === 'critical' ? 'text-red-500' : 
                                 zone.status === 'warning' ? 'text-amber-500' : 'text-emerald-500'
                               }`}>{zone.leakRate}%</div>
-                              <div className="text-xs text-gray-500">tasso perdita</div>
+                              <div className="text-xs text-gray-500">leak rate</div>
                             </div>
                           </div>
                         ))}
@@ -3929,8 +3929,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={waterTrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Trend Consumo Giornaliero</h3>
-                          <p className="text-xs text-gray-500">Picchi e consumi orari</p>
+                          <h3 className="text-lg font-bold text-gray-800">Daily Consumption Trend</h3>
+                          <p className="text-xs text-gray-500">Peaks and hourly consumption</p>
                         </div>
                         <ExportButtons chartRef={waterTrendRef} data={waterDailyTrendData} filename="water-daily-trend" onExpand={() => setFullscreenChart('waterTrend')} />
                       </div>
@@ -3940,7 +3940,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'litri', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
-                          <Bar dataKey="consumption" name="Consumo">
+                          <Bar dataKey="consumption" name="Consumption">
                             {waterDailyTrendData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.peak ? 'hsl(200, 80%, 40%)' : 'hsl(200, 60%, 60%)'} />
                             ))}
@@ -3953,8 +3953,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={waterEfficiencyRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Efficienza Settimanale</h3>
-                          <p className="text-xs text-gray-500">Rapporto utilizzo/spreco</p>
+                          <h3 className="text-lg font-bold text-gray-800">Weekly Efficiency</h3>
+                          <p className="text-xs text-gray-500">Usage/waste ratio</p>
                         </div>
                         <ExportButtons chartRef={waterEfficiencyRef} data={waterEfficiencyData} filename="water-efficiency" />
                       </div>
@@ -3965,8 +3965,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <YAxis type="category" dataKey="week" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          <Bar dataKey="efficiency" stackId="a" fill="hsl(150, 60%, 45%)" name="Efficienza" radius={[0, 0, 0, 0]} />
-                          <Bar dataKey="waste" stackId="a" fill="hsl(0, 60%, 60%)" name="Spreco" radius={[0, 4, 4, 0]} />
+                          <Bar dataKey="efficiency" stackId="a" fill="hsl(150, 60%, 45%)" name="Efficiency" radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="waste" stackId="a" fill="hsl(0, 60%, 60%)" name="Waste" radius={[0, 4, 4, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -3980,8 +3980,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={waterQualityRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Parametri Qualità Acqua</h3>
-                          <p className="text-xs text-gray-500">pH, Torbidità, Cloro residuo</p>
+                          <h3 className="text-lg font-bold text-gray-800">Water Quality Parameters</h3>
+                          <p className="text-xs text-gray-500">pH, Turbidity, Residual Chlorine</p>
                         </div>
                         <ExportButtons chartRef={waterQualityRef} data={waterQualityData} filename="water-quality" onExpand={() => setFullscreenChart('waterQuality')} />
                       </div>
@@ -3994,47 +3994,47 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           <Line yAxisId="ph" type="monotone" dataKey="ph" stroke="hsl(200, 80%, 50%)" strokeWidth={2.5} dot={{ fill: 'hsl(200, 80%, 50%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="pH" />
-                          <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2.5} dot={{ fill: 'hsl(30, 80%, 50%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Torbidità (NTU)" />
-                          <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2.5} dot={{ fill: 'hsl(150, 60%, 45%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Cloro (mg/L)" />
+                          <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2.5} dot={{ fill: 'hsl(30, 80%, 50%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Turbidity (NTU)" />
+                          <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2.5} dot={{ fill: 'hsl(150, 60%, 45%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Chlorine (mg/L)" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
 
                     {/* Indicatori Qualità */}
                     <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">pH - Acidità</h3>
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">pH - Acidity</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-blue-500">7.2</div>
-                          <div className="text-sm text-gray-500">valore attuale</div>
+                          <div className="text-sm text-gray-500">current value</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Range ottimale</div>
+                          <div className="text-xs text-gray-500 mb-1">Optimal range</div>
                           <div className="text-lg font-semibold text-gray-700">6.5 - 8.5</div>
-                          <div className="text-xs text-emerald-500 mt-1">● Ottimale</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Optimal</div>
                         </div>
                       </div>
                       <div className="mt-4 h-3 bg-gradient-to-r from-red-400 via-emerald-400 to-blue-400 rounded-full overflow-hidden relative">
                         <div className="absolute h-full w-1 bg-white shadow-lg" style={{ left: '47%' }} />
                       </div>
                       <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>Acido (6)</span>
-                        <span>Neutro (7)</span>
-                        <span>Basico (9)</span>
+                        <span>Acidic (6)</span>
+                        <span>Neutral (7)</span>
+                        <span>Basic (9)</span>
                       </div>
                     </div>
 
                     <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">Torbidità</h3>
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">Turbidity</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-amber-500">0.9</div>
-                          <div className="text-sm text-gray-500">NTU (attuale)</div>
+                          <div className="text-sm text-gray-500">NTU (current)</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Limite OMS</div>
+                          <div className="text-xs text-gray-500 mb-1">WHO Limit</div>
                           <div className="text-lg font-semibold text-gray-700">&lt; 4 NTU</div>
-                          <div className="text-xs text-emerald-500 mt-1">● Eccellente</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Excellent</div>
                         </div>
                       </div>
                       <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -4043,16 +4043,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">Cloro Residuo</h3>
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">Residual Chlorine</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-emerald-500">0.5</div>
-                          <div className="text-sm text-gray-500">mg/L (attuale)</div>
+                          <div className="text-sm text-gray-500">mg/L (current)</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Range ideale</div>
+                          <div className="text-xs text-gray-500 mb-1">Ideal range</div>
                           <div className="text-lg font-semibold text-gray-700">0.2 - 1.0</div>
-                          <div className="text-xs text-emerald-500 mt-1">● Nel range</div>
+                          <div className="text-xs text-emerald-500 mt-1">● In range</div>
                         </div>
                       </div>
                       <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -4061,16 +4061,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">Temperatura Acqua</h3>
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">Water Temperature</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-blue-500">18.5</div>
-                          <div className="text-sm text-gray-500">°C (attuale)</div>
+                          <div className="text-sm text-gray-500">°C (current)</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Range comfort</div>
+                          <div className="text-xs text-gray-500 mb-1">Comfort range</div>
                           <div className="text-lg font-semibold text-gray-700">15 - 25 °C</div>
-                          <div className="text-xs text-emerald-500 mt-1">● Ideale</div>
+                          <div className="text-xs text-emerald-500 mt-1">● Ideal</div>
                         </div>
                       </div>
                       <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -4100,7 +4100,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Punti ottenuti</span>
+                        <span className="text-gray-600">Points obtained</span>
                         <span className="font-bold text-gray-800">68 / 110</span>
                       </div>
                       <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
@@ -4116,7 +4116,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div className="mt-6 pt-4 border-t border-gray-100">
                       <div className="flex items-center gap-2 text-sm text-emerald-600">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>Certificato dal 2023</span>
+                        <span>Certified since 2023</span>
                       </div>
                     </div>
                   </div>}
@@ -4151,7 +4151,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div className="mt-6 pt-4 border-t border-gray-100">
                       <div className="flex items-center gap-2 text-sm text-sky-600">
                         <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
-                        <span>Rinnovo: Dic 2025</span>
+                        <span>Renewal: Dec 2025</span>
                       </div>
                     </div>
                   </div>}
@@ -4196,7 +4196,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         {/* Score bar */}
                         <div className="space-y-3">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Punti ottenuti</span>
+                            <span className="text-gray-600">Points obtained</span>
                             <span className="font-bold text-gray-800">{wScore} / {wTarget}</span>
                           </div>
                           <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
@@ -4246,7 +4246,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="mt-4 pt-3 border-t border-gray-100">
                           <div className="flex items-center gap-2 text-sm text-amber-600">
                             <div className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span>In corso verso {wLevel === 'Platinum' ? 'Platinum' : levelThresholds.find(t => t.label === wLevel) ? levelThresholds[levelThresholds.findIndex(t => t.label === wLevel) + 1]?.label || wLevel : 'Gold'}</span>
+                            <span>Progressing towards {wLevel === 'Platinum' ? 'Platinum' : levelThresholds.find(t => t.label === wLevel) ? levelThresholds[levelThresholds.findIndex(t => t.label === wLevel) + 1]?.label || wLevel : 'Gold'}</span>
                           </div>
                         </div>
                       </div>
@@ -4258,19 +4258,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
                     <div className="text-3xl font-black text-emerald-500">{projectCertifications.length}</div>
-                    <div className="text-sm text-gray-600 mt-1">Certificazioni Attive</div>
+                    <div className="text-sm text-gray-600 mt-1">Active Certifications</div>
                   </div>
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
                     <div className="text-3xl font-black text-amber-500">12</div>
-                    <div className="text-sm text-gray-600 mt-1">Milestones Raggiunte</div>
+                    <div className="text-sm text-gray-600 mt-1">Milestones Reached</div>
                   </div>
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
                     <div className="text-3xl font-black text-sky-500">5</div>
-                    <div className="text-sm text-gray-600 mt-1">In Corso</div>
+                    <div className="text-sm text-gray-600 mt-1">In Progress</div>
                   </div>
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
                     <div className="text-3xl font-black text-rose-500">2026</div>
-                    <div className="text-sm text-gray-600 mt-1">Prossimo Audit</div>
+                    <div className="text-sm text-gray-600 mt-1">Next Audit</div>
                   </div>
                 </div>
               </div>
@@ -4304,7 +4304,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           </div>
                           <div className="flex-1">
                             <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
-                            <div className="text-xs text-gray-500">{milestone.points} punti</div>
+                            <div className="text-xs text-gray-500">{milestone.points} points</div>
                           </div>
                         </div>
                       ))}
@@ -4371,7 +4371,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           </div>
                           <div className="flex-1">
                             <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
-                            <div className="text-xs text-gray-500">{milestone.points} punti</div>
+                            <div className="text-xs text-gray-500">{milestone.points} points</div>
                           </div>
                         </div>
                       ))}
@@ -4530,7 +4530,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'heatmap'}
         onClose={() => setFullscreenChart(null)}
-        title="Heatmap Consumi"
+        title="Consumption Heatmap"
       >
         <div className="flex flex-col h-full justify-center">
           <div className="flex gap-4 h-[500px]">
@@ -4546,7 +4546,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 ))}
               </div>
               <div className="flex justify-between text-sm text-gray-500 mt-4 font-medium px-2">
-                {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => <span key={d}>{d}</span>)}
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => <span key={d}>{d}</span>)}
               </div>
             </div>
           </div>
@@ -4741,7 +4741,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 name={airDeviceLabelById.get(d.id) || d.id}
               />
             ))}
-            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limit" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
@@ -4770,7 +4770,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 name={airDeviceLabelById.get(d.id) || d.id}
               />
             ))}
-            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite" />
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limit" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
@@ -4779,7 +4779,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'tempHumidity'}
         onClose={() => setFullscreenChart(null)}
-        title={`Temperatura & Umidità (${periodLabel})`}
+        title={`Temperature & Humidity (${periodLabel})`}
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
@@ -4811,7 +4811,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 strokeWidth={2}
                 strokeDasharray="4 4"
                 dot={false}
-                name={`${airDeviceLabelById.get(d.id) || d.id} · Umidità`}
+                name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`}
               />
             ))}
           </LineChart>
@@ -4822,7 +4822,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'pm25'}
         onClose={() => setFullscreenChart(null)}
-        title={`PM2.5 - Particolato Fine (${periodLabel})`}
+        title={`PM2.5 - Fine Particulate (${periodLabel})`}
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={pm25MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
@@ -4842,12 +4842,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 name={airDeviceLabelById.get(d.id) || d.id}
               />
             ))}
-            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="WHO Limit" />
           </LineChart>
         </ResponsiveContainer>
         <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
           <span className="w-4 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
-          <span>Limite OMS: 25 μg/m³</span>
+          <span>WHO Limit: 25 μg/m³</span>
         </div>
       </ChartFullscreenModal>
 
@@ -4855,7 +4855,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'pm10'}
         onClose={() => setFullscreenChart(null)}
-        title={`PM10 - Particolato Grossolano (${periodLabel})`}
+        title={`PM10 - Coarse Particulate (${periodLabel})`}
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={pm10MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
@@ -4875,12 +4875,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 name={airDeviceLabelById.get(d.id) || d.id}
               />
             ))}
-            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limite OMS" />
+            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="WHO Limit" />
           </LineChart>
         </ResponsiveContainer>
         <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
           <span className="w-4 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
-          <span>Limite OMS: 50 μg/m³</span>
+          <span>WHO Limit: 50 μg/m³</span>
         </div>
       </ChartFullscreenModal>
 
@@ -4888,7 +4888,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'coO3'}
         onClose={() => setFullscreenChart(null)}
-        title="Monossido di Carbonio (CO) & Ozono (O₃)"
+        title="Carbon Monoxide (CO) & Ozone (O₃)"
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={coO3MultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
@@ -4912,7 +4912,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'waterConsumption'}
         onClose={() => setFullscreenChart(null)}
-        title="Consumo Idrico"
+        title="Water Consumption"
       >
         <ResponsiveContainer width="100%" height={500}>
           <AreaChart data={filteredWaterData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -4927,9 +4927,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
-            <Area type="monotone" dataKey="consumption" stroke="hsl(200, 80%, 50%)" strokeWidth={3} fill="url(#waterGradientFS)" name="Consumo Attuale" />
+            <Area type="monotone" dataKey="consumption" stroke="hsl(200, 80%, 50%)" strokeWidth={3} fill="url(#waterGradientFS)" name="Current Consumption" />
             <Line type="monotone" dataKey="target" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
-            <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={2} strokeDasharray="3 3" dot={false} name="Anno Precedente" />
+            <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={2} strokeDasharray="3 3" dot={false} name="Previous Year" />
           </AreaChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
@@ -4938,7 +4938,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'waterTrend'}
         onClose={() => setFullscreenChart(null)}
-        title="Trend Consumo Giornaliero"
+        title="Daily Consumption Trend"
       >
         <ResponsiveContainer width="100%" height={500}>
           <BarChart data={waterDailyTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -4946,7 +4946,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <Tooltip {...tooltipStyle} />
-            <Bar dataKey="consumption" name="Consumo">
+            <Bar dataKey="consumption" name="Consumption">
               {waterDailyTrendData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.peak ? 'hsl(200, 80%, 40%)' : 'hsl(200, 60%, 60%)'} />
               ))}
@@ -4959,7 +4959,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'waterQuality'}
         onClose={() => setFullscreenChart(null)}
-        title="Parametri Qualità Acqua"
+        title="Water Quality Parameters"
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={waterQualityData} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
@@ -4970,8 +4970,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Tooltip {...tooltipStyle} />
             <Legend />
             <Line yAxisId="ph" type="monotone" dataKey="ph" stroke="hsl(200, 80%, 50%)" strokeWidth={3} dot={false} name="pH" />
-            <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2} dot={false} name="Torbidità" />
-            <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={false} name="Cloro" />
+            <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2} dot={false} name="Turbidity" />
+            <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={false} name="Chlorine" />
           </LineChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
