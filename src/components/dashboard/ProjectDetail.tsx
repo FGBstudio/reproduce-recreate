@@ -4553,27 +4553,52 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </div>
       </ChartFullscreenModal>
 
-      {/* ENERGY: Device Consumption */}
+     {/* ENERGY: Device Consumption */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'deviceCons'}
         onClose={() => setFullscreenChart(null)}
-        title="Consumo per Dispositivo"
+        title="Devices Consumption"
       >
         <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={filteredDeviceData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={autoDomainWithPadding} />
-            <Tooltip {...tooltipStyle} />
-            <Legend />
-            <Bar dataKey="hvac" stackId="a" fill="hsl(188, 100%, 19%)" name="HVAC" />
-            <Bar dataKey="lighting" stackId="a" fill="hsl(338, 50%, 45%)" name="Illuminazione" />
-            <Bar dataKey="plugs" stackId="a" fill="hsl(338, 50%, 75%)" name="Prese" radius={[6, 6, 0, 0]} />
+          <BarChart data={deviceConsumptionData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="label" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+              dy={10}
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+              tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })}
+            />
+            <Tooltip 
+              cursor={{ fill: '#f9fafb', opacity: 0.5 }}
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              formatter={(value: any, name: string) => [Number(value).toFixed(2) + ' kWh', name]}
+              labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
+            />
+            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
+            
+            {/* Generazione Dinamica delle Barre (Stack) */}
+            {deviceConsumptionData.keys.map((key, index) => (
+                <Bar 
+                    key={key} 
+                    dataKey={key} 
+                    stackId="a" 
+                    fill={getBarColor(key, index)} 
+                    radius={[index === deviceConsumptionData.keys.length - 1 ? 4 : 0, index === deviceConsumptionData.keys.length - 1 ? 4 : 0, 0, 0]}
+                    maxBarSize={60}
+                />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
-      {/* ENERGY: Power Consumption */}
+     {/* ENERGY: Power Consumption */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'powerCons'}
         onClose={() => setFullscreenChart(null)}
@@ -4595,7 +4620,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               ))
             )}
           </div>
-          <div className="w-72 h-72 flex-shrink-0">
+          {/* Aggiunta la classe relative qui */}
+          <div className="relative w-72 h-72 flex-shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -4616,10 +4642,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 />
               </PieChart>
             </ResponsiveContainer>
+            
+            {/* Aggiunto il Valore Centrale con grandezze testuali proporzionate */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-4xl font-bold text-slate-900 tabular-nums">
+                {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              </span>
+              <span className="text-sm text-gray-500 font-medium">kW</span>
+            </div>
           </div>
         </div>
       </ChartFullscreenModal>
-
      {/* ENERGY: Carbon Footprint */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'carbon'}
