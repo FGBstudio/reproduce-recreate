@@ -633,6 +633,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const totalSlides = getTotalSlides();
 
   // Chart refs for export
+  const energyConsumptionRef = useRef<HTMLDivElement>(null);
   const energyDensityRef = useRef<HTMLDivElement>(null);
   const alertsRef = useRef<HTMLDivElement>(null);
   const periodRef = useRef<HTMLDivElement>(null);
@@ -2488,7 +2489,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                     {/* Energy Consumption Over Time Chart - REPLACED */}
-                    <div ref={actualVsAvgRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                    <div ref={energyConsumptionRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div className="flex items-center gap-2">
                           <div>
@@ -2521,7 +2522,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           </button>
                         </div>
 
-                        <ExportButtons chartRef={actualVsAvgRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('actualVsAvg')} />
+                        <ExportButtons chartRef={energyConsumptionRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('energyConsumption')} />
                       </div>
 
                       <ResponsiveContainer width="100%" height={280}>
@@ -4434,56 +4435,94 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       {/* Incolla questo blocco prima dell'ultimo </div> di chiusura del componente      */}
       {/* ============================================================================== */}
 
-      {/* ENERGY: Actual vs Average */}
+{/* ENERGY: Energy Consumption Over Time */}
       <ChartFullscreenModal
-        isOpen={fullscreenChart === 'actualVsAvg'}
+        isOpen={fullscreenChart === 'energyConsumption'}
         onClose={() => setFullscreenChart(null)}
-        title="Consumo Energetico - Dettaglio"
+        title="Energy consumption over time"
       >
         <ResponsiveContainer width="100%" height={500}>
           <AreaChart data={energyConsumptionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorGeneralFS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="hsl(188, 100%, 35%)" stopOpacity={0} />
+                <stop offset="5%" stopColor="#009193" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#009193" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorHVACFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#006367" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#006367" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorLightingFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#e63f26" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#e63f26" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorOtherFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#911140" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#911140" stopOpacity={0}/>
               </linearGradient>
             </defs>
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={autoDomainWithPadding} />
-            <Tooltip {...tooltipStyle} />
+            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kW" />
+            <Tooltip 
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', '']}
+            />
             <Legend />
 
             {energyViewMode === 'category' ? (
               <>
-                <Area
-                  type="monotone"
-                  dataKey="General"
-                  stroke="hsl(188, 100%, 35%)"
-                  strokeWidth={3}
-                  fill="url(#colorGeneralFS)"
-                  name="General (Total)"
-                />
-                <Line type="monotone" dataKey="HVAC" stroke="hsl(188, 100%, 19%)" strokeWidth={2.5} dot={false} name="HVAC" />
-                <Line type="monotone" dataKey="Lighting" stroke="hsl(338, 50%, 45%)" strokeWidth={2.5} dot={false} name="Lights" />
-                <Line type="monotone" dataKey="Plugs" stroke="hsl(338, 50%, 75%)" strokeWidth={2.5} dot={false} name="Plugs & Loads" />
+                <Area type="monotone" dataKey="General" stroke="#009193" fillOpacity={1} fill="url(#colorGeneralFS)" name="General" />
+                <Area type="monotone" dataKey="HVAC" stroke="#006367" fillOpacity={1} fill="url(#colorHVACFS)" name="HVAC" />
+                <Area type="monotone" dataKey="Lighting" stroke="#e63f26" fillOpacity={1} fill="url(#colorLightingFS)" name="Lighting" />
+                <Area type="monotone" dataKey="Other" stroke="#911140" fillOpacity={1} fill="url(#colorOtherFS)" name="Other" />
               </>
             ) : (
               <>
-                {deviceKeys.slice(0, 10).map((key, idx) => (
-                  <Line
-                    key={key}
-                    type="monotone"
-                    dataKey={key}
-                    stroke={`hsl(${(idx * 137.5) % 360}, 70%, 50%)`}
-                    strokeWidth={2}
-                    dot={false}
-                    name={key.substring(0, 18)}
-                  />
-                ))}
+                {deviceKeys.slice(0, 10).map((key, idx) => {
+                  const color = FGB_PALETTE[idx % FGB_PALETTE.length];
+                  return (
+                    <Area
+                      key={key}
+                      type="monotone"
+                      dataKey={key}
+                      stroke={color}
+                      fill={color}
+                      fillOpacity={0.1}
+                      strokeWidth={2}
+                      name={key}
+                    />
+                  );
+                })}
               </>
             )}
           </AreaChart>
+        </ResponsiveContainer>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Actual vs Average */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'actualVsAvg'}
+        onClose={() => setFullscreenChart(null)}
+        title="Actual vs Average"
+      >
+        <ResponsiveContainer width="100%" height={500}>
+          <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <XAxis dataKey="tsLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(val) => Number(val).toFixed(2)} />
+            <Tooltip 
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              formatter={(value: any) => [Number(value).toFixed(3) + ' kWh/m²', '']}
+              labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
+            />
+            <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
+
+            <Area type="monotone" dataKey="range" fill="#A6A6A6" stroke="none" fillOpacity={0.2} name="Peer Range" legendType="rect" />
+            <Line type="monotone" dataKey="average" stroke="#3A3A3A" strokeWidth={1.5} dot={false} name="Peer Average" />
+            <Line type="monotone" dataKey="benchmark" stroke="#7E0A2F" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Benchmark" />
+            <Line type="monotone" dataKey="actual" stroke="#129E97" strokeWidth={3} dot={{ r: 3, fill: '#129E97', strokeWidth: 0 }} activeDot={{ r: 6 }} name="Actual" />
+          </ComposedChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
@@ -4581,27 +4620,27 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </div>
       </ChartFullscreenModal>
 
-      {/* ENERGY: Carbon Footprint */}
+     {/* ENERGY: Carbon Footprint */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'carbon'}
         onClose={() => setFullscreenChart(null)}
         title="Carbon Footprint Analysis"
       >
         <ResponsiveContainer width="100%" height={500}>
-          <AreaChart data={carbonChartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorCarbonFS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#129E97" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#129E97" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="tsLabel" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kg" />
-            <Tooltip {...tooltipStyle} formatter={(value: any) => [Number(value).toFixed(2) + ' kg CO₂', '']} />
-            <Legend />
-            <Area type="monotone" dataKey="co2" stroke="#129E97" strokeWidth={2} fill="url(#colorCarbonFS)" name="CO₂ Emissions" />
-          </AreaChart>
+          <BarChart data={carbonChartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barGap={2}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <XAxis dataKey="bucket" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })} label={{ value: 'kgCO₂e', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: 10 } }} />
+            <Tooltip 
+              cursor={{ fill: '#f9fafb', opacity: 0.5 }}
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              formatter={(value: any, name: string) => [Number(value).toFixed(1) + ' kg', name]}
+            />
+            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
+            {carbonChartData.series.map((s, index) => (
+                <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={50} />
+            ))}
+          </BarChart>
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
