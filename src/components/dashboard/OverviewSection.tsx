@@ -126,6 +126,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
   liveData: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
   onActivateModule?: (module: 'energy' | 'air' | 'water') => void;
 }) => {
+  const { t } = useLanguage();
   return (
     <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
       <CardContent className="p-4 md:p-6">
@@ -146,7 +147,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                 {status.level}
               </div>
               <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">
-                OVERALL PERFORMANCE
+                {t('overview.overall_performance')}
               </div>
             </div>
           </div>
@@ -157,7 +158,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>
                 {status.score}
               </div>
-              <div className="text-xs text-gray-500">Score</div>
+              <div className="text-xs text-gray-500">{t('overview.score')}</div>
             </div>
             
             <div className="h-12 w-px bg-gray-200" />
@@ -224,7 +225,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               <div className="text-center bg-emerald-50 rounded-xl px-4 py-2">
                 <div className="text-2xl md:text-3xl font-bold text-emerald-600">0</div>
                 <div className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">
-                  Active Alerts
+                  {t('overview.active_alerts')}
                 </div>
               </div>
             )}
@@ -236,7 +237,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                 <TrendingUp className="w-5 h-5" />
                 <span className="text-lg font-semibold">+5%</span>
               </div>
-              <div className="text-xs text-gray-500">vs last period</div>
+              <div className="text-xs text-gray-500">{t('overview.vs_last_period')}</div>
             </div>
           </div>
         </div>
@@ -252,6 +253,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
   onClick?: () => void;
   powerData?: EnergyPowerBreakdown;
 }) => {
+  const { t } = useLanguage();
   const readings = useMemo(() => {
     if (!powerData?.isRealData && !powerData?.isStale) {
       return {
@@ -290,11 +292,11 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
               <Zap className="w-5 h-5" />
             </div>
             <Badge className="bg-gray-400 text-white text-[10px] uppercase tracking-wider">
-              Disabled
+              {t('overview.disabled')}
             </Badge>
           </div>
           <div className="text-2xl font-bold text-gray-400 mb-1">N/A</div>
-          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">ENERGY PERFORMANCE</div>
+          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{t('overview.energy_performance')}</div>
         </CardContent>
       </Card>
     );
@@ -317,23 +319,23 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
           </div>
           <div className="text-right">
             <div className={`text-xl font-bold ${isStale ? 'text-amber-500' : getStatusColor(status.level)}`}>{isStale ? 'WARNING' : status.level}</div>
-            <div className="text-[10px] text-gray-500 uppercase">Score {status.score}</div>
+            <div className="text-[10px] text-gray-500 uppercase">{t('overview.score')} {status.score}</div>
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">ENERGY PERFORMANCE</div>
+        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.energy_performance')}</div>
         
         {isStale && (
           <div className="bg-amber-50 text-amber-700 text-[10px] rounded-md px-2 py-1 mb-3 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
-            Stale data ({">"} 2 days)
+            {t('overview.stale_data')}
           </div>
         )}
         
         {/* Total consumption highlight */}
           <div className="bg-white/60 rounded-lg p-3 mb-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Current Consumption</span>
+            <span className="text-sm text-gray-600">{t('overview.current_consumption')}</span>
             <div className="flex items-center gap-1">
               <span className="text-2xl font-bold text-gray-800">{formatMaybe(readings.totalPower, 1)}</span>
               <span className="text-sm text-gray-500">kW</span>
@@ -343,7 +345,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
         
         {/* Detailed readings */}
         <div className="bg-white/40 rounded-lg p-3">
-          <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">Latest Readings</div>
+          <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">{t('overview.latest_readings')}</div>
           <ReadingItem 
             icon={<Fan className="w-3.5 h-3.5" />}
             label="HVAC"
@@ -387,6 +389,7 @@ const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: {
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
   thresholds?: ReturnType<typeof useSiteThresholds>['thresholds'];
 }) => {
+  const { t } = useLanguage();
   // Use real-time data if available with threshold-based status
   const readings = useMemo(() => {
     const isReal = !!liveData?.isRealData;
@@ -422,11 +425,11 @@ const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: {
               <Wind className="w-5 h-5" />
             </div>
             <Badge className="bg-gray-400 text-white text-[10px] uppercase tracking-wider">
-              Disabilitato
+              {t('overview.disabled')}
             </Badge>
           </div>
           <div className="text-2xl font-bold text-gray-400 mb-1">N/A</div>
-          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">INDOOR AIR QUALITY</div>
+          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{t('overview.indoor_air_quality')}</div>
         </CardContent>
       </Card>
     );
@@ -447,15 +450,15 @@ const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: {
           </div>
           <div className="text-right">
             <div className={`text-xl font-bold ${getStatusColor(status.level)}`}>{status.level}</div>
-            <div className="text-[10px] text-gray-500 uppercase">Score {status.score}</div>
+            <div className="text-[10px] text-gray-500 uppercase">{t('overview.score')} {status.score}</div>
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">INDOOR AIR QUALITY</div>
+        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.indoor_air_quality')}</div>
         
         {/* All parameters grid */}
         <div className="bg-white/40 rounded-lg p-3">
-          <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">Parametri Monitorati</div>
+          <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">{t('overview.monitored_params')}</div>
           <div className="grid grid-cols-2 gap-x-4">
             <ReadingItem 
               icon={<Gauge className="w-3.5 h-3.5" />}
@@ -527,6 +530,7 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
   onClick?: () => void;
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
 }) => {
+  const { t } = useLanguage();
   const readings = useMemo(() => {
     const isReal = !!liveData?.isRealData;
     const m = isReal ? liveData!.metrics : {};
@@ -550,11 +554,11 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
               <Droplet className="w-5 h-5" />
             </div>
             <Badge className="bg-gray-400 text-white text-[10px] uppercase tracking-wider">
-              Disabilitato
+              {t('overview.disabled')}
             </Badge>
           </div>
           <div className="text-2xl font-bold text-gray-400 mb-1">N/A</div>
-          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">WATER CONSUMPTION</div>
+          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{t('overview.water_consumption_title')}</div>
         </CardContent>
       </Card>
     );
@@ -575,35 +579,35 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
           </div>
           <div className="text-right">
             <div className={`text-xl font-bold ${getStatusColor(status.level)}`}>{status.level}</div>
-            <div className="text-[10px] text-gray-500 uppercase">Score {status.score}</div>
+            <div className="text-[10px] text-gray-500 uppercase">{t('overview.score')} {status.score}</div>
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">WATER CONSUMPTION</div>
+        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.water_consumption_title')}</div>
         
         {/* Main metrics */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-white/60 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold text-gray-800">{formatMaybeInt(readings.dailyConsumption)}</div>
-            <div className="text-[10px] text-gray-500">L/giorno</div>
+            <div className="text-[10px] text-gray-500">{t('overview.l_day')}</div>
           </div>
           <div className="bg-white/60 rounded-lg p-3 text-center">
             <div className="flex items-center justify-center gap-1 text-emerald-600">
               <TrendingDown className="w-4 h-4" />
               <span className="text-xl font-bold">{readings.vsBaseline == null ? '—' : `${readings.vsBaseline}%`}</span>
             </div>
-            <div className="text-[10px] text-gray-500">vs baseline</div>
+            <div className="text-[10px] text-gray-500">{t('overview.vs_baseline')}</div>
           </div>
         </div>
         
         {/* Additional metrics */}
         <div className="bg-white/40 rounded-lg p-3">
           <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-            <span className="text-xs text-gray-600">Efficienza</span>
+            <span className="text-xs text-gray-600">{t('overview.efficiency')}</span>
             <span className="text-sm font-semibold text-emerald-600">{readings.efficiency == null ? '—' : `${readings.efficiency}%`}</span>
           </div>
           <div className="flex items-center justify-between py-1.5">
-            <span className="text-xs text-gray-600">Perdite Attive</span>
+            <span className="text-xs text-gray-600">{t('overview.active_leaks')}</span>
             <span className={`text-sm font-semibold ${readings.activeLeaks === 0 ? 'text-emerald-600' : readings.activeLeaks == null ? 'text-gray-500' : 'text-red-600'}`}>
               {readings.activeLeaks == null ? '—' : readings.activeLeaks}
             </span>
