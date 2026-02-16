@@ -611,7 +611,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const filteredDeviceData = useDeviceData(timePeriod, dateRange);
   const filteredCO2Data = useCO2Data(timePeriod, dateRange);
   const filteredWaterData = useWaterData(timePeriod, dateRange);
-  const periodLabel = getPeriodLabel(timePeriod, dateRange);
+  const periodLabel = getPeriodLabel(timePeriod, dateRange, language);
   
   // Use real data if available, otherwise fall back to mock generators
   const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : mockEnergyData;

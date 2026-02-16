@@ -5,7 +5,9 @@
 
 import { useMemo } from 'react';
 import { format, subDays, subWeeks, subMonths, eachDayOfInterval, eachHourOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfDay, startOfYear } from "date-fns";
-import { it } from "date-fns/locale";
+import { it, enUS } from "date-fns/locale";
+import { useLanguage, type Language } from "@/contexts/LanguageContext";
+import { getDateLocale } from "@/lib/dateLocale";
 import { useTimeseries,useEnergyTimeseries, ApiTimeseriesPoint, useDevices, useLatestTelemetry } from '@/lib/api';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { TimePeriod, DateRange } from '@/hooks/useTimeFilteredData';
@@ -173,8 +175,10 @@ function transformTimeseriesData(
 // Mock Data Generators (fallback)
 // =============================================================================
 
-function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): EnergyDataPoint[] {
+function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange, language: Language = 'en'): EnergyDataPoint[] {
   const now = new Date();
+  const dateLocale = getDateLocale(language);
+  const weekLabel = language === 'it' ? 'Sett' : 'Wk';
   
   const generatePoint = (label: string, i: number) => ({
     label,
@@ -191,7 +195,7 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
     case "week": {
       const days = eachDayOfInterval({ start: subDays(now, 6), end: now });
       return days.map((day, i) => ({
-        ...generatePoint(format(day, "EEE", { locale: it }), i),
+        ...generatePoint(format(day, "EEE", { locale: dateLocale }), i),
         actual: Math.round(400 + seededRandom(i * 19) * 300),
         expected: Math.round(450 + seededRandom(i * 29) * 280),
         average: Math.round(420 + seededRandom(i * 37) * 250),
@@ -200,7 +204,7 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
     case "month": {
       const weeks = eachWeekOfInterval({ start: subWeeks(now, 3), end: now }, { weekStartsOn: 1 });
       return weeks.map((week, i) => ({
-        ...generatePoint(`Sett ${i + 1}`, i),
+        ...generatePoint(`${weekLabel} ${i + 1}`, i),
         actual: Math.round(2000 + seededRandom(i * 41) * 1500),
         expected: Math.round(2200 + seededRandom(i * 47) * 1400),
         average: Math.round(2100 + seededRandom(i * 53) * 1200),
@@ -209,7 +213,7 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
     case "year": {
       const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
       return months.map((month, i) => ({
-        ...generatePoint(format(month, "MMM", { locale: it }), i),
+        ...generatePoint(format(month, "MMM", { locale: dateLocale }), i),
         actual: Math.round(8000 + seededRandom(i * 59) * 4000),
         expected: Math.round(8500 + seededRandom(i * 61) * 3800),
         average: Math.round(8200 + seededRandom(i * 67) * 3500),
@@ -233,7 +237,7 @@ function generateMockEnergyData(timePeriod: TimePeriod, dateRange?: DateRange): 
       } else {
         const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to });
         return months.map((month, i) => ({
-          ...generatePoint(format(month, "MMM yy", { locale: it }), i),
+          ...generatePoint(format(month, "MMM yy", { locale: dateLocale }), i),
           actual: Math.round(8000 + seededRandom(i * 59) * 4000),
           expected: Math.round(8500 + seededRandom(i * 61) * 3800),
           average: Math.round(8200 + seededRandom(i * 67) * 3500),
@@ -258,6 +262,7 @@ export function useRealTimeEnergyData(
   dateRange?: DateRange,
   siteTimezone?: string
 ): UseTimeseriesDataResult<EnergyDataPoint> {
+  const { language } = useLanguage();
   // Use memoized time range to prevent unnecessary refetches
   const dateRangeFromTime = dateRange?.from?.getTime() ?? 0;
   const dateRangeToTime = dateRange?.to?.getTime() ?? 0;
@@ -289,7 +294,7 @@ export function useRealTimeEnergyData(
     // If no Supabase or no site, use mock data
     if (!isSupabaseConfigured || !siteId) {
       return {
-        data: generateMockEnergyData(timePeriod, dateRange),
+        data: generateMockEnergyData(timePeriod, dateRange, language),
         isLoading: false,
         isError: false,
         error: null,
@@ -314,7 +319,7 @@ export function useRealTimeEnergyData(
     if (!timeseriesData?.data?.length) {
       console.log('[useRealTimeEnergyData] No energy data found, using mock. Meta:', timeseriesData?.meta);
       return {
-        data: generateMockEnergyData(timePeriod, dateRange),
+        data: generateMockEnergyData(timePeriod, dateRange, language),
         isLoading: false,
         isError: false,
         error: null,

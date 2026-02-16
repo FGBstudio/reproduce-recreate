@@ -16,7 +16,9 @@ import {
   endOfYear,
   differenceInDays 
 } from "date-fns";
-import { it } from "date-fns/locale";
+import { it, enUS } from "date-fns/locale";
+import { useLanguage, type Language } from "@/contexts/LanguageContext";
+import { getDateLocale } from "@/lib/dateLocale";
 import { useEnergyTimeseries, useWeatherTimeseries } from "../lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +93,8 @@ export const useEnergyWeatherAnalysis = (
   timePeriod: TimePeriod, 
   dateRange?: DateRange
 ) => {
+  const { language } = useLanguage();
+  const dateLocale = getDateLocale(language);
   const { start, end, bucket } = useMemo(
     () => getTimeRangeParams(timePeriod, dateRange),
     [timePeriod, dateRange]
@@ -233,7 +237,7 @@ export const useEnergyWeatherAnalysis = (
       time: format(
         new Date(e.timestamp),
         useDaily ? 'dd MMM' : (timePeriod === 'today' ? 'HH:mm' : 'dd/MM HH:mm'),
-        { locale: it }
+        { locale: dateLocale }
       ),
       timestamp: e.timestamp,
       energy: e.energy > 0 ? Math.round(e.energy * 100) / 100 : null,
@@ -267,12 +271,15 @@ const seededRandom = (seed: number) => {
 
 // Generate energy data based on time period
 export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => {
+  const { language } = useLanguage();
+  const dateLocale = getDateLocale(language);
+  const weekLabel = language === 'it' ? 'Sett' : 'Wk';
+
   return useMemo(() => {
     const now = new Date();
     
     switch (timePeriod) {
       case "today": {
-        // Hourly data for today
         const hours = eachHourOfInterval({
           start: startOfDay(now),
           end: now
@@ -285,39 +292,36 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
         }));
       }
       case "week": {
-        // Daily data for this week
         const days = eachDayOfInterval({
           start: subDays(now, 6),
           end: now
         });
         return days.map((day, i) => ({
-          label: format(day, "EEE", { locale: it }),
+          label: format(day, "EEE", { locale: dateLocale }),
           actual: Math.round(400 + seededRandom(i * 19) * 300),
           expected: Math.round(450 + seededRandom(i * 29) * 280),
           average: Math.round(420 + seededRandom(i * 37) * 250),
         }));
       }
       case "month": {
-        // Weekly data for this month
         const weeks = eachWeekOfInterval({
           start: subWeeks(now, 3),
           end: now
         }, { weekStartsOn: 1 });
         return weeks.map((week, i) => ({
-          label: `Sett ${i + 1}`,
+          label: `${weekLabel} ${i + 1}`,
           actual: Math.round(2000 + seededRandom(i * 41) * 1500),
           expected: Math.round(2200 + seededRandom(i * 47) * 1400),
           average: Math.round(2100 + seededRandom(i * 53) * 1200),
         }));
       }
       case "year": {
-        // Monthly data for this year
         const months = eachMonthOfInterval({
           start: startOfYear(now),
           end: now
         });
         return months.map((month, i) => ({
-          label: format(month, "MMM", { locale: it }),
+          label: format(month, "MMM", { locale: dateLocale }),
           actual: Math.round(8000 + seededRandom(i * 59) * 4000),
           expected: Math.round(8500 + seededRandom(i * 61) * 3800),
           average: Math.round(8200 + seededRandom(i * 67) * 3500),
@@ -328,7 +332,6 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
         const daysDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
         
         if (daysDiff <= 1) {
-          // Hourly
           const hours = eachHourOfInterval({ start: dateRange.from, end: dateRange.to });
           return hours.map((hour, i) => ({
             label: format(hour, "HH:mm"),
@@ -337,7 +340,6 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
             average: Math.round(32 + seededRandom(i * 31) * 40),
           }));
         } else if (daysDiff <= 14) {
-          // Daily
           const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
           return days.map((day, i) => ({
             label: format(day, "dd/MM"),
@@ -346,7 +348,6 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
             average: Math.round(420 + seededRandom(i * 37) * 250),
           }));
         } else if (daysDiff <= 90) {
-          // Weekly
           const weeks = eachWeekOfInterval({ start: dateRange.from, end: dateRange.to }, { weekStartsOn: 1 });
           return weeks.map((week, i) => ({
             label: format(week, "dd/MM"),
@@ -355,10 +356,9 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
             average: Math.round(2100 + seededRandom(i * 53) * 1200),
           }));
         } else {
-          // Monthly
           const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to });
           return months.map((month, i) => ({
-            label: format(month, "MMM yy", { locale: it }),
+            label: format(month, "MMM yy", { locale: dateLocale }),
             actual: Math.round(8000 + seededRandom(i * 59) * 4000),
             expected: Math.round(8500 + seededRandom(i * 61) * 3800),
             average: Math.round(8200 + seededRandom(i * 67) * 3500),
@@ -368,11 +368,15 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
       default:
         return [];
     }
-  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime(), language]);
 };
 
 // Generate device consumption data based on time period
 export const useDeviceData = (timePeriod: TimePeriod, dateRange?: DateRange) => {
+  const { language } = useLanguage();
+  const dateLocale = getDateLocale(language);
+  const weekLabel = language === 'it' ? 'Sett' : 'Wk';
+
   return useMemo(() => {
     const now = new Date();
     
@@ -390,15 +394,15 @@ export const useDeviceData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
       }
       case "week": {
         const days = eachDayOfInterval({ start: subDays(now, 6), end: now });
-        return days.map((day, i) => generateDataPoint(format(day, "EEE", { locale: it }), i, 0.3));
+        return days.map((day, i) => generateDataPoint(format(day, "EEE", { locale: dateLocale }), i, 0.3));
       }
       case "month": {
         const weeks = eachWeekOfInterval({ start: subWeeks(now, 3), end: now }, { weekStartsOn: 1 });
-        return weeks.map((week, i) => generateDataPoint(`Sett ${i + 1}`, i, 1));
+        return weeks.map((week, i) => generateDataPoint(`${weekLabel} ${i + 1}`, i, 1));
       }
       case "year": {
         const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
-        return months.map((month, i) => generateDataPoint(format(month, "MMM", { locale: it }), i, 4));
+        return months.map((month, i) => generateDataPoint(format(month, "MMM", { locale: dateLocale }), i, 4));
       }
       case "custom": {
         if (!dateRange) return [];
@@ -415,17 +419,21 @@ export const useDeviceData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
           return weeks.map((week, i) => generateDataPoint(format(week, "dd/MM"), i, 1));
         } else {
           const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to });
-          return months.map((month, i) => generateDataPoint(format(month, "MMM yy", { locale: it }), i, 4));
+          return months.map((month, i) => generateDataPoint(format(month, "MMM yy", { locale: dateLocale }), i, 4));
         }
       }
       default:
         return [];
     }
-  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime(), language]);
 };
 
 // Generate CO2 data based on time period
 export const useCO2Data = (timePeriod: TimePeriod, dateRange?: DateRange) => {
+  const { language } = useLanguage();
+  const dateLocale = getDateLocale(language);
+  const weekLabel = language === 'it' ? 'Sett' : 'Wk';
+
   return useMemo(() => {
     const now = new Date();
     
@@ -442,15 +450,15 @@ export const useCO2Data = (timePeriod: TimePeriod, dateRange?: DateRange) => {
       }
       case "week": {
         const days = eachDayOfInterval({ start: subDays(now, 6), end: now });
-        return days.map((day, i) => generateDataPoint(format(day, "EEE", { locale: it }), i));
+        return days.map((day, i) => generateDataPoint(format(day, "EEE", { locale: dateLocale }), i));
       }
       case "month": {
         const weeks = eachWeekOfInterval({ start: subWeeks(now, 3), end: now }, { weekStartsOn: 1 });
-        return weeks.map((week, i) => generateDataPoint(`Sett ${i + 1}`, i));
+        return weeks.map((week, i) => generateDataPoint(`${weekLabel} ${i + 1}`, i));
       }
       case "year": {
         const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
-        return months.map((month, i) => generateDataPoint(format(month, "MMM", { locale: it }), i));
+        return months.map((month, i) => generateDataPoint(format(month, "MMM", { locale: dateLocale }), i));
       }
       case "custom": {
         if (!dateRange) return [];
@@ -464,17 +472,21 @@ export const useCO2Data = (timePeriod: TimePeriod, dateRange?: DateRange) => {
           return days.map((day, i) => generateDataPoint(format(day, "dd/MM"), i));
         } else {
           const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to });
-          return months.map((month, i) => generateDataPoint(format(month, "MMM yy", { locale: it }), i));
+          return months.map((month, i) => generateDataPoint(format(month, "MMM yy", { locale: dateLocale }), i));
         }
       }
       default:
         return [];
     }
-  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime(), language]);
 };
 
 // Generate water consumption data based on time period
 export const useWaterData = (timePeriod: TimePeriod, dateRange?: DateRange) => {
+  const { language } = useLanguage();
+  const dateLocale = getDateLocale(language);
+  const weekLabel = language === 'it' ? 'Sett' : 'Wk';
+
   return useMemo(() => {
     const now = new Date();
     
@@ -492,15 +504,15 @@ export const useWaterData = (timePeriod: TimePeriod, dateRange?: DateRange) => {
       }
       case "week": {
         const days = eachDayOfInterval({ start: subDays(now, 6), end: now });
-        return days.map((day, i) => generateDataPoint(format(day, "EEE", { locale: it }), i, 0.15));
+        return days.map((day, i) => generateDataPoint(format(day, "EEE", { locale: dateLocale }), i, 0.15));
       }
       case "month": {
         const weeks = eachWeekOfInterval({ start: subWeeks(now, 3), end: now }, { weekStartsOn: 1 });
-        return weeks.map((week, i) => generateDataPoint(`Sett ${i + 1}`, i, 0.5));
+        return weeks.map((week, i) => generateDataPoint(`${weekLabel} ${i + 1}`, i, 0.5));
       }
       case "year": {
         const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
-        return months.map((month, i) => generateDataPoint(format(month, "MMM", { locale: it }), i, 1.5));
+        return months.map((month, i) => generateDataPoint(format(month, "MMM", { locale: dateLocale }), i, 1.5));
       }
       case "custom": {
         if (!dateRange) return [];
@@ -517,33 +529,34 @@ export const useWaterData = (timePeriod: TimePeriod, dateRange?: DateRange) => {
           return weeks.map((week, i) => generateDataPoint(format(week, "dd/MM"), i, 0.5));
         } else {
           const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to });
-          return months.map((month, i) => generateDataPoint(format(month, "MMM yy", { locale: it }), i, 1.5));
+          return months.map((month, i) => generateDataPoint(format(month, "MMM yy", { locale: dateLocale }), i, 1.5));
         }
       }
       default:
         return [];
     }
-  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+  }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime(), language]);
 };
 
 // Get period label for display
-export const getPeriodLabel = (timePeriod: TimePeriod, dateRange?: DateRange): string => {
+export const getPeriodLabel = (timePeriod: TimePeriod, dateRange?: DateRange, language: Language = 'en'): string => {
   const now = new Date();
+  const dateLocale = getDateLocale(language);
   
   switch (timePeriod) {
     case "today":
-      return format(now, "dd MMMM yyyy", { locale: it });
+      return format(now, "dd MMMM yyyy", { locale: dateLocale });
     case "week":
-      return `${format(subDays(now, 6), "dd MMM", { locale: it })} - ${format(now, "dd MMM yyyy", { locale: it })}`;
+      return `${format(subDays(now, 6), "dd MMM", { locale: dateLocale })} - ${format(now, "dd MMM yyyy", { locale: dateLocale })}`;
     case "month":
-      return format(now, "MMMM yyyy", { locale: it });
+      return format(now, "MMMM yyyy", { locale: dateLocale });
     case "year":
       return format(now, "yyyy");
     case "custom":
       if (dateRange) {
-        return `${format(dateRange.from, "dd MMM", { locale: it })} - ${format(dateRange.to, "dd MMM yyyy", { locale: it })}`;
+        return `${format(dateRange.from, "dd MMM", { locale: dateLocale })} - ${format(dateRange.to, "dd MMM yyyy", { locale: dateLocale })}`;
       }
-      return "Personalizzato";
+      return language === 'it' ? "Personalizzato" : "Custom";
     default:
       return "";
   }

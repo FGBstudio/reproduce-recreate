@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
-import { it } from "date-fns/locale";
+import { it, enUS } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateRange } from "@/hooks/useTimeFilteredData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export type TimePeriod = "today" | "week" | "month" | "year" | "custom";
 
@@ -28,20 +29,14 @@ interface TimePeriodSelectorProps {
   onDateRangeChange?: (range: DateRange) => void;
 }
 
-const periodLabels: Record<TimePeriod, string> = {
-  today: "Oggi",
-  week: "Settimana",
-  month: "Mese",
-  year: "Anno",
-  custom: "Personalizzato",
-};
-
 export const TimePeriodSelector = ({
   value,
   onChange,
   dateRange,
   onDateRangeChange,
 }: TimePeriodSelectorProps) => {
+  const { language, t } = useLanguage();
+  const dateLocale = language === 'it' ? it : enUS;
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [tempRange, setTempRange] = useState<{ from?: Date; to?: Date }>({
     from: dateRange?.from,
@@ -72,9 +67,9 @@ export const TimePeriodSelector = ({
 
   const getDisplayValue = () => {
     if (value === "custom" && dateRange) {
-      return `${format(dateRange.from, "dd/MM", { locale: it })} - ${format(dateRange.to, "dd/MM", { locale: it })}`;
+      return `${format(dateRange.from, "dd/MM", { locale: dateLocale })} - ${format(dateRange.to, "dd/MM", { locale: dateLocale })}`;
     }
-    return periodLabels[value];
+    return t(`time.${value}`);
   };
 
   return (
@@ -85,11 +80,11 @@ export const TimePeriodSelector = ({
           <SelectValue>{getDisplayValue()}</SelectValue>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="today">Oggi</SelectItem>
-          <SelectItem value="week">Settimana</SelectItem>
-          <SelectItem value="month">Mese</SelectItem>
-          <SelectItem value="year">Anno</SelectItem>
-          <SelectItem value="custom">Personalizzato...</SelectItem>
+          <SelectItem value="today">{t('time.today')}</SelectItem>
+          <SelectItem value="week">{t('time.week')}</SelectItem>
+          <SelectItem value="month">{t('time.month')}</SelectItem>
+          <SelectItem value="year">{t('time.year')}</SelectItem>
+          <SelectItem value="custom">{t('time.custom_ellipsis')}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -110,26 +105,26 @@ export const TimePeriodSelector = ({
                 {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}
               </span>
             ) : (
-              <span className="text-xs">Date</span>
+              <span className="text-xs">{t('time.dates')}</span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="end">
           <div className="p-4 space-y-4">
-            <h4 className="font-medium text-sm text-gray-700">Seleziona intervallo date</h4>
+            <h4 className="font-medium text-sm text-gray-700">{t('time.select_date_range')}</h4>
             <Calendar
               mode="range"
               selected={tempRange as { from: Date; to: Date }}
               onSelect={handleDateSelect}
               numberOfMonths={2}
               className="pointer-events-auto"
-              locale={it}
+              locale={dateLocale}
             />
             <div className="flex justify-between items-center pt-2 border-t">
               <div className="text-sm text-gray-500">
                 {tempRange.from && tempRange.to && (
                   <span>
-                    {format(tempRange.from, "dd MMM yyyy", { locale: it })} - {format(tempRange.to, "dd MMM yyyy", { locale: it })}
+                    {format(tempRange.from, "dd MMM yyyy", { locale: dateLocale })} - {format(tempRange.to, "dd MMM yyyy", { locale: dateLocale })}
                   </span>
                 )}
               </div>
@@ -142,7 +137,7 @@ export const TimePeriodSelector = ({
                     setTempRange({ from: dateRange?.from, to: dateRange?.to });
                   }}
                 >
-                  Annulla
+                  {t('time.cancel')}
                 </Button>
                 <Button
                   size="sm"
@@ -150,7 +145,7 @@ export const TimePeriodSelector = ({
                   disabled={!tempRange.from || !tempRange.to}
                   className="bg-fgb-secondary hover:bg-fgb-secondary/90"
                 >
-                  Applica
+                  {t('time.apply')}
                 </Button>
               </div>
             </div>
