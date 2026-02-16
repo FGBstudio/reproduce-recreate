@@ -1024,29 +1024,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // 1. Calculates the daily breakdown (For the Fullscreen Bar Chart)
   const dayNightData = useMemo(() => {
-    const rawData = energyTimeseriesResp?.data;
-    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) return [];
+    // Use your built-in helper to reliably get the General power data!
+    const generalData = buildEnergySeriesSum('energy.power_kw');
+    
+    if (!generalData || generalData.length === 0) return [];
 
     const siteTz = resolveTimezone(project?.timezone);
     const DAY_START = 8; 
     const DAY_END = 20;
+
     const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
 
-    rawData.forEach(d => {
-      if (d.metric !== 'energy.active_energy') return;
-      
-      const info = deviceMap.get(d.device_id);
-      const isGeneral = (info && info.category === 'general') || !info;
-      if (!isGeneral) return;
-
-      const kwh = Number(d.value_sum ?? d.value ?? 0);
-      if (kwh <= 0) return;
-
-      const dateObj = new Date(d.ts_bucket || d.ts);
+    generalData.forEach((point: any) => {
+      // Get local time based on the building's timezone
+      const dateObj = new Date(point.ts);
       const parts = getPartsInTz(dateObj, siteTz);
       const isDay = parts.hour >= DAY_START && parts.hour < DAY_END;
 
-      const label = formatChartLabel(dateObj, timeRange.bucket, siteTz, timePeriod as any);
+      // Convert Power (kW) to Energy (kWh)
+      const kwh = (Number(point.value) || 0) * bucketHours;
+
+      // Group by X-axis label
+      const label = String(point.label);
       const tsKey = dateObj.getTime();
       
       if (!map.has(label)) {
@@ -1054,12 +1053,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       }
       
       const entry = map.get(label)!;
-      if (isDay) entry.dayKwh += kwh;
-      else entry.nightKwh += kwh;
+      if (isDay) {
+          entry.dayKwh += kwh;
+      } else {
+          entry.nightKwh += kwh;
+      }
     });
 
     return Array.from(map.values()).sort((a, b) => a.ts - b.ts);
-  }, [energyTimeseriesResp, project?.timezone, deviceMap, timePeriod, timeRange.bucket]);
+  }, [buildEnergySeriesSum, project?.timezone, bucketHours]);
 
   // 2. Calculates the overall totals and percentages (For the Circular Widget)
   const dayNightSummary = useMemo(() => {
