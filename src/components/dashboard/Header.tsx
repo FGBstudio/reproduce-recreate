@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Shield, Search, X, MapPin } from "lucide-react";
+import { Shield, Search, X, MapPin, Globe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { UserAccountDropdown } from "./UserAccountDropdown";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,6 +19,7 @@ interface HeaderProps {
 const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderProps) => {
   const navigate = useNavigate();
   const { user, login } = useAuth();
+  const { language, toggleLanguage, t } = useLanguage();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -118,10 +120,10 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderP
           <div className="relative">
             <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
               <Search className="w-4 h-4 text-muted-foreground" />
-              <Input
+               <Input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Cerca progetti, siti, brand..."
+                placeholder={t('header.search_placeholder')}
                 value={searchQuery}
                 onChange={handleSearchChange}
                 className="border-0 bg-transparent h-6 w-48 md:w-64 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 text-sm"
@@ -165,7 +167,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderP
             {searchQuery.trim() && filteredProjects.length === 0 && (
               <div className="absolute top-full mt-2 w-72 md:w-80 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-border/50 p-4 text-center animate-in fade-in slide-in-from-top-2 duration-200">
                 <p className="text-sm text-muted-foreground">
-                  Nessun progetto trovato
+                  {t('header.no_results')}
                 </p>
               </div>
             )}
@@ -174,15 +176,23 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderP
           <button
             onClick={handleSearchToggle}
             className="glass-panel rounded-full p-2 hover:bg-fgb-light/50 transition-colors"
-            title="Cerca progetti"
+            title={t('header.search_projects')}
           >
             <Search className="w-4 h-4 text-fgb-accent" />
           </button>
         )}
       </div>
 
-      {/* User Avatar & Admin */}
+      {/* User Avatar, Language & Admin */}
       <div className="flex items-center gap-2 md:gap-3">
+        <button
+          onClick={toggleLanguage}
+          className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-1.5 hover:bg-fgb-light/50 transition-colors"
+          title="Switch language"
+        >
+          <Globe className="w-4 h-4 text-fgb-accent" />
+          <span className="text-xs font-medium text-foreground">{language.toUpperCase()}</span>
+        </button>
         <button
           onClick={handleAdminClick}
           className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-2 hover:bg-fgb-light/50 transition-colors"

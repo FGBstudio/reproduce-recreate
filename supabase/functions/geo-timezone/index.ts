@@ -172,7 +172,7 @@ function lookupTimezone(lat: number, lng: number): string {
     '12': 'Pacific/Auckland',
   }
 
-  return offsetMap[String(offsetHours)] || 'UTC'
+  return (offsetMap as Record<string, string>)[String(offsetHours)] || 'UTC'
 }
 
 // Validate that a string looks like a valid IANA timezone
