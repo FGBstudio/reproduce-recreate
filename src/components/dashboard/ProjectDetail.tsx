@@ -201,7 +201,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [customBgUrl, setCustomBgUrl] = useState<string | undefined>(undefined);
+  const [isUploadingBg, setIsUploadingBg] = useState(false);
   const { language, t } = useLanguage();
+
+  // Reset custom bg when project changes
+  useEffect(() => {
+    setCustomBgUrl(undefined);
+  }, [project?.id]);
 
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
@@ -2132,10 +2139,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const backgroundStyle = useMemo(() => {
     if (!project) return {};
 
-    // 1. Immagine Custom del progetto (Priorità massima - vince su tutto)
-    if (project.img) {
+    // 1. Custom bg uploaded by user (runtime override)
+    const bgImg = customBgUrl || project.img;
+    if (bgImg) {
       return {
-        backgroundImage: `url(${project.img})`,
+        backgroundImage: `url(${bgImg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       };
@@ -2144,7 +2152,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     // 2. Fallback Colore Solido (Il pattern loghi lo aggiungiamo dopo nell'HTML)
     // Usiamo un grigio chiarissimo FGB
     return { backgroundColor: '#f0f2f5' };
-  }, [project]);
+  }, [project, customBgUrl]);
 
   if (!project) return null;
 
@@ -2327,26 +2335,52 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           <span className="hidden sm:inline">{t('pd.back_to_region')}</span>
         </button>
         {/* Change Background Button */}
-        <label className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs font-medium transition-all cursor-pointer border border-black/10">
-          <Image className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          <span className="hidden md:inline">{t('pd.change_bg')}</span>
+        <label className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs font-medium transition-all cursor-pointer border border-black/10 ${isUploadingBg ? 'opacity-50 pointer-events-none' : ''}`}>
+          {isUploadingBg ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <Image className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+          <span className="hidden md:inline">{isUploadingBg ? 'Uploading...' : t('pd.change_bg')}</span>
           <input 
             type="file" 
             accept="image/*" 
             className="hidden" 
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file && project) {
-                // TODO: Implementare upload reale su Supabase se necessario qui
-                // Per ora mantiene il comportamento locale di anteprima
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                  const imgEl = document.querySelector(`[data-project-bg="${project.id}"]`) as HTMLImageElement;
-                  if (imgEl && ev.target?.result) {
-                    imgEl.src = ev.target.result as string;
-                  }
-                };
-                reader.readAsDataURL(file);
+              if (!file || !project?.siteId || !isSupabaseConfigured || !supabase) return;
+              
+              setIsUploadingBg(true);
+              try {
+                // Upload to Supabase Storage
+                const fileExt = file.name.split('.').pop() || 'jpg';
+                const filePath = `sites/${project.siteId}/background.${fileExt}`;
+                
+                const { error: uploadError } = await supabase.storage
+                  .from('project-assets')
+                  .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+                
+                if (uploadError) throw uploadError;
+                
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                  .from('project-assets')
+                  .getPublicUrl(filePath);
+                
+                const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                
+                // Update sites table
+                const { error: dbError } = await supabase
+                  .from('sites')
+                  .update({ image_url: publicUrl })
+                  .eq('id', project.siteId);
+                
+                if (dbError) throw dbError;
+                
+                // Update local state immediately
+                setCustomBgUrl(publicUrl);
+              } catch (err) {
+                console.error('Background upload failed:', err);
+              } finally {
+                setIsUploadingBg(false);
+                // Reset input so same file can be re-selected
+                e.target.value = '';
               }
             }}
           />
