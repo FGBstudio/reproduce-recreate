@@ -152,8 +152,9 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
             </div>
           </div>
           
-          {/* Center: Score and CO2 */}
-          <div className="flex items-center gap-6 md:gap-8">
+          {/* Center: Score, EVS, Modules, Alerts, Trend */}
+          <div className="flex flex-wrap items-center gap-4 md:gap-8">
+            {/* Score */}
             <div className="text-center">
               <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>
                 {status.score}
@@ -161,7 +162,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               <div className="text-xs text-gray-500">{t('overview.score')}</div>
             </div>
             
-            <div className="h-12 w-px bg-gray-200" />
+            <div className="hidden md:block h-12 w-px bg-gray-200" />
             
             {/* Environmental Visibility Score */}
             <EVSWidget
@@ -173,7 +174,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               onActivateModule={onActivateModule}
             />
             
-            <div className="h-12 w-px bg-gray-200" />
+            <div className="hidden md:block h-12 w-px bg-gray-200" />
             
             {/* Module breakdown with weights */}
             <div className="flex gap-4">
@@ -206,7 +207,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               )}
             </div>
             
-            <div className="h-12 w-px bg-gray-200" />
+            <div className="hidden md:block h-12 w-px bg-gray-200" />
             
             {/* Active Alerts from Thresholds */}
             {alertStatus.hasAlerts ? (
@@ -230,7 +231,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               </div>
             )}
             
-            <div className="h-12 w-px bg-gray-200" />
+            <div className="hidden md:block h-12 w-px bg-gray-200" />
             
             <div className="text-center">
               <div className="flex items-center gap-1 text-emerald-600">
