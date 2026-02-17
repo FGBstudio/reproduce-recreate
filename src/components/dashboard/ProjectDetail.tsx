@@ -1034,7 +1034,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
 
     const siteTz = resolveTimezone(project?.timezone);
-    const DAY_START = 7; 
+    const DAY_START = 8; 
     const DAY_END = 20;
 
     const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
@@ -3357,8 +3357,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         {/* BOTTOM 2 RINGS */}
                         <div className="flex w-full justify-around mt-4 pt-4 border-t border-gray-100">
                           {/* DAY */}
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="flex items-center gap-1 mb-1">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="flex items-center gap-1">
                               {/* Inline SVG Sun */}
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                               <span className="text-xs font-bold text-gray-700">DAY</span>
@@ -3372,13 +3372,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 <span className="text-sm font-black text-gray-800">{dayNightSummary.dayPct}%</span>
                               </div>
                             </div>
-                            {/* NEW KWH TEXT FOR DAY */}
-                            <span className="text-[11px] font-bold text-gray-500 mt-1">{dayNightSummary.dayTotal.toLocaleString('it-IT', { maximumFractionDigits: 0 })} kWh</span>
                           </div>
 
                           {/* NIGHT */}
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="flex items-center gap-1 mb-1">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="flex items-center gap-1">
                               {/* Inline SVG Moon */}
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                               <span className="text-xs font-bold text-gray-700">NIGHT</span>
@@ -3392,8 +3390,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 <span className="text-sm font-black text-gray-800">{dayNightSummary.nightPct}%</span>
                               </div>
                             </div>
-                            {/* NEW KWH TEXT FOR NIGHT */}
-                            <span className="text-[11px] font-bold text-gray-500 mt-1">{dayNightSummary.nightTotal.toLocaleString('it-IT', { maximumFractionDigits: 0 })} kWh</span>
                           </div>
                         </div>
                       </div>
@@ -4802,7 +4798,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         </ResponsiveContainer>
       </ChartFullscreenModal>
 
-   {/* ENERGY: Day vs Night Fullscreen (Stacked Bar Chart History) */}
+    {/* ENERGY: Day vs Night Fullscreen (Stacked Bar Chart History) */}
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'trend'}
         onClose={() => setFullscreenChart(null)}
@@ -4813,14 +4809,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })} />
-            
-            {/* Updated Tooltip & Legend to reflect the new 07:00 time */}
             <Tooltip 
               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day (07:00 - 20:00)' : 'Night (20:00 - 07:00)']}
+              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)']}
             />
-            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (07:00 - 20:00)' : 'Night (20:00 - 07:00)'} />
+            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)'} />
             
             <Bar dataKey="nightKwh" stackId="1" fill="#64748b" name="nightKwh" radius={[0, 0, 4, 4]} maxBarSize={80} />
             <Bar dataKey="dayKwh" stackId="1" fill="#38bdf8" name="dayKwh" radius={[4, 4, 0, 0]} maxBarSize={80} />
