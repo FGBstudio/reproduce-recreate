@@ -1034,7 +1034,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
 
     const siteTz = resolveTimezone(project?.timezone);
-    const DAY_START = 8; 
+    const DAY_START = 7; 
     const DAY_END = 20;
 
     const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
@@ -4811,12 +4811,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })} />
+            
+            {/* Updated Tooltip for 7 AM */}
             <Tooltip 
               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)']}
+              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day (07:00 - 20:00)' : 'Night (20:00 - 07:00)']}
             />
-            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)'} />
+            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (07:00 - 20:00)' : 'Night (20:00 - 07:00)'} />
             
             <Bar dataKey="nightKwh" stackId="1" fill="#64748b" name="nightKwh" radius={[0, 0, 4, 4]} maxBarSize={80} />
             <Bar dataKey="dayKwh" stackId="1" fill="#38bdf8" name="dayKwh" radius={[4, 4, 0, 0]} maxBarSize={80} />
