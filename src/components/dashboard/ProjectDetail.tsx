@@ -1034,7 +1034,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
 
     const siteTz = resolveTimezone(project?.timezone);
-    const DAY_START = 7; 
+    const DAY_START = 8; 
     const DAY_END = 20;
 
     const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
@@ -2343,7 +2343,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       </div>
 
       {/* Header */}
-      <div className="absolute top-0 left-0 w-full px-4 md:px-8 py-3 md:py-6 flex justify-between items-center z-10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+      <div className="absolute top-0 left-0 w-full px-4 md:px-8 py-3 md:py-6 flex justify-between items-center z-10">
         <button 
           onClick={onClose}
           className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold transition-all group border border-black/10"
@@ -3394,57 +3394,55 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
-                    <div ref={outdoorRef} className="col-span-1 lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                       <div className="flex justify-between items-start gap-2 mb-4">
-                         <h3 className="text-base md:text-lg font-bold text-gray-800 leading-tight">Energy vs outdoor condition</h3>
-                         <div className="shrink-0"><ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} /></div>
-                       </div>
-                       <ResponsiveContainer width="100%" height={220}>
-                         <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
-                           <CartesianGrid {...gridStyle} />
-                           <XAxis 
-                             dataKey="time" 
-                             tick={axisStyle} 
-                             axisLine={{ stroke: '#e2e8f0' }} 
-                             tickLine={{ stroke: '#e2e8f0' }} 
-                             minTickGap={30}
-                           />
-                           
-                           {/* Left Y-Axis: Energy (kWh) */}
-                           <YAxis
-                             yAxisId="energy"
-                             width={36}
-                             tick={axisStyle}
-                             axisLine={{ stroke: '#e2e8f0' }}
-                             tickLine={{ stroke: '#e2e8f0' }}
-                             domain={autoDomainWithPadding}
-                             tickFormatter={(val) => Math.round(val).toString()}
-                             label={{ value: 'kWh', angle: -90, position: 'insideLeft', offset: 8, style: { ...axisStyle, textAnchor: 'middle' } }}
-                           />
-                           
-                           {/* Right Y-Axis 1: Temperature (°C) */}
-                           <YAxis
-                             yAxisId="temp"
-                             orientation="right"
-                             width={30}
-                             tick={{ ...axisStyle, fill: '#F59E0B' }}
-                             axisLine={false}
-                             tickLine={false}
-                             domain={['auto', 'auto']}
-                             tickFormatter={(val) => `${Math.round(val)}°`}
-                           />
-                           
-                           {/* Right Y-Axis 2: Humidity (%) — offset to avoid overlap */}
-                           <YAxis
-                             yAxisId="humidity"
-                             orientation="right"
-                             width={32}
-                             tick={{ ...axisStyle, fill: '#3b82f6' }}
-                             axisLine={false}
-                             tickLine={false}
-                             domain={[0, 100]}
-                             tickFormatter={(val) => `${val}%`}
-                           />
+                    <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Energy vs outdoor condition</h3>
+                        <ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
+                      </div>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <CartesianGrid {...gridStyle} />
+                          <XAxis 
+                            dataKey="time" 
+                            tick={axisStyle} 
+                            axisLine={{ stroke: '#e2e8f0' }} 
+                            tickLine={{ stroke: '#e2e8f0' }} 
+                            minTickGap={30}
+                          />
+                          
+                          {/* Left Y-Axis: Energy (kWh) */}
+                          <YAxis
+                            yAxisId="energy"
+                            tick={axisStyle}
+                            axisLine={{ stroke: '#e2e8f0' }}
+                            tickLine={{ stroke: '#e2e8f0' }}
+                            domain={autoDomainWithPadding}
+                            tickFormatter={(val) => Math.round(val).toString()}
+                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
+                          />
+                          
+                          {/* Right Y-Axis 1: Temperature (°C) */}
+                          <YAxis
+                            yAxisId="temp"
+                            orientation="right"
+                            tick={{ ...axisStyle, fill: '#F59E0B' }}
+                            axisLine={{ stroke: '#F59E0B' }}
+                            tickLine={{ stroke: '#F59E0B' }}
+                            domain={['auto', 'auto']}
+                            tickFormatter={(val) => `${Math.round(val)}°`}
+                          />
+                          
+                          {/* Right Y-Axis 2: Humidity (%) — offset to avoid overlap */}
+                          <YAxis
+                            yAxisId="humidity"
+                            orientation="right"
+                            tick={{ ...axisStyle, fill: '#3b82f6' }}
+                            axisLine={{ stroke: '#3b82f6' }}
+                            tickLine={{ stroke: '#3b82f6' }}
+                            domain={[0, 100]}
+                            tickFormatter={(val) => `${val}%`}
+                            width={40}
+                          />
                           
                           <Tooltip 
                             {...tooltipStyle} 
@@ -3509,29 +3507,29 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Air Quality Overview Card */}
-                     <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
-                       <div className="flex items-start justify-between gap-2 mb-4">
-                         <div className="flex items-center gap-3 flex-wrap">
-                           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold shrink-0`}>
-                             <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-                             LIVE
-                           </div>
-                           <AirDeviceSelector
-                             devices={airDevices}
-                             selectedIds={selectedAirDeviceIds}
-                             onChange={setSelectedAirDeviceIds}
-                           />
-                         </div>
-                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
-                       </div>
-                       <div className="flex items-center gap-4 mb-4">
-                         <div>
-                           <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
-                             {project.data.aq}
-                           </h3>
-                           <p className="text-gray-500 uppercase tracking-widest text-[10px]">Indoor Air Quality</p>
-                         </div>
-                       </div>
+                    <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
+                      <div className="absolute top-4 right-4">
+                        <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
+                      </div>
+                     <div className="absolute top-6 left-1/4 -translate-x-1/4 z-10">
+                        <AirDeviceSelector
+                          devices={airDevices}
+                          selectedIds={selectedAirDeviceIds}
+                          onChange={setSelectedAirDeviceIds}
+                        />
+                      </div>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold`}>
+                          <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                          LIVE
+                        </div>
+                        <div>
+                          <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
+                            {project.data.aq}
+                          </h3>
+                          <p className="text-gray-500 uppercase tracking-widest text-[10px]">Indoor Air Quality</p>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Wind className="w-4 h-4 text-sky-500 mx-auto mb-1" />
@@ -3635,11 +3633,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     {/* Temperature & Humidity Chart - Full Width */}
-                     <div ref={tempHumidityRef} className="col-span-1 lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                       <div className="flex justify-between items-start gap-2 mb-4">
-                         <h3 className="text-base md:text-lg font-bold text-gray-800 leading-tight">Temperature & Relative Humidity <span className="whitespace-nowrap">({periodLabel})</span></h3>
-                         <div className="shrink-0"><ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} /></div>
-                       </div>
+                    <div ref={tempHumidityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Temperature & Relative Humidity ({periodLabel})</h3>
+                        <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
+                      </div>
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
@@ -3807,15 +3805,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 {/* Slide 3: CO & O3 */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-                     {/* CO & O3 Combined Chart */}
-                     <div ref={coO3Ref} className="col-span-1 lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                       <div className="flex justify-between items-start gap-2 mb-4">
-                         <div>
-                           <h3 className="text-base md:text-lg font-bold text-gray-800 whitespace-nowrap leading-tight">Carbon Monoxide (CO) & Ozone (O₃)</h3>
-                           <p className="text-xs text-gray-500">Daily trend</p>
-                         </div>
-                         <div className="shrink-0"><ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} /></div>
-                       </div>
+                    {/* CO & O3 Combined Chart */}
+                    <div ref={coO3Ref} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">Carbon Monoxide (CO) & Ozone (O₃)</h3>
+                          <p className="text-xs text-gray-500">Daily trend</p>
+                        </div>
+                        <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
+                      </div>
                       <ResponsiveContainer width="100%" height={280}>
                         <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
@@ -4811,14 +4809,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kWh" tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })} />
-            
-            {/* Updated Tooltip for 7 AM */}
             <Tooltip 
               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day (07:00 - 20:00)' : 'Night (20:00 - 07:00)']}
+              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', name === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)']}
             />
-            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (07:00 - 20:00)' : 'Night (20:00 - 07:00)'} />
+            <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, paddingTop: 10 }} formatter={(value) => value === 'dayKwh' ? 'Day (08:00 - 20:00)' : 'Night (20:00 - 08:00)'} />
             
             <Bar dataKey="nightKwh" stackId="1" fill="#64748b" name="nightKwh" radius={[0, 0, 4, 4]} maxBarSize={80} />
             <Bar dataKey="dayKwh" stackId="1" fill="#38bdf8" name="dayKwh" radius={[4, 4, 0, 0]} maxBarSize={80} />
