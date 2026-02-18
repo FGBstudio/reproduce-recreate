@@ -3507,29 +3507,29 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Air Quality Overview Card */}
-                    <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
-                      <div className="absolute top-4 right-4">
-                        <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
-                      </div>
-                     <div className="absolute top-6 left-1/4 -translate-x-1/4 z-10">
-                        <AirDeviceSelector
-                          devices={airDevices}
-                          selectedIds={selectedAirDeviceIds}
-                          onChange={setSelectedAirDeviceIds}
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold`}>
-                          <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-                          LIVE
-                        </div>
-                        <div>
-                          <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
-                            {project.data.aq}
-                          </h3>
-                          <p className="text-gray-500 uppercase tracking-widest text-[10px]">Indoor Air Quality</p>
-                        </div>
-                      </div>
+                     <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
+                       <div className="flex items-start justify-between gap-2 mb-4">
+                         <div className="flex items-center gap-3 flex-wrap">
+                           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold shrink-0`}>
+                             <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                             LIVE
+                           </div>
+                           <AirDeviceSelector
+                             devices={airDevices}
+                             selectedIds={selectedAirDeviceIds}
+                             onChange={setSelectedAirDeviceIds}
+                           />
+                         </div>
+                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
+                       </div>
+                       <div className="flex items-center gap-4 mb-4">
+                         <div>
+                           <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
+                             {project.data.aq}
+                           </h3>
+                           <p className="text-gray-500 uppercase tracking-widest text-[10px]">Indoor Air Quality</p>
+                         </div>
+                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                         <div className="bg-gray-50 p-3 rounded-xl text-center">
                           <Wind className="w-4 h-4 text-sky-500 mx-auto mb-1" />
@@ -3633,11 +3633,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     {/* Temperature & Humidity Chart - Full Width */}
-                    <div ref={tempHumidityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Temperature & Relative Humidity ({periodLabel})</h3>
-                        <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
-                      </div>
+                     <div ref={tempHumidityRef} className="col-span-1 lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                       <div className="flex justify-between items-start gap-2 mb-4">
+                         <h3 className="text-base md:text-lg font-bold text-gray-800 leading-tight">Temperature & Relative Humidity <span className="whitespace-nowrap">({periodLabel})</span></h3>
+                         <div className="shrink-0"><ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} /></div>
+                       </div>
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
@@ -3805,15 +3805,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 {/* Slide 3: CO & O3 */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* CO & O3 Combined Chart */}
-                    <div ref={coO3Ref} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-800">Carbon Monoxide (CO) & Ozone (O₃)</h3>
-                          <p className="text-xs text-gray-500">Daily trend</p>
-                        </div>
-                        <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
-                      </div>
+                     {/* CO & O3 Combined Chart */}
+                     <div ref={coO3Ref} className="col-span-1 lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                       <div className="flex justify-between items-start gap-2 mb-4">
+                         <div>
+                           <h3 className="text-base md:text-lg font-bold text-gray-800 whitespace-nowrap leading-tight">Carbon Monoxide (CO) & Ozone (O₃)</h3>
+                           <p className="text-xs text-gray-500">Daily trend</p>
+                         </div>
+                         <div className="shrink-0"><ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} /></div>
+                       </div>
                       <ResponsiveContainer width="100%" height={280}>
                         <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
