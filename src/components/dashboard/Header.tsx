@@ -104,7 +104,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderP
   }, [isSearchOpen, onSearch]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 md:px-8 py-3 md:py-5">
+    <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 md:px-8 py-3 md:py-5" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
       {/* Logo */}
       <div className="flex items-center">
         <img

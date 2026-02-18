@@ -65,6 +65,7 @@ const RegionNav = ({
       className={`fixed bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col md:flex-row items-center gap-2 md:gap-3 transition-transform duration-500 w-[calc(100%-2rem)] md:w-auto ${
         visible ? "translate-y-0" : "translate-y-40"
       }`}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/* Mobile: All controls in a single row with horizontal scroll */}
       <div className="md:hidden w-full overflow-x-auto scrollbar-hide">
