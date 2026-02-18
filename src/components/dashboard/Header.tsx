@@ -115,7 +115,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderP
       </div>
 
       {/* Search Bar (centered, expands on click) */}
-      <div ref={searchContainerRef} className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+      <div ref={searchContainerRef} className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center ${isSearchOpen ? 'z-50' : 'z-10'}`}>
         {isSearchOpen ? (
           <div className="relative">
             <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
