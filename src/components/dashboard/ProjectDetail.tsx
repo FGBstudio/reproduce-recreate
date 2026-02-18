@@ -3394,55 +3394,57 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
-                    <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Energy vs outdoor condition</h3>
-                        <ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
-                      </div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis 
-                            dataKey="time" 
-                            tick={axisStyle} 
-                            axisLine={{ stroke: '#e2e8f0' }} 
-                            tickLine={{ stroke: '#e2e8f0' }} 
-                            minTickGap={30}
-                          />
-                          
-                          {/* Left Y-Axis: Energy (kWh) */}
-                          <YAxis
-                            yAxisId="energy"
-                            tick={axisStyle}
-                            axisLine={{ stroke: '#e2e8f0' }}
-                            tickLine={{ stroke: '#e2e8f0' }}
-                            domain={autoDomainWithPadding}
-                            tickFormatter={(val) => Math.round(val).toString()}
-                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
-                          />
-                          
-                          {/* Right Y-Axis 1: Temperature (°C) */}
-                          <YAxis
-                            yAxisId="temp"
-                            orientation="right"
-                            tick={{ ...axisStyle, fill: '#F59E0B' }}
-                            axisLine={{ stroke: '#F59E0B' }}
-                            tickLine={{ stroke: '#F59E0B' }}
-                            domain={['auto', 'auto']}
-                            tickFormatter={(val) => `${Math.round(val)}°`}
-                          />
-                          
-                          {/* Right Y-Axis 2: Humidity (%) — offset to avoid overlap */}
-                          <YAxis
-                            yAxisId="humidity"
-                            orientation="right"
-                            tick={{ ...axisStyle, fill: '#3b82f6' }}
-                            axisLine={{ stroke: '#3b82f6' }}
-                            tickLine={{ stroke: '#3b82f6' }}
-                            domain={[0, 100]}
-                            tickFormatter={(val) => `${val}%`}
-                            width={40}
-                          />
+                    <div ref={outdoorRef} className="col-span-1 lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                       <div className="flex justify-between items-start gap-2 mb-4">
+                         <h3 className="text-base md:text-lg font-bold text-gray-800 leading-tight">Energy vs outdoor condition</h3>
+                         <div className="shrink-0"><ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} /></div>
+                       </div>
+                       <ResponsiveContainer width="100%" height={220}>
+                         <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
+                           <CartesianGrid {...gridStyle} />
+                           <XAxis 
+                             dataKey="time" 
+                             tick={axisStyle} 
+                             axisLine={{ stroke: '#e2e8f0' }} 
+                             tickLine={{ stroke: '#e2e8f0' }} 
+                             minTickGap={30}
+                           />
+                           
+                           {/* Left Y-Axis: Energy (kWh) */}
+                           <YAxis
+                             yAxisId="energy"
+                             width={36}
+                             tick={axisStyle}
+                             axisLine={{ stroke: '#e2e8f0' }}
+                             tickLine={{ stroke: '#e2e8f0' }}
+                             domain={autoDomainWithPadding}
+                             tickFormatter={(val) => Math.round(val).toString()}
+                             label={{ value: 'kWh', angle: -90, position: 'insideLeft', offset: 8, style: { ...axisStyle, textAnchor: 'middle' } }}
+                           />
+                           
+                           {/* Right Y-Axis 1: Temperature (°C) */}
+                           <YAxis
+                             yAxisId="temp"
+                             orientation="right"
+                             width={30}
+                             tick={{ ...axisStyle, fill: '#F59E0B' }}
+                             axisLine={false}
+                             tickLine={false}
+                             domain={['auto', 'auto']}
+                             tickFormatter={(val) => `${Math.round(val)}°`}
+                           />
+                           
+                           {/* Right Y-Axis 2: Humidity (%) — offset to avoid overlap */}
+                           <YAxis
+                             yAxisId="humidity"
+                             orientation="right"
+                             width={32}
+                             tick={{ ...axisStyle, fill: '#3b82f6' }}
+                             axisLine={false}
+                             tickLine={false}
+                             domain={[0, 100]}
+                             tickFormatter={(val) => `${val}%`}
+                           />
                           
                           <Tooltip 
                             {...tooltipStyle} 
