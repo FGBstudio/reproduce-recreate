@@ -2343,7 +2343,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       </div>
 
       {/* Header */}
-      <div className="absolute top-0 left-0 w-full px-4 md:px-8 py-3 md:py-6 flex justify-between items-center z-10">
+      <div className="absolute top-0 left-0 w-full px-4 md:px-8 py-3 md:py-6 flex justify-between items-center z-10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <button 
           onClick={onClose}
           className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold transition-all group border border-black/10"
