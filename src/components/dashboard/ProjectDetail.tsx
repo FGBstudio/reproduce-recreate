@@ -2342,11 +2342,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         
       </div>
 
-      {/* Header */}
-      <div className="absolute top-0 left-0 w-full px-4 md:px-8 py-3 md:py-6 flex justify-between items-center z-10">
+      {/* Header — safe-area top, sticky solid background */}
+      <div
+        className="absolute top-0 left-0 w-full flex justify-between items-center z-10"
+        style={{
+          paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+          paddingBottom: "0.75rem",
+          paddingLeft: "max(1rem, env(safe-area-inset-left))",
+          paddingRight: "max(1rem, env(safe-area-inset-right))",
+        }}
+      >
         <button 
           onClick={onClose}
           className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold transition-all group border border-black/10"
+          style={{ minHeight: 44 }}
         >
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="hidden sm:inline">{t('pd.back_to_region')}</span>
@@ -2405,14 +2414,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="absolute inset-0 pt-14 md:pt-20 pb-14 md:pb-16 flex flex-col">
+      <div
+        className="absolute inset-0 flex flex-col"
+        style={{
+          paddingTop: "calc(3.5rem + max(1rem, env(safe-area-inset-top)))",
+          paddingBottom: "max(3.5rem, calc(3.5rem + env(safe-area-inset-bottom)))",
+        }}
+      >
         {/* Title Area with Dashboard Tabs */}
-        <div className="px-4 md:px-16 mb-2 md:mb-4 relative z-20">
-          {/* Dashboard Tabs - Scrollable on mobile */}
-          <div className="flex items-center gap-2 md:gap-3 mb-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div
+          className="mb-2 md:mb-4 relative z-20"
+          style={{
+            paddingLeft: "max(1rem, env(safe-area-inset-left))",
+            paddingRight: "max(1rem, env(safe-area-inset-right))",
+          }}
+        >
+          {/* Dashboard Tabs - Scrollable on mobile, 16px from safe edges */}
+          <div className="flex items-center gap-2 md:gap-3 mb-2 overflow-x-auto pb-1 scrollbar-hide px-px"
+            style={{
+              marginLeft: "max(0px, env(safe-area-inset-left))",
+              marginRight: "max(0px, env(safe-area-inset-right))",
+            }}
+          >
             <button 
               onClick={() => handleDashboardChange("overview")}
-              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "overview" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-white/50 text-gray-600 hover:bg-white/80"
@@ -2423,7 +2449,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             </button>
             <button 
               onClick={() => handleDashboardChange("energy")}
-              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "energy" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-white/50 text-gray-600 hover:bg-white/80"
@@ -2434,7 +2460,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             </button>
             <button 
               onClick={() => handleDashboardChange("air")}
-              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "air" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-white/50 text-gray-600 hover:bg-white/80"
@@ -2445,7 +2471,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             </button>
             <button 
               onClick={() => handleDashboardChange("water")}
-              className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "water" 
                   ? "bg-fgb-secondary text-white" 
                   : "bg-white/50 text-gray-600 hover:bg-white/80"
@@ -2457,7 +2483,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {hasCertifications && (
               <button 
                 onClick={() => handleDashboardChange("certification")}
-                className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                   activeDashboard === "certification" 
                     ? "bg-fgb-secondary text-white" 
                     : "bg-white/50 text-gray-600 hover:bg-white/80"
@@ -2539,6 +2565,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          style={{
+            paddingLeft: "max(0px, env(safe-area-inset-left))",
+            paddingRight: "max(0px, env(safe-area-inset-right))",
+          }}
         >
           <div 
             className="flex h-full transition-transform duration-700 ease-in-out"
@@ -2546,7 +2576,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           >
             {/* OVERVIEW DASHBOARD */}
             {activeDashboard === "overview" && (
-              <div className="w-full flex-shrink-0 overflow-y-auto pb-4">
+              <div className="w-full flex-shrink-0 overflow-y-auto pb-4 px-4 md:px-0">
                 <OverviewSection 
                   project={project} 
                   moduleConfig={resolvedModuleConfig} 
