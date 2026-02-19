@@ -110,25 +110,29 @@ const MobileKpiPanel = ({
         WebkitBackdropFilter: "blur(20px)",
         borderTop: "1px solid rgba(255,255,255,0.10)",
         borderRadius: "20px 20px 0 0",
-        paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
         zIndex: 38,
       }}
     >
-      {/* Drag handle */}
+      {/* Drag handle — visual affordance */}
       <div className="flex items-center justify-center pt-3 pb-1">
-        <div className="w-10 h-1 bg-white/20 rounded-full" />
+        <div className="w-12 h-1.5 bg-white/25 rounded-full" />
       </div>
 
-      {/* Close button */}
+      {/* Close button — 48×48 touch target */}
       <button
         onClick={onClose}
-        className="absolute top-3 right-4 p-1.5 rounded-full hover:bg-white/10 transition-colors"
+        className="absolute top-2 right-4 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+        style={{ minWidth: 48, minHeight: 48 }}
+        aria-label="Chiudi pannello KPI"
       >
         <ChevronDown className="w-5 h-5 text-muted-foreground" />
       </button>
 
-      {/* Scrollable content */}
-      <div className="overflow-y-auto h-full pb-16 px-4 pt-2">
+      {/* Scrollable content — safe-area bottom padding so last item is reachable */}
+      <div
+        className="overflow-y-auto h-full px-4 pt-2"
+        style={{ paddingBottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+      >
         {showBrandOverlay ? (
           <div className="space-y-3">
             <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">

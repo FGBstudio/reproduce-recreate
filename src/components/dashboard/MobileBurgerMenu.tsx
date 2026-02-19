@@ -77,15 +77,17 @@ const MobileBurgerMenu = ({
           WebkitBackdropFilter: "blur(24px)",
           borderRight: "1px solid rgba(255,255,255,0.08)",
           paddingTop: "max(1.5rem, env(safe-area-inset-top))",
-          paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(0px, env(safe-area-inset-left))",
         }}
       >
-        {/* Header */}
+        {/* Header — X button has 48px touch target */}
         <div className="flex items-center justify-between px-5 pb-5 border-b border-white/8">
           <span className="text-sm font-semibold text-foreground uppercase tracking-widest opacity-60">Menu</span>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+            className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+            style={{ minWidth: 48, minHeight: 48 }}
+            aria-label="Chiudi menu"
           >
             <X className="w-5 h-5 text-foreground" />
           </button>
@@ -183,11 +185,15 @@ const MobileBurgerMenu = ({
           </div>
         </div>
 
-        {/* Logout at bottom */}
-        <div className="px-5 pt-4 border-t border-white/8">
+        {/* Logout at bottom — safe-area bottom padding */}
+        <div
+          className="px-5 pt-4 border-t border-white/8"
+          style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+        >
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-destructive/20 transition-colors border border-destructive/20 group"
+            style={{ minHeight: 48 }}
           >
             <LogOut className="w-4 h-4 text-destructive" />
             <span className="text-sm text-destructive">Logout</span>

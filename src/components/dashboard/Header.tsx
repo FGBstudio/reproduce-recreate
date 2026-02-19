@@ -108,17 +108,23 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 md:px-8 py-3 md:py-5"
-      style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+      className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between"
+      style={{
+        paddingTop: "max(1rem, env(safe-area-inset-top))",
+        paddingBottom: "0.75rem",
+        paddingLeft: "max(1rem, env(safe-area-inset-left))",
+        paddingRight: "max(1rem, env(safe-area-inset-right))",
+      }}
     >
       {/* ── MOBILE LAYOUT ── */}
       {isMobile ? (
         <>
-          {/* Left: Burger */}
+          {/* Left: Burger — 48×48 touch target */}
           <button
             onClick={onBurgerOpen}
-            className="glass-panel rounded-full p-2.5 hover:bg-fgb-light/50 transition-colors"
+            className="glass-panel rounded-full p-3 hover:bg-fgb-light/50 transition-colors flex items-center justify-center"
             aria-label="Menu"
+            style={{ minWidth: 48, minHeight: 48 }}
           >
             <Menu className="w-5 h-5 text-fgb-accent" />
           </button>
@@ -181,8 +187,9 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
             ) : (
               <button
                 onClick={handleSearchToggle}
-                className="glass-panel rounded-full p-2.5 hover:bg-fgb-light/50 transition-colors"
+                className="glass-panel rounded-full p-3 hover:bg-fgb-light/50 transition-colors flex items-center justify-center"
                 title={t("header.search_projects")}
+                style={{ minWidth: 48, minHeight: 48 }}
               >
                 <Search className="w-5 h-5 text-fgb-accent" />
               </button>

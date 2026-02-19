@@ -76,8 +76,19 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       maxZoom: 19,
     }).addTo(map.current);
 
-    // Add zoom control to top-right
+    // Add zoom control — offset from right edge to avoid system gesture zone
     L.control.zoom({ position: "topright" }).addTo(map.current);
+
+    // Inject CSS to push zoom control away from right safe-area edge on mobile
+    const zoomStyle = document.createElement("style");
+    zoomStyle.textContent = `
+      @media (max-width: 767px) {
+        .leaflet-right { right: max(12px, env(safe-area-inset-right)) !important; }
+        .leaflet-top { top: max(80px, calc(80px + env(safe-area-inset-top))) !important; }
+        .leaflet-control-zoom a { width: 38px !important; height: 38px !important; line-height: 38px !important; font-size: 18px !important; }
+      }
+    `;
+    document.head.appendChild(zoomStyle);
 
     // Add attribution
     L.control.attribution({ position: "bottomleft" })

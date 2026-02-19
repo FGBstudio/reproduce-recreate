@@ -67,13 +67,16 @@ const RegionNav = ({
     >
       {/* ── MOBILE: Bottom "plancia di comando" ── */}
       <div
-        className="md:hidden w-full flex items-center justify-between px-4 py-2"
+        className="md:hidden w-full flex items-center justify-between"
         style={{
           background: "rgba(10, 15, 25, 0.80)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           borderTop: "1px solid rgba(255,255,255,0.08)",
-          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+          paddingTop: "0.5rem",
+          paddingBottom: "max(0.875rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(1rem, env(safe-area-inset-left))",
+          paddingRight: "max(1rem, env(safe-area-inset-right))",
         }}
       >
         {/* Left group: Region compact + 3 monitoring toggles */}
@@ -98,7 +101,7 @@ const RegionNav = ({
           {/* Separator */}
           <div className="w-px h-5 bg-white/15" />
 
-          {/* 3 Monitoring toggles */}
+          {/* 3 Monitoring toggles — 44px touch targets */}
           <div className="glass-panel rounded-full p-1 flex gap-1">
             {monitoringFilters.map(({ type, icon: Icon }) => {
               const isActive = activeFilters.includes(type);
@@ -106,7 +109,7 @@ const RegionNav = ({
                 <button
                   key={type}
                   onClick={() => onFilterToggle(type)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition ${
                     isActive
                       ? "bg-foreground text-background"
                       : "text-foreground/50 hover:bg-white/10 hover:text-foreground"
@@ -120,14 +123,15 @@ const RegionNav = ({
           </div>
         </div>
 
-        {/* Right: KPI "cruscotto" button */}
+        {/* Right: KPI "cruscotto" button — 48px min touch target */}
         <button
           onClick={onKpiPanelToggle}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-2 transition-all ${
+          className={`flex items-center gap-1.5 rounded-full px-4 transition-all ${
             kpiPanelOpen
               ? "bg-fgb-accent text-background shadow-[0_0_12px_rgba(0,255,255,0.5)]"
               : "glass-panel text-foreground hover:bg-fgb-light/30"
           }`}
+          style={{ minHeight: 48 }}
           title="KPI Dashboard"
         >
           <BarChart2 className="w-4 h-4" />
