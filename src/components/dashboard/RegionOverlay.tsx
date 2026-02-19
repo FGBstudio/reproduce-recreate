@@ -66,7 +66,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
 
   return (
     <div 
-      className={`fixed top-24 left-4 md:left-8 z-30 w-72 md:w-80 pointer-events-none transition-all duration-500 ${
+      className={`fixed top-24 left-4 md:left-8 z-30 w-72 md:w-80 pointer-events-none transition-all duration-500 hidden md:block ${
         visible 
           ? "opacity-100 translate-x-0" 
           : "opacity-0 -translate-x-10"

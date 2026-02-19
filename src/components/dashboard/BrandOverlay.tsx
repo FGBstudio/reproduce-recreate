@@ -157,7 +157,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   if (projectsLoading || telemetryLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
+      <div className="hidden md:flex fixed inset-0 items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
         <BrandOverlaySkeleton />
       </div>
     );
@@ -170,7 +170,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const showAnyChart = showEnergyChart || showAirChart || showRadarChart;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
+    <div className="hidden md:flex fixed inset-0 items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
       <div className="flex flex-col lg:flex-row items-center lg:items-start gap-3 md:gap-6 animate-fade-in max-w-6xl w-full max-h-full overflow-y-auto">
         
         {/* Left: Logo & Stats */}
