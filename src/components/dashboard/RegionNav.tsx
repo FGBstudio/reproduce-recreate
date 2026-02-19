@@ -104,14 +104,14 @@ const RegionNav = ({
                 <button
                   key={type}
                   onClick={() => onFilterToggle(type)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition ${
                     isActive
                       ? "bg-foreground text-background"
                       : "text-foreground/50 hover:bg-white/10 hover:text-foreground"
                   }`}
                   title={`Toggle ${type}`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-4 h-4" />
                 </button>
               );
             })}
@@ -121,14 +121,14 @@ const RegionNav = ({
         {/* Right: KPI button */}
         <button
           onClick={onKpiPanelToggle}
-          className={`glass-panel flex items-center gap-1 rounded-full px-2.5 py-1.5 transition-all ${
+          className={`glass-panel flex items-center gap-1 rounded-full px-3 py-1.5 transition-all ${
             kpiPanelOpen
               ? "bg-fgb-accent text-background shadow-[0_0_12px_rgba(0,255,255,0.5)]"
               : "text-foreground hover:bg-fgb-light/30"
           }`}
           title="KPI Dashboard"
         >
-          <BarChart2 className="w-3.5 h-3.5" />
+          <BarChart2 className="w-4 h-4" />
           <span className="text-xs font-bold">KPI</span>
         </button>
       </div>
