@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Shield, Search, X, MapPin, Globe } from "lucide-react";
+import { Shield, Search, X, MapPin, Globe, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,17 +9,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import brandImg from "@/assets/brand-white.png";
 import { Project } from "@/lib/data";
 import { useAllProjects } from "@/hooks/useRealTimeData";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface HeaderProps {
   userName?: string;
   onSearch?: (query: string) => void;
   onProjectSelect?: (project: Project) => void;
+  onBurgerOpen?: () => void;
 }
 
-const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderProps) => {
+const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerOpen }: HeaderProps) => {
   const navigate = useNavigate();
   const { user, login } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
+  const isMobile = useIsMobile();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -104,107 +107,190 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect }: HeaderP
   }, [isSearchOpen, onSearch]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 md:px-8 py-3 md:py-5" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-      {/* Logo */}
-      <div className="flex items-center">
-        <img
-          src={brandImg}
-          alt="FGB"
-          className="h-12 md:h-16 w-auto"
-        />
-      </div>
+    <header
+      className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 md:px-8 py-3 md:py-5"
+      style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+    >
+      {/* ── MOBILE LAYOUT ── */}
+      {isMobile ? (
+        <>
+          {/* Left: Burger */}
+          <button
+            onClick={onBurgerOpen}
+            className="glass-panel rounded-full p-2.5 hover:bg-fgb-light/50 transition-colors"
+            aria-label="Menu"
+          >
+            <Menu className="w-5 h-5 text-fgb-accent" />
+          </button>
 
-      {/* Search Bar (centered, expands on click) */}
-      <div ref={searchContainerRef} className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center ${isSearchOpen ? 'z-50' : 'z-10'}`}>
-        {isSearchOpen ? (
-          <div className="relative">
-            <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-              <Search className="w-4 h-4 text-muted-foreground" />
-               <Input
-                ref={searchInputRef}
-                type="text"
-                placeholder={t('header.search_placeholder')}
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="border-0 bg-transparent h-6 w-48 md:w-64 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 text-sm"
-              />
-              <button
-                onClick={handleClearSearch}
-                className="p-0.5 hover:bg-muted rounded-full transition-colors"
-              >
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
-            
-            {/* Search Results Dropdown */}
-            {filteredProjects.length > 0 && (
-              <div className="absolute top-full mt-2 w-72 md:w-80 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-transparent overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                <ScrollArea className="max-h-64">
-                  <div className="py-1">
-                    {filteredProjects.map((project) => (
-                      <button
-                        key={project.id}
-                        onClick={() => handleProjectClick(project)}
-                        className="w-full px-3 py-2 flex items-start gap-3 hover:bg-muted/50 transition-colors text-left"
-                      >
-                        <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {project.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {project.address}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
+          {/* Center: Search */}
+          <div
+            ref={searchContainerRef}
+            className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center ${
+              isSearchOpen ? "z-50" : "z-10"
+            }`}
+          >
+            {isSearchOpen ? (
+              <div className="relative">
+                <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder={t("header.search_placeholder")}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    className="border-0 bg-transparent h-6 w-44 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 text-sm"
+                  />
+                  <button
+                    onClick={handleClearSearch}
+                    className="p-0.5 hover:bg-muted rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+
+                {filteredProjects.length > 0 && (
+                  <div className="absolute top-full mt-2 w-72 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-transparent overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <ScrollArea className="max-h-64">
+                      <div className="py-1">
+                        {filteredProjects.map((project) => (
+                          <button
+                            key={project.id}
+                            onClick={() => handleProjectClick(project)}
+                            className="w-full px-3 py-2 flex items-start gap-3 hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-foreground truncate">{project.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{project.address}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   </div>
-                </ScrollArea>
-              </div>
-            )}
+                )}
 
-            {/* No results message */}
-            {searchQuery.trim() && filteredProjects.length === 0 && (
-              <div className="absolute top-full mt-2 w-72 md:w-80 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-border/50 p-4 text-center animate-in fade-in slide-in-from-top-2 duration-200">
-                <p className="text-sm text-muted-foreground">
-                  {t('header.no_results')}
-                </p>
+                {searchQuery.trim() && filteredProjects.length === 0 && (
+                  <div className="absolute top-full mt-2 w-72 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-border/50 p-4 text-center animate-in fade-in slide-in-from-top-2 duration-200">
+                    <p className="text-sm text-muted-foreground">{t("header.no_results")}</p>
+                  </div>
+                )}
               </div>
+            ) : (
+              <button
+                onClick={handleSearchToggle}
+                className="glass-panel rounded-full p-2.5 hover:bg-fgb-light/50 transition-colors"
+                title={t("header.search_projects")}
+              >
+                <Search className="w-5 h-5 text-fgb-accent" />
+              </button>
             )}
           </div>
-        ) : (
-          <button
-            onClick={handleSearchToggle}
-            className="glass-panel rounded-full p-2 hover:bg-fgb-light/50 transition-colors"
-            title={t('header.search_projects')}
-          >
-            <Search className="w-4 h-4 text-fgb-accent" />
-          </button>
-        )}
-      </div>
 
-      {/* User Avatar, Language & Admin */}
-      <div className="flex items-center gap-2 md:gap-3">
-        <button
-          onClick={toggleLanguage}
-          className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-1.5 hover:bg-fgb-light/50 transition-colors"
-          title="Switch language"
-        >
-          <Globe className="w-4 h-4 text-fgb-accent" />
-          <span className="text-xs font-medium text-foreground">{language.toUpperCase()}</span>
-        </button>
-        <button
-          onClick={handleAdminClick}
-          className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-2 hover:bg-fgb-light/50 transition-colors"
-          title="Admin Console"
-        >
-          <Shield className="w-4 h-4 text-fgb-accent" />
-          <span className="hidden sm:inline text-xs font-medium text-foreground">Admin</span>
-        </button>
-        <UserAccountDropdown />
-      </div>
+          {/* Right: Logo */}
+          <img src={brandImg} alt="FGB" className="h-10 w-auto" />
+        </>
+      ) : (
+        /* ── DESKTOP LAYOUT (unchanged) ── */
+        <>
+          {/* Logo */}
+          <div className="flex items-center">
+            <img src={brandImg} alt="FGB" className="h-12 md:h-16 w-auto" />
+          </div>
+
+          {/* Search Bar (centered) */}
+          <div
+            ref={searchContainerRef}
+            className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center ${
+              isSearchOpen ? "z-50" : "z-10"
+            }`}
+          >
+            {isSearchOpen ? (
+              <div className="relative">
+                <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder={t("header.search_placeholder")}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    className="border-0 bg-transparent h-6 w-48 md:w-64 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 text-sm"
+                  />
+                  <button
+                    onClick={handleClearSearch}
+                    className="p-0.5 hover:bg-muted rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+
+                {filteredProjects.length > 0 && (
+                  <div className="absolute top-full mt-2 w-72 md:w-80 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-transparent overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <ScrollArea className="max-h-64">
+                      <div className="py-1">
+                        {filteredProjects.map((project) => (
+                          <button
+                            key={project.id}
+                            onClick={() => handleProjectClick(project)}
+                            className="w-full px-3 py-2 flex items-start gap-3 hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-foreground truncate">{project.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{project.address}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                {searchQuery.trim() && filteredProjects.length === 0 && (
+                  <div className="absolute top-full mt-2 w-72 md:w-80 left-1/2 -translate-x-1/2 glass-panel rounded-lg shadow-lg border border-border/50 p-4 text-center animate-in fade-in slide-in-from-top-2 duration-200">
+                    <p className="text-sm text-muted-foreground">{t("header.no_results")}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={handleSearchToggle}
+                className="glass-panel rounded-full p-2 hover:bg-fgb-light/50 transition-colors"
+                title={t("header.search_projects")}
+              >
+                <Search className="w-4 h-4 text-fgb-accent" />
+              </button>
+            )}
+          </div>
+
+          {/* User Avatar, Language & Admin */}
+          <div className="flex items-center gap-2 md:gap-3">
+            <button
+              onClick={toggleLanguage}
+              className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-1.5 hover:bg-fgb-light/50 transition-colors"
+              title="Switch language"
+            >
+              <Globe className="w-4 h-4 text-fgb-accent" />
+              <span className="text-xs font-medium text-foreground">{language.toUpperCase()}</span>
+            </button>
+            <button
+              onClick={handleAdminClick}
+              className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-2 hover:bg-fgb-light/50 transition-colors"
+              title="Admin Console"
+            >
+              <Shield className="w-4 h-4 text-fgb-accent" />
+              <span className="hidden sm:inline text-xs font-medium text-foreground">Admin</span>
+            </button>
+            <UserAccountDropdown />
+          </div>
+        </>
+      )}
     </header>
   );
 };
 
 export default Header;
+

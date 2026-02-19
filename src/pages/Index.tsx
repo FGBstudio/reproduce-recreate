@@ -5,6 +5,8 @@ import RegionOverlay from "@/components/dashboard/RegionOverlay";
 import BrandOverlay from "@/components/dashboard/BrandOverlay";
 import MapView from "@/components/dashboard/MapView";
 import ProjectDetail from "@/components/dashboard/ProjectDetail";
+import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
+import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
 import { Project, MonitoringType } from "@/lib/data";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -18,6 +20,9 @@ const Index = () => {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [autoOpenProject, setAutoOpenProject] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Mobile-only state
+  const [isBurgerOpen, setIsBurgerOpen] = useState(false);
+  const [isKpiPanelOpen, setIsKpiPanelOpen] = useState(false);
 
   // User scope detection for role-based routing
   const { clientRole, holdingId, brandId, siteId, isLoading: scopeLoading } = useUserScope();
@@ -192,21 +197,50 @@ const Index = () => {
       />
 
       {/* UI Overlay */}
-      <Header onSearch={setSearchQuery} onProjectSelect={handleProjectSelect} />
-      
-      {/* Brand/Holding Overlay - shows when brand or holding is selected */}
+      <Header
+        onSearch={setSearchQuery}
+        onProjectSelect={handleProjectSelect}
+        onBurgerOpen={() => setIsBurgerOpen(true)}
+      />
+
+      {/* Mobile Burger Menu */}
+      <MobileBurgerMenu
+        isOpen={isBurgerOpen}
+        onClose={() => setIsBurgerOpen(false)}
+        selectedHolding={selectedHolding}
+        selectedBrand={selectedBrand}
+        onHoldingChange={canChangeHolding ? setSelectedHolding : undefined}
+        onBrandChange={canChangeBrand ? setSelectedBrand : undefined}
+        canChangeHolding={canChangeHolding}
+        canChangeBrand={canChangeBrand}
+      />
+
+      {/* Mobile KPI Panel (slides from bottom) */}
+      {!selectedProject && (
+        <MobileKpiPanel
+          isOpen={isKpiPanelOpen}
+          onClose={() => setIsKpiPanelOpen(false)}
+          currentRegion={currentRegion}
+          selectedBrand={selectedBrand}
+          selectedHolding={selectedHolding}
+          showBrandOverlay={!!(showBrandOverlay)}
+        />
+      )}
+
+      {/* Desktop: Brand/Holding Overlay */}
       <BrandOverlay 
         selectedBrand={selectedBrand}
         selectedHolding={selectedHolding}
-        visible={showBrandOverlay}
+        visible={showBrandOverlay && true}
       />
       
+      {/* Desktop: Region Overlay */}
       <RegionOverlay 
         currentRegion={currentRegion} 
         visible={!selectedProject && currentRegion !== "GLOBAL" && !showBrandOverlay} 
       />
       
-      {/* Hide navigation for STORE_USER (they only see their project) */}
+      {/* Hide navigation for STORE_USER */}
       {!isStoreUserLocked && (
         <RegionNav 
           currentRegion={currentRegion} 
@@ -218,6 +252,8 @@ const Index = () => {
           selectedBrand={selectedBrand}
           onHoldingChange={canChangeHolding ? setSelectedHolding : undefined}
           onBrandChange={canChangeBrand ? setSelectedBrand : undefined}
+          kpiPanelOpen={isKpiPanelOpen}
+          onKpiPanelToggle={() => setIsKpiPanelOpen(p => !p)}
         />
       )}
 

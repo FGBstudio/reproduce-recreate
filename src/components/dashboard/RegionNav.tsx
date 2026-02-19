@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Zap, Wind, Droplets, Building2, Tag } from "lucide-react";
+import { Zap, Wind, Droplets, Building2, Tag, BarChart2 } from "lucide-react";
 import { MonitoringType } from "@/lib/data";
 import { useAllHoldings, useAllBrands } from "@/hooks/useRealTimeData";
 import {
@@ -20,6 +20,8 @@ interface RegionNavProps {
   selectedBrand: string | null;
   onHoldingChange?: (holdingId: string | null) => void;
   onBrandChange?: (brandId: string | null) => void;
+  kpiPanelOpen?: boolean;
+  onKpiPanelToggle?: () => void;
 }
 
 const regionButtons = [
@@ -36,90 +38,53 @@ const monitoringFilters: { type: MonitoringType; icon: typeof Zap }[] = [
   { type: "water", icon: Droplets },
 ];
 
-const RegionNav = ({ 
-  currentRegion, 
-  onRegionChange, 
+const RegionNav = ({
+  currentRegion,
+  onRegionChange,
   visible = true,
   activeFilters,
   onFilterToggle,
   selectedHolding,
   selectedBrand,
   onHoldingChange,
-  onBrandChange
+  onBrandChange,
+  kpiPanelOpen = false,
+  onKpiPanelToggle,
 }: RegionNavProps) => {
-  // Use combined real + mock data with loading states
-  const { holdings, isLoading: holdingsLoading } = useAllHoldings();
-  const { brands, isLoading: brandsLoading } = useAllBrands();
+  const { holdings } = useAllHoldings();
+  const { brands } = useAllBrands();
 
-  // Cascading filter: when a holding is selected, only show brands that belong to it
   const availableBrands = useMemo(() => {
-    if (!selectedHolding) {
-      return brands;
-    }
-    // Filter brands by the selected holding's ID
-    return brands.filter(b => b.holdingId === selectedHolding);
+    if (!selectedHolding) return brands;
+    return brands.filter((b) => b.holdingId === selectedHolding);
   }, [selectedHolding, brands]);
 
   return (
-    <nav 
-      className={`fixed bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col md:flex-row items-center gap-2 md:gap-3 transition-transform duration-500 w-[calc(100%-2rem)] md:w-auto ${
+    <nav
+      className={`fixed bottom-0 md:bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col md:flex-row items-center gap-2 md:gap-3 transition-transform duration-500 w-full md:w-auto ${
         visible ? "translate-y-0" : "translate-y-40"
       }`}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Mobile: All controls in a single row with horizontal scroll */}
-      <div className="md:hidden w-full overflow-x-auto scrollbar-hide">
-        <div className="flex items-center gap-2 pb-1 min-w-max px-1">
-          {/* Holding & Brand Select - Compact */}
-          <div className="glass-panel rounded-full px-2 py-1.5 flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-            <Select 
-              value={selectedHolding || "all"} 
-              onValueChange={(val) => {
-                onHoldingChange?.(val === "all" ? null : val);
-                // Clear brand selection when holding changes (cascading)
-                onBrandChange?.(null);
-              }}
-              disabled={!onHoldingChange}
-            >
-              <SelectTrigger className="w-[80px] h-6 border-0 bg-transparent text-xs focus:ring-0 px-1">
-                <SelectValue placeholder="Holdings" />
-              </SelectTrigger>
-              <SelectContent className="glass-panel border-white/10">
-                <SelectItem value="all">All</SelectItem>
-                {holdings.map(h => (
-                  <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="w-px h-4 bg-white/20" />
-
-            <Tag className="w-3.5 h-3.5 text-muted-foreground" />
-            <Select 
-              value={selectedBrand || "all"} 
-              onValueChange={(val) => onBrandChange?.(val === "all" ? null : val)}
-              disabled={!onBrandChange}
-            >
-              <SelectTrigger className="w-[80px] h-6 border-0 bg-transparent text-xs focus:ring-0 px-1">
-                <SelectValue placeholder="Brands" />
-              </SelectTrigger>
-              <SelectContent className="glass-panel border-white/10">
-                <SelectItem value="all">All</SelectItem>
-                {availableBrands.map(b => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Region Buttons - Compact */}
-          <div className="glass-panel rounded-full px-2 py-1.5 flex items-center gap-1">
+      {/* ── MOBILE: Bottom "plancia di comando" ── */}
+      <div
+        className="md:hidden w-full flex items-center justify-between px-4 py-2"
+        style={{
+          background: "rgba(10, 15, 25, 0.80)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+        }}
+      >
+        {/* Left group: Region compact + 3 monitoring toggles */}
+        <div className="flex items-center gap-2">
+          {/* Region Buttons */}
+          <div className="glass-panel rounded-full px-1.5 py-1 flex items-center gap-0.5">
             {regionButtons.map((btn) => (
               <button
                 key={btn.code}
                 onClick={() => onRegionChange(btn.code)}
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide transition-all ${
+                className={`px-2 py-1 rounded-full text-xs font-semibold tracking-wide transition-all ${
                   currentRegion === btn.code
                     ? "bg-fgb-light text-foreground shadow-[0_0_10px_rgba(0,255,255,0.3)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/10"
@@ -130,39 +95,55 @@ const RegionNav = ({
             ))}
           </div>
 
-          {/* Monitoring Filters - Compact */}
-          <div className="glass-panel rounded-full p-1.5 flex gap-1">
+          {/* Separator */}
+          <div className="w-px h-5 bg-white/15" />
+
+          {/* 3 Monitoring toggles */}
+          <div className="glass-panel rounded-full p-1 flex gap-1">
             {monitoringFilters.map(({ type, icon: Icon }) => {
               const isActive = activeFilters.includes(type);
               return (
                 <button
                   key={type}
                   onClick={() => onFilterToggle(type)}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
-                    isActive 
-                      ? "bg-foreground text-background" 
-                      : "hover:bg-white/10 text-foreground"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+                    isActive
+                      ? "bg-foreground text-background"
+                      : "text-foreground/50 hover:bg-white/10 hover:text-foreground"
                   }`}
-                  title={`Filter by ${type} monitoring`}
+                  title={`Toggle ${type}`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-4 h-4" />
                 </button>
               );
             })}
           </div>
         </div>
+
+        {/* Right: KPI "cruscotto" button */}
+        <button
+          onClick={onKpiPanelToggle}
+          className={`flex items-center gap-1.5 rounded-full px-3 py-2 transition-all ${
+            kpiPanelOpen
+              ? "bg-fgb-accent text-background shadow-[0_0_12px_rgba(0,255,255,0.5)]"
+              : "glass-panel text-foreground hover:bg-fgb-light/30"
+          }`}
+          title="KPI Dashboard"
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span className="text-xs font-bold">KPI</span>
+        </button>
       </div>
 
-      {/* Desktop: Original layout */}
-      <div className="hidden md:flex items-center gap-3">
+      {/* ── DESKTOP: Original layout (unchanged) ── */}
+      <div className="hidden md:flex items-center gap-3" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Holding & Brand Filters */}
         <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-muted-foreground" />
-          <Select 
-            value={selectedHolding || "all"} 
+          <Select
+            value={selectedHolding || "all"}
             onValueChange={(val) => {
               onHoldingChange?.(val === "all" ? null : val);
-              // Clear brand selection when holding changes (cascading)
               onBrandChange?.(null);
             }}
             disabled={!onHoldingChange}
@@ -172,7 +153,7 @@ const RegionNav = ({
             </SelectTrigger>
             <SelectContent className="glass-panel border-white/10">
               <SelectItem value="all">All Holdings</SelectItem>
-              {holdings.map(h => (
+              {holdings.map((h) => (
                 <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
               ))}
             </SelectContent>
@@ -181,8 +162,8 @@ const RegionNav = ({
           <div className="w-px h-6 bg-white/20" />
 
           <Tag className="w-4 h-4 text-muted-foreground" />
-          <Select 
-            value={selectedBrand || "all"} 
+          <Select
+            value={selectedBrand || "all"}
             onValueChange={(val) => onBrandChange?.(val === "all" ? null : val)}
             disabled={!onBrandChange}
           >
@@ -191,7 +172,7 @@ const RegionNav = ({
             </SelectTrigger>
             <SelectContent className="glass-panel border-white/10">
               <SelectItem value="all">All Brands</SelectItem>
-              {availableBrands.map(b => (
+              {availableBrands.map((b) => (
                 <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
               ))}
             </SelectContent>
@@ -224,8 +205,8 @@ const RegionNav = ({
                 key={type}
                 onClick={() => onFilterToggle(type)}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition hover:scale-110 ${
-                  isActive 
-                    ? "bg-foreground text-background" 
+                  isActive
+                    ? "bg-foreground text-background"
                     : "hover:bg-white/10 text-foreground"
                 }`}
                 title={`Filter by ${type} monitoring`}
