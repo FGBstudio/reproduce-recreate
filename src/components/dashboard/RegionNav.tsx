@@ -77,12 +77,12 @@ const RegionNav = ({
         {/* Left group: Region compact + 3 monitoring toggles */}
         <div className="flex items-center gap-2">
           {/* Region Buttons */}
-          <div className="glass-panel rounded-full px-1.5 py-1 flex items-center gap-0.5">
+          <div className="glass-panel rounded-full px-1 py-0.5 flex items-center gap-0">
             {regionButtons.map((btn) => (
               <button
                 key={btn.code}
                 onClick={() => onRegionChange(btn.code)}
-                className={`px-2 py-1 rounded-full text-xs font-semibold tracking-wide transition-all ${
+                className={`px-1.5 py-1 rounded-full text-[10px] font-semibold tracking-wide transition-all ${
                   currentRegion === btn.code
                     ? "bg-fgb-light text-foreground shadow-[0_0_10px_rgba(0,255,255,0.3)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/10"
@@ -97,21 +97,21 @@ const RegionNav = ({
           <div className="w-px h-5 bg-white/15" />
 
           {/* 3 Monitoring toggles */}
-          <div className="glass-panel rounded-full p-1 flex gap-1">
+          <div className="glass-panel rounded-full p-0.5 flex gap-0.5">
             {monitoringFilters.map(({ type, icon: Icon }) => {
               const isActive = activeFilters.includes(type);
               return (
                 <button
                   key={type}
                   onClick={() => onFilterToggle(type)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
                     isActive
                       ? "bg-foreground text-background"
                       : "text-foreground/50 hover:bg-white/10 hover:text-foreground"
                   }`}
                   title={`Toggle ${type}`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                 </button>
               );
             })}
@@ -121,14 +121,14 @@ const RegionNav = ({
         {/* Right: KPI button */}
         <button
           onClick={onKpiPanelToggle}
-          className={`glass-panel flex items-center gap-1.5 rounded-full px-3 py-2 transition-all ${
+          className={`glass-panel flex items-center gap-1 rounded-full px-2.5 py-1.5 transition-all ${
             kpiPanelOpen
               ? "bg-fgb-accent text-background shadow-[0_0_12px_rgba(0,255,255,0.5)]"
               : "text-foreground hover:bg-fgb-light/30"
           }`}
           title="KPI Dashboard"
         >
-          <BarChart2 className="w-4 h-4" />
+          <BarChart2 className="w-3.5 h-3.5" />
           <span className="text-xs font-bold">KPI</span>
         </button>
       </div>
