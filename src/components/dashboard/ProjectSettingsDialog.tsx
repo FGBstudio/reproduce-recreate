@@ -24,38 +24,104 @@ import {
 } from "@/components/ui/tooltip";
 import { useSiteThresholds, SiteThresholds } from "@/hooks/useSiteThresholds";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const thresholdsSchema = z.object({
-  energy_power_limit_kw: z.number().positive().nullable(),
-  energy_daily_budget_kwh: z.number().positive().nullable(),
-  energy_anomaly_detection_enabled: z.boolean(),
-  air_temp_min_c: z.number().min(-20).max(50).nullable(),
-  air_temp_max_c: z.number().min(-20).max(50).nullable(),
-  air_humidity_min_pct: z.number().min(0).max(100).nullable(),
-  air_humidity_max_pct: z.number().min(0).max(100).nullable(),
-  air_co2_warning_ppm: z.number().positive().max(5000).nullable(),
-  air_co2_critical_ppm: z.number().positive().max(10000).nullable(),
-  water_leak_threshold_lh: z.number().positive().nullable(),
-  water_daily_budget_liters: z.number().positive().nullable(),
-}).refine((data) => {
-  if (data.air_temp_min_c !== null && data.air_temp_max_c !== null) {
-    return data.air_temp_min_c < data.air_temp_max_c;
-  }
-  return true;
-}, {
-  message: 'La temperatura minima deve essere inferiore alla massima',
-  path: ['air_temp_min_c'],
-}).refine((data) => {
-  if (data.air_co2_warning_ppm !== null && data.air_co2_critical_ppm !== null) {
-    return data.air_co2_warning_ppm < data.air_co2_critical_ppm;
-  }
-  return true;
-}, {
-  message: 'La soglia warning deve essere inferiore alla soglia critical',
-  path: ['air_co2_warning_ppm'],
-});
+const i18n = {
+  en: {
+    title: 'Project Settings',
+    subtitle: 'Configure thresholds and operational limits',
+    energy: 'Energy',
+    air: 'Air',
+    water: 'Water',
+    powerLimit: 'Contracted Power (kW)',
+    powerLimitHint: 'Contractual physical threshold',
+    powerPlaceholder: 'e.g. 50',
+    dailyBudgetEnergy: 'Daily Budget (kWh)',
+    dailyBudgetPlaceholder: 'e.g. 500',
+    anomalyDetection: 'AI Anomaly Detection',
+    anomalyTooltip: 'Compares current consumption with the baseline of the last 90 days to detect anomalous behaviour (Z-score analysis).',
+    anomalyHint: 'Statistical analysis on historical data',
+    tempMin: 'Temp. Min (°C)',
+    tempMax: 'Temp. Max (°C)',
+    humidityMin: 'Humidity Min (%)',
+    humidityMax: 'Humidity Max (%)',
+    leakThreshold: 'Leak Threshold (L/h)',
+    leakHint: 'Triggers an alert if the flow anomalously exceeds this threshold',
+    leakPlaceholder: 'e.g. 5',
+    dailyBudgetWater: 'Daily Budget (L)',
+    dailyBudgetWaterPlaceholder: 'e.g. 1000',
+    cancel: 'Cancel',
+    save: 'Save',
+    saveSuccess: 'Settings saved successfully',
+    saveError: 'Error saving settings',
+    tempError: 'Minimum temperature must be lower than maximum',
+    co2Error: 'Warning threshold must be lower than critical threshold',
+  },
+  it: {
+    title: 'Impostazioni Progetto',
+    subtitle: 'Configura soglie e limiti operativi',
+    energy: 'Energia',
+    air: 'Aria',
+    water: 'Acqua',
+    powerLimit: 'Potenza Impegnata (kW)',
+    powerLimitHint: 'Soglia fisica contrattuale',
+    powerPlaceholder: 'es. 50',
+    dailyBudgetEnergy: 'Budget Giornaliero (kWh)',
+    dailyBudgetPlaceholder: 'es. 500',
+    anomalyDetection: 'Rilevamento Anomalie AI',
+    anomalyTooltip: 'Confronta i consumi attuali con la baseline degli ultimi 90 giorni per rilevare comportamenti anomali (analisi Z-score).',
+    anomalyHint: 'Analisi statistica su base storica',
+    tempMin: 'Temp. Min (°C)',
+    tempMax: 'Temp. Max (°C)',
+    humidityMin: 'Umidità Min (%)',
+    humidityMax: 'Umidità Max (%)',
+    leakThreshold: 'Soglia Perdita (L/h)',
+    leakHint: 'Genera un alert se il flusso supera questa soglia in modo anomalo',
+    leakPlaceholder: 'es. 5',
+    dailyBudgetWater: 'Budget Giornaliero (L)',
+    dailyBudgetWaterPlaceholder: 'es. 1000',
+    cancel: 'Annulla',
+    save: 'Salva',
+    saveSuccess: 'Impostazioni salvate con successo',
+    saveError: 'Errore durante il salvataggio',
+    tempError: 'La temperatura minima deve essere inferiore alla massima',
+    co2Error: 'La soglia warning deve essere inferiore alla soglia critical',
+  },
+};
 
-type ThresholdsForm = z.infer<typeof thresholdsSchema>;
+type ThresholdsForm = z.infer<ReturnType<typeof createSchema>>;
+
+function createSchema(t: typeof i18n.en) {
+  return z.object({
+    energy_power_limit_kw: z.number().positive().nullable(),
+    energy_daily_budget_kwh: z.number().positive().nullable(),
+    energy_anomaly_detection_enabled: z.boolean(),
+    air_temp_min_c: z.number().min(-20).max(50).nullable(),
+    air_temp_max_c: z.number().min(-20).max(50).nullable(),
+    air_humidity_min_pct: z.number().min(0).max(100).nullable(),
+    air_humidity_max_pct: z.number().min(0).max(100).nullable(),
+    air_co2_warning_ppm: z.number().positive().max(5000).nullable(),
+    air_co2_critical_ppm: z.number().positive().max(10000).nullable(),
+    water_leak_threshold_lh: z.number().positive().nullable(),
+    water_daily_budget_liters: z.number().positive().nullable(),
+  }).refine((data) => {
+    if (data.air_temp_min_c !== null && data.air_temp_max_c !== null) {
+      return data.air_temp_min_c < data.air_temp_max_c;
+    }
+    return true;
+  }, {
+    message: t.tempError,
+    path: ['air_temp_min_c'],
+  }).refine((data) => {
+    if (data.air_co2_warning_ppm !== null && data.air_co2_critical_ppm !== null) {
+      return data.air_co2_warning_ppm < data.air_co2_critical_ppm;
+    }
+    return true;
+  }, {
+    message: t.co2Error,
+    path: ['air_co2_warning_ppm'],
+  });
+}
 
 interface ProjectSettingsDialogProps {
   siteId: string | undefined;
@@ -72,10 +138,12 @@ export function ProjectSettingsDialog({
   onOpenChange,
   trigger,
 }: ProjectSettingsDialogProps) {
+  const { language } = useLanguage();
+  const t = i18n[language];
   const { thresholds, isLoading, updateThresholds, isSaving } = useSiteThresholds(siteId);
 
   const form = useForm<ThresholdsForm>({
-    resolver: zodResolver(thresholdsSchema),
+    resolver: zodResolver(createSchema(t)),
     defaultValues: {
       energy_power_limit_kw: null,
       energy_daily_budget_kwh: null,
@@ -113,11 +181,11 @@ export function ProjectSettingsDialog({
   const onSubmit = async (data: ThresholdsForm) => {
     try {
       await updateThresholds(data);
-      toast.success('Impostazioni salvate con successo');
+      toast.success(t.saveSuccess);
       onOpenChange?.(false);
     } catch (error) {
       console.error('Failed to save thresholds:', error);
-      toast.error('Errore durante il salvataggio');
+      toast.error(t.saveError);
     }
   };
 
@@ -133,11 +201,11 @@ export function ProjectSettingsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            Impostazioni Progetto
+            {t.title}
           </DialogTitle>
           <DialogDescription>
             {projectName && <span className="font-medium">{projectName}</span>}
-            {' '}— Configura soglie e limiti operativi
+            {' '}— {t.subtitle}
           </DialogDescription>
         </DialogHeader>
 
@@ -151,15 +219,15 @@ export function ProjectSettingsDialog({
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="energy" className="flex items-center gap-1.5">
                   <Zap className="w-4 h-4" />
-                  <span className="hidden sm:inline">Energia</span>
+                  <span className="hidden sm:inline">{t.energy}</span>
                 </TabsTrigger>
                 <TabsTrigger value="air" className="flex items-center gap-1.5">
                   <Wind className="w-4 h-4" />
-                  <span className="hidden sm:inline">Aria</span>
+                  <span className="hidden sm:inline">{t.air}</span>
                 </TabsTrigger>
                 <TabsTrigger value="water" className="flex items-center gap-1.5">
                   <Droplets className="w-4 h-4" />
-                  <span className="hidden sm:inline">Acqua</span>
+                  <span className="hidden sm:inline">{t.water}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -167,29 +235,29 @@ export function ProjectSettingsDialog({
               <TabsContent value="energy" className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="energy_power_limit_kw">
-                    Potenza Impegnata (kW)
+                    {t.powerLimit}
                   </Label>
                   <Input
                     id="energy_power_limit_kw"
                     type="number"
                     step="0.1"
-                    placeholder="es. 50"
+                    placeholder={t.powerPlaceholder}
                     {...form.register('energy_power_limit_kw', { setValueAs: parseNumber })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Soglia fisica contrattuale
+                    {t.powerLimitHint}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="energy_daily_budget_kwh">
-                    Budget Giornaliero (kWh)
+                    {t.dailyBudgetEnergy}
                   </Label>
                   <Input
                     id="energy_daily_budget_kwh"
                     type="number"
                     step="1"
-                    placeholder="es. 500"
+                    placeholder={t.dailyBudgetPlaceholder}
                     {...form.register('energy_daily_budget_kwh', { setValueAs: parseNumber })}
                   />
                 </div>
@@ -198,7 +266,7 @@ export function ProjectSettingsDialog({
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="anomaly_detection">
-                        Rilevamento Anomalie AI
+                        {t.anomalyDetection}
                       </Label>
                       <TooltipProvider>
                         <Tooltip>
@@ -206,16 +274,13 @@ export function ProjectSettingsDialog({
                             <Info className="w-4 h-4 text-muted-foreground" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p>
-                              Confronta i consumi attuali con la baseline degli ultimi 90 giorni
-                              per rilevare comportamenti anomali (analisi Z-score).
-                            </p>
+                            <p>{t.anomalyTooltip}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Analisi statistica su base storica
+                      {t.anomalyHint}
                     </p>
                   </div>
                   <Switch
@@ -232,7 +297,7 @@ export function ProjectSettingsDialog({
               <TabsContent value="air" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="air_temp_min_c">Temp. Min (°C)</Label>
+                    <Label htmlFor="air_temp_min_c">{t.tempMin}</Label>
                     <Input
                       id="air_temp_min_c"
                       type="number"
@@ -242,7 +307,7 @@ export function ProjectSettingsDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="air_temp_max_c">Temp. Max (°C)</Label>
+                    <Label htmlFor="air_temp_max_c">{t.tempMax}</Label>
                     <Input
                       id="air_temp_max_c"
                       type="number"
@@ -260,7 +325,7 @@ export function ProjectSettingsDialog({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="air_humidity_min_pct">Umidità Min (%)</Label>
+                    <Label htmlFor="air_humidity_min_pct">{t.humidityMin}</Label>
                     <Input
                       id="air_humidity_min_pct"
                       type="number"
@@ -270,7 +335,7 @@ export function ProjectSettingsDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="air_humidity_max_pct">Umidità Max (%)</Label>
+                    <Label htmlFor="air_humidity_max_pct">{t.humidityMax}</Label>
                     <Input
                       id="air_humidity_max_pct"
                       type="number"
@@ -314,29 +379,29 @@ export function ProjectSettingsDialog({
               <TabsContent value="water" className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="water_leak_threshold_lh">
-                    Soglia Perdita (L/h)
+                    {t.leakThreshold}
                   </Label>
                   <Input
                     id="water_leak_threshold_lh"
                     type="number"
                     step="0.1"
-                    placeholder="es. 5"
+                    placeholder={t.leakPlaceholder}
                     {...form.register('water_leak_threshold_lh', { setValueAs: parseNumber })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Genera un alert se il flusso supera questa soglia in modo anomalo
+                    {t.leakHint}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="water_daily_budget_liters">
-                    Budget Giornaliero (L)
+                    {t.dailyBudgetWater}
                   </Label>
                   <Input
                     id="water_daily_budget_liters"
                     type="number"
                     step="10"
-                    placeholder="es. 1000"
+                    placeholder={t.dailyBudgetWaterPlaceholder}
                     {...form.register('water_daily_budget_liters', { setValueAs: parseNumber })}
                   />
                 </div>
@@ -349,11 +414,11 @@ export function ProjectSettingsDialog({
                 variant="outline"
                 onClick={() => onOpenChange?.(false)}
               >
-                Annulla
+                {t.cancel}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Salva
+                {t.save}
               </Button>
             </div>
           </form>
