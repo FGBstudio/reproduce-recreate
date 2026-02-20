@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { User, LogOut, Settings, Camera, X, Save, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 
 export const UserAccountDropdown = () => {
   const { user, profile, logout, updateUser, updateProfile } = useAuth();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -135,12 +137,12 @@ export const UserAccountDropdown = () => {
           <div className="space-y-2 mb-4">
             {formData.company && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Azienda</span>
+                <span className="text-gray-500">{t('account.company')}</span>
                 <span className="text-gray-800 font-medium">{formData.company}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Ruolo Sistema</span>
+              <span className="text-gray-500">{t('account.system_role')}</span>
               <span className="text-gray-800 font-medium capitalize">{user?.role || "viewer"}</span>
             </div>
           </div>
@@ -158,7 +160,7 @@ export const UserAccountDropdown = () => {
               }}
             >
               <Settings className="w-4 h-4" />
-              Modifica Profilo
+              {t('account.edit_profile')}
             </Button>
             <Button 
               variant="ghost" 
@@ -169,7 +171,7 @@ export const UserAccountDropdown = () => {
               }}
             >
               <LogOut className="w-4 h-4" />
-              Esci
+              {t('account.logout')}
             </Button>
           </div>
         </DropdownMenuContent>
@@ -179,7 +181,7 @@ export const UserAccountDropdown = () => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-800">Modifica Profilo</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-gray-800">{t('account.edit_profile')}</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
@@ -206,7 +208,7 @@ export const UserAccountDropdown = () => {
                   onChange={handleAvatarChange}
                 />
               </div>
-              <p className="text-xs text-gray-500">Clicca per caricare un'immagine</p>
+              <p className="text-xs text-gray-500">{t('account.click_upload')}</p>
             </div>
 
             {/* Form Fields */}
@@ -220,54 +222,54 @@ export const UserAccountDropdown = () => {
                   disabled={isSupabaseConfigured} // Email can't be changed when using Supabase Auth
                   className={isSupabaseConfigured ? 'bg-gray-50' : ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="email@esempio.com"
+                  placeholder={t('account.email_placeholder')}
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="firstName">Nome</Label>
+                  <Label htmlFor="firstName">{t('account.first_name')}</Label>
                   <Input
                     id="firstName"
                     value={formData.first_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
-                    placeholder="Nome"
+                    placeholder={t('account.first_name_placeholder')}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="lastName">Cognome</Label>
+                  <Label htmlFor="lastName">{t('account.last_name')}</Label>
                   <Input
                     id="lastName"
                     value={formData.last_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
-                    placeholder="Cognome"
+                    placeholder={t('account.last_name_placeholder')}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="company">Azienda</Label>
+                  <Label htmlFor="company">{t('account.company')}</Label>
                   <Input
                     id="company"
                     value={formData.company}
                     onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-                    placeholder="Nome azienda"
+                    placeholder={t('account.company_placeholder')}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="jobTitle">Ruolo</Label>
+                  <Label htmlFor="jobTitle">{t('account.role')}</Label>
                   <Input
                     id="jobTitle"
                     value={formData.job_title}
                     onChange={(e) => setFormData(prev => ({ ...prev, job_title: e.target.value }))}
-                    placeholder="Es. Energy Manager"
+                    placeholder={t('account.role_placeholder')}
                   />
                 </div>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="phone">Telefono</Label>
+                <Label htmlFor="phone">{t('account.phone')}</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -282,7 +284,7 @@ export const UserAccountDropdown = () => {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>
               <X className="w-4 h-4 mr-2" />
-              Annulla
+              {t('account.cancel')}
             </Button>
             <Button 
               onClick={handleSaveProfile} 
@@ -294,7 +296,7 @@ export const UserAccountDropdown = () => {
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              Salva
+              {t('account.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
