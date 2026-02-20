@@ -223,7 +223,8 @@ function evaluateAlerts(
  */
 export function useThresholdAlerts(
   siteId: string | undefined,
-  liveMetrics: LiveMetrics
+  liveMetrics: LiveMetrics,
+  options?: { isStale?: boolean; lastUpdate?: string; staleMessage?: string }
 ): ThresholdAlertStatus {
   const { thresholds, isLoading } = useSiteThresholds(siteId);
 
@@ -241,6 +242,20 @@ export function useThresholdAlerts(
     }
 
     const alerts = evaluateAlerts(liveMetrics, thresholds);
+
+    // Add stale data critical alert if no data received for >2 days
+    if (options?.isStale) {
+      alerts.push({
+        id: 'data_stale',
+        severity: 'critical',
+        metric: 'system.staleness',
+        message: options.staleMessage ?? 'No data received for more than 2 days',
+        currentValue: 0,
+        threshold: 2,
+        unit: 'days',
+      });
+    }
+
     const criticalCount = alerts.filter(a => a.severity === 'critical').length;
     const warningCount = alerts.filter(a => a.severity === 'warning').length;
     const infoCount = alerts.filter(a => a.severity === 'info').length;
@@ -259,7 +274,7 @@ export function useThresholdAlerts(
       hasAlerts: alerts.length > 0,
       worstSeverity,
     };
-  }, [liveMetrics, thresholds, isLoading]);
+  }, [liveMetrics, thresholds, isLoading, options?.isStale, options?.staleMessage]);
 }
 
 /**

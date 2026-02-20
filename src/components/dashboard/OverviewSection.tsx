@@ -620,6 +620,7 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
 };
 
 export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewSectionProps) => {
+  const { t } = useLanguage();
   // Fetch real-time telemetry data for this site
   const liveData = useRealTimeLatestData(project.siteId);
   
@@ -628,7 +629,8 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   
   // Fetch site thresholds and evaluate alerts
   const { thresholds } = useSiteThresholds(project.siteId);
-  const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics);
+  const staleMsg = t('overview.stale_data');
+  const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics, { isStale: powerData.isStale, staleMessage: staleMsg });
   
   // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
