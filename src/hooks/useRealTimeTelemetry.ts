@@ -379,10 +379,15 @@ export function useRealTimeLatestData(siteId: string | undefined) {
 
   return useMemo(() => {
     const metrics: Record<string, number> = {};
+    let latestTimestamp: string | undefined;
     
     if (latestData?.data) {
       Object.values(latestData.data).forEach(deviceMetrics => {
         deviceMetrics.forEach(m => {
+          // Track most recent timestamp across all metrics
+          if (m.ts && (!latestTimestamp || m.ts > latestTimestamp)) {
+            latestTimestamp = m.ts;
+          }
           // Sum energy metrics, average others
           if (m.metric.startsWith('energy.')) {
             metrics[m.metric] = (metrics[m.metric] || 0) + m.value;
@@ -398,6 +403,10 @@ export function useRealTimeLatestData(siteId: string | undefined) {
     }
 
     const hasRealData = Object.keys(metrics).length > 0;
+    const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+    const isStale = latestTimestamp
+      ? Date.now() - new Date(latestTimestamp).getTime() > TWO_DAYS_MS
+      : false;
 
     return {
       // IMPORTANT: no fake defaults. If real data is missing, return empty metrics.
@@ -406,6 +415,10 @@ export function useRealTimeLatestData(siteId: string | undefined) {
       isError,
       error: error as Error | null,
       isRealData: hasRealData,
+      /** Whether the most recent telemetry is older than 2 days */
+      isStale: hasRealData && isStale,
+      /** Most recent timestamp across all telemetry */
+      lastUpdate: latestTimestamp,
       refetch,
     };
   }, [latestData, isLoading, isError, error, refetch]);
