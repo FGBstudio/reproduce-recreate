@@ -20,7 +20,7 @@ interface HeaderProps {
 
 const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerOpen }: HeaderProps) => {
   const navigate = useNavigate();
-  const { user, login } = useAuth();
+  const { user, login, isAdmin } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
   const isMobile = useIsMobile();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -283,14 +283,16 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
               <Globe className="w-4 h-4 text-fgb-accent" />
               <span className="text-xs font-medium text-foreground">{language.toUpperCase()}</span>
             </button>
-            <button
-              onClick={handleAdminClick}
-              className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-2 hover:bg-fgb-light/50 transition-colors"
-              title="Admin Console"
-            >
-              <Shield className="w-4 h-4 text-fgb-accent" />
-              <span className="hidden sm:inline text-xs font-medium text-foreground">Admin</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={handleAdminClick}
+                className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-2 hover:bg-fgb-light/50 transition-colors"
+                title="Admin Console"
+              >
+                <Shield className="w-4 h-4 text-fgb-accent" />
+                <span className="hidden sm:inline text-xs font-medium text-foreground">Admin</span>
+              </button>
+            )}
             <UserAccountDropdown />
           </div>
         </>
