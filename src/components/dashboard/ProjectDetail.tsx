@@ -3424,13 +3424,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
-                    <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
+                    <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg flex flex-col h-full">
+                      <div className="flex justify-between items-center mb-2">
                         <h3 className="text-lg font-bold text-gray-800">Energy vs outdoor condition</h3>
                         <ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                      <div className="flex-1 min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 50, left: 5, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis 
                             dataKey="time" 
@@ -3455,23 +3456,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <YAxis
                             yAxisId="temp"
                             orientation="right"
-                            tick={{ ...axisStyle, fill: '#F59E0B' }}
-                            axisLine={{ stroke: '#F59E0B' }}
-                            tickLine={{ stroke: '#F59E0B' }}
+                            tick={{ fontSize: 9, fill: '#F59E0B' }}
+                            axisLine={false}
+                            tickLine={false}
                             domain={['auto', 'auto']}
                             tickFormatter={(val) => `${Math.round(val)}°`}
+                            width={28}
                           />
                           
                           {/* Right Y-Axis 2: Humidity (%) — offset to avoid overlap */}
                           <YAxis
                             yAxisId="humidity"
                             orientation="right"
-                            tick={{ ...axisStyle, fill: '#3b82f6' }}
-                            axisLine={{ stroke: '#3b82f6' }}
-                            tickLine={{ stroke: '#3b82f6' }}
+                            tick={{ fontSize: 9, fill: '#3b82f6' }}
+                            axisLine={false}
+                            tickLine={false}
                             domain={[0, 100]}
                             tickFormatter={(val) => `${val}%`}
-                            width={40}
+                            width={32}
                           />
                           
                           <Tooltip 
@@ -3522,6 +3524,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           />
                         </LineChart>
                       </ResponsiveContainer>
+                      </div>
                     </div>
                   </div>
                 </div>
