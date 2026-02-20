@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Lock, Mail, ExternalLink, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ModuleConfig, ModuleType } from '@/lib/types/admin';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ModuleLockedNoticeProps {
   module: ModuleType;
@@ -15,20 +16,40 @@ const moduleIcons: Record<ModuleType, string> = {
   water: '💧',
 };
 
-const moduleLabels: Record<ModuleType, string> = {
-  energy: 'Energy',
-  air: 'Air Quality',
-  water: 'Water',
+const moduleLabels: Record<string, Record<ModuleType, string>> = {
+  en: { energy: 'Energy', air: 'Air Quality', water: 'Water' },
+  it: { energy: 'Energia', air: 'Qualità dell\'Aria', water: 'Acqua' },
+};
+
+const i18n = {
+  en: { emailSubject: 'Module activation request', whatsappText: 'I would like to activate the module' },
+  it: { emailSubject: 'Richiesta attivazione modulo', whatsappText: 'Vorrei attivare il modulo' },
+};
+
+const defaultLockCopy = {
+  en: { title: 'Module Not Active', description: 'This module is not currently active for the selected project. Contact us to activate it.', ctaLabel: 'Request Activation' },
+  it: { title: 'Modulo Non Attivo', description: 'Questo modulo non è attualmente attivo per il progetto selezionato. Contattaci per attivarlo.', ctaLabel: 'Richiedi Attivazione' },
 };
 
 export const ModuleLockedNotice = ({ module, config, children }: ModuleLockedNoticeProps) => {
+  const { language } = useLanguage();
+  const labels = moduleLabels[language];
+  const t = i18n[language];
+  const defaults = defaultLockCopy[language];
+  const itDefaults = defaultLockCopy.it;
+
+  // If config values match Italian defaults, use translated version instead
+  const title = config.title === itDefaults.title ? defaults.title : config.title;
+  const description = config.description === itDefaults.description ? defaults.description : config.description;
+  const ctaLabel = config.ctaLabel === itDefaults.ctaLabel ? defaults.ctaLabel : config.ctaLabel;
+
   const handleCTA = () => {
     switch (config.ctaType) {
       case 'email':
-        window.location.href = `mailto:${config.ctaValue}?subject=Richiesta attivazione modulo ${moduleLabels[module]}`;
+        window.location.href = `mailto:${config.ctaValue}?subject=${t.emailSubject} ${labels[module]}`;
         break;
       case 'whatsapp':
-        window.open(`https://wa.me/${config.ctaValue}?text=Vorrei attivare il modulo ${moduleLabels[module]}`, '_blank');
+        window.open(`https://wa.me/${config.ctaValue}?text=${t.whatsappText} ${labels[module]}`, '_blank');
         break;
       case 'link':
         window.open(config.ctaValue, '_blank');
@@ -57,11 +78,11 @@ export const ModuleLockedNotice = ({ module, config, children }: ModuleLockedNot
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg">{moduleIcons[module]}</span>
             <h3 className="text-base md:text-lg font-semibold text-amber-800">
-              {config.title}
+              {title}
             </h3>
           </div>
           <p className="text-sm text-amber-700 mb-3">
-            {config.description}
+            {description}
           </p>
           <Button
             onClick={handleCTA}
@@ -70,7 +91,7 @@ export const ModuleLockedNotice = ({ module, config, children }: ModuleLockedNot
             className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200 hover:border-amber-400"
           >
             {getCtaIcon()}
-            <span className="ml-2">{config.ctaLabel}</span>
+            <span className="ml-2">{ctaLabel}</span>
           </Button>
           {children}
         </div>
