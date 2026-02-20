@@ -7,6 +7,7 @@ import {
 } from "recharts";
 import { BarChart3, ChevronUp, ChevronDown, Wifi, WifiOff } from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
@@ -15,6 +16,7 @@ interface BrandOverlayProps {
 }
 
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
+  const { t } = useLanguage();
   const [chartsExpanded, setChartsExpanded] = useState(false);
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
 
@@ -199,7 +201,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             <div className="text-center mb-2 md:mb-3">
               <h3 className="text-base md:text-lg font-semibold text-foreground">{displayEntity.name}</h3>
               <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
-                {brand ? 'Brand Overview' : 'Holding Overview'}
+                {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
               </p>
             </div>
 
@@ -208,12 +210,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               {hasRealData ? (
                 <>
                   <Wifi className="w-3 h-3 text-emerald-500" />
-                  <span className="text-[10px] text-emerald-500 uppercase tracking-wider">Dati disponibili</span>
+                  <span className="text-[10px] text-emerald-500 uppercase tracking-wider">{t('brand.data_available')}</span>
                 </>
               ) : (
                 <>
                   <WifiOff className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Nessun dato</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('brand.no_data')}</span>
                 </>
               )}
             </div>
@@ -223,13 +225,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                 <div className="text-base md:text-xl font-bold text-foreground">
                   {hasRealData ? totals.sitesOnline : '—'}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Siti Online</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-foreground">
                   {hasRealData && totals.weeklyEnergyKwh > 0 ? totals.weeklyEnergyKwh.toLocaleString() : '—'}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">kWh (7gg)</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
               </div>
               <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
                 <div className="text-base md:text-xl font-bold text-foreground">
@@ -243,7 +245,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                     ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
                     : '0'}
                 </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Alert Attivi</div>
+                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.active_alerts')}</div>
               </div>
             </div>
             
@@ -255,7 +257,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                   className="md:hidden flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/50 hover:bg-white/70 backdrop-blur-md rounded-lg border border-white/30 text-xs font-medium transition-all pointer-events-auto mt-2 text-slate-700"
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
-                  <span>{chartsExpanded ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
+                  <span>{chartsExpanded ? t('brand.hide_charts') : t('brand.show_charts')}</span>
                   {chartsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
 
@@ -265,7 +267,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                   className="hidden md:flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-muted-foreground hover:text-foreground"
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
-                  <span>{isDesktopVisible ? 'Nascondi Grafici' : 'Mostra Grafici'}</span>
+                  <span>{isDesktopVisible ? t('brand.hide_charts') : t('brand.show_charts')}</span>
                   {isDesktopVisible ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
               </>
@@ -275,7 +277,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {!hasRealData && (
               <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-muted">
                 <p className="text-[10px] text-muted-foreground text-center">
-                  Nessun sito con moduli attivi e dati disponibili
+                  {t('brand.no_active_modules')}
                 </p>
               </div>
             )}
@@ -293,7 +295,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {showEnergyChart && (
               <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
                 <div className="flex items-center gap-2 mb-2 md:mb-3">
-                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Energy Consumption (kWh, 7gg)</h4>
+                  <h4 className="text-xs md:text-sm font-semibold text-foreground">{t('brand.energy_consumption')}</h4>
                   <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
                 </div>
                 <ResponsiveContainer width="100%" height={120} className="md:hidden">
@@ -333,7 +335,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {showAirChart && (
               <div className="glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4">
                 <div className="flex items-center gap-2 mb-2 md:mb-3">
-                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Air Quality (CO₂ ppm)</h4>
+                  <h4 className="text-xs md:text-sm font-semibold text-foreground">{t('brand.air_quality')}</h4>
                   <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
                 </div>
                 <ResponsiveContainer width="100%" height={120} className="md:hidden">
@@ -369,7 +371,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
             {showRadarChart && (
               <div className={`glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4 ${showEnergyChart && showAirChart ? 'md:col-span-2' : ''}`}>
                 <div className="flex items-center gap-2 mb-2 md:mb-3">
-                  <h4 className="text-xs md:text-sm font-semibold text-foreground">Store Performance</h4>
+                  <h4 className="text-xs md:text-sm font-semibold text-foreground">{t('brand.performance_comparison')}</h4>
                   <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
                 </div>
                 <ResponsiveContainer width="100%" height={160} className="md:hidden">
