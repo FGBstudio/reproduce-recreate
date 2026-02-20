@@ -39,6 +39,8 @@ import { useWellCertification } from "@/hooks/useCertifications";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
+import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
@@ -485,6 +487,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // Shared hook for Power Consumption widget (energy_latest + device categories)
   const energyPowerBreakdown = useEnergyPowerByCategory(project?.siteId);
+
+  // Real-time telemetry for threshold alerts
+  const pdLiveData = useRealTimeLatestData(project?.siteId);
+  const pdStaleMsg = language === 'it' ? 'Dati non aggiornati (> 2 giorni)' : 'Stale data (> 2 days)';
+  const pdAlertStatus = useThresholdAlerts(project?.siteId, pdLiveData.metrics, { isStale: energyPowerBreakdown.isStale, staleMessage: pdStaleMsg });
 
   const { data: airLatestResp } = useLatestTelemetry(
     selectedAirDeviceIds.length
@@ -2858,27 +2865,44 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div ref={alertsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Site Alerts</h3>
+                        <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                         <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
                       </div>
                       <div className="flex items-start gap-8">
                         <div className="text-center">
-                          <p className="text-sm text-gray-500 mb-2">Open now</p>
-                          <p className="text-6xl font-bold text-gray-800">{project.data.alerts}</p>
-                          <div className="flex gap-2 mt-4">
-                            <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 Critical</span>
-                            <span className="px-3 py-1 bg-fgb-secondary text-white text-xs rounded-full">0 High</span>
+                          <p className="text-sm text-gray-500 mb-2">{t('pd.open_now')}</p>
+                          <p className={`text-6xl font-bold ${pdAlertStatus.hasAlerts ? 'text-red-600' : 'text-gray-800'}`}>{pdAlertStatus.totalCount}</p>
+                          <div className="flex flex-wrap gap-2 mt-4">
+                            {pdAlertStatus.criticalCount > 0 && (
+                              <span className="px-3 py-1 bg-red-500 text-white text-xs rounded-full">{pdAlertStatus.criticalCount} Critical</span>
+                            )}
+                            {pdAlertStatus.warningCount > 0 && (
+                              <span className="px-3 py-1 bg-amber-500 text-white text-xs rounded-full">{pdAlertStatus.warningCount} Warning</span>
+                            )}
+                            {!pdAlertStatus.hasAlerts && (
+                              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">All clear</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-gray-500 mb-4">Opened in last 7 days</p>
+                          <p className="text-sm text-gray-500 mb-4">{t('pd.opened_last_7_days')}</p>
                           <div className="space-y-2">
-                            {["Critical", "High", "Medium", "Low"].map(level => (
-                              <div key={level} className="flex justify-between">
-                                <span className="text-sm text-slate-900 font-semibold">{level}</span>
-                                <span className="text-sm text-gray-600">0</span>
-                              </div>
-                            ))}
+                            {pdAlertStatus.alerts.length > 0 ? (
+                              pdAlertStatus.alerts.map(alert => (
+                                <div key={alert.id} className="flex justify-between items-center">
+                                  <span className={`text-sm font-semibold ${alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'warning' ? 'text-amber-600' : 'text-gray-600'}`}>
+                                    {alert.severity === 'critical' ? '🔴' : alert.severity === 'warning' ? '🟡' : 'ℹ️'} {alert.message}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              ["Critical", "High", "Medium", "Low"].map(level => (
+                                <div key={level} className="flex justify-between">
+                                  <span className="text-sm text-slate-900 font-semibold">{level}</span>
+                                  <span className="text-sm text-gray-600">0</span>
+                                </div>
+                              ))
+                            )}
                           </div>
                         </div>
                       </div>
