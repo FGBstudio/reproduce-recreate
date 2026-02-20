@@ -1,5 +1,6 @@
 import { BarChart3, LineChart, PieChart, Activity } from 'lucide-react';
 import { ModuleType } from '@/lib/types/admin';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ModulePlaceholderProps {
   module: ModuleType;
@@ -25,8 +26,21 @@ const placeholderIcons = {
   table: BarChart3,
 };
 
+const i18n = {
+  en: {
+    activate: 'Activate the module to view data',
+    available: 'Telemetry data will be available after activation',
+  },
+  it: {
+    activate: 'Attiva il modulo per visualizzare i dati',
+    available: 'I dati di telemetria saranno disponibili dopo l\'attivazione',
+  },
+};
+
 export const ModulePlaceholder = ({ module, variant = 'chart', className = '' }: ModulePlaceholderProps) => {
   const Icon = placeholderIcons[variant];
+  const { language } = useLanguage();
+  const t = i18n[language];
   
   return (
     <div className={`bg-gradient-to-br ${moduleColors[module]} border rounded-xl p-6 flex flex-col items-center justify-center min-h-[200px] ${className}`}>
@@ -34,10 +48,10 @@ export const ModulePlaceholder = ({ module, variant = 'chart', className = '' }:
         <Icon className="w-8 h-8 opacity-50" />
       </div>
       <p className={`text-sm font-medium ${moduleTextColors[module]} text-center`}>
-        Attiva il modulo per visualizzare i dati
+        {t.activate}
       </p>
       <p className="text-xs text-gray-500 mt-1 text-center">
-        I dati di telemetria saranno disponibili dopo l'attivazione
+        {t.available}
       </p>
     </div>
   );
