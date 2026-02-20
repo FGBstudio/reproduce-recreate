@@ -167,6 +167,24 @@ const translations: Record<string, Record<Language, string>> = {
   'brand.performance_comparison': { en: 'Performance Comparison', it: 'Confronto Prestazioni' },
   'brand.consumption_breakdown': { en: 'Consumption Breakdown', it: 'Distribuzione Consumi' },
 
+  // User Account Dropdown
+  'account.company': { en: 'Company', it: 'Azienda' },
+  'account.system_role': { en: 'System Role', it: 'Ruolo Sistema' },
+  'account.edit_profile': { en: 'Edit Profile', it: 'Modifica Profilo' },
+  'account.logout': { en: 'Log out', it: 'Esci' },
+  'account.click_upload': { en: 'Click to upload an image', it: "Clicca per caricare un'immagine" },
+  'account.first_name': { en: 'First Name', it: 'Nome' },
+  'account.last_name': { en: 'Last Name', it: 'Cognome' },
+  'account.role': { en: 'Role', it: 'Ruolo' },
+  'account.phone': { en: 'Phone', it: 'Telefono' },
+  'account.cancel': { en: 'Cancel', it: 'Annulla' },
+  'account.save': { en: 'Save', it: 'Salva' },
+  'account.email_placeholder': { en: 'email@example.com', it: 'email@esempio.com' },
+  'account.first_name_placeholder': { en: 'First name', it: 'Nome' },
+  'account.last_name_placeholder': { en: 'Last name', it: 'Cognome' },
+  'account.company_placeholder': { en: 'Company name', it: 'Nome azienda' },
+  'account.role_placeholder': { en: 'e.g. Energy Manager', it: 'Es. Energy Manager' },
+
   // Admin
   'admin.search_hierarchy': { en: 'Search hierarchy...', it: 'Cerca nella gerarchia...' },
   'admin.no_project': { en: 'No project', it: 'Nessun progetto' },
