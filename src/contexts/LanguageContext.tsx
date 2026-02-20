@@ -151,6 +151,22 @@ const translations: Record<string, Record<Language, string>> = {
   'module.data_available': { en: 'Telemetry data will be available after activation', it: 'I dati di telemetria saranno disponibili dopo l\'attivazione' },
   'module.demo_data_notice': { en: 'The displayed data is illustrative and does not represent real values. Activate the module to view actual telemetry data.', it: 'I dati visualizzati sono esemplificativi e non rappresentano valori reali. Attiva il modulo per visualizzare i dati di telemetria effettivi.' },
 
+  // Brand/Holding Overlay
+  'brand.brand_overview': { en: 'Brand Overview', it: 'Brand Overview' },
+  'brand.holding_overview': { en: 'Holding Overview', it: 'Holding Overview' },
+  'brand.data_available': { en: 'Data available', it: 'Dati disponibili' },
+  'brand.no_data': { en: 'No data', it: 'Nessun dato' },
+  'brand.sites_online': { en: 'Sites Online', it: 'Siti Online' },
+  'brand.kwh_7d': { en: 'kWh (7d)', it: 'kWh (7gg)' },
+  'brand.active_alerts': { en: 'Active Alerts', it: 'Alert Attivi' },
+  'brand.hide_charts': { en: 'Hide Charts', it: 'Nascondi Grafici' },
+  'brand.show_charts': { en: 'Show Charts', it: 'Mostra Grafici' },
+  'brand.no_active_modules': { en: 'No sites with active modules and available data', it: 'Nessun sito con moduli attivi e dati disponibili' },
+  'brand.energy_consumption': { en: 'Energy Consumption (kWh, 7d)', it: 'Energy Consumption (kWh, 7gg)' },
+  'brand.air_quality': { en: 'Air Quality (CO₂ ppm)', it: 'Air Quality (CO₂ ppm)' },
+  'brand.performance_comparison': { en: 'Performance Comparison', it: 'Confronto Prestazioni' },
+  'brand.consumption_breakdown': { en: 'Consumption Breakdown', it: 'Distribuzione Consumi' },
+
   // Admin
   'admin.search_hierarchy': { en: 'Search hierarchy...', it: 'Cerca nella gerarchia...' },
   'admin.no_project': { en: 'No project', it: 'Nessun progetto' },
