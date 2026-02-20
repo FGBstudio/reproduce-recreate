@@ -22,6 +22,7 @@ interface RegionNavProps {
   onBrandChange?: (brandId: string | null) => void;
   kpiPanelOpen?: boolean;
   onKpiPanelToggle?: () => void;
+  allowedRegions?: string[] | null;
 }
 
 const regionButtons = [
@@ -50,9 +51,18 @@ const RegionNav = ({
   onBrandChange,
   kpiPanelOpen = false,
   onKpiPanelToggle,
+  allowedRegions,
 }: RegionNavProps) => {
   const { holdings } = useAllHoldings();
   const { brands } = useAllBrands();
+
+  // Filter region buttons based on allowed regions
+  const visibleRegionButtons = useMemo(() => {
+    if (!allowedRegions || allowedRegions.length === 0) return regionButtons;
+    return regionButtons.filter(
+      btn => btn.code === 'GLOBAL' || allowedRegions.includes(btn.code)
+    );
+  }, [allowedRegions]);
 
   const availableBrands = useMemo(() => {
     if (!selectedHolding) return brands;
@@ -78,7 +88,7 @@ const RegionNav = ({
         <div className="flex items-center gap-2">
           {/* Region Buttons */}
           <div className="glass-panel rounded-full px-1 py-0.5 flex items-center gap-0">
-            {regionButtons.map((btn) => (
+            {visibleRegionButtons.map((btn) => (
               <button
                 key={btn.code}
                 onClick={() => onRegionChange(btn.code)}
@@ -179,7 +189,7 @@ const RegionNav = ({
 
         {/* Region Buttons */}
         <div className="glass-panel rounded-full px-6 py-3 flex items-center gap-2">
-          {regionButtons.map((btn) => (
+          {visibleRegionButtons.map((btn) => (
             <button
               key={btn.code}
               onClick={() => onRegionChange(btn.code)}

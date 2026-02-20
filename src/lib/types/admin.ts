@@ -113,6 +113,7 @@ export interface UserMembership {
   scopeType: ScopeType;
   scopeId: string; // ID of the project/site/brand/holding or region code
   permission: Permission;
+  allowedRegions: string[] | null; // null/empty = all regions, otherwise restrict to these region codes
   createdAt: Date;
 }
 

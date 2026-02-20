@@ -13,9 +13,10 @@ interface MapViewProps {
   selectedHolding: string | null;
   selectedBrand: string | null;
   searchQuery?: string;
+  allowedRegions?: string[] | null;
 }
 
-const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHolding, selectedBrand, searchQuery = "" }: MapViewProps) => {
+const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHolding, selectedBrand, searchQuery = "", allowedRegions }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -33,6 +34,10 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       const monitoringMatch = activeFilters.length === 0 || 
         activeFilters.some(filter => p.monitoring.includes(filter));
       
+      // Allowed regions filter (from user membership)
+      const allowedRegionMatch = !allowedRegions || allowedRegions.length === 0 || 
+        allowedRegions.includes(p.region);
+      
       // Holding filter - use real brands from hook
       let holdingMatch = true;
       if (selectedHolding) {
@@ -48,9 +53,9 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
         p.name.toLowerCase().includes(query) || 
         p.address.toLowerCase().includes(query);
       
-      return regionMatch && monitoringMatch && holdingMatch && brandMatch && searchMatch;
+      return regionMatch && monitoringMatch && holdingMatch && brandMatch && searchMatch && allowedRegionMatch;
     });
-  }, [projects, brands, currentRegion, activeFilters, selectedHolding, selectedBrand, searchQuery]);
+  }, [projects, brands, currentRegion, activeFilters, selectedHolding, selectedBrand, searchQuery, allowedRegions]);
 
   // Initialize map
   useEffect(() => {

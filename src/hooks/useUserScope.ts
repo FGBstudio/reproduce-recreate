@@ -22,6 +22,8 @@ export interface UserScopeInfo {
   accessibleHoldingIds: string[];
   accessibleBrandIds: string[];
   accessibleSiteIds: string[];
+  // Region restriction (null/empty = all regions allowed)
+  allowedRegions: string[] | null;
   // Loading state
   isLoading: boolean;
 }
@@ -37,6 +39,7 @@ export const useUserScope = (): UserScopeInfo => {
     accessibleHoldingIds: [],
     accessibleBrandIds: [],
     accessibleSiteIds: [],
+    allowedRegions: null,
     isLoading: true,
   });
 
@@ -63,6 +66,7 @@ export const useUserScope = (): UserScopeInfo => {
         accessibleHoldingIds: [],
         accessibleBrandIds: [],
         accessibleSiteIds: [],
+        allowedRegions: null,
         isLoading: false,
       });
       return;
@@ -85,6 +89,7 @@ export const useUserScope = (): UserScopeInfo => {
           accessibleHoldingIds: [matchedBrand.holdingId],
           accessibleBrandIds: [matchedBrand.id],
           accessibleSiteIds: [],
+          allowedRegions: null,
           isLoading: false,
         });
         return true;
@@ -103,7 +108,7 @@ export const useUserScope = (): UserScopeInfo => {
     try {
       const { data: memberships, error } = await supabase
         .from('user_memberships')
-        .select('scope_type, scope_id, permission')
+        .select('scope_type, scope_id, permission, allowed_regions')
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -160,6 +165,14 @@ export const useUserScope = (): UserScopeInfo => {
         }
       }
 
+      // Merge allowed_regions from all memberships (union of all)
+      const allRegions = memberships
+        .map(m => (m as any).allowed_regions as string[] | null)
+        .filter((r): r is string[] => Array.isArray(r) && r.length > 0);
+      const mergedAllowedRegions = allRegions.length > 0
+        ? [...new Set(allRegions.flat())]
+        : null;
+
       setScopeInfo({
         clientRole,
         holdingId,
@@ -169,6 +182,7 @@ export const useUserScope = (): UserScopeInfo => {
         accessibleHoldingIds: holdingMemberships.map(m => m.scope_id),
         accessibleBrandIds: brandMemberships.map(m => m.scope_id),
         accessibleSiteIds: siteMemberships.map(m => m.scope_id),
+        allowedRegions: mergedAllowedRegions,
         isLoading: false,
       });
 
