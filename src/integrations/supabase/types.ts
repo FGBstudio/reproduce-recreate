@@ -1563,6 +1563,7 @@ export type Database = {
       }
       user_memberships: {
         Row: {
+          allowed_regions: string[] | null
           brand_id: string | null
           created_at: string | null
           holding_id: string | null
@@ -1575,6 +1576,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allowed_regions?: string[] | null
           brand_id?: string | null
           created_at?: string | null
           holding_id?: string | null
@@ -1587,6 +1589,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allowed_regions?: string[] | null
           brand_id?: string | null
           created_at?: string | null
           holding_id?: string | null

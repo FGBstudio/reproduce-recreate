@@ -250,6 +250,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
           scopeType: m.scope_type,
           scopeId: m.scope_id,
           permission: m.permission,
+          allowedRegions: (m as any).allowed_regions ?? null,
           createdAt: new Date(m.created_at),
         }));
         setMemberships(mappedMemberships);
@@ -774,6 +775,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
           scope_type: data.scopeType,
           scope_id: data.scopeId,
           permission: data.permission,
+          allowed_regions: data.allowedRegions ?? null,
         })
         .select()
         .single();
@@ -786,6 +788,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
         scopeType: inserted.scope_type,
         scopeId: inserted.scope_id,
         permission: inserted.permission,
+        allowedRegions: (inserted as any).allowed_regions ?? null,
         createdAt: new Date(inserted.created_at),
       };
       setMemberships(prev => [...prev, newMembership]);
@@ -809,6 +812,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       if (data.scopeType !== undefined) updateData.scope_type = data.scopeType;
       if (data.scopeId !== undefined) updateData.scope_id = data.scopeId;
       if (data.permission !== undefined) updateData.permission = data.permission;
+      if (data.allowedRegions !== undefined) updateData.allowed_regions = data.allowedRegions;
       
       const { error } = await supabase
         .from('user_memberships')

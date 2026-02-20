@@ -25,7 +25,7 @@ const Index = () => {
   const [isKpiPanelOpen, setIsKpiPanelOpen] = useState(false);
 
   // User scope detection for role-based routing
-  const { clientRole, holdingId, brandId, siteId, isLoading: scopeLoading } = useUserScope();
+  const { clientRole, holdingId, brandId, siteId, allowedRegions, isLoading: scopeLoading } = useUserScope();
   const { sites, brands, holdings } = useAdminData();
 
   // --- NUOVA FUNZIONE: GeoIP Detection ---
@@ -194,6 +194,7 @@ const Index = () => {
         selectedHolding={selectedHolding}
         selectedBrand={selectedBrand}
         searchQuery={searchQuery}
+        allowedRegions={allowedRegions}
       />
 
       {/* UI Overlay */}
@@ -254,6 +255,7 @@ const Index = () => {
           onBrandChange={canChangeBrand ? setSelectedBrand : undefined}
           kpiPanelOpen={isKpiPanelOpen}
           onKpiPanelToggle={() => setIsKpiPanelOpen(p => !p)}
+          allowedRegions={allowedRegions}
         />
       )}
 

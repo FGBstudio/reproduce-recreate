@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Users, Shield, Eye, Edit, Crown } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,7 @@ export const UserAccessManager = () => {
     scopeType: 'project' as ScopeType,
     scopeId: '',
     permission: 'view' as Permission,
+    allowedRegions: [] as string[],
   });
 
   const handleOpenCreate = () => {
@@ -52,6 +54,7 @@ export const UserAccessManager = () => {
       scopeType: 'project',
       scopeId: '',
       permission: 'view',
+      allowedRegions: [],
     });
     setIsDialogOpen(true);
   };
@@ -63,16 +66,21 @@ export const UserAccessManager = () => {
       scopeType: membership.scopeType,
       scopeId: membership.scopeId,
       permission: membership.permission,
+      allowedRegions: membership.allowedRegions ?? [],
     });
     setIsDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const submitData = {
+      ...formData,
+      allowedRegions: formData.allowedRegions.length > 0 ? formData.allowedRegions : null,
+    };
     if (editingMembership) {
-      updateMembership(editingMembership.id, formData);
+      updateMembership(editingMembership.id, submitData);
     } else {
-      addMembership(formData);
+      addMembership(submitData);
     }
     setIsDialogOpen(false);
   };
@@ -229,6 +237,31 @@ export const UserAccessManager = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  {/* Allowed Regions */}
+                  <div className="grid gap-2">
+                    <Label>Regioni Visibili (lascia vuoto = tutte)</Label>
+                    <div className="flex flex-wrap gap-3">
+                      {regionOptions.map(r => {
+                        const checked = formData.allowedRegions.includes(r.value);
+                        return (
+                          <label key={r.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(c) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  allowedRegions: c
+                                    ? [...prev.allowedRegions, r.value]
+                                    : prev.allowedRegions.filter(x => x !== r.value),
+                                }));
+                              }}
+                            />
+                            {r.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -251,6 +284,7 @@ export const UserAccessManager = () => {
               <TableHead>Tipo Scope</TableHead>
               <TableHead>Scope</TableHead>
               <TableHead>Permesso</TableHead>
+              <TableHead>Regioni</TableHead>
               <TableHead>Creato</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
@@ -274,6 +308,16 @@ export const UserAccessManager = () => {
                 </TableCell>
                 <TableCell>
                   {getPermissionBadge(membership.permission)}
+                </TableCell>
+                <TableCell>
+                  {membership.allowedRegions && membership.allowedRegions.length > 0
+                    ? membership.allowedRegions.map(r => (
+                        <Badge key={r} variant="secondary" className="mr-1 text-xs">
+                          {regionOptions.find(ro => ro.value === r)?.label || r}
+                        </Badge>
+                      ))
+                    : <span className="text-xs text-muted-foreground">Tutte</span>
+                  }
                 </TableCell>
                 <TableCell className="text-sm text-slate-500">
                   {membership.createdAt.toLocaleDateString('it-IT')}
@@ -313,7 +357,7 @@ export const UserAccessManager = () => {
             ))}
             {memberships.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                   Nessun accesso configurato. Aggiungi il primo per assegnare permessi agli utenti.
                 </TableCell>
               </TableRow>

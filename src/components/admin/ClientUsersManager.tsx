@@ -217,6 +217,7 @@ export const ClientUsersManager = () => {
         scopeType,
         scopeId: formData.scopeId,
         permission: formData.roleType === 'STORE_USER' ? 'view' : 'admin',
+        allowedRegions: null,
       });
 
       if (result) {
