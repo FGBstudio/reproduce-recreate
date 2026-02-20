@@ -630,7 +630,9 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   // Fetch site thresholds and evaluate alerts
   const { thresholds } = useSiteThresholds(project.siteId);
   const staleMsg = t('overview.stale_data');
-  const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics, { isStale: powerData.isStale, staleMessage: staleMsg });
+  // Combine staleness from energy AND general telemetry
+  const isAnythingStale = powerData.isStale || liveData.isStale;
+  const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics, { isStale: isAnythingStale, staleMessage: staleMsg });
   
   // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
