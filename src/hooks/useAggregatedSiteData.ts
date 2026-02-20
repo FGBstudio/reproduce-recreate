@@ -59,6 +59,8 @@ export interface AggregatedOverlayData {
     avgCo2: number;
     sitesCount: number;
     sitesOnline: number;
+    /** Sites with any data received (ever), regardless of how recent */
+    sitesWithData: number;
     alertsCritical: number;
     alertsWarning: number;
   };
@@ -86,16 +88,18 @@ interface FetchResult {
   onlineStatus: Record<string, boolean>;
   /** site_id → alert counts */
   alerts: Record<string, { critical: number; warning: number; info: number }>;
+  /** site_id → latest timestamp across all telemetry */
+  latestTs: Record<string, string>;
 }
 
 async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResult> {
   if (!supabase || siteIds.length === 0) {
-    return { weeklyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {} };
+    return { weeklyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {} };
   }
 
   const result: FetchResult = {
     weeklyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {},
-    airAvg: {}, onlineStatus: {}, alerts: {},
+    airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {},
   };
 
   const now = new Date();
@@ -238,19 +242,42 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
   }
 
   // ---------------------------------------------------------------------------
-  // 4) ONLINE STATUS: any telemetry in last 60 min
+  // 4) ONLINE STATUS + STALENESS: check latest timestamps per site
   // ---------------------------------------------------------------------------
   try {
-    const [{ data: el }, { data: tl }] = await Promise.all([
-      supabase.from('energy_latest').select('site_id').in('site_id', siteIds).gte('ts', sixtyMinutesAgo.toISOString()),
-      supabase.from('telemetry_latest').select('site_id').in('site_id', siteIds).gte('ts', sixtyMinutesAgo.toISOString()),
-    ]);
-    el?.forEach((r: any) => { if (r.site_id) result.onlineStatus[r.site_id] = true; });
-    tl?.forEach((r: any) => { if (r.site_id) result.onlineStatus[r.site_id] = true; });
-  } catch (e) { /* ignore */ }
+    // Fetch latest ts per site from both tables (batched)
+    const batchSizeOnline = 50;
+    for (let i = 0; i < siteIds.length; i += batchSizeOnline) {
+      const batch = siteIds.slice(i, i + batchSizeOnline);
+      const [{ data: el }, { data: tl }] = await Promise.all([
+        supabase.from('energy_latest').select('site_id, ts').in('site_id', batch),
+        supabase.from('telemetry_latest').select('site_id, ts').in('site_id', batch),
+      ]);
+      // Track max ts per site and online status
+      const processRows = (rows: any[] | null) => {
+        rows?.forEach((r: any) => {
+          if (!r.site_id || !r.ts) return;
+          const ts = new Date(r.ts);
+          // Update latestTs
+          const existing = result.latestTs[r.site_id];
+          if (!existing || ts > new Date(existing)) {
+            result.latestTs[r.site_id] = r.ts;
+          }
+          // Check online (60 min)
+          if (ts >= sixtyMinutesAgo) {
+            result.onlineStatus[r.site_id] = true;
+          }
+        });
+      };
+      processRows(el);
+      processRows(tl);
+    }
+  } catch (e) {
+    console.warn('[useAggregatedSiteData] online/staleness query failed:', e);
+  }
 
   // ---------------------------------------------------------------------------
-  // 5) ALERTS: count from events (status='active')
+  // 5) ALERTS: count from events (status='active') + staleness alerts
   // ---------------------------------------------------------------------------
   try {
     const { data: eventsRows } = await supabase
@@ -268,6 +295,16 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
       else result.alerts[row.site_id].info++;
     });
   } catch (e) { /* ignore */ }
+
+  // Add staleness-based critical alerts: sites with data older than 2 days
+  const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+  Object.entries(result.latestTs).forEach(([siteId, ts]) => {
+    const lastTs = new Date(ts);
+    if (lastTs < twoDaysAgo) {
+      if (!result.alerts[siteId]) result.alerts[siteId] = { critical: 0, warning: 0, info: 0 };
+      result.alerts[siteId].critical++;
+    }
+  });
 
   console.log('[useAggregatedSiteData] Fetched:', {
     sitesWithEnergy: Object.keys(result.weeklyEnergy).length,
@@ -334,13 +371,14 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       const airData = aggregatedData?.airAvg[siteId] ?? null;
       const isOnline = aggregatedData?.onlineStatus[siteId] ?? false;
       const alerts = aggregatedData?.alerts[siteId] ?? { critical: 0, warning: 0, info: 0 };
+      const hasLatestTs = !!aggregatedData?.latestTs[siteId];
 
       const hasEnergyData = weeklyKwh !== null && weeklyKwh > 0;
       const hasAirData = airData !== null && (airData.co2 !== null || airData.temperature !== null);
       const hasWaterData = false;
 
-      // Include site if it has ANY real data or is online
-      if (!hasEnergyData && !hasAirData && !isOnline) return;
+      // Include site if it has ANY real data, any telemetry ever, or is online
+      if (!hasEnergyData && !hasAirData && !isOnline && !hasLatestTs) return;
 
       sites.push({
         siteId,
@@ -377,6 +415,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
         avgCo2,
         sitesCount: sites.length,
         sitesOnline: sitesOnline.length,
+        sitesWithData: sites.length,
         alertsCritical,
         alertsWarning,
       },

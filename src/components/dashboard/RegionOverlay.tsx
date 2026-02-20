@@ -54,7 +54,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
   const displayIntensity = realIntensity ?? region.kpi?.intensity ?? 0;
   const hasRealIntensity = realIntensity !== undefined;
   const displayAq = aqScore ?? region.kpi?.aq ?? "GOOD";
-  const displayOnline = aggregated.hasRealData ? aggregated.totals.sitesOnline : (region.kpi?.online ?? 0);
+  const displayOnline = aggregated.hasRealData ? aggregated.totals.sitesWithData : (region.kpi?.online ?? 0);
   const displayCritical = aggregated.hasRealData ? aggregated.totals.alertsCritical : (region.kpi?.critical ?? 0);
 
   const aqColorClass = {
