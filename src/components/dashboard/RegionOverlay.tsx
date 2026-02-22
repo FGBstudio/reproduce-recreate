@@ -4,7 +4,9 @@ import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import { useAllProjects } from "@/hooks/useRealTimeData";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface RegionOverlayProps {
   currentRegion: string;
@@ -14,6 +16,7 @@ interface RegionOverlayProps {
 const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) => {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
+  const { language } = useLanguage();
   const region = regions[currentRegion];
   
   // Get all projects (real + mock merged)
@@ -72,6 +75,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
           : "opacity-0 -translate-x-10"
       }`}
     >
+      <TooltipProvider delayDuration={200}>
       <div className="glass-panel p-6 rounded-2xl pointer-events-auto">
         <div className="flex items-center justify-between">
           <div>
@@ -94,49 +98,85 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
         {/* Collapsible content */}
         {(!isMobile || !collapsed) && (
           <div className="mt-6 space-y-4">
-            <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-              <div className="flex justify-between items-end mb-1">
-                <span className="text-sm text-muted-foreground">Avg. Energy Intensity</span>
-                <span className="text-xl font-bold text-foreground">
-                  {displayIntensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
-                </span>
-              </div>
-              <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
-                <div 
-                  className="bg-emerald-400 h-full transition-all duration-700"
-                  style={{ width: `${Math.min(displayIntensity, 100)}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-              <div className="flex justify-between items-end mb-1">
-                <span className="text-sm text-muted-foreground">Air Quality Score</span>
-                <span className={`text-xl font-bold ${aqColorClass}`}>{displayAq}</span>
-              </div>
-              {displayCo2 > 0 && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  Avg CO₂: {displayCo2} ppm{hasRealCo2 ? ` · ${co2SiteCountByRegion[currentRegion] ?? 0} sites` : ''}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-help">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-sm text-muted-foreground">Avg. Energy Intensity</span>
+                    <span className="text-xl font-bold text-foreground">
+                      {displayIntensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-emerald-400 h-full transition-all duration-700"
+                      style={{ width: `${Math.min(displayIntensity, 100)}%` }}
+                    />
+                  </div>
                 </div>
-              )}
-              <div className="flex gap-1 mt-2">
-                <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" || displayAq === "GOOD" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
-                <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
-                <span className="h-2 flex-1 rounded-sm bg-emerald-500/30" />
-              </div>
-            </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[260px] text-xs">
+                {language === 'it'
+                  ? "Media dei consumi energetici (kWh) divisi per la superficie (m²) di ogni sito, calcolata sugli ultimi 30 giorni usando solo i contatori 'general'."
+                  : "Average energy consumption (kWh) divided by each site's floor area (m²), computed over the last 30 days using 'general' meters only."}
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-help">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-sm text-muted-foreground">Air Quality Score</span>
+                    <span className={`text-xl font-bold ${aqColorClass}`}>{displayAq}</span>
+                  </div>
+                  {displayCo2 > 0 && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Avg CO₂: {displayCo2} ppm{hasRealCo2 ? ` · ${co2SiteCountByRegion[currentRegion] ?? 0} sites` : ''}
+                    </div>
+                  )}
+                  <div className="flex gap-1 mt-2">
+                    <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" || displayAq === "GOOD" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
+                    <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
+                    <span className="h-2 flex-1 rounded-sm bg-emerald-500/30" />
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[260px] text-xs">
+                {language === 'it'
+                  ? "Media regionale della CO₂ (ppm) degli ultimi 30 giorni. Scala: EXCELLENT <400, GOOD <600, MODERATE <1000, POOR ≥1000."
+                  : "Regional 30-day average CO₂ (ppm). Scale: EXCELLENT <400, GOOD <600, MODERATE <1000, POOR ≥1000."}
+              </TooltipContent>
+            </Tooltip>
 
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="text-center p-3 rounded-lg bg-white/5">
-                <div className="text-2xl font-bold text-foreground">{displayOnline}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">Active Sites</div>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-white/5">
-                <div className={`text-2xl font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
-                  {displayCritical}
-                </div>
-                <div className="text-[10px] uppercase text-muted-foreground">Critical Alerts</div>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-center p-3 rounded-lg bg-white/5 cursor-help">
+                    <div className="text-2xl font-bold text-foreground">{displayOnline}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">Active Sites</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+                  {language === 'it'
+                    ? "Numero di siti che hanno inviato almeno un dato telemetrico nell'ultima ora."
+                    : "Number of sites that reported at least one telemetry reading in the last hour."}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-center p-3 rounded-lg bg-white/5 cursor-help">
+                    <div className={`text-2xl font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                      {displayCritical}
+                    </div>
+                    <div className="text-[10px] uppercase text-muted-foreground">Critical Alerts</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+                  {language === 'it'
+                    ? "Allarmi critici attivi: eventi con severità 'critical' o siti senza dati da oltre 2 giorni."
+                    : "Active critical alerts: events with 'critical' severity or sites with no data for over 2 days."}
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/10 text-center">
@@ -151,6 +191,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
           </div>
         )}
       </div>
+      </TooltipProvider>
     </div>
   );
 };
