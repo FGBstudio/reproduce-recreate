@@ -8,6 +8,7 @@ import {
 import { BarChart3, ChevronUp, ChevronDown, Wifi, WifiOff } from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
@@ -16,7 +17,7 @@ interface BrandOverlayProps {
 }
 
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [chartsExpanded, setChartsExpanded] = useState(false);
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
 
@@ -220,34 +221,72 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               )}
             </div>
             
+            <TooltipProvider delayDuration={200}>
             <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-foreground">
-                  {hasRealData ? totals.sitesOnline : '—'}
-                </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
-              </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-foreground">
-                  {hasRealData && totals.weeklyEnergyKwh > 0 ? totals.weeklyEnergyKwh.toLocaleString() : '—'}
-                </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
-              </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-foreground">
-                  {hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
-                </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
-              </div>
-              <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-                <div className="text-base md:text-xl font-bold text-foreground">
-                  {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0) 
-                    ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
-                    : '0'}
-                </div>
-                <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.active_alerts')}</div>
-              </div>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
+                    <div className="text-base md:text-xl font-bold text-foreground">
+                      {hasRealData ? totals.sitesOnline : '—'}
+                    </div>
+                    <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+                  {language === 'it'
+                    ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora."
+                    : "Sites with at least one telemetry reading received in the last hour."}
+                </TooltipContent>
+              </UITooltip>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
+                    <div className="text-base md:text-xl font-bold text-foreground">
+                      {hasRealData && totals.weeklyEnergyKwh > 0 ? totals.weeklyEnergyKwh.toLocaleString() : '—'}
+                    </div>
+                    <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+                  {language === 'it'
+                    ? "Consumo energetico totale degli ultimi 7 giorni, sommando solo i contatori 'general' di ogni sito."
+                    : "Total energy consumption over the last 7 days, summing only 'general' category meters per site."}
+                </TooltipContent>
+              </UITooltip>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
+                    <div className="text-base md:text-xl font-bold text-foreground">
+                      {hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
+                    </div>
+                    <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+                  {language === 'it'
+                    ? "Media della CO₂ (ppm) su 30 giorni per tutti i siti con sensori aria attivi."
+                    : "30-day average CO₂ (ppm) across all sites with active air quality sensors."}
+                </TooltipContent>
+              </UITooltip>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
+                    <div className="text-base md:text-xl font-bold text-foreground">
+                      {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0) 
+                        ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
+                        : '0'}
+                    </div>
+                    <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.active_alerts')}</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+                  {language === 'it'
+                    ? "Somma degli allarmi critici e warning attivi: eventi con severità elevata o siti senza dati da oltre 2 giorni."
+                    : "Sum of active critical and warning alerts: high-severity events or sites with no data for over 2 days."}
+                </TooltipContent>
+              </UITooltip>
             </div>
+            </TooltipProvider>
             
             {showAnyChart && (
               <>
