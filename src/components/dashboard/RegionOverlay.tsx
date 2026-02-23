@@ -5,9 +5,10 @@ import { useAllProjects } from "@/hooks/useRealTimeData";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ChevronDown, ChevronUp, Circle } from "lucide-react";
+import { ChevronDown, ChevronUp, Circle, Info } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface RegionOverlayProps {
   currentRegion: string;
@@ -182,12 +183,25 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
         {/* Collapsible content */}
         {(!isMobile || !collapsed) && (
           <div className="mt-6 space-y-4">
+          <TooltipProvider delayDuration={300}>
             {/* Avg. Energy Intensity */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
+                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-sm text-muted-foreground">Avg. Energy Intensity</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-muted-foreground">Avg. Energy Intensity</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[240px] text-xs">
+                          {language === 'it'
+                            ? "Media dei consumi energetici (kWh) divisi per la superficie (m²) di ogni sito, calcolata sugli ultimi 30 giorni con i contatori 'general'."
+                            : "Average energy consumption (kWh) divided by each site's floor area (m²), calculated over the last 30 days using 'general' meters."}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <span className="text-xl font-bold text-foreground">
                       {displayIntensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
                     </span>
@@ -200,27 +214,30 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                   </div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent side="right" align="start" className="w-72 p-0">
-                <div className="p-3 border-b border-border">
+              <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
+                <div className="p-4 border-b border-border/30 bg-accent/5">
                   <h4 className="text-sm font-semibold text-foreground">
                     {language === 'it' ? 'Intensità Energetica per Sito' : 'Energy Intensity by Site'}
                   </h4>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {language === 'it' ? 'kWh/m² · 30 giorni · Contatori general' : 'kWh/m² · 30 days · General meters'}
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    {language === 'it' ? 'kWh/m² · Ultimi 30 giorni · Contatori general · Dal più alto al più basso' : 'kWh/m² · Last 30 days · General meters · Highest to lowest'}
                   </p>
                 </div>
-                <ScrollArea className="max-h-60">
+                <ScrollArea className="h-[240px]">
                   {siteIntensityList.length > 0 ? (
-                    <div className="divide-y divide-border">
+                    <div className="p-2 space-y-1">
                       {siteIntensityList.map((s, i) => (
-                        <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
-                          <span className="text-foreground truncate flex-1 mr-2">{s.name}</span>
-                          <span className="font-semibold text-foreground whitespace-nowrap">{s.intensity} <span className="text-muted-foreground font-normal">kWh/m²</span></span>
+                        <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
+                            <span className="text-muted-foreground/60 font-mono text-[10px] w-4 shrink-0">{i + 1}</span>
+                            <span className="text-foreground leading-snug break-words">{s.name}</span>
+                          </div>
+                          <span className="font-semibold text-foreground whitespace-nowrap shrink-0">{s.intensity} <span className="text-muted-foreground font-normal">kWh/m²</span></span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="p-3 text-xs text-muted-foreground text-center">
+                    <div className="p-6 text-xs text-muted-foreground text-center">
                       {language === 'it' ? 'Nessun dato disponibile' : 'No data available'}
                     </div>
                   )}
@@ -231,9 +248,21 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
             {/* Air Quality Score */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
+                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-sm text-muted-foreground">Air Quality Score</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-muted-foreground">Air Quality Score</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[240px] text-xs">
+                          {language === 'it'
+                            ? "Giudizio basato sulla media CO₂ (ppm) a 30 giorni: Excellent <400, Good <600, Moderate <1000, Poor ≥1000."
+                            : "Rating based on 30-day avg CO₂ (ppm): Excellent <400, Good <600, Moderate <1000, Poor ≥1000."}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <span className={`text-xl font-bold ${aqColorClass}`}>{displayAq}</span>
                   </div>
                   {displayCo2 > 0 && (
@@ -248,30 +277,33 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                   </div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent side="right" align="start" className="w-72 p-0">
-                <div className="p-3 border-b border-border">
+              <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
+                <div className="p-4 border-b border-border/30 bg-accent/5">
                   <h4 className="text-sm font-semibold text-foreground">
                     {language === 'it' ? 'Qualità dell\'Aria per Sito' : 'Air Quality by Site'}
                   </h4>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                     {language === 'it' ? 'CO₂ media 30 giorni · Dal migliore al peggiore' : 'Avg CO₂ 30 days · Best to worst'}
                   </p>
                 </div>
-                <ScrollArea className="max-h-60">
+                <ScrollArea className="h-[240px]">
                   {siteAqList.length > 0 ? (
-                    <div className="divide-y divide-border">
+                    <div className="p-2 space-y-1">
                       {siteAqList.map((s, i) => (
-                        <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
-                          <span className="text-foreground truncate flex-1 mr-2">{s.name}</span>
-                          <div className="flex items-center gap-2">
+                        <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
+                            <Circle className={`w-2 h-2 shrink-0 fill-current ${aqLabelColor(s.label)}`} />
+                            <span className="text-foreground leading-snug break-words">{s.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
                             <span className="text-muted-foreground">{s.co2 ?? '—'} ppm</span>
-                            <span className={`font-semibold ${aqLabelColor(s.label)}`}>{s.label}</span>
+                            <span className={`font-semibold min-w-[70px] text-right ${aqLabelColor(s.label)}`}>{s.label}</span>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="p-3 text-xs text-muted-foreground text-center">
+                    <div className="p-6 text-xs text-muted-foreground text-center">
                       {language === 'it' ? 'Nessun dato disponibile' : 'No data available'}
                     </div>
                   )}
@@ -286,32 +318,47 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                 <PopoverTrigger asChild>
                   <div className="text-center p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                     <div className="text-2xl font-bold text-foreground">{displayOnline}</div>
-                    <div className="text-[10px] uppercase text-muted-foreground">Active Sites</div>
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-[10px] uppercase text-muted-foreground">Active Sites</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                          {language === 'it'
+                            ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora."
+                            : "Sites with at least one telemetry reading in the last hour."}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                 </PopoverTrigger>
-                <PopoverContent side="right" align="start" className="w-64 p-0">
-                  <div className="p-3 border-b border-border">
+                <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
+                  <div className="p-4 border-b border-border/30 bg-accent/5">
                     <h4 className="text-sm font-semibold text-foreground">
                       {language === 'it' ? 'Stato Siti' : 'Sites Status'}
                     </h4>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                      {language === 'it' ? 'Verde = online · Arancio = offline · Rosso = da installare' : 'Green = online · Orange = offline · Red = ready to install'}
+                    </p>
                   </div>
-                  <ScrollArea className="max-h-60">
+                  <ScrollArea className="h-[240px]">
                     {siteStatusList.length > 0 ? (
-                      <div className="divide-y divide-border">
+                      <div className="p-2 space-y-1">
                         {siteStatusList.map((s, i) => (
-                          <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
-                            <div className="flex items-center gap-2 truncate flex-1 mr-2">
-                              <Circle className={`w-2.5 h-2.5 fill-current ${statusColor(s.status)}`} />
-                              <span className="text-foreground truncate">{s.name}</span>
+                          <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3">
+                              <Circle className={`w-2.5 h-2.5 shrink-0 fill-current ${statusColor(s.status)}`} />
+                              <span className="text-foreground leading-snug break-words">{s.name}</span>
                             </div>
-                            <span className={`text-[10px] font-medium ${statusColor(s.status)}`}>
+                            <span className={`text-[11px] font-medium shrink-0 ${statusColor(s.status)}`}>
                               {statusLabel(s.status)}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="p-3 text-xs text-muted-foreground text-center">
+                      <div className="p-6 text-xs text-muted-foreground text-center">
                         {language === 'it' ? 'Nessun sito' : 'No sites'}
                       </div>
                     )}
@@ -326,41 +373,58 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                     <div className={`text-2xl font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
                       {displayCritical}
                     </div>
-                    <div className="text-[10px] uppercase text-muted-foreground">Critical Alerts</div>
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-[10px] uppercase text-muted-foreground">Critical Alerts</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                          {language === 'it'
+                            ? "Somma degli eventi con severità 'critical' e 'warning' attivi per i siti della regione."
+                            : "Sum of active 'critical' and 'warning' severity events across sites in this region."}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                 </PopoverTrigger>
-                <PopoverContent side="right" align="start" className="w-64 p-0">
-                  <div className="p-3 border-b border-border">
+                <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
+                  <div className="p-4 border-b border-border/30 bg-accent/5">
                     <h4 className="text-sm font-semibold text-foreground">
                       {language === 'it' ? 'Allarmi per Sito' : 'Alerts by Site'}
                     </h4>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                      {language === 'it' ? 'Siti con allarmi attivi · Ordinati per gravità' : 'Sites with active alerts · Sorted by severity'}
+                    </p>
                   </div>
-                  <ScrollArea className="max-h-60">
+                  <ScrollArea className="h-[240px]">
                     {siteAlertsList.length > 0 ? (
-                      <div className="divide-y divide-border">
+                      <div className="p-2 space-y-1">
                         {siteAlertsList.map((s, i) => (
-                          <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
-                            <span className="text-foreground truncate flex-1 mr-2">{s.name}</span>
-                            <div className="flex items-center gap-2">
+                          <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                            <span className="text-foreground leading-snug break-words min-w-0 flex-1 mr-3">{s.name}</span>
+                            <div className="flex items-center gap-2 shrink-0">
                               {s.critical > 0 && (
-                                <span className="text-rose-400 font-semibold">{s.critical} critical</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-400/15 text-rose-400 font-semibold text-[10px]">{s.critical} critical</span>
                               )}
                               {s.warning > 0 && (
-                                <span className="text-yellow-400 font-semibold">{s.warning} warning</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-400/15 text-yellow-400 font-semibold text-[10px]">{s.warning} warning</span>
                               )}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="p-3 text-xs text-emerald-400 text-center">
-                        {language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}
+                      <div className="p-6 text-xs text-emerald-400 text-center flex flex-col items-center gap-1">
+                        <span>✓</span>
+                        <span>{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</span>
                       </div>
                     )}
                   </ScrollArea>
                 </PopoverContent>
               </Popover>
             </div>
+          </TooltipProvider>
 
             <div className="mt-6 pt-4 border-t border-white/10 text-center">
               <p className="text-xs text-muted-foreground italic">
