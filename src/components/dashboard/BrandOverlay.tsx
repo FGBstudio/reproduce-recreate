@@ -5,10 +5,12 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
 } from "recharts";
-import { BarChart3, ChevronUp, ChevronDown, Wifi, WifiOff } from "lucide-react";
+import { BarChart3, ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info } from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
@@ -49,6 +51,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   // Fetch REAL aggregated data for sites with active modules
   const {
+    sites: allSitesData,
     sitesWithEnergy,
     sitesWithAir,
     totals,
@@ -155,6 +158,74 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const chartColors = ['hsl(188, 100%, 35%)', 'hsl(338, 50%, 50%)', 'hsl(43, 70%, 50%)', 'hsl(160, 60%, 40%)', 'hsl(280, 50%, 50%)'];
   
   const displayEntity = brand || holding;
+
+  // === Popover drill-down lists ===
+  // Sites online list: all filtered projects with status
+  const siteStatusList = useMemo(() => {
+    const order: Record<string, number> = { online: 0, offline: 1, not_installed: 2 };
+    return filteredProjects.map(p => {
+      const siteData = sitesWithEnergy.find(s => s.siteId === p.siteId) 
+        || sitesWithAir.find(s => s.siteId === p.siteId);
+      const aggregatedSite = totals; // check online from full sites list
+      const fullSite = sitesWithBothData.find(s => s.siteId === p.siteId)
+        || sitesWithEnergy.find(s => s.siteId === p.siteId)
+        || sitesWithAir.find(s => s.siteId === p.siteId);
+      // Try to find from the hook's sites array
+      const hookSite = (() => {
+        // Access via the destructured values
+        for (const s of sitesWithEnergy) if (s.siteId === p.siteId) return s;
+        for (const s of sitesWithAir) if (s.siteId === p.siteId) return s;
+        return null;
+      })();
+      let status: 'online' | 'offline' | 'not_installed' = 'not_installed';
+      if (hookSite) {
+        status = hookSite.isOnline ? 'online' : 'offline';
+      }
+      return { name: p.name, status };
+    }).sort((a, b) => order[a.status] - order[b.status]);
+  }, [filteredProjects, sitesWithEnergy, sitesWithAir]);
+
+  // Energy ranked list
+  const energyRankedList = useMemo(() => {
+    return sitesWithEnergy
+      .filter(s => (s.energy.weeklyKwh ?? 0) > 0)
+      .map(s => ({ name: s.siteName, kwh: Math.round(s.energy.weeklyKwh ?? 0) }))
+      .sort((a, b) => b.kwh - a.kwh);
+  }, [sitesWithEnergy]);
+
+  // CO2 ranked list
+  const getAqLabel = (co2: number | null): string => {
+    if (!co2 || co2 === 0) return "N/A";
+    if (co2 < 400) return "EXCELLENT";
+    if (co2 < 600) return "GOOD";
+    if (co2 < 1000) return "MODERATE";
+    return "POOR";
+  };
+  const aqRank: Record<string, number> = { EXCELLENT: 0, GOOD: 1, MODERATE: 2, POOR: 3, "N/A": 4 };
+  const co2RankedList = useMemo(() => {
+    return sitesWithAir
+      .map(s => ({ name: s.siteName, co2: s.air.co2 ?? 0, label: getAqLabel(s.air.co2) }))
+      .sort((a, b) => aqRank[a.label] - aqRank[b.label]);
+  }, [sitesWithAir]);
+
+  // Alerts list
+  const alertsList = useMemo(() => {
+    return [...sitesWithEnergy, ...sitesWithAir]
+      .filter((s, i, arr) => arr.findIndex(x => x.siteId === s.siteId) === i)
+      .filter(s => s.alerts.critical > 0 || s.alerts.warning > 0)
+      .map(s => ({ name: s.siteName, critical: s.alerts.critical, warning: s.alerts.warning }))
+      .sort((a, b) => (b.critical + b.warning) - (a.critical + a.warning));
+  }, [sitesWithEnergy, sitesWithAir]);
+
+  const aqColorMap: Record<string, string> = {
+    EXCELLENT: 'text-emerald-400', GOOD: 'text-emerald-500', MODERATE: 'text-yellow-500', POOR: 'text-red-400', 'N/A': 'text-muted-foreground'
+  };
+  const statusColor: Record<string, string> = { online: 'text-emerald-500', offline: 'text-yellow-500', not_installed: 'text-red-400' };
+  const statusLabel: Record<string, Record<string, string>> = {
+    online: { it: 'Online', en: 'Online' },
+    offline: { it: 'Offline', en: 'Offline' },
+    not_installed: { it: 'Da installare', en: 'Ready to install' },
+  };
   
   if (!displayEntity || !visible) return null;
 
@@ -221,70 +292,192 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               )}
             </div>
             
-            <TooltipProvider delayDuration={200}>
+            <TooltipProvider delayDuration={300}>
             <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
-              <UITooltip>
-                <TooltipTrigger asChild>
-                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
-                    <div className="text-base md:text-xl font-bold text-foreground">
+
+              {/* Sites Online */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                    <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UITooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3 h-3 text-muted-foreground/60" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[220px] text-xs">
+                          {language === 'it'
+                            ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora."
+                            : "Sites with at least one telemetry reading received in the last hour."}
+                        </TooltipContent>
+                      </UITooltip>
+                    </div>
+                    <div className="text-base md:text-xl font-bold text-foreground -mt-1">
                       {hasRealData ? totals.sitesOnline : '—'}
                     </div>
                     <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
                   </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
-                  {language === 'it'
-                    ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora."
-                    : "Sites with at least one telemetry reading received in the last hour."}
-                </TooltipContent>
-              </UITooltip>
-              <UITooltip>
-                <TooltipTrigger asChild>
-                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
-                    <div className="text-base md:text-xl font-bold text-foreground">
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
+                  <div className="px-3 py-2 border-b border-border/30">
+                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Stato siti' : 'Sites Status'}</p>
+                    <p className="text-[10px] text-muted-foreground">{language === 'it' ? 'Verde = online, arancio = offline, rosso = da installare' : 'Green = online, orange = offline, red = ready to install'}</p>
+                  </div>
+                  <ScrollArea className="max-h-[220px]">
+                    <div className="p-2 space-y-0.5">
+                      {siteStatusList.length > 0 ? siteStatusList.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                          <Circle className={`w-2.5 h-2.5 fill-current ${statusColor[s.status]}`} />
+                          <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
+                          <span className={`text-[10px] ${statusColor[s.status]}`}>{statusLabel[s.status][language]}</span>
+                        </div>
+                      )) : (
+                        <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun sito' : 'No sites'}</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
+              {/* kWh (7d) */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                    <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UITooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3 h-3 text-muted-foreground/60" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[220px] text-xs">
+                          {language === 'it'
+                            ? "Consumo totale ultimi 7 giorni, solo contatori 'general'."
+                            : "Total energy over 7 days, 'general' category meters only."}
+                        </TooltipContent>
+                      </UITooltip>
+                    </div>
+                    <div className="text-base md:text-xl font-bold text-foreground -mt-1">
                       {hasRealData && totals.weeklyEnergyKwh > 0 ? totals.weeklyEnergyKwh.toLocaleString() : '—'}
                     </div>
                     <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
                   </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
-                  {language === 'it'
-                    ? "Consumo energetico totale degli ultimi 7 giorni, sommando solo i contatori 'general' di ogni sito."
-                    : "Total energy consumption over the last 7 days, summing only 'general' category meters per site."}
-                </TooltipContent>
-              </UITooltip>
-              <UITooltip>
-                <TooltipTrigger asChild>
-                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
-                    <div className="text-base md:text-xl font-bold text-foreground">
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
+                  <div className="px-3 py-2 border-b border-border/30">
+                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Consumo per sito (7g)' : 'Consumption per site (7d)'}</p>
+                    <p className="text-[10px] text-muted-foreground">{language === 'it' ? 'Ordinato dal più alto al più basso' : 'Sorted from highest to lowest'}</p>
+                  </div>
+                  <ScrollArea className="max-h-[220px]">
+                    <div className="p-2 space-y-0.5">
+                      {energyRankedList.length > 0 ? energyRankedList.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                          <span className="text-[10px] text-muted-foreground w-4 text-right">{i + 1}.</span>
+                          <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
+                          <span className="text-xs font-semibold text-foreground tabular-nums">{s.kwh.toLocaleString()} <span className="text-muted-foreground font-normal">kWh</span></span>
+                        </div>
+                      )) : (
+                        <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
+              {/* Avg CO₂ */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                    <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UITooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3 h-3 text-muted-foreground/60" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[220px] text-xs">
+                          {language === 'it'
+                            ? "Media CO₂ (ppm) su 30 giorni per siti con sensori aria."
+                            : "30-day avg CO₂ (ppm) for sites with air sensors."}
+                        </TooltipContent>
+                      </UITooltip>
+                    </div>
+                    <div className="text-base md:text-xl font-bold text-foreground -mt-1">
                       {hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
                     </div>
                     <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
                   </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
-                  {language === 'it'
-                    ? "Media della CO₂ (ppm) su 30 giorni per tutti i siti con sensori aria attivi."
-                    : "30-day average CO₂ (ppm) across all sites with active air quality sensors."}
-                </TooltipContent>
-              </UITooltip>
-              <UITooltip>
-                <TooltipTrigger asChild>
-                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-help">
-                    <div className="text-base md:text-xl font-bold text-foreground">
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
+                  <div className="px-3 py-2 border-b border-border/30">
+                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Qualità aria per sito' : 'Air quality per site'}</p>
+                    <p className="text-[10px] text-muted-foreground">{language === 'it' ? 'Dal migliore al peggiore' : 'Best to worst'}</p>
+                  </div>
+                  <ScrollArea className="max-h-[220px]">
+                    <div className="p-2 space-y-0.5">
+                      {co2RankedList.length > 0 ? co2RankedList.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                          <Circle className={`w-2.5 h-2.5 fill-current ${aqColorMap[s.label]}`} />
+                          <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
+                          <div className="text-right">
+                            <span className="text-xs font-semibold text-foreground tabular-nums">{s.co2} <span className="text-muted-foreground font-normal">ppm</span></span>
+                            <div className={`text-[9px] font-medium ${aqColorMap[s.label]}`}>{s.label}</div>
+                          </div>
+                        </div>
+                      )) : (
+                        <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
+              {/* Active Alerts */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                    <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UITooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3 h-3 text-muted-foreground/60" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[220px] text-xs">
+                          {language === 'it'
+                            ? "Allarmi attivi: eventi critici/warning o siti senza dati da oltre 2 giorni."
+                            : "Active alerts: critical/warning events or sites with no data for 2+ days."}
+                        </TooltipContent>
+                      </UITooltip>
+                    </div>
+                    <div className="text-base md:text-xl font-bold text-foreground -mt-1">
                       {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0) 
                         ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
                         : '0'}
                     </div>
                     <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.active_alerts')}</div>
                   </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[240px] text-xs">
-                  {language === 'it'
-                    ? "Somma degli allarmi critici e warning attivi: eventi con severità elevata o siti senza dati da oltre 2 giorni."
-                    : "Sum of active critical and warning alerts: high-severity events or sites with no data for over 2 days."}
-                </TooltipContent>
-              </UITooltip>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
+                  <div className="px-3 py-2 border-b border-border/30">
+                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Allarmi per sito' : 'Alerts per site'}</p>
+                    <p className="text-[10px] text-muted-foreground">{language === 'it' ? 'Solo siti con allarmi attivi' : 'Only sites with active alerts'}</p>
+                  </div>
+                  <ScrollArea className="max-h-[220px]">
+                    <div className="p-2 space-y-0.5">
+                      {alertsList.length > 0 ? alertsList.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                          <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            {s.critical > 0 && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-destructive/20 text-destructive">{s.critical} crit</span>
+                            )}
+                            {s.warning > 0 && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500">{s.warning} warn</span>
+                            )}
+                          </div>
+                        </div>
+                      )) : (
+                        <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
             </div>
             </TooltipProvider>
             
