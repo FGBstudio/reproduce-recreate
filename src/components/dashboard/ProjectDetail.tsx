@@ -3267,24 +3267,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               dataKey="label" 
                               axisLine={false} 
                               tickLine={false} 
-                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
-                              dy={10}
-                              tickFormatter={(value: string, index: number) => {
-                                // For hourly labels like "DD/MM HH:00", show date only when day changes
+                              tick={({ x, y, payload }: any) => {
+                                const value = payload?.value || '';
+                                let display = value;
                                 if (value && value.includes('/') && value.includes(':')) {
-                                  const parts = value.split(' ');
-                                  const datePart = parts[0]; // DD/MM
-                                  const timePart = parts[1]; // HH:00
-                                  const prevLabel = index > 0 ? deviceConsumptionData.data[index - 1]?.label : null;
-                                  const prevDate = prevLabel && prevLabel.includes(' ') ? prevLabel.split(' ')[0] : null;
-                                  if (prevDate === datePart) {
-                                    return timePart; // Same day: show only time
-                                  }
-                                  return `${datePart}\n${timePart}`; // New day: show date + time
+                                  const [datePart, timePart] = value.split(' ');
+                                  display = timePart === '00:00' ? datePart : timePart;
                                 }
-                                return value;
+                                return (
+                                  <text x={x} y={y + 10} textAnchor="end" fontSize={9} fill="#9ca3af" transform={`rotate(-45, ${x}, ${y + 10})`}>
+                                    {display}
+                                  </text>
+                                );
                               }}
-                              interval="preserveStartEnd"
+                              height={55}
+                              interval={Math.max(0, Math.floor(deviceConsumptionData.data.length / 14) - 1)}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4760,21 +4757,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               dataKey="label" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 10, fill: '#9ca3af' }} 
-              dy={10}
-              tickFormatter={(value: string, index: number) => {
+              tick={({ x, y, payload }: any) => {
+                const value = payload?.value || '';
+                let display = value;
                 if (value && value.includes('/') && value.includes(':')) {
-                  const parts = value.split(' ');
-                  const datePart = parts[0];
-                  const timePart = parts[1];
-                  const prevLabel = index > 0 ? deviceConsumptionData.data[index - 1]?.label : null;
-                  const prevDate = prevLabel && prevLabel.includes(' ') ? prevLabel.split(' ')[0] : null;
-                  if (prevDate === datePart) return timePart;
-                  return `${datePart} ${timePart}`;
+                  const [datePart, timePart] = value.split(' ');
+                  display = timePart === '00:00' ? datePart : timePart;
                 }
-                return value;
+                return (
+                  <text x={x} y={y + 10} textAnchor="end" fontSize={10} fill="#9ca3af" transform={`rotate(-35, ${x}, ${y + 10})`}>
+                    {display}
+                  </text>
+                );
               }}
-              interval="preserveStartEnd"
+              height={55}
+              interval={Math.max(0, Math.floor(deviceConsumptionData.data.length / 20) - 1)}
             />
             <YAxis 
               axisLine={false} 
