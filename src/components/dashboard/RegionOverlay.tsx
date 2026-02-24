@@ -155,7 +155,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
 
   return (
     <div 
-      className={`fixed top-24 left-4 md:left-8 z-30 w-72 md:w-80 pointer-events-none transition-all duration-500 hidden md:block ${
+      className={`fixed top-24 left-4 md:left-8 z-30 w-80 md:w-[340px] pointer-events-none transition-all duration-500 hidden md:block ${
         visible 
           ? "opacity-100 translate-x-0" 
           : "opacity-0 -translate-x-10"
@@ -188,12 +188,12 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
             <Popover>
               <PopoverTrigger asChild>
                 <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
-                  <div className="flex justify-between items-end mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-muted-foreground">Avg. Energy Intensity</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">Avg. Energy Intensity</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                          <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0" />
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[240px] text-xs">
                           {language === 'it'
@@ -202,7 +202,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    <span className="text-xl font-bold text-foreground">
+                    <span className="text-xl font-bold text-foreground whitespace-nowrap ml-3">
                       {displayIntensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
                     </span>
                   </div>
