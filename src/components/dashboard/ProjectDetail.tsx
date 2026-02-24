@@ -1918,7 +1918,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         } else if (timePeriod === 'today' || timeRange.bucket === '1h') {
              const h = String(p.hour).padStart(2, '0');
              timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`;
-             label = `${h}:00`;
+             label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')} ${h}:00`;
         } else {
              timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
              label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
@@ -3269,6 +3269,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               tickLine={false} 
                               tick={{ fontSize: 10, fill: '#9ca3af' }} 
                               dy={10}
+                              tickFormatter={(value: string, index: number) => {
+                                // For hourly labels like "DD/MM HH:00", show date only when day changes
+                                if (value && value.includes('/') && value.includes(':')) {
+                                  const parts = value.split(' ');
+                                  const datePart = parts[0]; // DD/MM
+                                  const timePart = parts[1]; // HH:00
+                                  const prevLabel = index > 0 ? deviceConsumptionData.data[index - 1]?.label : null;
+                                  const prevDate = prevLabel && prevLabel.includes(' ') ? prevLabel.split(' ')[0] : null;
+                                  if (prevDate === datePart) {
+                                    return timePart; // Same day: show only time
+                                  }
+                                  return `${datePart}\n${timePart}`; // New day: show date + time
+                                }
+                                return value;
+                              }}
+                              interval="preserveStartEnd"
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4746,6 +4762,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               tickLine={false} 
               tick={{ fontSize: 10, fill: '#9ca3af' }} 
               dy={10}
+              tickFormatter={(value: string, index: number) => {
+                if (value && value.includes('/') && value.includes(':')) {
+                  const parts = value.split(' ');
+                  const datePart = parts[0];
+                  const timePart = parts[1];
+                  const prevLabel = index > 0 ? deviceConsumptionData.data[index - 1]?.label : null;
+                  const prevDate = prevLabel && prevLabel.includes(' ') ? prevLabel.split(' ')[0] : null;
+                  if (prevDate === datePart) return timePart;
+                  return `${datePart} ${timePart}`;
+                }
+                return value;
+              }}
+              interval="preserveStartEnd"
             />
             <YAxis 
               axisLine={false} 
