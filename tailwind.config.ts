@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Futura", "sans-serif"],
-        serif: ["Georgia", "serif"],
+        serif: ["Futura", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
