@@ -96,8 +96,7 @@ const MobileBurgerMenu = ({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
 
-          {/* Language */}
-          {/*
+          {/* Language
           <div>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Lingua / Language</p>
             <button
