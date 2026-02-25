@@ -429,7 +429,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
             <div className="mt-6 pt-4 border-t border-white/10 text-center">
               <p className="text-xs text-muted-foreground italic">
                 {(hasRealIntensity || hasRealCo2)
-                  ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} sites with live data · 30-day avg · Live` 
+                  ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} sites with live data · 30-day avg` 
                   : aggregated.hasRealData 
                     ? `${sitesCount} sites in region · Live data` 
                     : "Select a pin on the map to view project details."}
