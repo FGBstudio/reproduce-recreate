@@ -20,6 +20,10 @@ export interface ThresholdAlert {
   currentValue: number;
   threshold: number;
   unit: string;
+  deviceName?: string;
+  deviceId?: string;
+  timestamp?: string;
+  description?: string;
 }
 
 export interface ThresholdAlertStatus {
@@ -49,6 +53,16 @@ export interface LiveMetrics {
   'water.flow_lh'?: number;
   'water.daily_liters'?: number;
   [key: string]: number | undefined;
+}
+
+/** Minimal device info used for offline detection */
+export interface DeviceInfo {
+  id: string;
+  name?: string | null;
+  device_id: string;
+  device_type: string;
+  last_seen?: string | null;
+  circuit_name?: string | null;
 }
 
 // =============================================================================
@@ -224,7 +238,12 @@ function evaluateAlerts(
 export function useThresholdAlerts(
   siteId: string | undefined,
   liveMetrics: LiveMetrics,
-  options?: { isStale?: boolean; lastUpdate?: string; staleMessage?: string }
+  options?: {
+    isStale?: boolean;
+    lastUpdate?: string;
+    staleMessage?: string;
+    devices?: DeviceInfo[];
+  }
 ): ThresholdAlertStatus {
   const { thresholds, isLoading } = useSiteThresholds(siteId);
 
@@ -242,18 +261,52 @@ export function useThresholdAlerts(
     }
 
     const alerts = evaluateAlerts(liveMetrics, thresholds);
+    const isSiteStale = !!options?.isStale;
 
-    // Add stale data critical alert if no data received for >2 days
-    if (options?.isStale) {
+    // Add stale data critical alert (site-level, 24h+)
+    if (isSiteStale) {
       alerts.push({
         id: 'data_stale',
         severity: 'critical',
         metric: 'system.staleness',
-        message: options.staleMessage ?? 'No data received for more than 2 days',
+        message: options?.staleMessage ?? 'No data received for more than 24 hours',
         currentValue: 0,
-        threshold: 2,
+        threshold: 1,
         unit: 'days',
+        description: options?.staleMessage ?? 'No telemetry received from any device for over 24 hours',
+        timestamp: new Date().toISOString(),
       });
+    }
+
+    // Device-level offline detection (24h timeout)
+    // SUPPRESSION RULE: If the entire site is stale, suppress individual device_offline alerts
+    if (!isSiteStale && options?.devices && options.devices.length > 0) {
+      const now = Date.now();
+      const OFFLINE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+      for (const device of options.devices) {
+        if (!device.last_seen) continue;
+        const lastSeenDate = new Date(device.last_seen);
+        if (isNaN(lastSeenDate.getTime())) continue;
+        const elapsed = now - lastSeenDate.getTime();
+
+        if (elapsed > OFFLINE_THRESHOLD_MS) {
+          const deviceLabel = device.circuit_name || device.name || device.device_id;
+          alerts.push({
+            id: `device_offline_${device.id}`,
+            severity: 'warning',
+            metric: 'system.device_offline',
+            message: `${deviceLabel}: Offline`,
+            currentValue: Math.round(elapsed / (60 * 60 * 1000)),
+            threshold: 24,
+            unit: 'hours',
+            deviceName: deviceLabel,
+            deviceId: device.id,
+            timestamp: device.last_seen,
+            description: `Device "${deviceLabel}" has not sent data for ${Math.round(elapsed / (60 * 60 * 1000))} hours (last seen: ${lastSeenDate.toLocaleString()})`,
+          });
+        }
+      }
     }
 
     const criticalCount = alerts.filter(a => a.severity === 'critical').length;
@@ -274,7 +327,7 @@ export function useThresholdAlerts(
       hasAlerts: alerts.length > 0,
       worstSeverity,
     };
-  }, [liveMetrics, thresholds, isLoading, options?.isStale, options?.staleMessage]);
+  }, [liveMetrics, thresholds, isLoading, options?.isStale, options?.staleMessage, options?.devices]);
 }
 
 /**

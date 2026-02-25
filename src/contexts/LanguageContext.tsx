@@ -311,6 +311,23 @@ const translations: Record<string, Record<Language, string>> = {
   'pd.hm_high': { en: 'High', it: 'Elevato' },
   'pd.hm_critical': { en: 'Critical', it: 'Critico' },
 
+  // Site Alerts widget
+  'pd.site_alerts.critical': { en: 'Critical', it: 'Critici' },
+  'pd.site_alerts.medium': { en: 'Medium', it: 'Medi' },
+  'pd.site_alerts.low': { en: 'Low', it: 'Bassi' },
+  'pd.site_alerts.all_clear': { en: 'All clear', it: 'Tutto OK' },
+  'pd.site_alerts.back': { en: 'Back', it: 'Indietro' },
+  'pd.site_alerts.no_alerts': { en: 'No alerts in this category', it: 'Nessun alert in questa categoria' },
+  'pd.site_alerts.device_offline': { en: 'Offline', it: 'Offline' },
+  'pd.site_alerts.device_offline_msg': { en: 'No data for > 24h', it: 'Nessun dato da > 24h' },
+  'pd.site_alerts.site_stale': { en: 'Site offline (> 24h)', it: 'Sito offline (> 24h)' },
+  'pd.site_alerts.site_stale_msg': { en: 'No telemetry received from any device for over 24 hours', it: 'Nessuna telemetria ricevuta da alcun dispositivo per oltre 24 ore' },
+  'pd.site_alerts.timestamp': { en: 'Timestamp', it: 'Timestamp' },
+  'pd.site_alerts.metric': { en: 'Metric', it: 'Metrica' },
+  'pd.site_alerts.device': { en: 'Device', it: 'Dispositivo' },
+  'pd.site_alerts.description': { en: 'Description', it: 'Descrizione' },
+  'pd.site_alerts.last_seen': { en: 'Last seen', it: 'Ultimo dato' },
+
   // Certification
   'pd.points_obtained': { en: 'Points obtained', it: 'Punti ottenuti' },
   'pd.certified_since': { en: 'Certified since 2023', it: 'Certificato dal 2023' },
