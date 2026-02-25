@@ -265,11 +265,11 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                     </div>
                     <span className={`text-xl font-bold ${aqColorClass}`}>{displayAq}</span>
                   </div>
-                  {displayCo2 > 0 && (
+                  {/*displayCo2 > 0 && (
                     <div className="text-xs text-muted-foreground mt-1">
                       Avg CO₂: {displayCo2} ppm{hasRealCo2 ? ` · ${co2SiteCountByRegion[currentRegion] ?? 0} sites` : ''}
                     </div>
-                  )}
+                  )*/}
                   <div className="flex gap-1 mt-2">
                     <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" || displayAq === "GOOD" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
                     <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
