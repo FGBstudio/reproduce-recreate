@@ -107,6 +107,7 @@ const Auth = () => {
           <div className="flex items-center ml-28">
             <img src={brandImg} alt="FGB" className="h-20 w-auto" />
           </div>
+          {/*
           <button
             onClick={toggleLanguage}
             className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors"
@@ -114,6 +115,7 @@ const Auth = () => {
             <Globe className="w-4 h-4" />
             {language.toUpperCase()}
           </button>
+          */}
         </header>
 
         <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 py-8">
