@@ -1912,16 +1912,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         let timeKey = '';
         let label = '';
 
+        const dd = String(p.day).padStart(2, '0');
+        const mm = String(p.month).padStart(2, '0');
+        const hh = String(p.hour).padStart(2, '0');
+        const mi = String(p.minute).padStart(2, '0');
+
         if (timePeriod === 'year') {
-             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}`;
-             label = formatChartLabel(date, '1d', siteTz);
+             timeKey = `${p.year}-${mm}`;
+             label = `${dd}/${mm}`;
         } else if (timePeriod === 'today' || timeRange.bucket === '1h') {
-             const h = String(p.hour).padStart(2, '0');
-             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${h}`;
-             label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')} ${h}:00`;
+             timeKey = `${p.year}-${mm}-${dd}T${hh}`;
+             // Store full info; formatting happens in tick renderer
+             label = `${dd}/${mm} ${hh}:${mi}`;
         } else {
-             timeKey = `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
-             label = `${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}`;
+             timeKey = `${p.year}-${mm}-${dd}`;
+             label = `${dd}/${mm}`;
         }
 
         if (!grouped.has(timeKey)) {
@@ -3262,26 +3267,54 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             data={deviceConsumptionData.data} 
                             margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                           >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={timePeriod === 'week' || timePeriod === 'month'} stroke="#f0f0f0" />
                             <XAxis 
                               dataKey="label" 
                               axisLine={false} 
                               tickLine={false} 
-                              tick={({ x, y, payload }: any) => {
+                              tick={({ x, y, payload, index: tickIndex }: any) => {
                                 const value = payload?.value || '';
                                 let display = value;
-                                if (value && value.includes('/') && value.includes(':')) {
-                                  const [datePart, timePart] = value.split(' ');
-                                  display = timePart === '00:00' ? datePart : timePart;
+                                const needsRotation = timePeriod === 'week';
+
+                                if (timePeriod === 'today') {
+                                  // Show HH:mm
+                                  if (value.includes(' ')) display = value.split(' ')[1];
+                                } else if (timePeriod === 'week') {
+                                  // Show "DD/MM HH:00"
+                                  if (value.includes(' ')) {
+                                    const [datePart, timePart] = value.split(' ');
+                                    display = `${datePart} ${timePart.substring(0, 5)}`;
+                                  }
+                                } else if (timePeriod === 'month') {
+                                  // Show DD/MM only
+                                  if (value.includes(' ')) display = value.split(' ')[0];
+                                } else {
+                                  // year/custom: DD/MM
+                                  if (value.includes(' ')) display = value.split(' ')[0];
+                                }
+
+                                if (needsRotation) {
+                                  return (
+                                    <text x={x} y={y + 10} textAnchor="end" fontSize={9} fill="#9ca3af" transform={`rotate(-45, ${x}, ${y + 10})`}>
+                                      {display}
+                                    </text>
+                                  );
                                 }
                                 return (
-                                  <text x={x} y={y + 10} textAnchor="end" fontSize={9} fill="#9ca3af" transform={`rotate(-45, ${x}, ${y + 10})`}>
+                                  <text x={x} y={y + 12} textAnchor="middle" fontSize={9} fill="#9ca3af">
                                     {display}
                                   </text>
                                 );
                               }}
-                              height={55}
-                              interval={Math.max(0, Math.floor(deviceConsumptionData.data.length / 14) - 1)}
+                              height={timePeriod === 'week' ? 60 : 40}
+                              interval={(() => {
+                                const len = deviceConsumptionData.data.length;
+                                if (timePeriod === 'today') return Math.max(0, Math.floor(len / 12) - 1);
+                                if (timePeriod === 'week') return Math.max(0, Math.floor(len / 28) - 1); // ~4 per day
+                                if (timePeriod === 'month') return Math.max(0, Math.floor(len / 15) - 1);
+                                return Math.max(0, Math.floor(len / 14) - 1);
+                              })()}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -3293,6 +3326,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
                               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                               formatter={(value: any, name: string) => [Number(value).toFixed(2) + ' kWh', name]}
+                              labelFormatter={(label: string) => {
+                                // Always show full DD/MM HH:mm in tooltip
+                                return label;
+                              }}
                               labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
                             />
                             <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
@@ -4752,7 +4789,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <ResponsiveContainer width="100%" height={500}>
           <BarChart data={deviceConsumptionData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" vertical={timePeriod === 'week' || timePeriod === 'month'} stroke="#f0f0f0" />
             <XAxis 
               dataKey="label" 
               axisLine={false} 
@@ -4760,18 +4797,42 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               tick={({ x, y, payload }: any) => {
                 const value = payload?.value || '';
                 let display = value;
-                if (value && value.includes('/') && value.includes(':')) {
-                  const [datePart, timePart] = value.split(' ');
-                  display = timePart === '00:00' ? datePart : timePart;
+                const needsRotation = timePeriod === 'week';
+
+                if (timePeriod === 'today') {
+                  if (value.includes(' ')) display = value.split(' ')[1];
+                } else if (timePeriod === 'week') {
+                  if (value.includes(' ')) {
+                    const [datePart, timePart] = value.split(' ');
+                    display = `${datePart} ${timePart.substring(0, 5)}`;
+                  }
+                } else if (timePeriod === 'month') {
+                  if (value.includes(' ')) display = value.split(' ')[0];
+                } else {
+                  if (value.includes(' ')) display = value.split(' ')[0];
+                }
+
+                if (needsRotation) {
+                  return (
+                    <text x={x} y={y + 10} textAnchor="end" fontSize={10} fill="#9ca3af" transform={`rotate(-35, ${x}, ${y + 10})`}>
+                      {display}
+                    </text>
+                  );
                 }
                 return (
-                  <text x={x} y={y + 10} textAnchor="end" fontSize={10} fill="#9ca3af" transform={`rotate(-35, ${x}, ${y + 10})`}>
+                  <text x={x} y={y + 12} textAnchor="middle" fontSize={10} fill="#9ca3af">
                     {display}
                   </text>
                 );
               }}
-              height={55}
-              interval={Math.max(0, Math.floor(deviceConsumptionData.data.length / 20) - 1)}
+              height={timePeriod === 'week' ? 65 : 45}
+              interval={(() => {
+                const len = deviceConsumptionData.data.length;
+                if (timePeriod === 'today') return Math.max(0, Math.floor(len / 16) - 1);
+                if (timePeriod === 'week') return Math.max(0, Math.floor(len / 28) - 1);
+                if (timePeriod === 'month') return Math.max(0, Math.floor(len / 20) - 1);
+                return Math.max(0, Math.floor(len / 18) - 1);
+              })()}
             />
             <YAxis 
               axisLine={false} 
@@ -4783,6 +4844,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               formatter={(value: any, name: string) => [Number(value).toFixed(2) + ' kWh', name]}
+              labelFormatter={(label: string) => label}
               labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
             />
             <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
