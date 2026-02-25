@@ -184,13 +184,13 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
         {(!isMobile || !collapsed) && (
           <div className="mt-6 space-y-4">
           <TooltipProvider delayDuration={300}>
-            {/* Avg. Energy Intensity */}
+            {/* Avg. Energy Density */}
             <Popover>
               <PopoverTrigger asChild>
                 <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">Avg. Energy Intensity</span>
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">Avg. Energy Density</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0" />
