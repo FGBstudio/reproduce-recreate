@@ -41,6 +41,7 @@ import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
+import { SiteAlertsWidget } from "./SiteAlertsWidget";
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
@@ -490,8 +491,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // Real-time telemetry for threshold alerts
   const pdLiveData = useRealTimeLatestData(project?.siteId);
-  const pdStaleMsg = language === 'it' ? 'Dati non aggiornati (> 2 giorni)' : 'Stale data (> 2 days)';
-  const pdAlertStatus = useThresholdAlerts(project?.siteId, pdLiveData.metrics, { isStale: energyPowerBreakdown.isStale, staleMessage: pdStaleMsg });
+  const pdStaleMsg = language === 'it' ? 'Sito offline (> 24h)' : 'Site offline (> 24h)';
+  const pdAlertStatus = useThresholdAlerts(project?.siteId, pdLiveData.metrics, {
+    isStale: energyPowerBreakdown.isStale,
+    staleMessage: pdStaleMsg,
+    devices: siteDevices as any[],
+  });
 
   const { data: airLatestResp } = useLatestTelemetry(
     selectedAirDeviceIds.length
@@ -2873,44 +2878,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                         <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
                       </div>
-                      <div className="flex items-start gap-8">
-                        <div className="text-center">
-                          <p className="text-sm text-gray-500 mb-2">{t('pd.open_now')}</p>
-                          <p className={`text-6xl font-bold ${pdAlertStatus.hasAlerts ? 'text-red-600' : 'text-gray-800'}`}>{pdAlertStatus.totalCount}</p>
-                          <div className="flex flex-wrap gap-2 mt-4">
-                            {pdAlertStatus.criticalCount > 0 && (
-                              <span className="px-3 py-1 bg-red-500 text-white text-xs rounded-full">{pdAlertStatus.criticalCount} Critical</span>
-                            )}
-                            {pdAlertStatus.warningCount > 0 && (
-                              <span className="px-3 py-1 bg-amber-500 text-white text-xs rounded-full">{pdAlertStatus.warningCount} Warning</span>
-                            )}
-                            {!pdAlertStatus.hasAlerts && (
-                              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">All clear</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm text-gray-500 mb-4">{t('pd.opened_last_7_days')}</p>
-                          <div className="space-y-2">
-                            {pdAlertStatus.alerts.length > 0 ? (
-                              pdAlertStatus.alerts.map(alert => (
-                                <div key={alert.id} className="flex justify-between items-center">
-                                  <span className={`text-sm font-semibold ${alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'warning' ? 'text-amber-600' : 'text-gray-600'}`}>
-                                    {alert.severity === 'critical' ? '🔴' : alert.severity === 'warning' ? '🟡' : 'ℹ️'} {alert.message}
-                                  </span>
-                                </div>
-                              ))
-                            ) : (
-                              ["Critical", "High", "Medium", "Low"].map(level => (
-                                <div key={level} className="flex justify-between">
-                                  <span className="text-sm text-slate-900 font-semibold">{level}</span>
-                                  <span className="text-sm text-gray-600">0</span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      <SiteAlertsWidget alertStatus={pdAlertStatus} />
                     </div>
                     {/* Energy Periods Pivot Table */}
                     <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg h-full flex flex-col">
