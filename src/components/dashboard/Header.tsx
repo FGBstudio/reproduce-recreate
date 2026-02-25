@@ -274,12 +274,14 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
           </div>
 
           {/* User Avatar, Language & Admin */}
+          {/*
           <div className="flex items-center gap-2 md:gap-3">
             <button
               onClick={toggleLanguage}
               className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-1.5 hover:bg-fgb-light/50 transition-colors"
               title="Switch language"
             >
+            */}
               <Globe className="w-4 h-4 text-fgb-accent" />
               <span className="text-xs font-medium text-foreground">{language.toUpperCase()}</span>
             </button>
