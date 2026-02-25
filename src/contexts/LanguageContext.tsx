@@ -152,8 +152,8 @@ const translations: Record<string, Record<Language, string>> = {
   'module.demo_data_notice': { en: 'The displayed data is illustrative and does not represent real values. Activate the module to view actual telemetry data.', it: 'I dati visualizzati sono esemplificativi e non rappresentano valori reali. Attiva il modulo per visualizzare i dati di telemetria effettivi.' },
 
   // Brand/Holding Overlay
-  'brand.brand_overview': { en: 'Brand Overview', it: 'Brand Overview' },
-  'brand.holding_overview': { en: 'Holding Overview', it: 'Holding Overview' },
+  'brand.brand_overview': { en: 'Client Overview', it: 'Client Overview' },
+  'brand.holding_overview': { en: 'Group Overview', it: 'Group Overview' },
   'brand.data_available': { en: 'Data available', it: 'Dati disponibili' },
   'brand.no_data': { en: 'No data', it: 'Nessun dato' },
   'brand.sites_online': { en: 'Sites Online', it: 'Siti Online' },
