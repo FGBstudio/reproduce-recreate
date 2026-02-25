@@ -27,9 +27,9 @@ interface RegionNavProps {
 
 const regionButtons = [
   { code: "GLOBAL", label: "Global" },
-  { code: "EU", label: "Europe" },
   { code: "AMER", label: "Americas" },
   { code: "APAC", label: "APAC" },
+  { code: "EU", label: "Europe" },
   { code: "MEA", label: "MEA" },
 ];
 
@@ -157,10 +157,10 @@ const RegionNav = ({
             disabled={!onHoldingChange}
           >
             <SelectTrigger className="w-[120px] h-8 border-0 bg-transparent text-sm focus:ring-0">
-              <SelectValue placeholder="All Holdings" />
+              <SelectValue placeholder="All Groups" />
             </SelectTrigger>
             <SelectContent className="glass-panel border-white/10">
-              <SelectItem value="all">All Holdings</SelectItem>
+              <SelectItem value="all">All Groups</SelectItem>
               {holdings.map((h) => (
                 <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
               ))}
@@ -176,10 +176,10 @@ const RegionNav = ({
             disabled={!onBrandChange}
           >
             <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent text-sm focus:ring-0">
-              <SelectValue placeholder="All Brands" />
+              <SelectValue placeholder="All Clients" />
             </SelectTrigger>
             <SelectContent className="glass-panel border-white/10">
-              <SelectItem value="all">All Brands</SelectItem>
+              <SelectItem value="all">All Clients</SelectItem>
               {availableBrands.map((b) => (
                 <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
               ))}
