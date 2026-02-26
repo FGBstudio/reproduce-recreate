@@ -1,6 +1,6 @@
 
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
@@ -2473,7 +2473,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               }`}
               title="Energy Dashboard"
             >
-              <Lightbulb className="w-4 h-4 md:w-5 md:h-5" />
+              <Zap className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button 
               onClick={() => handleDashboardChange("air")}
@@ -2484,7 +2484,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               }`}
               title="Air Quality Dashboard"
             >
-              <Cloud className="w-4 h-4 md:w-5 md:h-5" />
+              <Wind className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button 
               onClick={() => handleDashboardChange("water")}
