@@ -16,9 +16,11 @@ interface BrandOverlayProps {
   selectedBrand: string | null;
   selectedHolding: string | null;
   visible?: boolean;
+  currentRegion?: string;
+  activeFilters?: string[];
 }
 
-const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandOverlayProps) => {
+const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentRegion = 'GLOBAL', activeFilters = ['energy', 'air', 'water'] }: BrandOverlayProps) => {
   const { t, language } = useLanguage();
   const [chartsExpanded, setChartsExpanded] = useState(false);
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
@@ -38,16 +40,21 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   
   // Get filtered projects for this brand/holding
   const filteredProjects = useMemo(() => {
+    let result: typeof projects = [];
     if (selectedBrand) {
-      return projects.filter(p => p.brandId === selectedBrand);
+      result = projects.filter(p => p.brandId === selectedBrand);
     } else if (selectedHolding) {
       const holdingBrandIds = brands
         .filter(b => b.holdingId === selectedHolding)
         .map(b => b.id);
-      return projects.filter(p => holdingBrandIds.includes(p.brandId));
+      result = projects.filter(p => holdingBrandIds.includes(p.brandId));
     }
-    return [];
-  }, [selectedBrand, selectedHolding, projects, brands]);
+    // Filter by region if not GLOBAL
+    if (currentRegion && currentRegion !== 'GLOBAL') {
+      result = result.filter(p => p.region === currentRegion);
+    }
+    return result;
+  }, [selectedBrand, selectedHolding, projects, brands, currentRegion]);
 
   // Fetch REAL aggregated data for sites with active modules
   const {
@@ -238,9 +245,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   }
 
   // Show charts only if we have real data from multiple sites
-  const showEnergyChart = energyComparisonData.length >= 1;
-  const showAirChart = airQualityComparisonData.length >= 1;
-  const showRadarChart = sitesWithBothData.length >= 2;
+  const filterEnergy = activeFilters.includes('energy');
+  const filterAir = activeFilters.includes('air');
+  const showEnergyChart = energyComparisonData.length >= 1 && filterEnergy;
+  const showAirChart = airQualityComparisonData.length >= 1 && filterAir;
+  const showRadarChart = sitesWithBothData.length >= 2 && filterEnergy && filterAir;
   const showAnyChart = showEnergyChart || showAirChart || showRadarChart;
 
   return (
@@ -338,10 +347,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                 </PopoverContent>
               </Popover>
 
-              {/* kWh (7d) */}
+              {/* kWh (30d) */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                  <div className={`text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterEnergy ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                     <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                       <UITooltip>
                         <TooltipTrigger asChild>
@@ -355,7 +364,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                       </UITooltip>
                     </div>
                     <div className="text-base md:text-xl font-bold text-foreground -mt-1">
-                      {hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}
+                      {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}
                     </div>
                     <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
                   </div>
@@ -384,7 +393,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
               {/* Avg CO₂ */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <div className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                  <div className={`text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterAir ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                     <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                       <UITooltip>
                         <TooltipTrigger asChild>
@@ -398,7 +407,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                       </UITooltip>
                     </div>
                     <div className="text-base md:text-xl font-bold text-foreground -mt-1">
-                      {hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
+                      {filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
                     </div>
                     <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">Avg CO₂</div>
                   </div>

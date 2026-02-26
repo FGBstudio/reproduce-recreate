@@ -233,12 +233,15 @@ const Index = () => {
         selectedBrand={selectedBrand}
         selectedHolding={selectedHolding}
         visible={showBrandOverlay && true}
+        currentRegion={currentRegion}
+        activeFilters={activeFilters}
       />
       
       {/* Desktop: Region Overlay */}
       <RegionOverlay 
         currentRegion={currentRegion} 
-        visible={!selectedProject && currentRegion !== "GLOBAL" && !showBrandOverlay} 
+        visible={!selectedProject && currentRegion !== "GLOBAL" && !showBrandOverlay}
+        activeFilters={activeFilters}
       />
       
       {/* Hide navigation for STORE_USER */}

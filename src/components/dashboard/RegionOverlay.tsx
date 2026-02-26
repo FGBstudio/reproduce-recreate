@@ -13,9 +13,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface RegionOverlayProps {
   currentRegion: string;
   visible?: boolean;
+  activeFilters?: string[];
 }
 
-const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) => {
+const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy', 'air', 'water'] }: RegionOverlayProps) => {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const { language } = useLanguage();
@@ -187,7 +188,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
             {/* Avg. Energy Density */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('energy') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm text-muted-foreground whitespace-nowrap">Avg. Energy Density</span>
@@ -203,13 +204,13 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                       </Tooltip>
                     </div>
                     <span className="text-xl font-bold text-foreground whitespace-nowrap ml-3">
-                      {displayIntensity} <span className="text-xs font-normal opacity-70">kWh/m²</span>
+                      {activeFilters.includes('energy') ? displayIntensity : '—'} <span className="text-xs font-normal opacity-70">kWh/m²</span>
                     </span>
                   </div>
                   <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-400 h-full transition-all duration-700"
-                      style={{ width: `${Math.min(displayIntensity, 100)}%` }}
+                      style={{ width: `${activeFilters.includes('energy') ? Math.min(displayIntensity, 100) : 0}%` }}
                     />
                   </div>
                 </div>
@@ -248,7 +249,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
             {/* Air Quality Score */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('air') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex justify-between items-end mb-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm text-muted-foreground">Air Quality Score</span>
@@ -263,7 +264,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    <span className={`text-xl font-bold ${aqColorClass}`}>{displayAq}</span>
+                    <span className={`text-xl font-bold ${activeFilters.includes('air') ? aqColorClass : 'text-muted-foreground'}`}>{activeFilters.includes('air') ? displayAq : '—'}</span>
                   </div>
                   {/*displayCo2 > 0 && (
                     <div className="text-xs text-muted-foreground mt-1">
