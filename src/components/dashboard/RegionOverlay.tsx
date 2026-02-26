@@ -56,7 +56,7 @@ const RegionOverlay = ({ currentRegion, visible = true }: RegionOverlayProps) =>
       .map(site => {
         const project = regionProjects.find(p => p.siteId === site.siteId);
         const area = project?.area_m2 ?? 0;
-        const kwh = site.energy.weeklyKwh ?? 0;
+        const kwh = site.energy.monthlyKwh ?? 0;
         const intensity = area > 0 ? Math.round((kwh / area) * 10) / 10 : null;
         return { name: site.siteName, intensity, kwh, area };
       })

@@ -3,7 +3,7 @@
  * Used by BrandOverlay and HoldingOverlay to display only real data
  * 
  * Uses the same proven logic as useRegionEnergyIntensity:
- * - Energy: query devices by category='general', sum energy.active_energy from energy_daily (7 days)
+ * - Energy: query devices by category='general', sum energy.active_energy from energy_daily (30 days)
  * - HVAC/Lighting: query devices by category, sum energy.active_energy
  * - Air: avg CO2 from telemetry_daily for air_quality devices (30 days)
  * - Alerts: count from events table (status='active')
@@ -28,7 +28,7 @@ export interface SiteRealData {
   hasAirData: boolean;
   hasWaterData: boolean;
   energy: {
-    weeklyKwh: number | null;
+    monthlyKwh: number | null;
     hvacKwh: number | null;
     lightingKwh: number | null;
     plugsKwh: number | null;
@@ -55,7 +55,7 @@ export interface AggregatedOverlayData {
   sitesWithAir: SiteRealData[];
   sitesWithWater: SiteRealData[];
   totals: {
-    weeklyEnergyKwh: number;
+    monthlyEnergyKwh: number;
     avgCo2: number;
     sitesCount: number;
     sitesOnline: number;
@@ -74,8 +74,8 @@ export interface AggregatedOverlayData {
 // =============================================================================
 
 interface FetchResult {
-  /** site_id → total kWh (general category, 7 days) */
-  weeklyEnergy: Record<string, number>;
+  /** site_id → total kWh (general category, 30 days) */
+  monthlyEnergy: Record<string, number>;
   /** site_id → hvac kWh */
   hvacEnergy: Record<string, number>;
   /** site_id → lighting kWh */
@@ -94,18 +94,15 @@ interface FetchResult {
 
 async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResult> {
   if (!supabase || siteIds.length === 0) {
-    return { weeklyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {} };
+    return { monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {} };
   }
 
   const result: FetchResult = {
-    weeklyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {},
+    monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {},
     airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {},
   };
 
   const now = new Date();
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
   const thirtyDaysAgoStr = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const sixtyMinutesAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
@@ -160,16 +157,16 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
   }
 
   // ---------------------------------------------------------------------------
-  // 2) ENERGY: Sum kWh by category (7 days)
+  // 2) ENERGY: Sum kWh by category (30 days)
   // ---------------------------------------------------------------------------
   try {
     const [general, hvac, lighting, plugs] = await Promise.all([
-      sumEnergyForDevices(generalDevices, sevenDaysAgoStr),
-      sumEnergyForDevices(hvacDevices, sevenDaysAgoStr),
-      sumEnergyForDevices(lightingDevices, sevenDaysAgoStr),
-      sumEnergyForDevices(plugsDevices, sevenDaysAgoStr),
+      sumEnergyForDevices(generalDevices, thirtyDaysAgoStr),
+      sumEnergyForDevices(hvacDevices, thirtyDaysAgoStr),
+      sumEnergyForDevices(lightingDevices, thirtyDaysAgoStr),
+      sumEnergyForDevices(plugsDevices, thirtyDaysAgoStr),
     ]);
-    Object.assign(result.weeklyEnergy, general);
+    Object.assign(result.monthlyEnergy, general);
     Object.assign(result.hvacEnergy, hvac);
     Object.assign(result.lightingEnergy, lighting);
     Object.assign(result.plugsEnergy, plugs);
@@ -307,7 +304,7 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
   });
 
   console.log('[useAggregatedSiteData] Fetched:', {
-    sitesWithEnergy: Object.keys(result.weeklyEnergy).length,
+    sitesWithEnergy: Object.keys(result.monthlyEnergy).length,
     sitesWithHvac: Object.keys(result.hvacEnergy).length,
     sitesWithAir: Object.keys(result.airAvg).length,
     sitesOnline: Object.keys(result.onlineStatus).filter(k => result.onlineStatus[k]).length,
@@ -364,7 +361,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       if (!project.siteId) return;
       const siteId = project.siteId;
 
-      const weeklyKwh = aggregatedData?.weeklyEnergy[siteId] ?? null;
+      const monthlyKwh = aggregatedData?.monthlyEnergy[siteId] ?? null;
       const hvacKwh = aggregatedData?.hvacEnergy[siteId] ?? null;
       const lightingKwh = aggregatedData?.lightingEnergy[siteId] ?? null;
       const plugsKwh = aggregatedData?.plugsEnergy[siteId] ?? null;
@@ -373,7 +370,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       const alerts = aggregatedData?.alerts[siteId] ?? { critical: 0, warning: 0, info: 0 };
       const hasLatestTs = !!aggregatedData?.latestTs[siteId];
 
-      const hasEnergyData = weeklyKwh !== null && weeklyKwh > 0;
+      const hasEnergyData = monthlyKwh !== null && monthlyKwh > 0;
       const hasAirData = airData !== null && (airData.co2 !== null || airData.temperature !== null);
       const hasWaterData = false;
 
@@ -387,7 +384,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
         hasEnergyData,
         hasAirData,
         hasWaterData,
-        energy: { weeklyKwh, hvacKwh, lightingKwh, plugsKwh },
+        energy: { monthlyKwh, hvacKwh, lightingKwh, plugsKwh },
         air: airData ?? { co2: null, temperature: null, humidity: null, voc: null },
         water: { consumption: null },
         alerts,
@@ -399,7 +396,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
     const sitesWithWater = sites.filter(s => s.hasWaterData);
     const sitesOnline = sites.filter(s => s.isOnline);
 
-    const totalWeeklyKwh = sitesWithEnergy.reduce((sum, s) => sum + (s.energy.weeklyKwh || 0), 0);
+    const totalMonthlyKwh = sitesWithEnergy.reduce((sum, s) => sum + (s.energy.monthlyKwh || 0), 0);
     const totalCo2 = sitesWithAir.reduce((sum, s) => sum + (s.air.co2 || 0), 0);
     const avgCo2 = sitesWithAir.length > 0 ? Math.round(totalCo2 / sitesWithAir.length) : 0;
     const alertsCritical = sites.reduce((sum, s) => sum + s.alerts.critical, 0);
@@ -411,7 +408,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       sitesWithAir,
       sitesWithWater,
       totals: {
-        weeklyEnergyKwh: Math.round(totalWeeklyKwh),
+        monthlyEnergyKwh: Math.round(totalMonthlyKwh),
         avgCo2,
         sitesCount: sites.length,
         sitesOnline: sitesOnline.length,
