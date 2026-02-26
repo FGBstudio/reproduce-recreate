@@ -65,7 +65,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
     return sitesWithEnergy.map(site => {
       const hvac = site.energy.hvacKwh ?? 0;
       const light = site.energy.lightingKwh ?? 0;
-      const total = site.energy.weeklyKwh ?? 0;
+      const total = site.energy.monthlyKwh ?? 0;
       // "Other" = total minus known sub-categories
       const other = Math.max(0, total - hvac - light);
       return {
@@ -102,7 +102,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   const radarData = useMemo(() => {
     if (sitesWithBothData.length === 0) return [];
     
-    const maxEnergy = Math.max(...sitesWithBothData.map(s => s.energy.weeklyKwh || 1)) || 100;
+    const maxEnergy = Math.max(...sitesWithBothData.map(s => s.energy.monthlyKwh || 1)) || 100;
     const maxCo2 = Math.max(...sitesWithBothData.map(s => s.air.co2 || 1)) || 1000;
     
     return [
@@ -111,7 +111,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
         ...Object.fromEntries(
           sitesWithBothData.map(s => [
             s.siteName.split(' ').slice(-1)[0], 
-            ((s.energy.weeklyKwh || 0) / maxEnergy) * 100
+            ((s.energy.monthlyKwh || 0) / maxEnergy) * 100
           ])
         ) 
       },
@@ -188,8 +188,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
   // Energy ranked list
   const energyRankedList = useMemo(() => {
     return sitesWithEnergy
-      .filter(s => (s.energy.weeklyKwh ?? 0) > 0)
-      .map(s => ({ name: s.siteName, kwh: Math.round(s.energy.weeklyKwh ?? 0) }))
+      .filter(s => (s.energy.monthlyKwh ?? 0) > 0)
+      .map(s => ({ name: s.siteName, kwh: Math.round(s.energy.monthlyKwh ?? 0) }))
       .sort((a, b) => b.kwh - a.kwh);
   }, [sitesWithEnergy]);
 
@@ -349,20 +349,20 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[220px] text-xs">
                           {language === 'it'
-                            ? "Consumo totale ultimi 7 giorni, solo contatori 'general'."
-                            : "Total energy over 7 days, 'general' category meters only."}
+                           ? "Consumo totale ultimi 30 giorni, solo contatori 'general'."
+                            : "Total energy over 30 days, 'general' category meters only."}
                         </TooltipContent>
                       </UITooltip>
                     </div>
                     <div className="text-base md:text-xl font-bold text-foreground -mt-1">
-                      {hasRealData && totals.weeklyEnergyKwh > 0 ? totals.weeklyEnergyKwh.toLocaleString() : '—'}
+                      {hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}
                     </div>
                     <div className="text-[8px] md:text-[9px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
                   </div>
                 </PopoverTrigger>
                 <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                   <div className="px-3 py-2 border-b border-border/30">
-                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Consumo per sito (7g)' : 'Consumption per site (7d)'}</p>
+                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Consumo per sito (30g)' : 'Consumption per site (30d)'}</p>
                     <p className="text-[10px] text-muted-foreground">{language === 'it' ? 'Ordinato dal più alto al più basso' : 'Sorted from highest to lowest'}</p>
                   </div>
                   <ScrollArea className="max-h-[220px]">
