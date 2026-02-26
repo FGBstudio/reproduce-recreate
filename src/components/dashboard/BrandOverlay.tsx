@@ -253,7 +253,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           <div className="relative pointer-events-auto">
             <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-110" />
             
-          <div className="glass-panel relative rounded-2xl md:rounded-3xl p-4 md:p-6 min-w-[220px] md:min-w-[280px] max-w-[220px] md:max-w-[280px]">
+          <div className="bg-background/95 backdrop-blur-xl border border-border shadow-2xl relative rounded-2xl md:rounded-3xl p-4 md:p-6 min-w-[220px] md:min-w-[280px] max-w-[220px] md:max-w-[280px]">
               {displayEntity.logo ? (
                 <img 
                   src={displayEntity.logo} 
