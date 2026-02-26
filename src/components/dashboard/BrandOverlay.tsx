@@ -245,7 +245,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
 
   return (
     <div className="hidden md:flex fixed inset-0 items-center justify-center pointer-events-none z-20 p-3 md:p-4 pt-16 md:pt-4 pb-20 md:pb-4">
-      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-3 md:gap-6 animate-fade-in max-w-6xl w-full max-h-full overflow-y-auto">
+      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-3 md:gap-6 max-w-6xl w-full max-h-full overflow-y-auto">
         
         {/* Left: Logo & Stats */}
         <div className="flex flex-col items-center gap-3 md:gap-6">
@@ -253,7 +253,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true }: BrandO
           <div className="relative pointer-events-auto">
             <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-110" />
             
-          <div className="bg-background/95 backdrop-blur-xl border border-border shadow-2xl relative rounded-2xl md:rounded-3xl p-4 md:p-6 min-w-[220px] md:min-w-[280px] max-w-[220px] md:max-w-[280px]">
+          <div className="glass-panel relative rounded-2xl md:rounded-3xl p-4 md:p-6 min-w-[220px] md:min-w-[280px] max-w-[220px] md:max-w-[280px]">
               {displayEntity.logo ? (
                 <img 
                   src={displayEntity.logo} 
