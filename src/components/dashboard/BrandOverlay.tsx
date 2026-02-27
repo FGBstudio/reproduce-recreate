@@ -570,7 +570,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         ⚡ {language === 'it' ? 'Consumo Energia' : 'Energy Consumption'}
                       </p>
-                      <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
                           {energyLeaderboard.map((s, i) => {
                             const maxVal = energyLeaderboard[0]?.value || 1;
@@ -598,7 +598,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Worst Air Quality (CO₂)'}
                       </p>
-                      <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
                           {airLeaderboard.map((s, i) => {
                             const maxVal = airLeaderboard[0]?.value || 1;
@@ -658,7 +658,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {!filterAir && <span />}
                   <span className="text-[11px] text-muted-foreground uppercase text-center">⚠️</span>
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="space-y-1">
                     {healthMatrixData.map((site, i) => (
                       <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-white/5 transition-colors">
@@ -703,7 +703,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <p className="text-xs text-muted-foreground mb-4 shrink-0">
                 {language === 'it' ? `${storeDirectory.length} siti · Ordinamento alfabetico` : `${storeDirectory.length} sites · Alphabetical order`}
               </p>
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
                     <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors">
