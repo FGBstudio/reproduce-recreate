@@ -652,11 +652,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 {/* Header */}
                 <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1 shrink-0">
                   <span className="text-xs text-muted-foreground uppercase font-medium">{language === 'it' ? 'Sito' : 'Site'}</span>
-                  {filterEnergy && <span className="text-base text-muted-foreground uppercase text-center">⚡</span>}
+                  {filterEnergy && <span className="text-lg text-muted-foreground uppercase text-center">⚡</span>}
                   {!filterEnergy && <span />}
-                  {filterAir && <span className="text-base text-muted-foreground uppercase text-center">💨</span>}
+                  {filterAir && <span className="text-lg text-muted-foreground uppercase text-center">💨</span>}
                   {!filterAir && <span />}
-                  <span className="text-base text-muted-foreground uppercase text-center">⚠️</span>
+                  <span className="text-lg text-muted-foreground uppercase text-center">⚠️</span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="space-y-1">
