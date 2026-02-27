@@ -92,16 +92,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     return sitesWithEnergy
       .filter(s => (s.energy.monthlyKwh ?? 0) > 0)
       .map(s => ({ name: s.siteName, value: Math.round(s.energy.monthlyKwh ?? 0) }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 7);
+      .sort((a, b) => b.value - a.value);
   }, [sitesWithEnergy]);
 
   const airLeaderboard = useMemo(() => {
     return sitesWithAir
       .filter(s => (s.air.co2 ?? 0) > 0)
       .map(s => ({ name: s.siteName, value: Math.round(s.air.co2 ?? 0) }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 7);
+      .sort((a, b) => b.value - a.value);
   }, [sitesWithAir]);
 
   // =====================================================================
@@ -483,7 +481,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {/* ============================================================ */}
       {showAnyChart && isDesktopVisible && (
         <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
-          <div className="pointer-events-auto grid grid-cols-2 gap-3 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+          <div className="pointer-events-auto grid grid-cols-2 gap-3 max-h-[calc(100vh-10rem)] overflow-hidden">
 
             {/* ========== Chart 1: Efficiency vs Comfort Scatter ========== */}
             {showScatter && (
@@ -511,7 +509,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </div>
                   ))}
                 </div>
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={240}>
                   <ScatterChart margin={{ top: 10, right: 15, left: 5, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
                     <XAxis 
@@ -563,14 +561,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <p className="text-xs text-muted-foreground mb-4">
                   {language === 'it' ? 'Ordinati dal peggiore al migliore · 30 giorni' : 'Sorted worst to best · 30 days'}
                 </p>
-                <ScrollArea className="max-h-[320px]">
                 <div className="grid grid-cols-2 gap-6">
                   {/* Energy leaderboard */}
                   {filterEnergy && energyLeaderboard.length > 0 && (
-                    <div>
+                    <div className="flex flex-col">
                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         ⚡ {language === 'it' ? 'Consumo Energia' : 'Energy Consumption'}
                       </p>
+                      <ScrollArea className="max-h-[calc(100vh/2-14rem)]">
                       <div className="space-y-2.5">
                         {energyLeaderboard.map((s, i) => {
                           const maxVal = energyLeaderboard[0]?.value || 1;
@@ -589,14 +587,16 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                           );
                         })}
                       </div>
+                      </ScrollArea>
                     </div>
                   )}
                   {/* Air leaderboard */}
                   {filterAir && airLeaderboard.length > 0 && (
-                    <div>
+                    <div className="flex flex-col">
                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Worst Air Quality (CO₂)'}
                       </p>
+                      <ScrollArea className="max-h-[calc(100vh/2-14rem)]">
                       <div className="space-y-2.5">
                         {airLeaderboard.map((s, i) => {
                           const maxVal = airLeaderboard[0]?.value || 1;
@@ -615,10 +615,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                           );
                         })}
                       </div>
+                      </ScrollArea>
                     </div>
                   )}
                 </div>
-                </ScrollArea>
               </div>
             )}
 
@@ -656,7 +656,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {!filterAir && <span />}
                   <span className="text-[11px] text-muted-foreground uppercase text-center">⚠️</span>
                 </div>
-                <ScrollArea className="max-h-[280px]">
+                <ScrollArea className="max-h-[calc(100vh/2-16rem)]">
                   <div className="space-y-1">
                     {healthMatrixData.map((site, i) => (
                       <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-white/5 transition-colors">
@@ -701,7 +701,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <p className="text-xs text-muted-foreground mb-4">
                 {language === 'it' ? `${storeDirectory.length} siti · Ordinamento alfabetico` : `${storeDirectory.length} sites · Alphabetical order`}
               </p>
-              <ScrollArea className="max-h-[280px]">
+              <ScrollArea className="max-h-[calc(100vh/2-16rem)]">
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
                     <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors">
