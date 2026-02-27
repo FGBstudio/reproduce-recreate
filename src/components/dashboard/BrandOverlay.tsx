@@ -260,29 +260,29 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {/* ============================================================ */}
       {/* Summary Panel — top-right, like RegionOverlay */}
       {/* ============================================================ */}
-      <div className={`fixed top-24 right-4 md:right-8 z-30 w-72 md:w-[300px] pointer-events-none transition-all duration-500 hidden md:block ${
-        visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
+      <div className={`fixed top-24 left-4 md:left-8 z-30 w-72 md:w-[320px] pointer-events-none transition-all duration-500 hidden md:block ${
+        visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
       }`}>
-        <div className="glass-panel p-5 rounded-2xl pointer-events-auto">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-3">
+        <div className="glass-panel p-6 rounded-2xl pointer-events-auto">
+          {/* Logo + Title */}
+          <div className="flex items-center gap-4 mb-4">
             {displayEntity.logo ? (
-              <img src={displayEntity.logo} alt={displayEntity.name} className="h-8 object-contain opacity-90" />
+              <img src={displayEntity.logo} alt={displayEntity.name} className="h-10 object-contain opacity-90" />
             ) : (
-              <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center text-foreground font-bold text-sm">
+              <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-foreground font-bold text-sm">
                 {displayEntity.name.substring(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground truncate">{displayEntity.name}</h3>
-              <p className="text-[10px] text-fgb-accent uppercase tracking-widest">
+              <p className="text-[10px] text-fgb-accent uppercase tracking-widest mt-0.5">
                 {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
               </p>
             </div>
           </div>
 
           {/* Real Data Indicator */}
-          <div className="flex items-center gap-1 mb-3">
+          <div className="flex items-center gap-1.5 mb-4">
             {hasRealData ? (
               <>
                 <Wifi className="w-3 h-3 text-emerald-500" />
@@ -298,12 +298,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
           {/* Stats Grid */}
           <TooltipProvider delayDuration={300}>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-2.5">
 
             {/* Sites Online */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -312,11 +312,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-lg font-bold text-foreground -mt-1">{hasRealData ? totals.sitesOnline : '—'}</div>
-                  <div className="text-[8px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
+                  <div className="text-xl font-bold text-foreground mt-0.5">{hasRealData ? totals.sitesOnline : '—'}</div>
+                  <div className="text-[9px] uppercase text-muted-foreground mt-1">{t('brand.sites_online')}</div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="left" align="start">
+              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Stato siti' : 'Sites Status'}</p>
                 </div>
@@ -337,7 +337,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {/* kWh (30d) */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className={`text-center p-2 rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterEnergy ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
+                <div className={`text-center p-3 rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterEnergy ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -346,13 +346,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-lg font-bold text-foreground -mt-1">
+                  <div className="text-xl font-bold text-foreground mt-0.5">
                     {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}
                   </div>
-                  <div className="text-[8px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
+                  <div className="text-[9px] uppercase text-muted-foreground mt-1">{t('brand.kwh_7d')}</div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="left" align="start">
+              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Consumo per sito (30g)' : 'Consumption per site (30d)'}</p>
                 </div>
@@ -375,7 +375,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {/* Avg CO₂ */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className={`text-center p-2 rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterAir ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
+                <div className={`text-center p-3 rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterAir ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -384,13 +384,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-lg font-bold text-foreground -mt-1">
+                  <div className="text-xl font-bold text-foreground mt-0.5">
                     {filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
                   </div>
-                  <div className="text-[8px] uppercase text-muted-foreground">Avg CO₂</div>
+                  <div className="text-[9px] uppercase text-muted-foreground mt-1">Avg CO₂</div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="left" align="start">
+              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Qualità aria per sito' : 'Air quality per site'}</p>
                 </div>
@@ -416,7 +416,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {/* Active Alerts */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -425,15 +425,15 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-lg font-bold text-foreground -mt-1">
+                  <div className="text-xl font-bold text-foreground mt-0.5">
                     {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0) 
                       ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
                       : '0'}
                   </div>
-                  <div className="text-[8px] uppercase text-muted-foreground">{t('brand.active_alerts')}</div>
+                  <div className="text-[9px] uppercase text-muted-foreground mt-1">{t('brand.active_alerts')}</div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="left" align="start">
+              <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Allarmi per sito' : 'Alerts per site'}</p>
                 </div>
@@ -482,7 +482,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {/* Charts Panel — positioned below, centered */}
       {/* ============================================================ */}
       {showAnyChart && isDesktopVisible && (
-        <div className="hidden md:block fixed top-24 left-4 md:left-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 340px - 3rem)' }}>
+        <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
           <div className="pointer-events-auto grid grid-cols-2 gap-3 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
 
             {/* ========== Chart 1: Efficiency vs Comfort Scatter ========== */}
