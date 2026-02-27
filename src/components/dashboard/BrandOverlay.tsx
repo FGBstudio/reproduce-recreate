@@ -263,7 +263,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       }`}>
         <div className="glass-panel p-6 rounded-2xl pointer-events-auto">
           {/* Logo + Title */}
-          <div className="flex flex-col items-start gap-3 mb-5">
+          <div className="flex flex-col items-center gap-3 mb-5">
             {displayEntity.logo ? (
               <img src={displayEntity.logo} alt={displayEntity.name} className="h-12 object-contain opacity-90" />
             ) : (
