@@ -697,7 +697,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-5 h-5 text-muted-foreground" />
                 <h4 className="text-lg font-semibold text-foreground">
-                  {language === 'it' ? 'Elenco Siti' : 'Store Directory'}
+                  {language === 'it' ? 'Elenco Siti' : 'Site Directory'}
                 </h4>
               </div>
               <p className="text-sm text-muted-foreground mb-4 shrink-0">
