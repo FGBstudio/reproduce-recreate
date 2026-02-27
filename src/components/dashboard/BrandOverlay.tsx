@@ -487,44 +487,44 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
             {/* ========== Chart 1: Efficiency vs Comfort Scatter ========== */}
             {showScatter && (
-              <div className="glass-panel rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-sm font-semibold text-foreground">
+              <div className="glass-panel rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="text-base font-semibold text-foreground">
                     {language === 'it' ? 'Efficienza vs Comfort' : 'Efficiency vs Comfort'}
                   </h4>
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-4">
                   {language === 'it' ? 'Energia (kWh) vs CO₂ (ppm) · Ultimi 30 giorni' : 'Energy (kWh) vs CO₂ (ppm) · Last 30 days'}
                 </p>
                 {/* Quadrant legend */}
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-3 mb-4">
                   {[
                     { color: 'bg-emerald-500', label: language === 'it' ? 'Best Performer' : 'Best Performer' },
                     { color: 'bg-yellow-500', label: language === 'it' ? 'Rischio Salute' : 'Health Risk' },
                     { color: 'bg-orange-500', label: language === 'it' ? 'Spreco Energia' : 'Energy Waste' },
                     { color: 'bg-red-500', label: language === 'it' ? 'Critico' : 'Critical' },
                   ].map(q => (
-                    <div key={q.label} className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${q.color}`} />
-                      <span className="text-[9px] text-muted-foreground">{q.label}</span>
+                    <div key={q.label} className="flex items-center gap-1.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${q.color}`} />
+                      <span className="text-[11px] text-muted-foreground">{q.label}</span>
                     </div>
                   ))}
                 </div>
-                <ResponsiveContainer width="100%" height={240}>
-                  <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                <ResponsiveContainer width="100%" height={280}>
+                  <ScatterChart margin={{ top: 10, right: 15, left: 5, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
                     <XAxis 
                       type="number" dataKey="kwh" name="kWh" 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} 
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
                       axisLine={{ stroke: 'hsl(var(--border))' }}
-                      label={{ value: 'kWh (30d)', position: 'insideBottom', offset: -2, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 } }}
+                      label={{ value: 'kWh (30d)', position: 'insideBottom', offset: -8, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
                     />
                     <YAxis 
                       type="number" dataKey="co2" name="CO₂ (ppm)" 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} 
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
                       axisLine={{ stroke: 'hsl(var(--border))' }}
-                      label={{ value: 'CO₂ ppm', angle: -90, position: 'insideLeft', offset: 10, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 } }}
+                      label={{ value: 'CO₂ ppm', angle: -90, position: 'insideLeft', offset: 10, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
                     />
                     <ReferenceLine x={scatterMedians.medianKwh} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
                     <ReferenceLine y={scatterMedians.medianCo2} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
@@ -533,8 +533,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         if (!active || !payload?.length) return null;
                         const d = payload[0].payload;
                         return (
-                          <div className="glass-panel rounded-lg p-2.5 text-xs border border-white/10">
-                            <p className="font-semibold text-foreground mb-1">{d.name}</p>
+                          <div className="glass-panel rounded-lg p-3 text-sm border border-white/10">
+                            <p className="font-semibold text-foreground mb-1.5">{d.name}</p>
                             <p className="text-muted-foreground">⚡ {d.kwh.toLocaleString()} kWh</p>
                             <p className="text-muted-foreground">💨 {d.co2} ppm CO₂</p>
                           </div>
@@ -543,7 +543,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     />
                     <Scatter data={scatterData} shape="circle">
                       {scatterData.map((entry, idx) => (
-                        <Cell key={idx} fill={getQuadrantColor(entry.kwh, entry.co2)} r={8} />
+                        <Cell key={idx} fill={getQuadrantColor(entry.kwh, entry.co2)} r={10} />
                       ))}
                     </Scatter>
                   </ScatterChart>
@@ -553,35 +553,36 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
             {/* ========== Chart 2: Horizontal Leaderboards ========== */}
             {showLeaderboards && (
-              <div className="glass-panel rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-sm font-semibold text-foreground">
+              <div className="glass-panel rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="text-base font-semibold text-foreground">
                     {language === 'it' ? 'Classifica Siti' : 'Site Leaderboard'}
                   </h4>
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-4">
                   {language === 'it' ? 'Ordinati dal peggiore al migliore · 30 giorni' : 'Sorted worst to best · 30 days'}
                 </p>
-                <div className="grid grid-cols-2 gap-4">
+                <ScrollArea className="max-h-[320px]">
+                <div className="grid grid-cols-2 gap-6">
                   {/* Energy leaderboard */}
                   {filterEnergy && energyLeaderboard.length > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         ⚡ {language === 'it' ? 'Consumo Energia' : 'Energy Consumption'}
                       </p>
-                      <div className="space-y-1">
+                      <div className="space-y-2.5">
                         {energyLeaderboard.map((s, i) => {
                           const maxVal = energyLeaderboard[0]?.value || 1;
                           const pct = (s.value / maxVal) * 100;
                           const barColor = pct > 80 ? 'bg-red-500/70' : pct > 50 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
                           return (
                             <div key={i} className="group">
-                              <div className="flex items-center justify-between mb-0.5">
-                                <span className="text-[10px] text-foreground truncate max-w-[100px]" title={s.name}>{s.name}</span>
-                                <span className="text-[10px] font-semibold text-foreground tabular-nums ml-1">{s.value.toLocaleString()}</span>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">kWh</span></span>
                               </div>
-                              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                                 <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                               </div>
                             </div>
@@ -593,21 +594,21 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {/* Air leaderboard */}
                   {filterAir && airLeaderboard.length > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Worst Air Quality (CO₂)'}
                       </p>
-                      <div className="space-y-1">
+                      <div className="space-y-2.5">
                         {airLeaderboard.map((s, i) => {
                           const maxVal = airLeaderboard[0]?.value || 1;
                           const pct = (s.value / maxVal) * 100;
                           const barColor = s.value > 1000 ? 'bg-red-500/70' : s.value > 600 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
                           return (
                             <div key={i} className="group">
-                              <div className="flex items-center justify-between mb-0.5">
-                                <span className="text-[10px] text-foreground truncate max-w-[100px]" title={s.name}>{s.name}</span>
-                                <span className="text-[10px] font-semibold text-foreground tabular-nums ml-1">{s.value.toLocaleString()}</span>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">ppm</span></span>
                               </div>
-                              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                                 <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                               </div>
                             </div>
@@ -617,67 +618,68 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </div>
                   )}
                 </div>
+                </ScrollArea>
               </div>
             )}
 
             {/* ========== Chart 3: System Health Matrix ========== */}
             {showHealthMatrix && (
-              <div className="glass-panel rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-sm font-semibold text-foreground">
+              <div className="glass-panel rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="text-base font-semibold text-foreground">
                     {language === 'it' ? 'Matrice Salute Sistema' : 'System Health Matrix'}
                   </h4>
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600">LIVE</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-4">
                   {language === 'it' ? 'Stato operativo per modulo · Triage immediato' : 'Operational status by module · Immediate triage'}
                 </p>
                 {/* Legend */}
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-4 mb-4">
                   {[
                     { color: 'bg-emerald-500/80', label: language === 'it' ? 'OK' : 'OK' },
                     { color: 'bg-yellow-500/80', label: language === 'it' ? 'Attenzione' : 'Warning' },
                     { color: 'bg-red-500/80', label: language === 'it' ? 'Critico' : 'Critical' },
                   ].map(l => (
-                    <div key={l.label} className="flex items-center gap-1">
-                      <div className={`w-2.5 h-2.5 rounded-sm ${l.color}`} />
-                      <span className="text-[9px] text-muted-foreground">{l.label}</span>
+                    <div key={l.label} className="flex items-center gap-1.5">
+                      <div className={`w-3 h-3 rounded-sm ${l.color}`} />
+                      <span className="text-[11px] text-muted-foreground">{l.label}</span>
                     </div>
                   ))}
                 </div>
                 {/* Header */}
-                <div className="grid grid-cols-[1fr_60px_60px_60px] gap-1 mb-1">
-                  <span className="text-[9px] text-muted-foreground uppercase pl-1">{language === 'it' ? 'Sito' : 'Site'}</span>
-                  {filterEnergy && <span className="text-[9px] text-muted-foreground uppercase text-center">⚡</span>}
+                <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1">
+                  <span className="text-[11px] text-muted-foreground uppercase font-medium">{language === 'it' ? 'Sito' : 'Site'}</span>
+                  {filterEnergy && <span className="text-[11px] text-muted-foreground uppercase text-center">⚡</span>}
                   {!filterEnergy && <span />}
-                  {filterAir && <span className="text-[9px] text-muted-foreground uppercase text-center">💨</span>}
+                  {filterAir && <span className="text-[11px] text-muted-foreground uppercase text-center">💨</span>}
                   {!filterAir && <span />}
-                  <span className="text-[9px] text-muted-foreground uppercase text-center">⚠️</span>
+                  <span className="text-[11px] text-muted-foreground uppercase text-center">⚠️</span>
                 </div>
-                <ScrollArea className="max-h-[200px]">
-                  <div className="space-y-0.5">
+                <ScrollArea className="max-h-[280px]">
+                  <div className="space-y-1">
                     {healthMatrixData.map((site, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_60px_60px_60px] gap-1 items-center py-1 px-1 rounded-lg hover:bg-white/5 transition-colors">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Circle className={`w-2 h-2 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
-                          <span className="text-[10px] text-foreground truncate" title={site.name}>{site.name}</span>
+                      <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
+                          <span className="text-xs text-foreground truncate" title={site.name}>{site.name}</span>
                         </div>
                         {filterEnergy ? (
-                          <div className={`rounded-md py-1 text-center ${healthStatusColors[site.energy.status]}`}>
-                            <span className="text-[9px] font-semibold text-white">
+                          <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.energy.status]}`}>
+                            <span className="text-[11px] font-semibold text-white">
                               {site.energy.value > 0 ? (site.energy.value > 999 ? `${(site.energy.value / 1000).toFixed(1)}k` : site.energy.value) : '—'}
                             </span>
                           </div>
-                        ) : <div className="rounded-md py-1 bg-muted/20" />}
+                        ) : <div className="rounded-md py-1.5 bg-muted/20" />}
                         {filterAir ? (
-                          <div className={`rounded-md py-1 text-center ${healthStatusColors[site.air.status]}`}>
-                            <span className="text-[9px] font-semibold text-white">
+                          <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.air.status]}`}>
+                            <span className="text-[11px] font-semibold text-white">
                               {site.air.value > 0 ? site.air.value : '—'}
                             </span>
                           </div>
-                        ) : <div className="rounded-md py-1 bg-muted/20" />}
-                        <div className={`rounded-md py-1 text-center ${healthStatusColors[site.alerts.status]}`}>
-                          <span className="text-[9px] font-semibold text-white">
+                        ) : <div className="rounded-md py-1.5 bg-muted/20" />}
+                        <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.alerts.status]}`}>
+                          <span className="text-[11px] font-semibold text-white">
                             {site.alerts.value}
                           </span>
                         </div>
@@ -689,28 +691,28 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             )}
 
             {/* ========== Chart 4: Store Directory ========== */}
-            <div className="glass-panel rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Building2 className="w-4 h-4 text-muted-foreground" />
-                <h4 className="text-sm font-semibold text-foreground">
+            <div className="glass-panel rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="w-5 h-5 text-muted-foreground" />
+                <h4 className="text-base font-semibold text-foreground">
                   {language === 'it' ? 'Elenco Siti' : 'Store Directory'}
                 </h4>
               </div>
-              <p className="text-[10px] text-muted-foreground mb-3">
+              <p className="text-xs text-muted-foreground mb-4">
                 {language === 'it' ? `${storeDirectory.length} siti · Ordinamento alfabetico` : `${storeDirectory.length} sites · Alphabetical order`}
               </p>
-              <ScrollArea className="max-h-[240px]">
-                <div className="space-y-0.5">
+              <ScrollArea className="max-h-[280px]">
+                <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
-                    <div key={i} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
-                      <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${
+                    <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors">
+                      <Circle className={`w-3 h-3 fill-current shrink-0 ${
                         site.isOnline ? 'text-emerald-500' : site.hasData ? 'text-yellow-500' : 'text-red-400'
                       }`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-foreground truncate">{site.name}</p>
-                        <p className="text-[9px] text-muted-foreground">{site.city} · {site.region}</p>
+                        <p className="text-sm text-foreground truncate">{site.name}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{site.city} · {site.region}</p>
                       </div>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${
+                      <span className={`text-[11px] px-2 py-1 rounded-full border font-medium ${
                         site.isOnline 
                           ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
                           : site.hasData 
@@ -726,7 +728,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </div>
                   ))}
                   {storeDirectory.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">
+                    <p className="text-sm text-muted-foreground text-center py-4">
                       {language === 'it' ? 'Nessun sito disponibile' : 'No sites available'}
                     </p>
                   )}
