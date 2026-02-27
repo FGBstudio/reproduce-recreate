@@ -263,17 +263,17 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       }`}>
         <div className="glass-panel p-6 rounded-2xl pointer-events-auto">
           {/* Logo + Title */}
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex flex-col items-start gap-3 mb-5">
             {displayEntity.logo ? (
-              <img src={displayEntity.logo} alt={displayEntity.name} className="h-10 object-contain opacity-90" />
+              <img src={displayEntity.logo} alt={displayEntity.name} className="h-12 object-contain opacity-90" />
             ) : (
-              <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-foreground font-bold text-sm">
+              <div className="h-12 w-12 rounded-xl bg-white/10 border border-white/5 flex items-center justify-center text-foreground font-bold text-base shadow-inner">
                 {displayEntity.name.substring(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-foreground truncate">{displayEntity.name}</h3>
-              <p className="text-[10px] text-fgb-accent uppercase tracking-widest mt-0.5">
+              <h3 className="text-lg font-bold text-foreground truncate leading-tight">{displayEntity.name}</h3>
+              <p className="text-[10px] text-fgb-accent uppercase tracking-widest mt-1 font-medium">
                 {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
               </p>
             </div>
