@@ -310,8 +310,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-xl font-bold text-foreground mt-0.5">{hasRealData ? totals.sitesOnline : '—'}</div>
-                  <div className="text-[9px] uppercase text-muted-foreground mt-1">{t('brand.sites_online')}</div>
+                  <div className="text-2xl font-bold text-foreground mt-0.5">{hasRealData ? totals.sitesOnline : '—'}</div>
+                  <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.sites_online')}</div>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
@@ -344,10 +344,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-xl font-bold text-foreground mt-0.5">
+                  <div className="text-2xl font-bold text-foreground mt-0.5">
                     {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}
                   </div>
-                  <div className="text-[9px] uppercase text-muted-foreground mt-1">{t('brand.kwh_7d')}</div>
+                  <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.kwh_7d')}</div>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
@@ -382,10 +382,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-xl font-bold text-foreground mt-0.5">
+                  <div className="text-2xl font-bold text-foreground mt-0.5">
                     {filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
                   </div>
-                  <div className="text-[9px] uppercase text-muted-foreground mt-1">Avg CO₂</div>
+                  <div className="text-[11px] uppercase text-muted-foreground mt-1">Avg CO₂</div>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
@@ -423,12 +423,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-xl font-bold text-foreground mt-0.5">
+                  <div className="text-2xl font-bold text-foreground mt-0.5">
                     {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0) 
                       ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
                       : '0'}
                   </div>
-                  <div className="text-[9px] uppercase text-muted-foreground mt-1">{t('brand.active_alerts')}</div>
+                  <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.active_alerts')}</div>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
@@ -487,12 +487,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {showScatter && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
-                  <h4 className="text-base font-semibold text-foreground">
+                  <h4 className="text-lg font-semibold text-foreground">
                     {language === 'it' ? 'Efficienza vs Comfort' : 'Efficiency vs Comfort'}
                   </h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {language === 'it' ? 'Energia (kWh) vs CO₂ (ppm) · Ultimi 30 giorni' : 'Energy (kWh) vs CO₂ (ppm) · Last 30 days'}
                 </p>
                 {/* Quadrant legend */}
@@ -505,7 +505,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   ].map(q => (
                     <div key={q.label} className="flex items-center gap-1.5">
                       <div className={`w-2.5 h-2.5 rounded-full ${q.color}`} />
-                      <span className="text-[11px] text-muted-foreground">{q.label}</span>
+                      <span className="text-xs text-muted-foreground">{q.label}</span>
                     </div>
                   ))}
                 </div>
@@ -515,15 +515,15 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
                       <XAxis 
                         type="number" dataKey="kwh" name="kWh" 
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 14 }} 
                         axisLine={{ stroke: 'hsl(var(--border))' }}
-                        label={{ value: 'kWh (30d)', position: 'insideBottom', offset: -8, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
+                        label={{ value: 'kWh (30d)', position: 'insideBottom', offset: -8, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 14 } }}
                       />
                       <YAxis 
                         type="number" dataKey="co2" name="CO₂ (ppm)" 
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 14 }} 
                         axisLine={{ stroke: 'hsl(var(--border))' }}
-                        label={{ value: 'CO₂ ppm', angle: -90, position: 'insideLeft', offset: 10, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
+                        label={{ value: 'CO₂ ppm', angle: -90, position: 'insideLeft', offset: 10, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 14 } }}
                       />
                       <ReferenceLine x={scatterMedians.medianKwh} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
                       <ReferenceLine y={scatterMedians.medianCo2} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
@@ -555,19 +555,19 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {showLeaderboards && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
-                  <h4 className="text-base font-semibold text-foreground">
+                  <h4 className="text-lg font-semibold text-foreground">
                     {language === 'it' ? 'Classifica Siti' : 'Site Leaderboard'}
                   </h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {language === 'it' ? 'Ordinati dal peggiore al migliore · 30 giorni' : 'Sorted worst to best · 30 days'}
                 </p>
                 <div className="grid grid-cols-2 gap-6 flex-1 min-h-0">
                   {/* Energy leaderboard */}
                   {filterEnergy && energyLeaderboard.length > 0 && (
                     <div className="flex flex-col min-h-0">
-                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         ⚡ {language === 'it' ? 'Consumo Energia' : 'Energy Consumption'}
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
@@ -579,8 +579,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                             return (
                               <div key={i} className="group">
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
-                                  <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">kWh</span></span>
+                                  <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                  <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-xs">kWh</span></span>
                                 </div>
                                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                                   <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
@@ -595,7 +595,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {/* Air leaderboard */}
                   {filterAir && airLeaderboard.length > 0 && (
                     <div className="flex flex-col min-h-0">
-                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Worst Air Quality (CO₂)'}
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
@@ -607,8 +607,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                             return (
                               <div key={i} className="group">
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
-                                  <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">ppm</span></span>
+                                  <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                  <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-xs">ppm</span></span>
                                 </div>
                                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                                   <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
@@ -628,12 +628,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {showHealthMatrix && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
-                  <h4 className="text-base font-semibold text-foreground">
+                  <h4 className="text-lg font-semibold text-foreground">
                     {language === 'it' ? 'Matrice Salute Sistema' : 'System Health Matrix'}
                   </h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {language === 'it' ? 'Stato operativo per modulo · Triage immediato' : 'Operational status by module · Immediate triage'}
                 </p>
                 {/* Legend */}
@@ -645,18 +645,18 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   ].map(l => (
                     <div key={l.label} className="flex items-center gap-1.5">
                       <div className={`w-3 h-3 rounded-sm ${l.color}`} />
-                      <span className="text-[11px] text-muted-foreground">{l.label}</span>
+                      <span className="text-xs text-muted-foreground">{l.label}</span>
                     </div>
                   ))}
                 </div>
                 {/* Header */}
                 <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1 shrink-0">
-                  <span className="text-[11px] text-muted-foreground uppercase font-medium">{language === 'it' ? 'Sito' : 'Site'}</span>
-                  {filterEnergy && <span className="text-[11px] text-muted-foreground uppercase text-center">⚡</span>}
+                  <span className="text-xs text-muted-foreground uppercase font-medium">{language === 'it' ? 'Sito' : 'Site'}</span>
+                  {filterEnergy && <span className="text-xs text-muted-foreground uppercase text-center">⚡</span>}
                   {!filterEnergy && <span />}
-                  {filterAir && <span className="text-[11px] text-muted-foreground uppercase text-center">💨</span>}
+                  {filterAir && <span className="text-xs text-muted-foreground uppercase text-center">💨</span>}
                   {!filterAir && <span />}
-                  <span className="text-[11px] text-muted-foreground uppercase text-center">⚠️</span>
+                  <span className="text-xs text-muted-foreground uppercase text-center">⚠️</span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="space-y-1">
@@ -664,24 +664,24 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-white/5 transition-colors">
                         <div className="flex items-center gap-2 min-w-0">
                           <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
-                          <span className="text-xs text-foreground truncate" title={site.name}>{site.name}</span>
+                          <span className="text-sm text-foreground truncate" title={site.name}>{site.name}</span>
                         </div>
                         {filterEnergy ? (
                           <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.energy.status]}`}>
-                            <span className="text-[11px] font-semibold text-white">
+                            <span className="text-xs font-semibold text-white">
                               {site.energy.value > 0 ? (site.energy.value > 999 ? `${(site.energy.value / 1000).toFixed(1)}k` : site.energy.value) : '—'}
                             </span>
                           </div>
                         ) : <div className="rounded-md py-1.5 bg-muted/20" />}
                         {filterAir ? (
                           <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.air.status]}`}>
-                            <span className="text-[11px] font-semibold text-white">
+                            <span className="text-xs font-semibold text-white">
                               {site.air.value > 0 ? site.air.value : '—'}
                             </span>
                           </div>
                         ) : <div className="rounded-md py-1.5 bg-muted/20" />}
                         <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.alerts.status]}`}>
-                          <span className="text-[11px] font-semibold text-white">
+                          <span className="text-xs font-semibold text-white">
                             {site.alerts.value}
                           </span>
                         </div>
@@ -696,11 +696,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-5 h-5 text-muted-foreground" />
-                <h4 className="text-base font-semibold text-foreground">
+                <h4 className="text-lg font-semibold text-foreground">
                   {language === 'it' ? 'Elenco Siti' : 'Store Directory'}
                 </h4>
               </div>
-              <p className="text-xs text-muted-foreground mb-4 shrink-0">
+              <p className="text-sm text-muted-foreground mb-4 shrink-0">
                 {language === 'it' ? `${storeDirectory.length} siti · Ordinamento alfabetico` : `${storeDirectory.length} sites · Alphabetical order`}
               </p>
               <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
@@ -712,9 +712,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       }`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground truncate">{site.name}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{site.city} · {site.region}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{site.city} · {site.region}</p>
                       </div>
-                      <span className={`text-[11px] px-2 py-1 rounded-full border font-medium ${
+                      <span className={`text-xs px-2 py-1 rounded-full border font-medium ${
                         site.isOnline 
                           ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
                           : site.hasData 
@@ -763,24 +763,24 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           {chartsExpanded && (
             <div className="mt-2 grid grid-cols-4 gap-1.5">
               <div className="text-center p-1.5 rounded-lg bg-white/5 border border-white/10">
-                <div className="text-sm font-bold text-foreground">{hasRealData ? totals.sitesOnline : '—'}</div>
-                <div className="text-[7px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
+                <div className="text-base font-bold text-foreground">{hasRealData ? totals.sitesOnline : '—'}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
               </div>
               <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterEnergy ? 'opacity-30 grayscale' : ''}`}>
-                <div className="text-sm font-bold text-foreground">{filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}</div>
-                <div className="text-[7px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
+                <div className="text-base font-bold text-foreground">{filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
               </div>
               <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterAir ? 'opacity-30 grayscale' : ''}`}>
-                <div className="text-sm font-bold text-foreground">{filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}</div>
-                <div className="text-[7px] uppercase text-muted-foreground">CO₂</div>
+                <div className="text-base font-bold text-foreground">{filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">CO₂</div>
               </div>
               <div className="text-center p-1.5 rounded-lg bg-white/5 border border-white/10">
-                <div className="text-sm font-bold text-foreground">
+                <div className="text-base font-bold text-foreground">
                   {hasRealData && (totals.alertsCritical + totals.alertsWarning) > 0 
                     ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span> 
                     : '0'}
                 </div>
-                <div className="text-[7px] uppercase text-muted-foreground">{t('brand.active_alerts')}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">{t('brand.active_alerts')}</div>
               </div>
             </div>
           )}
