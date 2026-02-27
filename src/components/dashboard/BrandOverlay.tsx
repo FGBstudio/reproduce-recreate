@@ -481,11 +481,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {/* ============================================================ */}
       {showAnyChart && isDesktopVisible && (
         <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
-          <div className="pointer-events-auto grid grid-cols-2 gap-3 max-h-[calc(100vh-14rem)] overflow-hidden">
+          <div className="pointer-events-auto grid h-[calc(100vh-14rem)] grid-cols-2 grid-rows-2 gap-3 overflow-hidden">
 
             {/* ========== Chart 1: Efficiency vs Comfort Scatter ========== */}
             {showScatter && (
-              <div className="glass-panel rounded-2xl p-5">
+              <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-base font-semibold text-foreground">
                     {language === 'it' ? 'Efficienza vs Comfort' : 'Efficiency vs Comfort'}
@@ -509,49 +509,51 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </div>
                   ))}
                 </div>
-                <ResponsiveContainer width="100%" height={240}>
-                  <ScatterChart margin={{ top: 10, right: 15, left: 5, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
-                    <XAxis 
-                      type="number" dataKey="kwh" name="kWh" 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
-                      axisLine={{ stroke: 'hsl(var(--border))' }}
-                      label={{ value: 'kWh (30d)', position: 'insideBottom', offset: -8, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
-                    />
-                    <YAxis 
-                      type="number" dataKey="co2" name="CO₂ (ppm)" 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
-                      axisLine={{ stroke: 'hsl(var(--border))' }}
-                      label={{ value: 'CO₂ ppm', angle: -90, position: 'insideLeft', offset: 10, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
-                    />
-                    <ReferenceLine x={scatterMedians.medianKwh} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
-                    <ReferenceLine y={scatterMedians.medianCo2} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const d = payload[0].payload;
-                        return (
-                          <div className="glass-panel rounded-lg p-3 text-sm border border-white/10">
-                            <p className="font-semibold text-foreground mb-1.5">{d.name}</p>
-                            <p className="text-muted-foreground">⚡ {d.kwh.toLocaleString()} kWh</p>
-                            <p className="text-muted-foreground">💨 {d.co2} ppm CO₂</p>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Scatter data={scatterData} shape="circle">
-                      {scatterData.map((entry, idx) => (
-                        <Cell key={idx} fill={getQuadrantColor(entry.kwh, entry.co2)} r={10} />
-                      ))}
-                    </Scatter>
-                  </ScatterChart>
-                </ResponsiveContainer>
+                <div className="flex-1 min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 10, right: 15, left: 5, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
+                      <XAxis 
+                        type="number" dataKey="kwh" name="kWh" 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        label={{ value: 'kWh (30d)', position: 'insideBottom', offset: -8, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
+                      />
+                      <YAxis 
+                        type="number" dataKey="co2" name="CO₂ (ppm)" 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        label={{ value: 'CO₂ ppm', angle: -90, position: 'insideLeft', offset: 10, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 } }}
+                      />
+                      <ReferenceLine x={scatterMedians.medianKwh} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
+                      <ReferenceLine y={scatterMedians.medianCo2} stroke="hsl(var(--muted-foreground) / 0.4)" strokeDasharray="4 4" />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0].payload;
+                          return (
+                            <div className="glass-panel rounded-lg p-3 text-sm border border-white/10">
+                              <p className="font-semibold text-foreground mb-1.5">{d.name}</p>
+                              <p className="text-muted-foreground">⚡ {d.kwh.toLocaleString()} kWh</p>
+                              <p className="text-muted-foreground">💨 {d.co2} ppm CO₂</p>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Scatter data={scatterData} shape="circle">
+                        {scatterData.map((entry, idx) => (
+                          <Cell key={idx} fill={getQuadrantColor(entry.kwh, entry.co2)} r={10} />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             )}
 
             {/* ========== Chart 2: Horizontal Leaderboards ========== */}
             {showLeaderboards && (
-              <div className="glass-panel rounded-2xl p-5">
+              <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-base font-semibold text-foreground">
                     {language === 'it' ? 'Classifica Siti' : 'Site Leaderboard'}
@@ -561,61 +563,61 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <p className="text-xs text-muted-foreground mb-4">
                   {language === 'it' ? 'Ordinati dal peggiore al migliore · 30 giorni' : 'Sorted worst to best · 30 days'}
                 </p>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-6 flex-1 min-h-0">
                   {/* Energy leaderboard */}
                   {filterEnergy && energyLeaderboard.length > 0 && (
-                    <div className="flex flex-col">
+                    <div className="flex flex-col min-h-0">
                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         ⚡ {language === 'it' ? 'Consumo Energia' : 'Energy Consumption'}
                       </p>
-                      <ScrollArea className="max-h-[calc(50vh-10rem)]">
-                      <div className="space-y-2.5">
-                        {energyLeaderboard.map((s, i) => {
-                          const maxVal = energyLeaderboard[0]?.value || 1;
-                          const pct = (s.value / maxVal) * 100;
-                          const barColor = pct > 80 ? 'bg-red-500/70' : pct > 50 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
-                          return (
-                            <div key={i} className="group">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
-                                <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">kWh</span></span>
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+                        <div className="space-y-2.5">
+                          {energyLeaderboard.map((s, i) => {
+                            const maxVal = energyLeaderboard[0]?.value || 1;
+                            const pct = (s.value / maxVal) * 100;
+                            const barColor = pct > 80 ? 'bg-red-500/70' : pct > 50 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
+                            return (
+                              <div key={i} className="group">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                  <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">kWh</span></span>
+                                </div>
+                                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                                  <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                                </div>
                               </div>
-                              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                                <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                      </ScrollArea>
                     </div>
                   )}
                   {/* Air leaderboard */}
                   {filterAir && airLeaderboard.length > 0 && (
-                    <div className="flex flex-col">
+                    <div className="flex flex-col min-h-0">
                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3 font-medium">
                         💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Worst Air Quality (CO₂)'}
                       </p>
-                      <ScrollArea className="max-h-[calc(50vh-10rem)]">
-                      <div className="space-y-2.5">
-                        {airLeaderboard.map((s, i) => {
-                          const maxVal = airLeaderboard[0]?.value || 1;
-                          const pct = (s.value / maxVal) * 100;
-                          const barColor = s.value > 1000 ? 'bg-red-500/70' : s.value > 600 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
-                          return (
-                            <div key={i} className="group">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
-                                <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">ppm</span></span>
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+                        <div className="space-y-2.5">
+                          {airLeaderboard.map((s, i) => {
+                            const maxVal = airLeaderboard[0]?.value || 1;
+                            const pct = (s.value / maxVal) * 100;
+                            const barColor = s.value > 1000 ? 'bg-red-500/70' : s.value > 600 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
+                            return (
+                              <div key={i} className="group">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                  <span className="text-xs font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-[10px]">ppm</span></span>
+                                </div>
+                                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                                  <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                                </div>
                               </div>
-                              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                                <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                      </ScrollArea>
                     </div>
                   )}
                 </div>
@@ -624,7 +626,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
             {/* ========== Chart 3: System Health Matrix ========== */}
             {showHealthMatrix && (
-              <div className="glass-panel rounded-2xl p-5">
+              <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-base font-semibold text-foreground">
                     {language === 'it' ? 'Matrice Salute Sistema' : 'System Health Matrix'}
@@ -648,7 +650,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   ))}
                 </div>
                 {/* Header */}
-                <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1">
+                <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1 shrink-0">
                   <span className="text-[11px] text-muted-foreground uppercase font-medium">{language === 'it' ? 'Sito' : 'Site'}</span>
                   {filterEnergy && <span className="text-[11px] text-muted-foreground uppercase text-center">⚡</span>}
                   {!filterEnergy && <span />}
@@ -656,7 +658,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {!filterAir && <span />}
                   <span className="text-[11px] text-muted-foreground uppercase text-center">⚠️</span>
                 </div>
-                <ScrollArea className="max-h-[calc(50vh-12rem)]">
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                   <div className="space-y-1">
                     {healthMatrixData.map((site, i) => (
                       <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-white/5 transition-colors">
@@ -686,22 +688,22 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             )}
 
             {/* ========== Chart 4: Store Directory ========== */}
-            <div className="glass-panel rounded-2xl p-5">
+            <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-5 h-5 text-muted-foreground" />
                 <h4 className="text-base font-semibold text-foreground">
                   {language === 'it' ? 'Elenco Siti' : 'Store Directory'}
                 </h4>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs text-muted-foreground mb-4 shrink-0">
                 {language === 'it' ? `${storeDirectory.length} siti · Ordinamento alfabetico` : `${storeDirectory.length} sites · Alphabetical order`}
               </p>
-              <ScrollArea className="max-h-[calc(50vh-12rem)]">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
                     <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors">
@@ -733,7 +735,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </p>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
 
           </div>
