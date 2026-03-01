@@ -36,7 +36,9 @@ import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useWellCertification } from "@/hooks/useCertifications";
+import { useLeedCertification } from "@/hooks/useLeedCertification";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
+import { LEEDCertificationWidget } from "./LEEDCertificationWidget";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
@@ -234,6 +236,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   }, [project?.siteId]);
   // WELL certification data
   const { wellCert, milestones: wellMilestones } = useWellCertification(project?.siteId);
+  // LEED certification data
+  const { leedCert, milestones: leedMilestones } = useLeedCertification(project?.siteId);
   
   // Certifications configured in admin panel for this project
   const projectCertifications = useProjectCertifications(project);
@@ -645,7 +649,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       case "energy": return 4;
       case "air": return 3;
       case "water": return 3;
-      case "certification": return 2;
+      case "certification": return hasLEED ? 3 : 2;
       default: return 4;
     }
   };
@@ -4604,6 +4608,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* CERTIFICATION DASHBOARD - Slide 3: LEED Detail */}
+            {activeDashboard === "certification" && currentSlide === 2 && hasLEED && (
+              <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
+                <LEEDCertificationWidget leedCert={leedCert} milestones={leedMilestones} />
               </div>
             )}
           </div>

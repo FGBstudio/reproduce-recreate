@@ -1,0 +1,322 @@
+import { useState, useEffect } from 'react';
+import { Award, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+
+interface LEEDCertificationsDialogProps {
+  siteId: string;
+  siteName: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+interface LEEDFormData {
+  certType: string;
+  level: string;
+  score: number;
+  targetScore: number;
+  expiryDate: string;
+  milestones: {
+    category: string;
+    score: number;
+    maxScore: number;
+  }[];
+}
+
+const DEFAULT_LEED_MILESTONES = [
+  { category: 'EA', score: 0, maxScore: 33 },
+  { category: 'WE', score: 0, maxScore: 12 },
+  { category: 'MR', score: 0, maxScore: 13 },
+  { category: 'EQ', score: 0, maxScore: 16 },
+  { category: 'SS', score: 0, maxScore: 26 },
+  { category: 'IN', score: 0, maxScore: 6 },
+  { category: 'RP', score: 0, maxScore: 4 },
+];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  EA: 'Energia e Atmosfera',
+  WE: 'Efficienza Idrica',
+  MR: 'Materiali e Risorse',
+  EQ: 'Qualità Ambientale Interna',
+  SS: 'Siti Sostenibili',
+  IN: 'Innovazione',
+  RP: 'Priorità Regionale',
+};
+
+export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange }: LEEDCertificationsDialogProps) => {
+  const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<LEEDFormData>({
+    certType: 'LEED v4',
+    level: 'Gold',
+    score: 0,
+    targetScore: 110,
+    expiryDate: '',
+    milestones: JSON.parse(JSON.stringify(DEFAULT_LEED_MILESTONES)),
+  });
+
+  useEffect(() => {
+    if (!open || !supabase) return;
+
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const { data: certs } = await supabase
+          .from('certifications')
+          .select('*')
+          .eq('site_id', siteId)
+          .ilike('cert_type', '%LEED%')
+          .limit(1);
+
+        if (certs && certs.length > 0) {
+          const cert = certs[0];
+          const { data: milestones } = await supabase
+            .from('certification_milestones')
+            .select('*')
+            .eq('certification_id', cert.id);
+
+          const mappedMilestones = DEFAULT_LEED_MILESTONES.map(dm => {
+            const existing = milestones?.find(m => m.category === dm.category);
+            return existing
+              ? { category: existing.category, score: existing.score || 0, maxScore: existing.max_score || dm.maxScore }
+              : { ...dm };
+          });
+
+          setFormData({
+            certType: cert.cert_type || 'LEED v4',
+            level: cert.level || 'Gold',
+            score: cert.score || 0,
+            targetScore: cert.target_score || 110,
+            expiryDate: cert.expiry_date || '',
+            milestones: mappedMilestones,
+          });
+        } else {
+          setFormData({
+            certType: 'LEED v4',
+            level: 'Gold',
+            score: 0,
+            targetScore: 110,
+            expiryDate: '',
+            milestones: JSON.parse(JSON.stringify(DEFAULT_LEED_MILESTONES)),
+          });
+        }
+      } catch (err) {
+        console.error('Error loading LEED certification data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [open, siteId]);
+
+  const handleSave = async () => {
+    if (!supabase) return;
+    setIsSaving(true);
+    try {
+      const { data: existingCerts } = await supabase
+        .from('certifications')
+        .select('id')
+        .eq('site_id', siteId)
+        .ilike('cert_type', '%LEED%')
+        .limit(1);
+
+      let certId: string;
+
+      // Auto-calculate total score from milestones
+      const totalScore = formData.milestones.reduce((sum, m) => sum + m.score, 0);
+
+      if (existingCerts && existingCerts.length > 0) {
+        certId = existingCerts[0].id;
+        await supabase
+          .from('certifications')
+          .update({
+            cert_type: formData.certType,
+            level: formData.level,
+            score: totalScore,
+            target_score: formData.targetScore,
+            expiry_date: formData.expiryDate || null,
+            status: 'active',
+          })
+          .eq('id', certId);
+      } else {
+        const { data: newCert } = await supabase
+          .from('certifications')
+          .insert({
+            site_id: siteId,
+            cert_type: formData.certType,
+            level: formData.level,
+            score: totalScore,
+            target_score: formData.targetScore,
+            expiry_date: formData.expiryDate || null,
+            status: 'active',
+          })
+          .select('id')
+          .single();
+
+        if (!newCert) throw new Error('Failed to create LEED certification');
+        certId = newCert.id;
+      }
+
+      // Delete existing milestones and re-insert
+      await supabase
+        .from('certification_milestones')
+        .delete()
+        .eq('certification_id', certId);
+
+      const milestonesToInsert = formData.milestones.map(m => ({
+        certification_id: certId,
+        category: m.category,
+        requirement: CATEGORY_LABELS[m.category] || m.category,
+        score: m.score,
+        max_score: m.maxScore,
+        status: m.score >= m.maxScore && m.maxScore > 0 ? 'achieved' : 'in_progress',
+      }));
+
+      await supabase
+        .from('certification_milestones')
+        .insert(milestonesToInsert);
+
+      queryClient.invalidateQueries({ queryKey: ['certifications'] });
+      queryClient.invalidateQueries({ queryKey: ['certification_milestones'] });
+      onOpenChange(false);
+    } catch (err) {
+      console.error('Error saving LEED certification:', err);
+      alert('Errore durante il salvataggio della certificazione LEED');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateMilestone = (index: number, field: 'score' | 'maxScore', value: number) => {
+    setFormData(prev => {
+      const milestones = [...prev.milestones];
+      milestones[index] = { ...milestones[index], [field]: value };
+      return { ...prev, milestones };
+    });
+  };
+
+  const totalFromMilestones = formData.milestones.reduce((sum, m) => sum + m.score, 0);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Award className="w-5 h-5 text-emerald-500" />
+            Certificazione LEED - {siteName}
+          </DialogTitle>
+          <DialogDescription>
+            Gestisci i dati della certificazione LEED per questo site
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto pr-2 space-y-6 my-4">
+            {/* General Info */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-slate-700 border-b pb-2">Informazioni Generali</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Versione</Label>
+                  <Select value={formData.certType} onValueChange={v => setFormData(p => ({ ...p, certType: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LEED v4">LEED v4</SelectItem>
+                      <SelectItem value="LEED v4.1">LEED v4.1</SelectItem>
+                      <SelectItem value="LEED v4.1 O+M">LEED v4.1 O+M</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Livello Target</Label>
+                  <Select value={formData.level} onValueChange={v => setFormData(p => ({ ...p, level: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Certified">Certified</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Platinum">Platinum</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data Certificazione Attesa</Label>
+                <Input
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={e => setFormData(p => ({ ...p, expiryDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Category scores */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h4 className="text-sm font-semibold text-slate-700">Punteggi per Categoria</h4>
+                <span className="text-sm font-bold text-emerald-600">{totalFromMilestones} / 110 pt</span>
+              </div>
+
+              {formData.milestones.map((m, i) => (
+                <div key={m.category} className="p-3 bg-slate-50 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-600">
+                      {m.category} — {CATEGORY_LABELS[m.category] || m.category}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">Punti</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={m.maxScore}
+                        value={m.score}
+                        onChange={e => updateMilestone(i, 'score', Math.min(parseInt(e.target.value) || 0, m.maxScore))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">Max Punti</Label>
+                      <Input
+                        type="number"
+                        value={m.maxScore}
+                        onChange={e => updateMilestone(i, 'maxScore', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+                  {/* Mini progress */}
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${m.maxScore > 0 ? (m.score / m.maxScore) * 100 : 0}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="border-t pt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+            Annulla
+          </Button>
+          <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isSaving || isLoading}>
+            {isSaving ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
+            ) : 'Salva'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};

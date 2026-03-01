@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2, Award } from 'lucide-react';
 import { CertificationsDialog } from './CertificationsDialog';
+import { LEEDCertificationsDialog } from './LEEDCertificationsDialog';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { AdminSite, RegionCode } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ export const SitesManager = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [certDialogSite, setCertDialogSite] = useState<{ id: string; name: string } | null>(null);
+  const [leedDialogSite, setLeedDialogSite] = useState<{ id: string; name: string } | null>(null);
 
   const handleOpenCreate = () => {
     setEditingSite(null);
@@ -432,6 +434,9 @@ export const SitesManager = () => {
                       <Button variant="ghost" size="icon" title="Certificazione WELL" onClick={() => setCertDialogSite({ id: site.id, name: site.name })}>
                         <Award className="w-4 h-4 text-rose-500" />
                       </Button>
+                      <Button variant="ghost" size="icon" title="Certificazione LEED" onClick={() => setLeedDialogSite({ id: site.id, name: site.name })}>
+                        <Award className="w-4 h-4 text-emerald-500" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(site)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -482,6 +487,15 @@ export const SitesManager = () => {
           siteName={certDialogSite.name}
           open={!!certDialogSite}
           onOpenChange={(open) => !open && setCertDialogSite(null)}
+        />
+      )}
+
+      {leedDialogSite && (
+        <LEEDCertificationsDialog
+          siteId={leedDialogSite.id}
+          siteName={leedDialogSite.name}
+          open={!!leedDialogSite}
+          onOpenChange={(open) => !open && setLeedDialogSite(null)}
         />
       )}
     </Card>
