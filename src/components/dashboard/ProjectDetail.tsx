@@ -4282,7 +4282,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               </ModuleGate>
             )}
             
-            {/* CERTIFICATION DASHBOARD - Slide 1: Overview */}
+            {/* CERTIFICATION DASHBOARDS (Renderizzate affiancate per il Carosello) */}
             {activeDashboard === "certification" && hasCertifications && (
               <>
                 {/* --- SLIDE 1: OVERVIEW --- */}
@@ -4607,6 +4607,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 )}
               </>
             )}
+          </div>
+        </div>
 
         {/* Pagination Dots */}
         <div className="flex justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20">
