@@ -82,7 +82,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     const kwhValues = scatterData.map(s => s.kwh).sort((a, b) => a - b);
     const co2Values = scatterData.filter(s => s.co2 > 0).map(s => s.co2).sort((a, b) => a - b);
     const median = (arr: number[]) => arr.length === 0 ? 0 : arr[Math.floor(arr.length / 2)];
-    return { medianKwh: median(kwhValues) / 1000, medianCo2: median(co2Values) || 600 };
+    return { medianKwh: median(kwhValues), medianCo2: median(co2Values) || 600 };
   }, [scatterData]);
 
   // =====================================================================
@@ -345,7 +345,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </UITooltip>
                   </div>
                   <div className="text-2xl font-bold text-foreground mt-0.5">
-                    {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}
+                    {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? (totals.monthlyEnergyKwh / 1000).toLocaleString() : '—'}
                   </div>
                   <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.kwh_7d')}</div>
                 </div>
