@@ -457,16 +457,19 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           </TooltipProvider>
 
           {/* Chart toggle */}
-          {showAnyChart && (
-            <button
-              onClick={() => setIsDesktopVisible(!isDesktopVisible)}
-              className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 text-muted-foreground hover:text-foreground"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>{isDesktopVisible ? t('brand.hide_charts') : t('brand.show_charts')}</span>
-              {isDesktopVisible ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-          )}
+          <button
+            onClick={() => showAnyChart && setIsDesktopVisible(!isDesktopVisible)}
+            disabled={!showAnyChart}
+            className={`relative z-10 flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 ${
+              showAnyChart
+                ? 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground cursor-pointer'
+                : 'bg-white/5 text-muted-foreground/40 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>{isDesktopVisible && showAnyChart ? t('brand.hide_charts') : t('brand.show_charts')}</span>
+            {isDesktopVisible && showAnyChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
 
           {!hasRealData && (
             <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-muted">
