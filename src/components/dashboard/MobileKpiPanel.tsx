@@ -51,8 +51,8 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
     <div className="grid grid-cols-2 gap-2">
       <div className="bg-white/5 rounded-xl p-3 border border-white/8">
         <div className="text-xs text-muted-foreground mb-1">Energy Intensity</div>
-        <div className="text-xl font-bold text-foreground">{displayIntensity}</div>
-        <div className="text-[10px] text-muted-foreground">kWh/m²</div>
+        <div className="text-xl font-bold text-foreground">{(displayIntensity / 1000).toFixed(2)}</div>
+        <div className="text-[10px] text-muted-foreground">MWh/m²</div>
       </div>
       <div className="bg-white/5 rounded-xl p-3 border border-white/8">
         <div className="text-xs text-muted-foreground mb-1">Air Quality</div>
