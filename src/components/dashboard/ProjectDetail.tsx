@@ -4295,18 +4295,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {hasLEED && (() => {
                       const score = leedCert?.score || 0;
                       const level = leedCert?.level || 'N/A';
-                      const type = leedCert?.cert_type || 'LEED';
                       const pct = Math.min((score / 110) * 100, 100);
                       const issuedDate = leedCert?.issued_date ? new Date(leedCert.issued_date).getFullYear() : null;
                       
                       return (
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-emerald-50">
                           <div className="flex items-center gap-4 mb-4">
                             <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
                               <span className="text-white font-black text-lg">LEED</span>
                             </div>
                             <div>
-                              <h3 className="text-xl font-bold text-gray-800">{type}</h3>
+                              <h3 className="text-xl font-bold text-gray-800">{leedCert?.cert_type || 'LEED'}</h3>
                               <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-semibold mt-1">{level}</span>
                             </div>
                           </div>
@@ -4329,7 +4328,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <div className="flex items-center gap-2 text-sm text-emerald-600">
                               <div className={`w-2.5 h-2.5 rounded-full ${issuedDate ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                               <span className={issuedDate ? 'text-emerald-700' : 'text-amber-600'}>
-                                {issuedDate ? `Certified since ${issuedDate}` : (leedCert?.status === 'in_progress' ? 'In Progress' : (leedCert?.status || 'Pending Data'))}
+                                {issuedDate ? `Certified since ${issuedDate}` : (leedCert?.status || 'In Progress')}
                               </span>
                             </div>
                           </div>
@@ -4337,9 +4336,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       );
                     })()}
 
-                    {/* BREEAM Card - Static Placeholder */}
+                    {/* BREEAM Card Placeholder */}
                     {hasBREEAM && (
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg opacity-70">
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg opacity-70 border border-sky-50">
                         <div className="flex items-center gap-4 mb-4">
                           <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg">
                             <span className="text-white font-black text-xs">BREEAM</span>
@@ -4357,13 +4356,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-sky-400 to-sky-600 rounded-full transition-all" style={{ width: '0%' }} />
                           </div>
-                          <div className="flex justify-between text-xs text-gray-500 mt-2">
-                            <span>Pass (30%)</span><span>Good (45%)</span><span>V.Good (55%)</span><span>Exc (70%)</span><span>Outs (85%)</span>
-                          </div>
                         </div>
-                        <div className="mt-6 pt-4 border-t border-gray-100">
-                          <div className="text-xs italic text-gray-400">Data connection pending</div>
-                        </div>
+                        <div className="mt-6 pt-4 border-t border-gray-100 text-xs italic text-gray-400">Data mapping in progress</div>
                       </div>
                     )}
 
@@ -4372,19 +4366,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       const score = wellCert?.score || 0;
                       const target = wellCert?.target_score || 100;
                       const level = wellCert?.level || 'N/A';
-                      const type = wellCert?.cert_type || 'WELL';
                       const pct = target > 0 ? Math.min((score / target) * 100, 100) : 0;
                       const issuedDate = wellCert?.issued_date ? new Date(wellCert.issued_date).getFullYear() : null;
 
                       return (
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-rose-50">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-4">
                               <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
                                 <span className="text-white font-black text-lg">WELL</span>
                               </div>
                               <div>
-                                <h3 className="text-xl font-bold text-gray-800">{type}</h3>
+                                <h3 className="text-xl font-bold text-gray-800">{wellCert?.cert_type || 'WELL'}</h3>
                                 <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm font-semibold mt-1">{level}</span>
                               </div>
                             </div>
@@ -4403,18 +4396,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                               <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
                             </div>
-                            <div className="flex justify-between text-xs text-gray-500 mt-2">
-                              <span className={level === 'Bronze' ? 'font-bold text-rose-600' : ''}>Bronze (40)</span>
-                              <span className={level === 'Silver' ? 'font-bold text-rose-600' : ''}>Silver (50)</span>
-                              <span className={level === 'Gold' ? 'font-bold text-amber-600' : ''}>Gold (60)</span>
-                              <span className={level === 'Platinum' ? 'font-bold text-rose-600' : ''}>Plat (80)</span>
-                            </div>
                           </div>
                           <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-sm font-semibold">
                               <div className={`w-2.5 h-2.5 rounded-full ${issuedDate ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'}`} />
                               <span className={issuedDate ? 'text-rose-700' : 'text-amber-600'}>
-                                {issuedDate ? `Certified since ${issuedDate}` : (wellCert?.status === 'in_progress' ? 'In Progress' : (wellCert?.status || 'Pending Data'))}
+                                {issuedDate ? `Certified since ${issuedDate}` : (wellCert?.status || 'In Progress')}
                               </span>
                             </div>
                           </div>
@@ -4423,33 +4410,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     })()}
                   </div>
 
-                  {/* REAL DYNAMIC Summary Stats */}
+                  {/* REAL Summary Stats */}
                   {(() => {
-                    const activeCertsCount = [leedCert, wellCert].filter(c => c && c.status === 'active').length;
-                    const inProgressCount = [leedCert, wellCert].filter(c => c && c.status === 'in_progress').length;
-                    const allMilestones = [...(leedMilestones || []), ...(wellMilestones || [])];
-                    const achievedMilestones = allMilestones.filter(m => m.status === 'achieved' || m.status === 'completed').length;
+                    const activeCount = [leedCert, wellCert].filter(c => c && c.status === 'active').length;
+                    const inProgCount = [leedCert, wellCert].filter(c => c && c.status === 'in_progress').length;
+                    const allM = [...(leedMilestones || []), ...(wellMilestones || [])];
+                    const achievedM = allM.filter(m => m.status === 'achieved' || m.status === 'completed').length;
                     const dates = [leedCert?.expiry_date, wellCert?.expiry_date].filter(Boolean).map(d => new Date(d!).getFullYear());
-                    const nextAudit = dates.length > 0 ? Math.min(...dates).toString() : '—';
+                    const nextA = dates.length > 0 ? Math.min(...dates) : '—';
 
                     return (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
-                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                          <div className="text-3xl font-black text-emerald-500">{activeCertsCount}</div>
-                          <div className="text-sm text-gray-600 mt-1">Active Certifications</div>
-                        </div>
-                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                          <div className="text-3xl font-black text-amber-500">{achievedMilestones}</div>
-                          <div className="text-sm text-gray-600 mt-1">Milestones Reached</div>
-                        </div>
-                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                          <div className="text-3xl font-black text-sky-500">{inProgressCount}</div>
-                          <div className="text-sm text-gray-600 mt-1">In Progress</div>
-                        </div>
-                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                          <div className="text-3xl font-black text-rose-500">{nextAudit}</div>
-                          <div className="text-sm text-gray-600 mt-1">Next Audit</div>
-                        </div>
+                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center border border-emerald-50"><div className="text-3xl font-black text-emerald-500">{activeCount}</div><div className="text-sm text-gray-600 mt-1">Active Certs</div></div>
+                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center border border-amber-50"><div className="text-3xl font-black text-amber-500">{achievedM}</div><div className="text-sm text-gray-600 mt-1">Milestones Reached</div></div>
+                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center border border-sky-50"><div className="text-3xl font-black text-sky-500">{inProgCount}</div><div className="text-sm text-gray-600 mt-1">In Progress</div></div>
+                        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center border border-rose-50"><div className="text-3xl font-black text-rose-500">{nextA}</div><div className="text-sm text-gray-600 mt-1">Next Audit</div></div>
                       </div>
                     );
                   })()}
@@ -4457,132 +4432,60 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                 {/* --- SLIDE 2: MILESTONES --- */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8 pt-4">
-                    
-                    {/* REAL LEED Milestones */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-8 pt-4">
                     {hasLEED && (
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-emerald-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-xs">LEED</span>
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">LEED Milestones</h3>
-                        </div>
-                        <div className="space-y-4">
-                          {(!leedMilestones || leedMilestones.length === 0) ? (
-                            <div className="text-center py-6">
-                              <p className="text-sm text-gray-500 italic">No milestones defined yet.</p>
-                            </div>
-                          ) : (
-                            leedMilestones.map((m, idx) => {
-                              const isDone = m.status === 'achieved' || m.status === 'completed';
-                              return (
-                                <div key={m.id || idx} className="flex items-center gap-3">
-                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${isDone ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                                    {isDone ? '✓' : idx + 1}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium text-gray-700 truncate">
-                                      {m.category} {m.requirement ? `- ${m.requirement}` : ''}
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-0.5">
-                                      <span className={isDone ? 'text-emerald-600 font-semibold' : ''}>
-                                        {m.score || 0} / {m.max_score || 0} points
-                                      </span>
-                                      <span className="ml-2 px-1.5 py-0.5 rounded bg-gray-100 text-[10px] capitalize">
-                                        {m.status?.replace('_', ' ') || 'pending'}
-                                      </span>
-                                    </div>
-                                  </div>
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">LEED Milestones</h3>
+                        <div className="space-y-3">
+                          {(!leedMilestones || leedMilestones.length === 0) ? <p className="text-sm text-gray-400 italic text-center py-4">No data available.</p> : 
+                            leedMilestones.map((m, idx) => (
+                              <div key={idx} className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${m.status === 'achieved' || m.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200'}`}>
+                                  {m.status === 'achieved' || m.status === 'completed' ? '✓' : idx + 1}
                                 </div>
-                              );
-                            })
-                          )}
+                                <div className="text-sm text-gray-700 font-medium truncate">{m.category} {m.requirement ? `- ${m.requirement}` : ''}</div>
+                                <div className="text-xs text-gray-400 ml-auto">{m.score}/{m.max_score} pt</div>
+                              </div>
+                            ))
+                          }
                         </div>
                       </div>
                     )}
-
-                    {/* BREEAM Milestones Placeholder */}
-                    {hasBREEAM && (
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg opacity-70">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-[8px]">BREEAM</span>
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">BREEAM Milestones</h3>
-                        </div>
-                        <div className="text-center py-6">
-                          <p className="text-sm text-gray-500 italic">Data mapping in progress.</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* REAL WELL Milestones */}
                     {hasWELL && (
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-rose-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-xs">WELL</span>
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">WELL Milestones</h3>
-                        </div>
-                        <div className="space-y-4">
-                          {(!wellMilestones || wellMilestones.length === 0) ? (
-                            <div className="text-center py-6">
-                              <p className="text-sm text-gray-500 italic">No milestones defined yet.</p>
-                            </div>
-                          ) : (
-                            wellMilestones.map((m, idx) => {
-                              const isDone = m.status === 'achieved' || m.status === 'completed';
-                              return (
-                                <div key={m.id || idx} className="flex items-center gap-3">
-                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${isDone ? 'bg-rose-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                                    {isDone ? '✓' : idx + 1}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium text-gray-700 truncate">
-                                      {m.category} {m.requirement ? `- ${m.requirement}` : ''}
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-0.5">
-                                      <span className={isDone ? 'text-rose-600 font-semibold' : ''}>
-                                        {m.score || 0} / {m.max_score || 0} points
-                                      </span>
-                                      <span className="ml-2 px-1.5 py-0.5 rounded bg-gray-100 text-[10px] capitalize">
-                                        {m.status?.replace('_', ' ') || 'pending'}
-                                      </span>
-                                    </div>
-                                  </div>
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">WELL Milestones</h3>
+                        <div className="space-y-3">
+                          {(!wellMilestones || wellMilestones.length === 0) ? <p className="text-sm text-gray-400 italic text-center py-4">No data available.</p> : 
+                            wellMilestones.map((m, idx) => (
+                              <div key={idx} className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${m.status === 'achieved' || m.status === 'completed' ? 'bg-rose-500 text-white' : 'bg-gray-200'}`}>
+                                  {m.status === 'achieved' || m.status === 'completed' ? '✓' : idx + 1}
                                 </div>
-                              );
-                            })
-                          )}
+                                <div className="text-sm text-gray-700 font-medium truncate">{m.category} {m.requirement ? `- ${m.requirement}` : ''}</div>
+                                <div className="text-xs text-gray-400 ml-auto">{m.score}/{m.max_score} pt</div>
+                              </div>
+                            ))
+                          }
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Timeline (Kept as static layout structure but driven by existing certifications) */}
+                  
+                  {/* Timeline */}
                   <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg mb-8">
-                    <h3 className="text-lg font-bold text-gray-800 mb-6">Certification Timeline</h3>
+                    <h3 className="text-lg font-bold text-gray-800 mb-6 font-montserrat uppercase tracking-tight">Certification Roadmap</h3>
                     <div className="relative">
-                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-100" />
                       <div className="space-y-6">
                         {[
-                          { date: 'Gen 2023', event: 'LEED Registration', type: 'leed' },
-                          { date: 'Mar 2023', event: 'BREEAM In-Use Assessment Started', type: 'breeam' },
-                          { date: 'Giu 2023', event: 'WELL Registration', type: 'well' },
-                          { date: 'Giu 2024', event: 'Mid-Year Performance Review', type: 'all' },
-                          { date: leedCert?.issued_date ? new Date(leedCert.issued_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Future', event: 'LEED Certification Expected', type: 'leed' },
-                          { date: wellCert?.issued_date ? new Date(wellCert.issued_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Future', event: 'WELL Certification Expected', type: 'well' },
-                        ].filter(item => item.type === 'all' || (item.type === 'leed' && hasLEED) || (item.type === 'breeam' && hasBREEAM) || (item.type === 'well' && hasWELL)).map((item, idx) => (
+                          { date: 'Jan 2023', event: 'Initial Registration', type: 'all' },
+                          { date: leedCert?.issued_date ? new Date(leedCert.issued_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Future', event: 'LEED Certification Result', type: 'leed' },
+                          { date: wellCert?.issued_date ? new Date(wellCert.issued_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Future', event: 'WELL Certification Result', type: 'well' },
+                        ].filter(item => item.type === 'all' || (item.type === 'leed' && hasLEED) || (item.type === 'well' && hasWELL)).map((item, idx) => (
                           <div key={idx} className="relative pl-10">
-                            <div className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white shadow ${
-                              item.type === 'leed' ? 'bg-emerald-500' :
-                              item.type === 'breeam' ? 'bg-sky-500' :
-                              item.type === 'well' ? 'bg-rose-500' : 'bg-gray-400'
-                            }`} />
-                            <div className="text-xs text-gray-500 font-medium">{item.date}</div>
-                            <div className="text-sm font-medium text-gray-700">{item.event}</div>
+                            <div className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white shadow ${item.type === 'leed' ? 'bg-emerald-500' : item.type === 'well' ? 'bg-rose-500' : 'bg-gray-300'}`} />
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">{item.date}</div>
+                            <div className="text-sm font-semibold text-gray-700">{item.event}</div>
                           </div>
                         ))}
                       </div>
@@ -4595,14 +4498,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   {hasLEED ? (
                     <LEEDCertificationWidget leedCert={leedCert} milestones={leedMilestones || []} />
                   ) : (
-                    <div className="flex items-center justify-center h-64 bg-white/50 backdrop-blur-sm rounded-2xl border border-gray-200">
-                      <p className="text-gray-500 font-medium">LEED detailed metrics not available for this site.</p>
+                    <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-12 text-center border border-dashed border-gray-200">
+                      <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 font-medium font-montserrat">Detailed LEED metrics not available for this project.</p>
                     </div>
                   )}
                 </div>
               </>
             )}
-            {/* ========================================================= */}
 
         {/* Pagination Dots */}
         <div className="flex justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20">
