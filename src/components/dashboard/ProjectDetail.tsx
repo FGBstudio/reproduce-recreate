@@ -242,9 +242,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Certifications configured in admin panel for this project
   const projectCertifications = useProjectCertifications(project);
   const hasCertifications = projectCertifications.length > 0;
-  const hasLEED = projectCertifications.includes('LEED');
+  const hasLEED = projectCertifications.includes('LEED') || !!leedCert;
   const hasBREEAM = projectCertifications.includes('BREEAM');
-  const hasWELL = projectCertifications.includes('WELL');
+  const hasWELL = projectCertifications.includes('WELL') || !!wellCert;
+  const hasCertifications = hasLEED || hasBREEAM || hasWELL;
 
   // Get module configuration for this project
   const moduleConfig = useProjectModuleConfig(project);
