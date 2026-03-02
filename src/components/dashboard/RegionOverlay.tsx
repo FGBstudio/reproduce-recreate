@@ -58,7 +58,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
         const project = regionProjects.find(p => p.siteId === site.siteId);
         const area = project?.area_m2 ?? 0;
         const kwh = site.energy.monthlyKwh ?? 0;
-        const intensity = area > 0 ? Math.round((kwh / area) * 10) / 10 : null;
+        const intensity = area > 0 ? Math.round((kwh / area) * 10) / 10000 : null;
         return { name: site.siteName, intensity, kwh, area };
       })
       .filter(s => s.intensity !== null && s.intensity > 0)
@@ -198,13 +198,13 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[240px] text-xs">
                           {language === 'it'
-                            ? "Media dei consumi energetici (kWh) divisi per la superficie (m²) di ogni sito, calcolata sugli ultimi 30 giorni con i contatori 'general'."
-                            : "Average energy consumption (kWh) divided by each site's floor area (m²), calculated over the last 30 days using 'general' meters."}
+                            ? "Media dei consumi energetici (MWh) divisi per la superficie (m²) di ogni sito, calcolata sugli ultimi 30 giorni con i contatori 'general'."
+                            : "Average energy consumption (MWh) divided by each site's floor area (m²), calculated over the last 30 days using 'general' meters."}
                         </TooltipContent>
                       </Tooltip>
                     </div>
                     <span className="text-xl font-bold text-foreground whitespace-nowrap ml-3">
-                      {activeFilters.includes('energy') ? displayIntensity : '—'} <span className="text-xs font-normal opacity-70">kWh/m²</span>
+                      {activeFilters.includes('energy') ? displayIntensity : '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
                     </span>
                   </div>
                   <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
