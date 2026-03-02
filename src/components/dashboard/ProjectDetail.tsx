@@ -4300,9 +4300,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       return (
                         <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                           <div className="flex items-center gap-4 mb-4">
-                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
-                              <span className="text-white font-black text-lg">LEED</span>
-                            </div>
+                            <img 
+                              src="/leed_logo.png" 
+                              alt="LEED Certification" 
+                              className="w-16 h-16 rounded-xl object-contain shadow-lg bg-white p-1" 
+                            />
                             <div>
                               <h3 className="text-xl font-bold text-gray-800">{type}</h3>
                               <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-semibold mt-1">{level}</span>
