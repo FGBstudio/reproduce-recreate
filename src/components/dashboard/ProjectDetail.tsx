@@ -4535,7 +4535,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-rose-100">
                         <div className="flex items-center gap-3 mb-6">
                           <img 
-                            src="/well-logo.png" 
+                            src="/well_logo.png" 
                             alt="WELL Logo" 
                             className="w-10 h-10 rounded-lg object-contain shadow-md bg-white p-0.5" 
                           />
