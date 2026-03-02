@@ -58,7 +58,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
         const project = regionProjects.find(p => p.siteId === site.siteId);
         const area = project?.area_m2 ?? 0;
         const kwh = site.energy.monthlyKwh ?? 0;
-        const intensity = area > 0 ? Math.round(((kwh / area) * 10) / 10)/1000 : null;
+        const intensity = area > 0 ? (kwh / area) / 1000 : null;
         return { name: site.siteName, intensity, kwh, area };
       })
       .filter(s => s.intensity !== null && s.intensity > 0)
