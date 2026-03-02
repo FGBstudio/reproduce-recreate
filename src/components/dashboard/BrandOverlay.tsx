@@ -599,7 +599,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {filterAir && airLeaderboard.length > 0 && (
                     <div className="flex flex-col min-h-0">
                       <p className="text-base text-muted-foreground uppercase tracking-wider mb-3 font-medium">
-                        💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Worst Air Quality (CO₂)'}
+                        💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Air Quality (CO₂)'}
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
