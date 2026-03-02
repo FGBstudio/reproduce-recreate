@@ -18,8 +18,9 @@ interface LEEDCertificationsDialogProps {
 interface LEEDFormData {
   certType: string;
   level: string;
-  score: number;
+  status: string;
   targetScore: number;
+  issuedDate: string;
   expiryDate: string;
   milestones: {
     category: string;
@@ -55,8 +56,9 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
   const [formData, setFormData] = useState<LEEDFormData>({
     certType: 'LEED v4',
     level: 'Gold',
-    score: 0,
+    status: 'in_progress',
     targetScore: 110,
+    issuedDate: '',
     expiryDate: '',
     milestones: JSON.parse(JSON.stringify(DEFAULT_LEED_MILESTONES)),
   });
@@ -91,8 +93,9 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
           setFormData({
             certType: cert.cert_type || 'LEED v4',
             level: cert.level || 'Gold',
-            score: cert.score || 0,
+            status: cert.status || 'in_progress',
             targetScore: cert.target_score || 110,
+            issuedDate: cert.issued_date || '',
             expiryDate: cert.expiry_date || '',
             milestones: mappedMilestones,
           });
@@ -100,8 +103,9 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
           setFormData({
             certType: 'LEED v4',
             level: 'Gold',
-            score: 0,
+            status: 'in_progress',
             targetScore: 110,
+            issuedDate: '',
             expiryDate: '',
             milestones: JSON.parse(JSON.stringify(DEFAULT_LEED_MILESTONES)),
           });
@@ -132,30 +136,28 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
       // Auto-calculate total score from milestones
       const totalScore = formData.milestones.reduce((sum, m) => sum + m.score, 0);
 
+      const certPayload = {
+        cert_type: formData.certType,
+        level: formData.level,
+        score: totalScore,
+        target_score: formData.targetScore,
+        status: formData.status,
+        issued_date: formData.issuedDate || null,
+        expiry_date: formData.expiryDate || null,
+      };
+
       if (existingCerts && existingCerts.length > 0) {
         certId = existingCerts[0].id;
         await supabase
           .from('certifications')
-          .update({
-            cert_type: formData.certType,
-            level: formData.level,
-            score: totalScore,
-            target_score: formData.targetScore,
-            expiry_date: formData.expiryDate || null,
-            status: 'active',
-          })
+          .update(certPayload)
           .eq('id', certId);
       } else {
         const { data: newCert } = await supabase
           .from('certifications')
           .insert({
             site_id: siteId,
-            cert_type: formData.certType,
-            level: formData.level,
-            score: totalScore,
-            target_score: formData.targetScore,
-            expiry_date: formData.expiryDate || null,
-            status: 'active',
+            ...certPayload,
           })
           .select('id')
           .single();
@@ -176,7 +178,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
         requirement: CATEGORY_LABELS[m.category] || m.category,
         score: m.score,
         max_score: m.maxScore,
-        status: m.score >= m.maxScore && m.maxScore > 0 ? 'achieved' : 'in_progress',
+        status: m.score >= m.maxScore && m.maxScore > 0 ? 'achieved' : m.score > 0 ? 'in_progress' : 'pending',
       }));
 
       await supabase
@@ -252,8 +254,31 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Stato</Label>
+                  <Select value={formData.status} onValueChange={v => setFormData(p => ({ ...p, status: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in_progress">In corso</SelectItem>
+                      <SelectItem value="active">Attiva / Certificata</SelectItem>
+                      <SelectItem value="expired">Scaduta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Data di Certificazione</Label>
+                  <Input
+                    type="date"
+                    value={formData.issuedDate}
+                    onChange={e => setFormData(p => ({ ...p, issuedDate: e.target.value }))}
+                    placeholder="Data rilascio"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
-                <Label className="text-xs">Data Certificazione Attesa</Label>
+                <Label className="text-xs">Data Scadenza / Prossimo Audit</Label>
                 <Input
                   type="date"
                   value={formData.expiryDate}
