@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
@@ -4287,92 +4286,98 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {activeDashboard === "certification" && currentSlide === 0 && hasCertifications && (
               <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
-                  {/* LEED Card */}
-                  {hasLEED && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
-                        <span className="text-white font-black text-lg">LEED</span>
+                  
+                  {/* REAL LEED Card */}
+                  {hasLEED && (() => {
+                    const score = leedCert?.score || 0;
+                    const level = leedCert?.level || 'N/A';
+                    const type = leedCert?.cert_type || 'LEED';
+                    const pct = Math.min((score / 110) * 100, 100);
+                    const issuedDate = leedCert?.issued_date ? new Date(leedCert.issued_date).getFullYear() : null;
+                    
+                    return (
+                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
+                            <span className="text-white font-black text-lg">LEED</span>
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-800">{type}</h3>
+                            <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-semibold mt-1">{level}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Points obtained</span>
+                            <span className="font-bold text-gray-800">{score} / 110</span>
+                          </div>
+                          <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-500 mt-2">
+                            <span className={level === 'Certified' ? 'font-bold text-emerald-600' : ''}>Cert (40)</span>
+                            <span className={level === 'Silver' ? 'font-bold text-emerald-600' : ''}>Silver (50)</span>
+                            <span className={level === 'Gold' ? 'font-bold text-amber-600' : ''}>Gold (60)</span>
+                            <span className={level === 'Platinum' ? 'font-bold text-emerald-600' : ''}>Plat (80)</span>
+                          </div>
+                        </div>
+                        <div className="mt-6 pt-4 border-t border-gray-100">
+                          <div className="flex items-center gap-2 text-sm text-emerald-600">
+                            <div className={`w-2.5 h-2.5 rounded-full ${issuedDate ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                            <span className={issuedDate ? 'text-emerald-700' : 'text-amber-600'}>
+                              {issuedDate ? `Certified since ${issuedDate}` : (leedCert?.status === 'in_progress' ? 'In Progress' : (leedCert?.status || 'Pending Data'))}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-800">LEED v4.1</h3>
-                        <span className="inline-block px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">Gold</span>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Points obtained</span>
-                        <span className="font-bold text-gray-800">68 / 110</span>
-                      </div>
-                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all" style={{ width: '62%' }} />
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>Certified (40)</span>
-                        <span>Silver (50)</span>
-                        <span className="font-bold text-amber-600">Gold (60)</span>
-                        <span>Platinum (80)</span>
-                      </div>
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-sm text-emerald-600">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>Certified since 2023</span>
-                      </div>
-                    </div>
-                  </div>}
+                    );
+                  })()}
 
-                  {/* BREEAM Card */}
-                  {hasBREEAM && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg">
-                        <span className="text-white font-black text-xs">BREEAM</span>
+                  {/* BREEAM Card - Static Placeholder (Until DB hook is implemented) */}
+                  {hasBREEAM && (
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg opacity-70">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg">
+                          <span className="text-white font-black text-xs">BREEAM</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-800">BREEAM In-Use</h3>
+                          <span className="inline-block px-3 py-1 bg-sky-100 text-sky-800 rounded-full text-sm font-semibold mt-1">Pending</span>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-800">BREEAM In-Use</h3>
-                        <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-semibold">Excellent</span>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Score</span>
+                          <span className="font-bold text-gray-800">--%</span>
+                        </div>
+                        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-sky-400 to-sky-600 rounded-full transition-all" style={{ width: '0%' }} />
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mt-2">
+                          <span>Pass (30%)</span>
+                          <span>Good (45%)</span>
+                          <span>V.Good (55%)</span>
+                          <span>Exc (70%)</span>
+                          <span>Outs (85%)</span>
+                        </div>
+                      </div>
+                      <div className="mt-6 pt-4 border-t border-gray-100">
+                        <div className="text-xs italic text-gray-400">Data connection pending</div>
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Score</span>
-                        <span className="font-bold text-gray-800">72.5%</span>
-                      </div>
-                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-sky-400 to-sky-600 rounded-full transition-all" style={{ width: '72.5%' }} />
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>Pass (30%)</span>
-                        <span>Good (45%)</span>
-                        <span>V.Good (55%)</span>
-                        <span className="font-bold text-emerald-600">Exc (70%)</span>
-                        <span>Outs (85%)</span>
-                      </div>
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-sm text-sky-600">
-                        <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
-                        <span>Renewal: Dec 2025</span>
-                      </div>
-                    </div>
-                  </div>}
+                  )}
 
-                  {/* WELL Card - Dynamic */}
+                  {/* REAL WELL Card */}
                   {hasWELL && (() => {
-                    const wScore = wellCert?.score ?? 54;
-                    const wTarget = wellCert?.target_score ?? 100;
-                    const wType = wellCert?.cert_type ?? 'WELL v2';
-                    const wLevel = wellCert?.level ?? 'Silver';
-                    const wPercent = wTarget > 0 ? Math.round((wScore / wTarget) * 100) : 0;
-                    const levelThresholds = [
-                      { label: 'Bronze', value: 40 },
-                      { label: 'Silver', value: 50 },
-                      { label: 'Gold', value: 60 },
-                      { label: 'Platinum', value: 80 },
-                    ];
+                    const wScore = wellCert?.score || 0;
+                    const wTarget = wellCert?.target_score || 100;
+                    const wLevel = wellCert?.level || 'N/A';
+                    const wType = wellCert?.cert_type || 'WELL';
+                    const wPercent = wTarget > 0 ? Math.min((wScore / wTarget) * 100, 100) : 0;
+                    const wIssuedDate = wellCert?.issued_date ? new Date(wellCert.issued_date).getFullYear() : null;
 
                     return (
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                        {/* Header with target badge */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
                             <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
@@ -4380,20 +4385,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </div>
                             <div>
                               <h3 className="text-xl font-bold text-gray-800">{wType}</h3>
-                              <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm font-semibold">{wLevel}</span>
+                              <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm font-semibold mt-1">{wLevel}</span>
                             </div>
                           </div>
-                          {/* TARGETED POINTS badge */}
                           <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Targeted Points</div>
+                            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Target</div>
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm font-bold shadow">
                               <Gauge className="w-3.5 h-3.5" />
-                              {wTarget} POINTS
+                              {wTarget} PT
                             </div>
                           </div>
                         </div>
 
-                        {/* Score bar */}
                         <div className="space-y-3">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Points obtained</span>
@@ -4403,50 +4406,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all" style={{ width: `${wPercent}%` }} />
                           </div>
                           <div className="flex justify-between text-xs text-gray-500 mt-2">
-                            {levelThresholds.map(t => (
-                              <span key={t.label} className={wLevel === t.label ? 'font-bold text-gray-700' : ''}>
-                                {t.label} ({t.value})
-                              </span>
-                            ))}
+                            <span className={wLevel === 'Bronze' ? 'font-bold text-rose-600' : ''}>Bronze (40)</span>
+                            <span className={wLevel === 'Silver' ? 'font-bold text-rose-600' : ''}>Silver (50)</span>
+                            <span className={wLevel === 'Gold' ? 'font-bold text-amber-600' : ''}>Gold (60)</span>
+                            <span className={wLevel === 'Platinum' ? 'font-bold text-rose-600' : ''}>Plat (80)</span>
                           </div>
                         </div>
 
-                        {/* Milestones modules */}
-                        {wellMilestones.length > 0 && (
-                          <div className="mt-5 grid grid-cols-1 gap-3">
-                            {wellMilestones.map((m) => {
-                              const mPercent = m.max_score && m.max_score > 0 ? Math.round(((m.score || 0) / m.max_score) * 100) : 0;
-                              return (
-                                <div key={m.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                  {/* Circular progress */}
-                                  <div className="relative w-12 h-12 flex-shrink-0">
-                                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
-                                      <circle cx="18" cy="18" r="15" fill="none" stroke="#e5e7eb" strokeWidth="3" />
-                                      <circle cx="18" cy="18" r="15" fill="none" stroke="#009193" strokeWidth="3"
-                                        strokeDasharray={`${mPercent * 0.9425} 94.25`}
-                                        strokeLinecap="round" />
-                                    </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-gray-700">
-                                      {mPercent}%
-                                    </span>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-bold text-gray-800 uppercase">{m.category}</div>
-                                    <div className="text-[10px] text-gray-500">{m.score || 0}/{m.max_score || 0} Points</div>
-                                    <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                      <div className="h-full bg-sky-500 rounded-full" style={{ width: `${mPercent}%` }} />
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {/* I cerchietti piccoli del WELL sono stati spostati alla Slide 2 per pulizia, come richiesto dall'architettura a card pure */}
 
-                        <div className="mt-4 pt-3 border-t border-gray-100">
-                          <div className="flex items-center gap-2 text-sm text-amber-600">
-                            <div className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span>Progressing towards {wLevel === 'Platinum' ? 'Platinum' : levelThresholds.find(t => t.label === wLevel) ? levelThresholds[levelThresholds.findIndex(t => t.label === wLevel) + 1]?.label || wLevel : 'Gold'}</span>
+                        <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm font-semibold">
+                            <div className={`w-2.5 h-2.5 rounded-full ${wIssuedDate ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'}`} />
+                            <span className={wIssuedDate ? 'text-rose-700' : 'text-amber-600'}>
+                              {wIssuedDate ? `Certified since ${wIssuedDate}` : (wellCert?.status === 'in_progress' ? 'In Progress' : (wellCert?.status || 'Pending Data'))}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -4454,25 +4428,38 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   })()}
                 </div>
 
-                {/* Summary Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
-                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                    <div className="text-3xl font-black text-emerald-500">{projectCertifications.length}</div>
-                    <div className="text-sm text-gray-600 mt-1">Active Certifications</div>
-                  </div>
-                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                    <div className="text-3xl font-black text-amber-500">12</div>
-                    <div className="text-sm text-gray-600 mt-1">Milestones Reached</div>
-                  </div>
-                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                    <div className="text-3xl font-black text-sky-500">5</div>
-                    <div className="text-sm text-gray-600 mt-1">In Progress</div>
-                  </div>
-                  <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-                    <div className="text-3xl font-black text-rose-500">2026</div>
-                    <div className="text-sm text-gray-600 mt-1">Next Audit</div>
-                  </div>
-                </div>
+                {/* REAL DYNAMIC Summary Stats */}
+                {(() => {
+                  const activeCertsCount = [leedCert, wellCert].filter(c => c && c.status === 'active').length;
+                  const inProgressCount = [leedCert, wellCert].filter(c => c && c.status === 'in_progress').length;
+                  
+                  const allMilestones = [...(leedMilestones || []), ...(wellMilestones || [])];
+                  const achievedMilestones = allMilestones.filter(m => m.status === 'achieved' || m.status === 'completed').length;
+                  
+                  const dates = [leedCert?.expiry_date, wellCert?.expiry_date].filter(Boolean).map(d => new Date(d!).getFullYear());
+                  const nextAudit = dates.length > 0 ? Math.min(...dates).toString() : '—';
+
+                  return (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                        <div className="text-3xl font-black text-emerald-500">{activeCertsCount}</div>
+                        <div className="text-sm text-gray-600 mt-1">Active Certifications</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                        <div className="text-3xl font-black text-amber-500">{achievedMilestones}</div>
+                        <div className="text-sm text-gray-600 mt-1">Milestones Reached</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                        <div className="text-3xl font-black text-sky-500">{inProgressCount}</div>
+                        <div className="text-sm text-gray-600 mt-1">In Progress</div>
+                      </div>
+                      <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+                        <div className="text-3xl font-black text-rose-500">{nextAudit}</div>
+                        <div className="text-sm text-gray-600 mt-1">Next Audit</div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -4480,120 +4467,127 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {activeDashboard === "certification" && currentSlide === 1 && hasCertifications && (
               <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
-                  {/* LEED Milestones */}
-                  {hasLEED && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-xs">LEED</span>
-                      </div>
-                      <h3 className="text-lg font-bold text-gray-800">LEED Milestones</h3>
-                    </div>
-                    <div className="space-y-4">
-                      {[
-                        { name: 'Energy & Atmosphere', completed: true, points: '18/33' },
-                        { name: 'Water Efficiency', completed: true, points: '10/12' },
-                        { name: 'Materials & Resources', completed: true, points: '8/13' },
-                        { name: 'Indoor Environmental Quality', completed: false, points: '12/16' },
-                        { name: 'Sustainable Sites', completed: false, points: '10/26' },
-                        { name: 'Innovation', completed: true, points: '5/6' },
-                        { name: 'Regional Priority', completed: true, points: '4/4' },
-                      ].map((milestone, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${milestone.completed ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                            {milestone.completed ? '✓' : idx + 1}
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
-                            <div className="text-xs text-gray-500">{milestone.points} points</div>
-                          </div>
+                  
+                  {/* REAL LEED Milestones */}
+                  {hasLEED && (
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-emerald-100">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">LEED</span>
                         </div>
-                      ))}
+                        <h3 className="text-lg font-bold text-gray-800">LEED Milestones</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {(!leedMilestones || leedMilestones.length === 0) ? (
+                          <div className="text-center py-6">
+                            <p className="text-sm text-gray-500 italic">No milestones defined yet.</p>
+                            <p className="text-xs text-gray-400 mt-1">Add them via the Admin panel.</p>
+                          </div>
+                        ) : (
+                          // Ordiniamo per categoria o ID se vuoi un ordine preciso, qui li mostriamo come arrivano
+                          leedMilestones.map((m, idx) => {
+                            const isDone = m.status === 'achieved' || m.status === 'completed';
+                            return (
+                              <div key={m.id || idx} className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${isDone ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                                  {isDone ? '✓' : idx + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-700 truncate">
+                                    {m.category} {m.requirement ? `- ${m.requirement}` : ''}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    <span className={isDone ? 'text-emerald-600 font-semibold' : ''}>
+                                      {m.score || 0} / {m.max_score || 0} points
+                                    </span>
+                                    <span className="ml-2 px-1.5 py-0.5 rounded bg-gray-100 text-[10px] capitalize">
+                                      {m.status?.replace('_', ' ') || 'pending'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                  </div>}
+                  )}
 
-                  {/* BREEAM Milestones */}
-                  {hasBREEAM && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-[8px]">BREEAM</span>
-                      </div>
-                      <h3 className="text-lg font-bold text-gray-800">BREEAM Milestones</h3>
-                    </div>
-                    <div className="space-y-4">
-                      {[
-                        { name: 'Management', completed: true, score: '85%' },
-                        { name: 'Health & Wellbeing', completed: true, score: '78%' },
-                        { name: 'Energy', completed: true, score: '82%' },
-                        { name: 'Transport', completed: true, score: '65%' },
-                        { name: 'Water', completed: false, score: '70%' },
-                        { name: 'Materials', completed: false, score: '58%' },
-                        { name: 'Waste', completed: true, score: '72%' },
-                        { name: 'Land Use & Ecology', completed: false, score: '45%' },
-                        { name: 'Pollution', completed: true, score: '80%' },
-                      ].map((milestone, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${milestone.completed ? 'bg-sky-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                            {milestone.completed ? '✓' : idx + 1}
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
-                            <div className="text-xs text-gray-500">{milestone.score}</div>
-                          </div>
+                  {/* BREEAM Milestones Placeholder */}
+                  {hasBREEAM && (
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg opacity-70">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-[8px]">BREEAM</span>
                         </div>
-                      ))}
+                        <h3 className="text-lg font-bold text-gray-800">BREEAM Milestones</h3>
+                      </div>
+                      <div className="text-center py-6">
+                        <p className="text-sm text-gray-500 italic">Data mapping in progress.</p>
+                      </div>
                     </div>
-                  </div>}
+                  )}
 
-                  {/* WELL Milestones */}
-                  {hasWELL && <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-xs">WELL</span>
-                      </div>
-                      <h3 className="text-lg font-bold text-gray-800">WELL Milestones</h3>
-                    </div>
-                    <div className="space-y-4">
-                      {[
-                        { name: 'Air', completed: true, points: '8/14' },
-                        { name: 'Water', completed: true, points: '6/8' },
-                        { name: 'Nourishment', completed: false, points: '4/9' },
-                        { name: 'Light', completed: true, points: '7/10' },
-                        { name: 'Movement', completed: false, points: '5/10' },
-                        { name: 'Thermal Comfort', completed: true, points: '8/9' },
-                        { name: 'Sound', completed: true, points: '6/9' },
-                        { name: 'Materials', completed: false, points: '4/10' },
-                        { name: 'Mind', completed: false, points: '3/12' },
-                        { name: 'Community', completed: true, points: '3/9' },
-                      ].map((milestone, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${milestone.completed ? 'bg-rose-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                            {milestone.completed ? '✓' : idx + 1}
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-700">{milestone.name}</div>
-                            <div className="text-xs text-gray-500">{milestone.points} points</div>
-                          </div>
+                  {/* REAL WELL Milestones */}
+                  {hasWELL && (
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-rose-100">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">WELL</span>
                         </div>
-                      ))}
+                        <h3 className="text-lg font-bold text-gray-800">WELL Milestones</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {(!wellMilestones || wellMilestones.length === 0) ? (
+                          <div className="text-center py-6">
+                            <p className="text-sm text-gray-500 italic">No milestones defined yet.</p>
+                            <p className="text-xs text-gray-400 mt-1">Add them via the Admin panel.</p>
+                          </div>
+                        ) : (
+                          wellMilestones.map((m, idx) => {
+                            const isDone = m.status === 'achieved' || m.status === 'completed';
+                            return (
+                              <div key={m.id || idx} className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${isDone ? 'bg-rose-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                                  {isDone ? '✓' : idx + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-700 truncate">
+                                    {m.category} {m.requirement ? `- ${m.requirement}` : ''}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    <span className={isDone ? 'text-rose-600 font-semibold' : ''}>
+                                      {m.score || 0} / {m.max_score || 0} points
+                                    </span>
+                                    <span className="ml-2 px-1.5 py-0.5 rounded bg-gray-100 text-[10px] capitalize">
+                                      {m.status?.replace('_', ' ') || 'pending'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                  </div>}
+                  )}
                 </div>
 
-                {/* Timeline */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-6">Timeline Certificazioni</h3>
+                {/* Timeline (Kept as static layout structure but driven by existing certifications) */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg mb-8">
+                  <h3 className="text-lg font-bold text-gray-800 mb-6">Certification Timeline</h3>
                   <div className="relative">
                     <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
                     <div className="space-y-6">
                       {[
-                        { date: 'Gen 2023', event: 'LEED Gold Certification', type: 'leed' },
+                        { date: 'Gen 2023', event: 'LEED Registration', type: 'leed' },
                         { date: 'Mar 2023', event: 'BREEAM In-Use Assessment Started', type: 'breeam' },
-                        { date: 'Giu 2023', event: 'WELL Silver Achieved', type: 'well' },
-                        { date: 'Set 2023', event: 'BREEAM Excellent Certified', type: 'breeam' },
-                        { date: 'Gen 2024', event: 'WELL Gold Target Set', type: 'well' },
+                        { date: 'Giu 2023', event: 'WELL Registration', type: 'well' },
                         { date: 'Giu 2024', event: 'Mid-Year Performance Review', type: 'all' },
-                        { date: 'Dic 2025', event: 'BREEAM Renewal Due', type: 'breeam' },
-                        { date: 'Mar 2026', event: 'LEED Recertification', type: 'leed' },
+                        { date: leedCert?.issued_date ? new Date(leedCert.issued_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Future', event: 'LEED Certification Expected', type: 'leed' },
+                        { date: wellCert?.issued_date ? new Date(wellCert.issued_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Future', event: 'WELL Certification Expected', type: 'well' },
                       ].filter(item => item.type === 'all' || (item.type === 'leed' && hasLEED) || (item.type === 'breeam' && hasBREEAM) || (item.type === 'well' && hasWELL)).map((item, idx) => (
                         <div key={idx} className="relative pl-10">
                           <div className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white shadow ${
