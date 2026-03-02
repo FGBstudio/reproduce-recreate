@@ -4384,9 +4384,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-4">
-                              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg">
-                                <span className="text-white font-black text-lg">WELL</span>
-                              </div>
+                              <img 
+                                src="/well_logo.png" 
+                                alt="WELL Certification" 
+                                className="w-16 h-16 rounded-xl object-contain shadow-lg bg-white p-1" 
+                              />
                               <div>
                                 <h3 className="text-xl font-bold text-gray-800">{wType}</h3>
                                 <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm font-semibold mt-1">{wLevel}</span>
@@ -4532,9 +4534,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {hasWELL && (
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-rose-100">
                         <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-xs">WELL</span>
-                          </div>
+                          <img 
+                            src="/well-logo.png" 
+                            alt="WELL Logo" 
+                            className="w-10 h-10 rounded-lg object-contain shadow-md bg-white p-0.5" 
+                          />
                           <h3 className="text-lg font-bold text-gray-800">WELL Milestones</h3>
                         </div>
                         
