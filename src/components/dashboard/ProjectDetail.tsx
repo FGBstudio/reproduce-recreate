@@ -4470,9 +4470,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {hasLEED && (
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-emerald-100">
                         <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-xs">LEED</span>
-                          </div>
+                          <img 
+                            src="/leed_logo.png" 
+                            alt="LEED Logo" 
+                            className="w-10 h-10 rounded-lg object-contain shadow-md bg-white p-0.5" 
+                          />
                           <h3 className="text-lg font-bold text-gray-800">LEED Milestones</h3>
                         </div>
                         
