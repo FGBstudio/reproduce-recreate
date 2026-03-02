@@ -4614,7 +4614,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {/* CERTIFICATION DASHBOARD - Slide 3: LEED Detail */}
             {activeDashboard === "certification" && currentSlide === 2 && hasLEED && (
               <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)]">
-                <LEEDCertificationWidget leedCert={leedCert} milestones={leedMilestones} />
+                <LEEDCertificationWidget leedCert={leedCert} milestones={leedMilestones || []} />
               </div>
             )}
           </div>
