@@ -14,6 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      bill_data: {
+        Row: {
+          additional_data: Json | null
+          bill_id: string
+          billing_period_end: string | null
+          billing_period_start: string | null
+          created_at: string
+          currency: string | null
+          energy_consumption_kwh: number | null
+          energy_cost_per_kwh: number | null
+          fixed_charges: number | null
+          id: string
+          off_peak_consumption_kwh: number | null
+          peak_consumption_kwh: number | null
+          peak_power_kw: number | null
+          power_factor: number | null
+          reactive_energy_kvarh: number | null
+          taxes: number | null
+          total_amount: number | null
+          total_energy_cost: number | null
+        }
+        Insert: {
+          additional_data?: Json | null
+          bill_id: string
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string
+          currency?: string | null
+          energy_consumption_kwh?: number | null
+          energy_cost_per_kwh?: number | null
+          fixed_charges?: number | null
+          id?: string
+          off_peak_consumption_kwh?: number | null
+          peak_consumption_kwh?: number | null
+          peak_power_kw?: number | null
+          power_factor?: number | null
+          reactive_energy_kvarh?: number | null
+          taxes?: number | null
+          total_amount?: number | null
+          total_energy_cost?: number | null
+        }
+        Update: {
+          additional_data?: Json | null
+          bill_id?: string
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string
+          currency?: string | null
+          energy_consumption_kwh?: number | null
+          energy_cost_per_kwh?: number | null
+          fixed_charges?: number | null
+          id?: string
+          off_peak_consumption_kwh?: number | null
+          peak_consumption_kwh?: number | null
+          peak_power_kw?: number | null
+          power_factor?: number | null
+          reactive_energy_kvarh?: number | null
+          taxes?: number | null
+          total_amount?: number | null
+          total_energy_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_data_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bills: {
+        Row: {
+          company_name: string
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          site_id: string
+          status: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          site_id: string
+          status?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          site_id?: string
+          status?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           created_at: string | null
@@ -1268,6 +1383,7 @@ export type Database = {
           lng: number | null
           module_air_enabled: boolean | null
           module_air_show_demo: boolean | null
+          module_bill_analysis_enabled: boolean | null
           module_energy_enabled: boolean | null
           module_energy_show_demo: boolean | null
           module_water_enabled: boolean | null
@@ -1293,6 +1409,7 @@ export type Database = {
           lng?: number | null
           module_air_enabled?: boolean | null
           module_air_show_demo?: boolean | null
+          module_bill_analysis_enabled?: boolean | null
           module_energy_enabled?: boolean | null
           module_energy_show_demo?: boolean | null
           module_water_enabled?: boolean | null
@@ -1318,6 +1435,7 @@ export type Database = {
           lng?: number | null
           module_air_enabled?: boolean | null
           module_air_show_demo?: boolean | null
+          module_bill_analysis_enabled?: boolean | null
           module_energy_enabled?: boolean | null
           module_energy_show_demo?: boolean | null
           module_water_enabled?: boolean | null
