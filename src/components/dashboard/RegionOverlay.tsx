@@ -51,15 +51,14 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     return "POOR";
   }, [displayCo2]);
 
-  // === Per-site intensity data (MWh/m²) ===
+  // === Per-site intensity data (kWh/m²) ===
   const siteIntensityList = useMemo(() => {
     return aggregated.sites
       .map(site => {
         const project = regionProjects.find(p => p.siteId === site.siteId);
         const area = project?.area_m2 ?? 0;
         const kwh = site.energy.monthlyKwh ?? 0;
-        // Calcolo puro: (kwh / area) / 1000
-        const intensity = area > 0 ? (kwh / area) / 1000 : null;
+        const intensity = area > 0 ? (kwh / area) : null; // Nessuna divisione per 1000 qui
         return { name: site.siteName, intensity, kwh, area };
       })
       .filter(s => s.intensity !== null && s.intensity > 0)
@@ -205,7 +204,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                       </Tooltip>
                     </div>
                     <span className="text-xl font-bold text-foreground whitespace-nowrap ml-3">
-                      {activeFilters.includes('energy') && displayIntensity > 0 ? (displayIntensity / 1000).toFixed(2) : '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
+                      (displayIntensity / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }): '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
                     </span>
                   </div>
                   <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
@@ -234,7 +233,9 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                             <span className="text-muted-foreground/60 font-mono text-[10px] w-4 shrink-0">{i + 1}</span>
                             <span className="text-foreground leading-snug break-words">{s.name}</span>
                           </div>
-                          <span className="font-semibold text-foreground whitespace-nowrap shrink-0">{s.intensity?.toFixed(2)} <span className="text-muted-foreground font-normal">MWh/m²</span></span>
+                          <span className="font-semibold text-foreground whitespace-nowrap shrink-0">
+                            {s.intensity?.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal">kWh/m²</span>
+                          </span>
                         </div>
                       ))}
                     </div>
