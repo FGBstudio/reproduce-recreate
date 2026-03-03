@@ -204,7 +204,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                       </Tooltip>
                     </div>
                     <span className="text-xl font-bold text-foreground whitespace-nowrap ml-3">
-                      (displayIntensity / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }): '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
+                      {activeFilters.includes('energy') && displayIntensity > 0 ? (displayIntensity / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
                     </span>
                   </div>
                   <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
