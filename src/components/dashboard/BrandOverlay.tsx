@@ -70,7 +70,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       const airData = sitesWithAir.find(s => s.siteId === site.siteId);
       return {
         name: site.siteName,
-        kwh: Math.round(site.energy.monthlyKwh ?? 0),
+        kwh: site.energy.monthlyKwh ?? 0,
         co2: airData?.air.co2 ?? 0,
         isOnline: site.isOnline,
       };
@@ -91,7 +91,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   const energyLeaderboard = useMemo(() => {
     return sitesWithEnergy
       .filter(s => (s.energy.monthlyKwh ?? 0) > 0)
-      .map(s => ({ name: s.siteName, value: Math.round(s.energy.monthlyKwh ?? 0) }))
+      .map(s => ({ name: s.siteName, value: s.energy.monthlyKwh ?? 0 }))
       .sort((a, b) => b.value - a.value);
   }, [sitesWithEnergy]);
 
@@ -181,7 +181,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   const energyRankedList = useMemo(() => {
     return sitesWithEnergy
       .filter(s => (s.energy.monthlyKwh ?? 0) > 0)
-      .map(s => ({ name: s.siteName, kwh: Math.round(s.energy.monthlyKwh ?? 0) }))
+      .map(s => ({ name: s.siteName, kwh: s.energy.monthlyKwh ?? 0 }))
       .sort((a, b) => b.kwh - a.kwh);
   }, [sitesWithEnergy]);
 
@@ -345,7 +345,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </UITooltip>
                   </div>
                   <div className="text-2xl font-bold text-foreground mt-0.5">
-                    {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? (totals.monthlyEnergyKwh / 1000).toLocaleString() : '—'}
+                    {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}
                   </div>
                   <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.kwh_7d')}</div>
                 </div>
@@ -360,7 +360,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
                         <span className="text-[10px] text-muted-foreground w-4 text-right">{i + 1}.</span>
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
-                        <span className="text-xs font-semibold text-foreground tabular-nums">{s.kwh.toLocaleString()} <span className="text-muted-foreground font-normal">kWh</span></span>
+                        <span className="text-xs font-semibold text-foreground tabular-nums">{s.kwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal">kWh</span></span>
                       </div>
                     )) : (
                       <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
@@ -537,7 +537,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                           return (
                             <div className="glass-panel rounded-lg p-3 text-sm border border-white/10">
                               <p className="font-semibold text-foreground mb-1.5">{d.name}</p>
-                              <p className="text-muted-foreground">⚡ {d.kwh.toLocaleString()} kWh</p>
+                              <p className="text-muted-foreground">⚡ {d.kwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh</p>
                               <p className="text-muted-foreground">💨 {d.co2} ppm CO₂</p>
                             </div>
                           );
@@ -583,7 +583,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                               <div key={i} className="group">
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
-                                  <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-xs">kWh</span></span>
+                                  <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal text-xs">kWh</span></span>
                                 </div>
                                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                                   <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
@@ -770,7 +770,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="text-[10px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
               </div>
               <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterEnergy ? 'opacity-30 grayscale' : ''}`}>
-                <div className="text-base font-bold text-foreground">{filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString() : '—'}</div>
+                <div className="text-base font-bold text-foreground">{filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}</div>
                 <div className="text-[10px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
               </div>
               <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterAir ? 'opacity-30 grayscale' : ''}`}>
