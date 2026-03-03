@@ -345,9 +345,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </UITooltip>
                   </div>
                   <div className="text-2xl font-bold text-foreground mt-0.5">
-                    {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}
+                    {filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? (totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}
                   </div>
-                  <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.kwh_7d')}</div>
+                  <div className="text-[11px] uppercase text-muted-foreground mt-1">MWh (30d)</div>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
@@ -360,7 +360,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
                         <span className="text-[10px] text-muted-foreground w-4 text-right">{i + 1}.</span>
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
-                        <span className="text-xs font-semibold text-foreground tabular-nums">{s.kwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal">kWh</span></span>
+                        <span className="text-xs font-semibold text-foreground tabular-nums">{(s.kwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal">MWh</span></span>
                       </div>
                     )) : (
                       <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
@@ -496,7 +496,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {language === 'it' ? 'Energia (kWh) vs CO₂ (ppm) · Ultimi 30 giorni' : 'Energy (kWh) vs CO₂ (ppm) · Last 30 days'}
+                  {language === 'it' ? 'Energia (MWh) vs CO₂ (ppm) · Ultimi 30 giorni' : 'Energy (MWh) vs CO₂ (ppm) · Last 30 days'}
                 </p>
                 {/* Quadrant legend */}
                 <div className="flex flex-wrap gap-3 mb-4">
@@ -537,7 +537,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                           return (
                             <div className="glass-panel rounded-lg p-3 text-sm border border-white/10">
                               <p className="font-semibold text-foreground mb-1.5">{d.name}</p>
-                              <p className="text-muted-foreground">⚡ {d.kwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh</p>
+                              <p className="text-muted-foreground">⚡ {(d.kwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MWh</p>
                               <p className="text-muted-foreground">💨 {d.co2} ppm CO₂</p>
                             </div>
                           );
@@ -583,7 +583,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                               <div key={i} className="group">
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
-                                  <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal text-xs">kWh</span></span>
+                                  <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{(s.value / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal text-xs">MWh</span></span>
                                 </div>
                                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                                   <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
@@ -770,8 +770,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="text-[10px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
               </div>
               <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterEnergy ? 'opacity-30 grayscale' : ''}`}>
-                <div className="text-base font-bold text-foreground">{filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? totals.monthlyEnergyKwh.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">{t('brand.kwh_7d')}</div>
+                <div className="text-base font-bold text-foreground">{filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? (totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">MWh (30d)</div>
               </div>
               <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterAir ? 'opacity-30 grayscale' : ''}`}>
                 <div className="text-base font-bold text-foreground">{filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}</div>
