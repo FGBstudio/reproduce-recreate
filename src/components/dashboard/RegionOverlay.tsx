@@ -162,7 +162,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           : "opacity-0 -translate-x-10"
       }`}
     >
-      <div className="glass-panel p-6 rounded-2xl pointer-events-auto">
+      <div className={`glass-panel p-6 rounded-2xl ${visible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-serif text-foreground mb-1">{region.name}</h2>
