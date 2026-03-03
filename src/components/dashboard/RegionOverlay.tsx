@@ -51,13 +51,14 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     return "POOR";
   }, [displayCo2]);
 
-  // === Per-site intensity data (kWh/m²) ===
+  // === Per-site intensity data (MWh/m²) ===
   const siteIntensityList = useMemo(() => {
     return aggregated.sites
       .map(site => {
         const project = regionProjects.find(p => p.siteId === site.siteId);
         const area = project?.area_m2 ?? 0;
         const kwh = site.energy.monthlyKwh ?? 0;
+        // Calcolo puro: (kwh / area) / 1000
         const intensity = area > 0 ? (kwh / area) / 1000 : null;
         return { name: site.siteName, intensity, kwh, area };
       })
@@ -204,13 +205,13 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                       </Tooltip>
                     </div>
                     <span className="text-xl font-bold text-foreground whitespace-nowrap ml-3">
-                      {activeFilters.includes('energy') ? displayIntensity : '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
+                      {activeFilters.includes('energy') && displayIntensity > 0 ? (displayIntensity / 1000).toFixed(2) : '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
                     </span>
                   </div>
                   <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-400 h-full transition-all duration-700"
-                      style={{ width: `${activeFilters.includes('energy') ? Math.min(displayIntensity, 100) : 0}%` }}
+                      style={{ width: `${activeFilters.includes('energy') && displayIntensity > 0 ? Math.min((displayIntensity / 1000) * 100, 100) : 0}%` }}
                     />
                   </div>
                 </div>
@@ -233,7 +234,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                             <span className="text-muted-foreground/60 font-mono text-[10px] w-4 shrink-0">{i + 1}</span>
                             <span className="text-foreground leading-snug break-words">{s.name}</span>
                           </div>
-                          <span className="font-semibold text-foreground whitespace-nowrap shrink-0">{s.intensity} <span className="text-muted-foreground font-normal">kWh/m²</span></span>
+                          <span className="font-semibold text-foreground whitespace-nowrap shrink-0">{s.intensity?.toFixed(2)} <span className="text-muted-foreground font-normal">MWh/m²</span></span>
                         </div>
                       ))}
                     </div>
