@@ -98,10 +98,10 @@ const ReadingItem = ({ icon, label, value, unit, status = "good" }: ReadingItemP
         <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
           {icon}
         </div>
-        <span className="text-xs text-gray-600">{label}</span>
+        <span className="text-base text-gray-600">{label}</span>
       </div>
-      <div className={`text-sm font-semibold ${statusColors[status]}`}>
-        {value} <span className="text-xs text-gray-400 font-normal">{unit}</span>
+      <div className={`text-lg font-semibold ${statusColors[status]}`}>
+        {value} <span className="text-base text-gray-400 font-normal">{unit}</span>
       </div>
     </div>
   );
@@ -146,7 +146,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>
                 {status.level}
               </div>
-              <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+              <div className="text-base text-gray-500 font-medium uppercase tracking-wide">
                 {t('overview.overall_performance')}
               </div>
             </div>
@@ -159,7 +159,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>
                 {status.score}
               </div>
-              <div className="text-xs text-gray-500">{t('overview.score')}</div>
+              <div className="text-base text-gray-500">{t('overview.score')}</div>
             </div>
             
             <div className="hidden md:block h-12 w-px bg-gray-200" />
@@ -183,7 +183,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                   <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-1">
                     <Zap className="w-5 h-5 text-amber-600" />
                   </div>
-                  <div className="text-sm font-semibold text-gray-800">{energyScore}</div>
+                  <div className="text-lg font-semibold text-gray-800">{energyScore}</div>
                   <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.energy * 100)}%</div>
                 </div>
               )}
@@ -192,7 +192,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-1">
                     <Wind className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="text-sm font-semibold text-gray-800">{airScore}</div>
+                  <div className="text-lg font-semibold text-gray-800">{airScore}</div>
                   <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.air * 100)}%</div>
                 </div>
               )}
@@ -201,7 +201,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                   <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center mx-auto mb-1">
                     <Droplet className="w-5 h-5 text-cyan-600" />
                   </div>
-                  <div className="text-sm font-semibold text-gray-800">{waterScore}</div>
+                  <div className="text-lg font-semibold text-gray-800">{waterScore}</div>
                   <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.water * 100)}%</div>
                 </div>
               )}
@@ -214,7 +214,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               <div className="text-center bg-red-50 rounded-xl px-4 py-2">
                 <div className="flex items-center gap-1 justify-center">
                   <AlertTriangle className="w-5 h-5 text-red-500" />
-                  <span className="text-2xl md:text-3xl font-bold text-red-600">
+                  <span className="text-4xl md:text-3xl font-bold text-red-600">
                     {alertStatus.criticalCount + alertStatus.warningCount}
                   </span>
                 </div>
@@ -224,7 +224,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               </div>
             ) : (
               <div className="text-center bg-emerald-50 rounded-xl px-4 py-2">
-                <div className="text-2xl md:text-3xl font-bold text-emerald-600">0</div>
+                <div className="text-4xl md:text-3xl font-bold text-emerald-600">0</div>
                 <div className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">
                   {t('overview.active_alerts')}
                 </div>
@@ -238,7 +238,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                 <TrendingUp className="w-5 h-5" />
                 <span className="text-lg font-semibold">+5%</span>
               </div>
-              <div className="text-xs text-gray-500">{t('overview.vs_last_period')}</div>
+              <div className="text-base text-gray-500">{t('overview.vs_last_period')}</div>
             </div>
           </div>
         </div>
@@ -296,8 +296,8 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
               {t('overview.disabled')}
             </Badge>
           </div>
-          <div className="text-2xl font-bold text-gray-400 mb-1">N/A</div>
-          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{t('overview.energy_performance')}</div>
+          <div className="text-4xl font-bold text-gray-400 mb-1">N/A</div>
+          <div className="text-base text-gray-500 font-medium uppercase tracking-wide">{t('overview.energy_performance')}</div>
         </CardContent>
       </Card>
     );
@@ -324,7 +324,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.energy_performance')}</div>
+        <div className="text-base text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.energy_performance')}</div>
         
         {isStale && (
           <div className="bg-amber-50 text-amber-700 text-[10px] rounded-md px-2 py-1 mb-3 flex items-center gap-1">
@@ -336,10 +336,10 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
         {/* Total consumption highlight */}
           <div className="bg-white/60 rounded-lg p-3 mb-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">{t('overview.current_consumption')}</span>
+            <span className="text-lg text-gray-600">{t('overview.current_consumption')}</span>
             <div className="flex items-center gap-1">
-              <span className="text-2xl font-bold text-gray-800">{formatMaybe(readings.totalPower, 1)}</span>
-              <span className="text-sm text-gray-500">kW</span>
+              <span className="text-4xl font-bold text-gray-800">{formatMaybe(readings.totalPower, 1)}</span>
+              <span className="text-lg text-gray-500">kW</span>
             </div>
           </div>
         </div>
@@ -429,8 +429,8 @@ const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: {
               {t('overview.disabled')}
             </Badge>
           </div>
-          <div className="text-2xl font-bold text-gray-400 mb-1">N/A</div>
-          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{t('overview.indoor_air_quality')}</div>
+          <div className="text-4xl font-bold text-gray-400 mb-1">N/A</div>
+          <div className="text-base text-gray-500 font-medium uppercase tracking-wide">{t('overview.indoor_air_quality')}</div>
         </CardContent>
       </Card>
     );
@@ -455,7 +455,7 @@ const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: {
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.indoor_air_quality')}</div>
+        <div className="text-base text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.indoor_air_quality')}</div>
         
         {/* All parameters grid */}
         <div className="bg-white/40 rounded-lg p-3">
@@ -558,8 +558,8 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
               {t('overview.disabled')}
             </Badge>
           </div>
-          <div className="text-2xl font-bold text-gray-400 mb-1">N/A</div>
-          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{t('overview.water_consumption_title')}</div>
+          <div className="text-4xl font-bold text-gray-400 mb-1">N/A</div>
+          <div className="text-base text-gray-500 font-medium uppercase tracking-wide">{t('overview.water_consumption_title')}</div>
         </CardContent>
       </Card>
     );
@@ -584,12 +584,12 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.water_consumption_title')}</div>
+        <div className="text-base text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.water_consumption_title')}</div>
         
         {/* Main metrics */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-white/60 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-gray-800">{formatMaybeInt(readings.dailyConsumption)}</div>
+            <div className="text-4xl font-bold text-gray-800">{formatMaybeInt(readings.dailyConsumption)}</div>
             <div className="text-[10px] text-gray-500">{t('overview.l_day')}</div>
           </div>
           <div className="bg-white/60 rounded-lg p-3 text-center">
@@ -604,12 +604,12 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
         {/* Additional metrics */}
         <div className="bg-white/40 rounded-lg p-3">
           <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-            <span className="text-xs text-gray-600">{t('overview.efficiency')}</span>
-            <span className="text-sm font-semibold text-emerald-600">{readings.efficiency == null ? '—' : `${readings.efficiency}%`}</span>
+            <span className="text-base text-gray-600">{t('overview.efficiency')}</span>
+            <span className="text-lg font-semibold text-emerald-600">{readings.efficiency == null ? '—' : `${readings.efficiency}%`}</span>
           </div>
           <div className="flex items-center justify-between py-1.5">
-            <span className="text-xs text-gray-600">{t('overview.active_leaks')}</span>
-            <span className={`text-sm font-semibold ${readings.activeLeaks === 0 ? 'text-emerald-600' : readings.activeLeaks == null ? 'text-gray-500' : 'text-red-600'}`}>
+            <span className="text-base text-gray-600">{t('overview.active_leaks')}</span>
+            <span className={`text-lg font-semibold ${readings.activeLeaks === 0 ? 'text-emerald-600' : readings.activeLeaks == null ? 'text-gray-500' : 'text-red-600'}`}>
               {readings.activeLeaks == null ? '—' : readings.activeLeaks}
             </span>
           </div>
