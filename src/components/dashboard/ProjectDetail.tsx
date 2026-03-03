@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
@@ -38,6 +38,7 @@ import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 import { LEEDCertificationWidget } from "./LEEDCertificationWidget";
+import { BillAnalysisModule } from "./BillAnalysisModule";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
@@ -45,7 +46,7 @@ import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
 
 // Dashboard types
-type DashboardType = "overview" | "energy" | "air" | "water" | "certification";
+type DashboardType = "overview" | "energy" | "air" | "water" | "certification" | "bills";
 
 // Chart axis styling
 const axisStyle = {
