@@ -245,6 +245,21 @@ export const ProjectsManager = () => {
                           ))}
                         </div>
                       </div>
+
+                      {/* Bill Analysis Module Toggle */}
+                      <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg mt-4">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="w-4 h-4" />
+                          <span className="font-medium">Bill Analysis</span>
+                        </div>
+                        <div className="flex items-center gap-2 ml-auto">
+                          <Label className="text-sm text-slate-600">Attivo</Label>
+                          <Switch
+                            checked={billAnalysisEnabled}
+                            onCheckedChange={setBillAnalysisEnabled}
+                          />
+                        </div>
+                      </div>
                     </TabsContent>
 
                     {(['energy', 'air', 'water'] as ModuleType[]).map(module => (
