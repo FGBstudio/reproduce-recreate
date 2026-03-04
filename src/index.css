@@ -224,26 +224,34 @@
   }
 }
 
-/* Custom Scrollbar Elegante per i Widget Dark */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px; /* Sottile e discreta */
+/* Global Elegant Scrollbar — matches dark glassmorphism theme */
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent; /* Nessuno sfondo grigio tozzo */
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15); /* Bianco appena visibile */
-  border-radius: 10px; /* Bordi curvi eleganti */
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--fgb-accent) / 0.25);
+  border-radius: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3); /* Leggero feedback visivo al passaggio del mouse */
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--fgb-accent) / 0.45);
 }
 
-/* Fallback per Firefox */
-.custom-scrollbar {
+/* Firefox */
+* {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: hsl(var(--fgb-accent) / 0.25) transparent;
 }
+
+/* Legacy class kept for backward compat */
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--fgb-accent) / 0.25); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--fgb-accent) / 0.45); }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: hsl(var(--fgb-accent) / 0.25) transparent; }
