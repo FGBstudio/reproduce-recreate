@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, FolderKanban, MapPin, Zap, Wind, Droplet, Award, ToggleLeft, ToggleRight, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderKanban, MapPin, Zap, Wind, Droplet, Award, ToggleLeft, ToggleRight, Eye, Receipt } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { AdminProject, CertificationType, defaultProjectModules, ModuleType } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -42,6 +43,7 @@ export const ProjectsManager = () => {
     modules: JSON.parse(JSON.stringify(defaultProjectModules)),
     certifications: [],
   });
+  const [billAnalysisEnabled, setBillAnalysisEnabled] = useState(false);
 
   const handleOpenCreate = () => {
     setEditingProject(null);
