@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, FolderKanban, MapPin, Zap, Wind, Droplet, Award, ToggleLeft, ToggleRight, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderKanban, MapPin, Zap, Wind, Droplet, Award, ToggleLeft, ToggleRight, Eye, Receipt } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { AdminProject, CertificationType, defaultProjectModules, ModuleType } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -42,6 +43,7 @@ export const ProjectsManager = () => {
     modules: JSON.parse(JSON.stringify(defaultProjectModules)),
     certifications: [],
   });
+  const [billAnalysisEnabled, setBillAnalysisEnabled] = useState(false);
 
   const handleOpenCreate = () => {
     setEditingProject(null);
@@ -52,6 +54,7 @@ export const ProjectsManager = () => {
       modules: JSON.parse(JSON.stringify(defaultProjectModules)),
       certifications: [],
     });
+    setBillAnalysisEnabled(false);
     setIsDialogOpen(true);
   };
 
@@ -64,6 +67,11 @@ export const ProjectsManager = () => {
       modules: JSON.parse(JSON.stringify(project.modules)),
       certifications: [...project.certifications],
     });
+    // Load bill analysis flag from DB
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('sites').select('module_bill_analysis_enabled').eq('id', project.siteId).single()
+        .then(({ data }) => setBillAnalysisEnabled(data?.module_bill_analysis_enabled ?? false));
+    }
     setIsDialogOpen(true);
   };
 
@@ -77,6 +85,11 @@ export const ProjectsManager = () => {
         await updateProject(editingProject.id, formData);
       } else {
         await addProject(formData);
+      }
+      // Persist bill analysis flag
+      const targetSiteId = editingProject ? editingProject.siteId : formData.siteId;
+      if (isSupabaseConfigured && supabase && targetSiteId) {
+        await supabase.from('sites').update({ module_bill_analysis_enabled: billAnalysisEnabled }).eq('id', targetSiteId);
       }
       setIsDialogOpen(false);
     } finally {
@@ -230,6 +243,21 @@ export const ProjectsManager = () => {
                               <span className="text-sm">{cert}</span>
                             </label>
                           ))}
+                        </div>
+                      </div>
+
+                      {/* Bill Analysis Module Toggle */}
+                      <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg mt-4">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="w-4 h-4" />
+                          <span className="font-medium">Bill Analysis</span>
+                        </div>
+                        <div className="flex items-center gap-2 ml-auto">
+                          <Label className="text-sm text-slate-600">Attivo</Label>
+                          <Switch
+                            checked={billAnalysisEnabled}
+                            onCheckedChange={setBillAnalysisEnabled}
+                          />
                         </div>
                       </div>
                     </TabsContent>

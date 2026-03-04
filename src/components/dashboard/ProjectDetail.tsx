@@ -246,6 +246,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const hasWELL = projectCertifications.includes('WELL') || !!wellCert;
   const hasCertifications = hasLEED || hasBREEAM || hasWELL;
 
+  // Bill Analysis module enabled check
+  const [hasBillAnalysis, setHasBillAnalysis] = useState(false);
+  useEffect(() => {
+    if (!project?.siteId || !isSupabaseConfigured || !supabase) return;
+    supabase
+      .from('sites')
+      .select('module_bill_analysis_enabled')
+      .eq('id', project.siteId)
+      .single()
+      .then(({ data }) => {
+        setHasBillAnalysis(data?.module_bill_analysis_enabled ?? false);
+      });
+  }, [project?.siteId]);
+
   // Get module configuration for this project
   const moduleConfig = useProjectModuleConfig(project);
 
@@ -650,6 +664,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       case "air": return 3;
       case "water": return 3;
       case "certification": return hasLEED ? 3 : 2;
+      case "bills": return 1;
       default: return 4;
     }
   };
@@ -2512,6 +2527,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 title="Certification Dashboard"
               >
                 <Award className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            )}
+            {hasBillAnalysis && (
+              <button 
+                onClick={() => handleDashboardChange("bills")}
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                  activeDashboard === "bills" 
+                    ? "bg-fgb-secondary text-white" 
+                    : "bg-white/50 text-gray-600 hover:bg-white/80"
+                }`}
+                title="Bill Analysis"
+              >
+                <Receipt className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             )}
             {/* Time Period Selector & Export */}
@@ -4615,6 +4643,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 )}
               </>
+            )}
+
+            {/* BILL ANALYSIS DASHBOARD */}
+            {activeDashboard === "bills" && hasBillAnalysis && (
+              <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100%-80px)] pb-4">
+                <BillAnalysisModule siteId={project?.siteId || ''} />
+              </div>
             )}
           </div>
         </div>
