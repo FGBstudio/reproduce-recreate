@@ -54,6 +54,7 @@ export const ProjectsManager = () => {
       modules: JSON.parse(JSON.stringify(defaultProjectModules)),
       certifications: [],
     });
+    setBillAnalysisEnabled(false);
     setIsDialogOpen(true);
   };
 
@@ -66,6 +67,11 @@ export const ProjectsManager = () => {
       modules: JSON.parse(JSON.stringify(project.modules)),
       certifications: [...project.certifications],
     });
+    // Load bill analysis flag from DB
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('sites').select('module_bill_analysis_enabled').eq('id', project.siteId).single()
+        .then(({ data }) => setBillAnalysisEnabled(data?.module_bill_analysis_enabled ?? false));
+    }
     setIsDialogOpen(true);
   };
 
