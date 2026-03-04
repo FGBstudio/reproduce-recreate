@@ -86,6 +86,11 @@ export const ProjectsManager = () => {
       } else {
         await addProject(formData);
       }
+      // Persist bill analysis flag
+      const targetSiteId = editingProject ? editingProject.siteId : formData.siteId;
+      if (isSupabaseConfigured && supabase && targetSiteId) {
+        await supabase.from('sites').update({ module_bill_analysis_enabled: billAnalysisEnabled }).eq('id', targetSiteId);
+      }
       setIsDialogOpen(false);
     } finally {
       setIsSubmitting(false);
