@@ -44,6 +44,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
+import { IAQGradientDefs, gradientAxisLine } from "@/lib/airQualityGradients";
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification" | "bills";
@@ -3689,9 +3690,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <ResponsiveContainer width="100%" height={200}>
                         <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <IAQGradientDefs keys={['co2']} />
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('co2')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           {selectedAirDevices.map((d) => (
@@ -3718,9 +3720,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <ResponsiveContainer width="100%" height={200}>
                         <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <IAQGradientDefs keys={['tvoc']} />
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('tvoc')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           {selectedAirDevices.map((d) => (
@@ -3747,10 +3750,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <IAQGradientDefs keys={['tempInline', 'humidityInline']} />
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis yAxisId="temp" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis yAxisId="temp" tick={axisStyle} axisLine={gradientAxisLine('tempInline')} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={gradientAxisLine('humidityInline')} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           {selectedAirDevices.map((d) => (
@@ -3798,9 +3802,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <ResponsiveContainer width="100%" height={250}>
                         <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <IAQGradientDefs keys={['pm25']} />
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('pm25')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           {selectedAirDevices.map((d) => (
@@ -3834,9 +3839,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <ResponsiveContainer width="100%" height={250}>
                         <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <IAQGradientDefs keys={['pm10']} />
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('pm10')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                           {selectedAirDevices.map((d) => (
@@ -5010,9 +5016,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={co2MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <IAQGradientDefs keys={['co2']} />
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} />
+            <YAxis tick={axisStyle} axisLine={gradientAxisLine('co2')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} />
             <Tooltip {...tooltipStyle} />
             <Legend />
             {selectedAirDevices.map((d) => (
@@ -5039,9 +5046,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={tvocMultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <IAQGradientDefs keys={['tvoc']} />
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} />
+            <YAxis tick={axisStyle} axisLine={gradientAxisLine('tvoc')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} />
             <Tooltip {...tooltipStyle} />
             <Legend />
             {selectedAirDevices.map((d) => (
@@ -5068,10 +5076,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
+            <IAQGradientDefs keys={['temp', 'humidity']} />
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis yAxisId="temp" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
-            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 100]} label={{ value: '%HR', angle: 90, position: 'insideRight' }} />
+            <YAxis yAxisId="temp" tick={axisStyle} axisLine={gradientAxisLine('temp')} tickLine={{ stroke: '#e2e8f0' }} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
+            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={gradientAxisLine('humidity')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 100]} label={{ value: '%HR', angle: 90, position: 'insideRight' }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
             {selectedAirDevices.map((d) => (
@@ -5111,9 +5120,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={pm25MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <IAQGradientDefs keys={['pm25']} />
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+            <YAxis tick={axisStyle} axisLine={gradientAxisLine('pm25')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
             {selectedAirDevices.map((d) => (
@@ -5144,9 +5154,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={pm10MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <IAQGradientDefs keys={['pm10']} />
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-            <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+            <YAxis tick={axisStyle} axisLine={gradientAxisLine('pm10')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
             {selectedAirDevices.map((d) => (
