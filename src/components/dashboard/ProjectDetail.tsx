@@ -6,7 +6,7 @@ import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati re
 import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 
 import {
-  LineChart, Line, BarChart, Bar, AreaChart, Area,
+  LineChart, Line, BarChart, Bar, AreaChart, Area, ReferenceArea, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
@@ -3712,10 +3712,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
                       <div className="relative w-full h-[200px]">
-                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('co2') }} />
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="gradCO2" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" />
+                                <stop offset="16%" stopColor="#ef4444" />
+                                <stop offset="16%" stopColor="#eab308" />
+                                <stop offset="33%" stopColor="#eab308" />
+                                <stop offset="33%" stopColor="#10b981" />
+                                <stop offset="100%" stopColor="#10b981" />
+                              </linearGradient>
+                            </defs>
                             <CartesianGrid {...gridStyle} />
+                            <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2)" fillOpacity={0.15} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
@@ -3736,10 +3746,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
                       <div className="relative w-full h-[200px]">
-                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('tvoc') }} />
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="gradTVOC" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" />
+                                <stop offset="16%" stopColor="#ef4444" />
+                                <stop offset="16%" stopColor="#eab308" />
+                                <stop offset="58%" stopColor="#eab308" />
+                                <stop offset="58%" stopColor="#10b981" />
+                                <stop offset="100%" stopColor="#10b981" />
+                              </linearGradient>
+                            </defs>
                             <CartesianGrid {...gridStyle} />
+                            <ReferenceArea y1={0} y2={600} fill="url(#gradTVOC)" fillOpacity={0.15} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
@@ -3760,13 +3780,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
                       <div className="relative w-full h-[220px]">
-                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('temperature') }} />
-                        <div className="absolute right-[45px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('humidity') }} />
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="gradTemp" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" />
+                                <stop offset="36%" stopColor="#ef4444" />
+                                <stop offset="36%" stopColor="#10b981" />
+                                <stop offset="68%" stopColor="#10b981" />
+                                <stop offset="68%" stopColor="#3b82f6" />
+                                <stop offset="100%" stopColor="#3b82f6" />
+                              </linearGradient>
+                            </defs>
                             <CartesianGrid {...gridStyle} />
+                            <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTemp)" fillOpacity={0.15} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
@@ -3796,10 +3825,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
                       <div className="relative w-full h-[250px]">
-                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('pm25') }} />
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="gradPM25" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" />
+                                <stop offset="50%" stopColor="#ef4444" />
+                                <stop offset="50%" stopColor="#eab308" />
+                                <stop offset="70%" stopColor="#eab308" />
+                                <stop offset="70%" stopColor="#10b981" />
+                                <stop offset="100%" stopColor="#10b981" />
+                              </linearGradient>
+                            </defs>
                             <CartesianGrid {...gridStyle} />
+                            <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={0.15} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
@@ -3827,10 +3866,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
                       <div className="relative w-full h-[250px]">
-                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('pm10') }} />
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="gradPM10" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" />
+                                <stop offset="37.5%" stopColor="#ef4444" />
+                                <stop offset="37.5%" stopColor="#eab308" />
+                                <stop offset="68.75%" stopColor="#eab308" />
+                                <stop offset="68.75%" stopColor="#10b981" />
+                                <stop offset="100%" stopColor="#10b981" />
+                              </linearGradient>
+                            </defs>
                             <CartesianGrid {...gridStyle} />
+                            <ReferenceArea y1={0} y2={80} fill="url(#gradPM10)" fillOpacity={0.15} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
@@ -3911,11 +3960,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
                       <div className="relative w-full h-[280px]">
-                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('co') }} />
-                        <div className="absolute right-[45px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('o3') }} />
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                             <CartesianGrid {...gridStyle} />
+                            <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.05} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
                             <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
@@ -4983,10 +5031,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`CO₂ Trend (${periodLabel})`}
       >
         <div className="relative w-full h-[500px]">
-          <div className="absolute left-[38px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('co2') }} />
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={co2MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradCO2FS" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="16%" stopColor="#ef4444" />
+                  <stop offset="16%" stopColor="#eab308" />
+                  <stop offset="33%" stopColor="#eab308" />
+                  <stop offset="33%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#10b981" />
+                </linearGradient>
+              </defs>
               <CartesianGrid {...gridStyle} />
+              <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2FS)" fillOpacity={0.15} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} />
               <Tooltip {...tooltipStyle} />
@@ -5007,10 +5065,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`TVOC Trend (${periodLabel})`}
       >
         <div className="relative w-full h-[500px]">
-          <div className="absolute left-[38px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('tvoc') }} />
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={tvocMultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradTVOCFS" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="16%" stopColor="#ef4444" />
+                  <stop offset="16%" stopColor="#eab308" />
+                  <stop offset="58%" stopColor="#eab308" />
+                  <stop offset="58%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#10b981" />
+                </linearGradient>
+              </defs>
               <CartesianGrid {...gridStyle} />
+              <ReferenceArea y1={0} y2={600} fill="url(#gradTVOCFS)" fillOpacity={0.15} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} />
               <Tooltip {...tooltipStyle} />
@@ -5031,11 +5099,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`Temperature & Humidity (${periodLabel})`}
       >
         <div className="relative w-full h-[500px]">
-          <div className="absolute left-[38px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('temperature') }} />
-          <div className="absolute right-[45px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('humidity') }} />
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradTempFS" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="36%" stopColor="#ef4444" />
+                  <stop offset="36%" stopColor="#10b981" />
+                  <stop offset="68%" stopColor="#10b981" />
+                  <stop offset="68%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
               <CartesianGrid {...gridStyle} />
+              <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTempFS)" fillOpacity={0.15} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
               <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 100]} label={{ value: '%HR', angle: 90, position: 'insideRight' }} />
@@ -5059,10 +5136,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`PM2.5 - Fine Particulate (${periodLabel})`}
       >
         <div className="relative w-full h-[500px]">
-          <div className="absolute left-[38px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('pm25') }} />
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={pm25MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradPM25FS" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="50%" stopColor="#ef4444" />
+                  <stop offset="50%" stopColor="#eab308" />
+                  <stop offset="70%" stopColor="#eab308" />
+                  <stop offset="70%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#10b981" />
+                </linearGradient>
+              </defs>
               <CartesianGrid {...gridStyle} />
+              <ReferenceArea y1={0} y2={50} fill="url(#gradPM25FS)" fillOpacity={0.15} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} />
@@ -5087,10 +5174,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`PM10 - Coarse Particulate (${periodLabel})`}
       >
         <div className="relative w-full h-[500px]">
-          <div className="absolute left-[38px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('pm10') }} />
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={pm10MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradPM10FS" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="37.5%" stopColor="#ef4444" />
+                  <stop offset="37.5%" stopColor="#eab308" />
+                  <stop offset="68.75%" stopColor="#eab308" />
+                  <stop offset="68.75%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#10b981" />
+                </linearGradient>
+              </defs>
               <CartesianGrid {...gridStyle} />
+              <ReferenceArea y1={0} y2={80} fill="url(#gradPM10FS)" fillOpacity={0.15} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} />
@@ -5115,11 +5212,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title="Carbon Monoxide (CO) & Ozone (O₃)"
       >
         <div className="relative w-full h-[500px]">
-          <div className="absolute left-[38px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('co') }} />
-          <div className="absolute right-[45px] top-[10px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('o3') }} />
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={coO3MultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
+              <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.05} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
               <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
