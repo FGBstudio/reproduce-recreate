@@ -1,4 +1,5 @@
 import React from "react";
+import { Customized } from "recharts";
 
 /**
  * Air Quality Y-axis gradient configurations.
@@ -142,13 +143,9 @@ export const gradientConfigs: Record<string, GradientConfig> = {
   },
 };
 
-// ─── React SVG <defs> component ─────────────────────────────────
+// ─── Raw SVG defs renderer (used inside <Customized>) ───────────
 
-/** Renders one or more gradient <defs> inside a Recharts chart.
- *  Usage: place `<IAQGradientDefs keys={['co2','tvoc']} />` as a
- *  child of <LineChart> (Recharts renders unknown children into the SVG).
- */
-export const IAQGradientDefs = ({ keys }: { keys: string[] }) => {
+const IAQGradientDefsRenderer = ({ keys, formattedGraphicalItems }: { keys: string[]; formattedGraphicalItems?: any }) => {
   return (
     <defs>
       {keys.map((k) => {
@@ -164,6 +161,20 @@ export const IAQGradientDefs = ({ keys }: { keys: string[] }) => {
         );
       })}
     </defs>
+  );
+};
+
+// ─── React component for Recharts ───────────────────────────────
+
+/** Renders gradient <defs> using Recharts' <Customized> component.
+ *  Usage: place `<IAQGradientDefs keys={['co2','tvoc']} />` as a
+ *  child of <LineChart>.
+ */
+export const IAQGradientDefs = ({ keys }: { keys: string[] }) => {
+  return (
+    <Customized
+      component={(props: any) => <IAQGradientDefsRenderer keys={keys} {...props} />}
+    />
   );
 };
 
