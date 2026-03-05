@@ -44,7 +44,30 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
-import { IAQGradientDefs, gradientAxisLine } from "@/lib/airQualityGradients";
+
+// Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
+const getIAQGradient = (type: string) => {
+  switch (type) {
+    case 'temperature':
+      return "linear-gradient(to top, #3b82f6 0%, #3b82f6 32%, #10b981 32%, #10b981 64%, #ef4444 64%, #ef4444 100%)";
+    case 'humidity':
+      return "linear-gradient(to top, #eab308 0%, #eab308 30%, #10b981 30%, #10b981 60%, #ef4444 60%, #ef4444 100%)";
+    case 'co2':
+      return "linear-gradient(to top, #10b981 0%, #10b981 25%, #eab308 25%, #eab308 37.5%, #ef4444 37.5%, #ef4444 100%)";
+    case 'tvoc':
+      return "linear-gradient(to top, #10b981 0%, #10b981 25%, #eab308 25%, #eab308 50%, #ef4444 50%, #ef4444 100%)";
+    case 'pm25':
+      return "linear-gradient(to top, #10b981 0%, #10b981 30%, #eab308 30%, #eab308 50%, #ef4444 50%, #ef4444 100%)";
+    case 'pm10':
+      return "linear-gradient(to top, #10b981 0%, #10b981 25%, #eab308 25%, #eab308 50%, #ef4444 50%, #ef4444 100%)";
+    case 'co':
+      return "linear-gradient(to top, #10b981 0%, #10b981 20%, #eab308 20%, #eab308 45%, #ef4444 45%, #ef4444 100%)";
+    case 'o3':
+      return "linear-gradient(to top, #10b981 0%, #10b981 30%, #eab308 30%, #eab308 60%, #ef4444 60%, #ef4444 100%)";
+    default:
+      return "#e2e8f0";
+  }
+};
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification" | "bills";
@@ -3688,28 +3711,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <h3 className="text-lg font-bold text-gray-800">CO₂ Trend ({periodLabel})</h3>
                         <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <IAQGradientDefs keys={['co2']} />
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('co2')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={d.id}
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.5}
-                              dot={false}
-                              name={airDeviceLabelById.get(d.id) || d.id}
-                            />
-                          ))}
-                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <div className="relative w-full h-[200px]">
+                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('co2') }} />
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <CartesianGrid {...gridStyle} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            {selectedAirDevices.map((d) => (
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                            ))}
+                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
 
                     {/* TVOC Trend Chart */}
@@ -3718,28 +3735,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <h3 className="text-lg font-bold text-gray-800">TVOC Trend ({periodLabel})</h3>
                         <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <IAQGradientDefs keys={['tvoc']} />
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('tvoc')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={d.id}
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.5}
-                              dot={false}
-                              name={airDeviceLabelById.get(d.id) || d.id}
-                            />
-                          ))}
-                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limit" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <div className="relative w-full h-[200px]">
+                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('tvoc') }} />
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <CartesianGrid {...gridStyle} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            {selectedAirDevices.map((d) => (
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                            ))}
+                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limit" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
 
                     {/* Temperature & Humidity Chart - Full Width */}
@@ -3748,42 +3759,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <h3 className="text-lg font-bold text-gray-800">Temperature & Relative Humidity ({periodLabel})</h3>
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
-                          <IAQGradientDefs keys={['tempInline', 'humidityInline']} />
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis yAxisId="temp" tick={axisStyle} axisLine={gradientAxisLine('tempInline')} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={gradientAxisLine('humidityInline')} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={`${d.id}-temp`}
-                              yAxisId="temp"
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}_temp`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.25}
-                              dot={false}
-                              name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`}
-                            />
-                          ))}
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={`${d.id}-hum`}
-                              yAxisId="humidity"
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}_hum`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.25}
-                              strokeDasharray="4 4"
-                              dot={false}
-                              name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`}
-                            />
-                          ))}
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <div className="relative w-full h-[220px]">
+                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('temperature') }} />
+                        <div className="absolute right-[45px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('humidity') }} />
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                            <CartesianGrid {...gridStyle} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                            <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[18, 28]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            {selectedAirDevices.map((d) => (
+                              <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
+                            ))}
+                            {selectedAirDevices.map((d) => (
+                              <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={2.25} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3800,28 +3795,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <IAQGradientDefs keys={['pm25']} />
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('pm25')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={d.id}
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.25}
-                              dot={false}
-                              name={airDeviceLabelById.get(d.id) || d.id}
-                            />
-                          ))}
-                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <div className="relative w-full h-[250px]">
+                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('pm25') }} />
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <CartesianGrid {...gridStyle} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            {selectedAirDevices.map((d) => (
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                            ))}
+                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                         <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
                         <span>WHO Limit: 25 μg/m³</span>
@@ -3837,28 +3826,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <IAQGradientDefs keys={['pm10']} />
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis tick={axisStyle} axisLine={gradientAxisLine('pm10')} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={d.id}
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.25}
-                              dot={false}
-                              name={airDeviceLabelById.get(d.id) || d.id}
-                            />
-                          ))}
-                          <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <div className="relative w-full h-[250px]">
+                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('pm10') }} />
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <CartesianGrid {...gridStyle} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            {selectedAirDevices.map((d) => (
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                            ))}
+                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                         <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
                         <span>WHO Limit: 50 μg/m³</span>
@@ -3927,41 +3910,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={280}>
-                        <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                          <YAxis yAxisId="co" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                          <Tooltip {...tooltipStyle} />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={`${d.id}-co`}
-                              yAxisId="co"
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}_co`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.25}
-                              dot={false}
-                              name={`${airDeviceLabelById.get(d.id) || d.id} · CO`}
-                            />
-                          ))}
-                          {selectedAirDevices.map((d) => (
-                            <Line
-                              key={`${d.id}-o3`}
-                              yAxisId="o3"
-                              type="monotone"
-                              dataKey={`d_${d.id.replace(/-/g, "")}_o3`}
-                              stroke={airColorById.get(d.id)}
-                              strokeWidth={2.25}
-                              strokeDasharray="4 4"
-                              dot={false}
-                              name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`}
-                            />
-                          ))}
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <div className="relative w-full h-[280px]">
+                        <div className="absolute left-[38px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('co') }} />
+                        <div className="absolute right-[45px] top-[5px] bottom-[30px] w-1.5 rounded-full opacity-90 z-10" style={{ background: getIAQGradient('o3') }} />
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                            <CartesianGrid {...gridStyle} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            {selectedAirDevices.map((d) => (
+                              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
+                            ))}
+                            {selectedAirDevices.map((d) => (
+                              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={2.25} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
 
                     {/* Real-time Gas indicators */}
