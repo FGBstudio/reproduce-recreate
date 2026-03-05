@@ -1014,10 +1014,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const val = Number(d.value_avg ?? d.value);
       if (isNaN(val)) return;
 
-     // E. Assegnazione Valori
+    // E. Assegnazione Valori
       if (energyViewMode === 'category') {
-        // ADD THIS CHECK: Ignore '_component' devices in category view
-        if (deviceInfo.label?.includes('_component')) {
+        const isComponent = (deviceInfo.category || '').toLowerCase().includes('component') || 
+                            (deviceInfo.label || '').toLowerCase().includes('component');
+        
+        // Skip components completely in Category View
+        if (isComponent) {
             return; 
         }
 
@@ -1030,10 +1033,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         } else if (cat === 'lighting') {
             entry.Lighting += val;
         } else {
-            entry.Other += val; // Only real "Other" devices will reach here now
+            entry.Other += val;
         }
       } else {
-        // Vista Device Singolo (Here _component WILL still be counted)
+        // Vista Device Singolo (Components WILL show here, which is correct)
         const circuitKey = deviceInfo.label;
         entry[circuitKey] = (entry[circuitKey] || 0) + val;
       }
@@ -1105,12 +1108,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const parts = getPartsInTz(dateObj, siteTz);
       const isDay = parts.hour >= DAY_START && parts.hour < DAY_END;
 
-      // 2. Safe Power calculation
+     // 2. Safe Power calculation
       let totalKw = point.General || 0;
       if (!totalKw) {
           Object.keys(point).forEach(k => {
               if (k !== 'ts' && k !== 'label' && typeof point[k] === 'number') {
-                  totalKw += point[k] as number;
+                  // ADD THIS IF STATEMENT: Prevent double-counting components in the total 24h cycle
+                  if (!k.toLowerCase().includes('component')) {
+                      totalKw += point[k] as number;
+                  }
               }
           });
       }
@@ -1313,7 +1319,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     // Mappa per vista "Device"
     const deviceTotals = new Map<string, number>();
 
-    // 3. Somma Valori (kWh)
+   // 3. Somma Valori (kWh)
     data.forEach(d => {
         const val = Number(d.value_sum ?? d.value ?? 0);
         if (val <= 0) return;
@@ -1321,10 +1327,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         const info = deviceMap.get(d.device_id);
         if (!info) return;
 
-        // ADD THIS CHECK: Skip _component in category view
-        if (energyViewMode === 'category' && info.label?.includes('_component')) {
-            return;
-        }
+        const isComponent = (info.category || '').toLowerCase().includes('component') || 
+                            (info.label || '').toLowerCase().includes('component');
+
+        // ALWAYS skip components for the Donut chart so it doesn't double-count
+        if (isComponent) return; 
 
         // Accumula per Categoria
         if (info.category === 'general') totalGeneral += val;
@@ -1998,22 +2005,25 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
      if (isGeneral) {
             entry._general += val;
         } else {
-            let stackKey = 'Other';
+           let stackKey = 'Other';
+        
+        if (energyViewMode === 'category') {
+            const isComponent = (info?.category || '').toLowerCase().includes('component') || 
+                                (info?.label || '').toLowerCase().includes('component');
             
-            if (energyViewMode === 'category') {
-                // ADD THIS CHECK: Ignore '_component' devices in category view
-                if (info?.label?.includes('_component')) {
-                    return; 
-                }
-
-                // Normalizza le categorie per lo stack
-                if (info?.category === 'hvac') stackKey = 'HVAC';
-                else if (info?.category === 'lighting') stackKey = 'Lighting';
-                else if (info?.category === 'plugs') stackKey = 'Plugs';
-            } else {
-                // Vista Device: usa il nome del device
-                stackKey = info?.label || d.device_id;
+            // Skip components completely in Category view
+            if (isComponent) {
+                return; 
             }
+
+            // Normalizza le categorie per lo stack
+            if (info?.category === 'hvac') stackKey = 'HVAC';
+            else if (info?.category === 'lighting') stackKey = 'Lighting';
+            else if (info?.category === 'plugs') stackKey = 'Plugs';
+        } else {
+            // Vista Device: usa il nome del device
+            stackKey = info?.label || d.device_id;
+        }
             
             // Arrotonda e somma
             foundKeys.add(stackKey);
