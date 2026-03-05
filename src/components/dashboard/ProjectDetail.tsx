@@ -1014,8 +1014,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const val = Number(d.value_avg ?? d.value);
       if (isNaN(val)) return;
 
-      // E. Assegnazione Valori
+     // E. Assegnazione Valori
       if (energyViewMode === 'category') {
+        // ADD THIS CHECK: Ignore '_component' devices in category view
+        if (deviceInfo.label?.includes('_component')) {
+            return; 
+        }
+
         const cat = deviceInfo.category;
 
         if (cat === 'general') {
@@ -1025,10 +1030,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         } else if (cat === 'lighting') {
             entry.Lighting += val;
         } else {
-            entry.Other += val;
+            entry.Other += val; // Only real "Other" devices will reach here now
         }
       } else {
-        // Vista Device Singolo
+        // Vista Device Singolo (Here _component WILL still be counted)
         const circuitKey = deviceInfo.label;
         entry[circuitKey] = (entry[circuitKey] || 0) + val;
       }
@@ -1310,12 +1315,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     // 3. Somma Valori (kWh)
     data.forEach(d => {
-        // Usa value_sum (aggregato) o value (raw)
         const val = Number(d.value_sum ?? d.value ?? 0);
         if (val <= 0) return;
 
         const info = deviceMap.get(d.device_id);
         if (!info) return;
+
+        // ADD THIS CHECK: Skip _component in category view
+        if (energyViewMode === 'category' && info.label?.includes('_component')) {
+            return;
+        }
 
         // Accumula per Categoria
         if (info.category === 'general') totalGeneral += val;
@@ -1986,12 +1995,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         const info = deviceMap.get(d.device_id);
         const isGeneral = info?.category === 'general';
 
-        if (isGeneral) {
+     if (isGeneral) {
             entry._general += val;
         } else {
             let stackKey = 'Other';
             
             if (energyViewMode === 'category') {
+                // ADD THIS CHECK: Ignore '_component' devices in category view
+                if (info?.label?.includes('_component')) {
+                    return; 
+                }
+
                 // Normalizza le categorie per lo stack
                 if (info?.category === 'hvac') stackKey = 'HVAC';
                 else if (info?.category === 'lighting') stackKey = 'Lighting';
@@ -2002,7 +2016,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             }
             
             // Arrotonda e somma
-            // (Nota: arrotondiamo alla fine per precisione, ma qui serve per pulizia chiavi)
             foundKeys.add(stackKey);
             entry[stackKey] = (entry[stackKey] || 0) + val;
         }
