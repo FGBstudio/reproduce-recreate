@@ -44,6 +44,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
+import { IAQGradientDefs, gradientAxisLine } from "@/lib/airQualityGradients";
 
 // Dashboard types
 type DashboardType = "overview" | "energy" | "air" | "water" | "certification" | "bills";
