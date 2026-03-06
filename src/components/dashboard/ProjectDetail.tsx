@@ -177,17 +177,17 @@ const ChartFullscreenModal = ({
   
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fade-in"
+      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-fade-in"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl w-full max-w-6xl max-h-[90vh] overflow-auto shadow-2xl animate-scale-in"
+        className="bg-white rounded-[24px] w-full max-w-6xl max-h-[90vh] overflow-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white z-10 flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-600" />
+        <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 flex justify-between items-center px-8 py-5 border-b border-gray-100/80">
+          <h2 className="text-lg font-bold text-gray-800 tracking-tight">{title}</h2>
+          <button onClick={onClose} className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
         <div className="p-6 md:p-8" style={{ minHeight: '500px' }}>
@@ -209,18 +209,18 @@ interface ExportButtonsProps {
 const ExportButtons = ({ chartRef, data, filename, onExpand }: ExportButtonsProps) => (
   <div className="flex gap-1">
     {onExpand && (
-      <button onClick={onExpand} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Fullscreen">
-        <Maximize2 className="w-3.5 h-3.5 text-gray-600" />
+      <button onClick={onExpand} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Fullscreen">
+        <Maximize2 className="w-3.5 h-3.5 text-gray-400" />
       </button>
     )}
-    <button onClick={() => exportAsImage(chartRef, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export PNG">
-      <Image className="w-3.5 h-3.5 text-gray-600" />
+    <button onClick={() => exportAsImage(chartRef, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export PNG">
+      <Image className="w-3.5 h-3.5 text-gray-400" />
     </button>
-    <button onClick={() => exportAsCSV(data, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export CSV">
-      <FileSpreadsheet className="w-3.5 h-3.5 text-gray-600" />
+    <button onClick={() => exportAsCSV(data, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export CSV">
+      <FileSpreadsheet className="w-3.5 h-3.5 text-gray-400" />
     </button>
-    <button onClick={() => exportAsJSON(data, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export JSON">
-      <FileJson className="w-3.5 h-3.5 text-gray-600" />
+    <button onClick={() => exportAsJSON(data, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export JSON">
+      <FileJson className="w-3.5 h-3.5 text-gray-400" />
     </button>
   </div>
 );
