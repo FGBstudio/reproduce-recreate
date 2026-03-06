@@ -75,29 +75,38 @@ type DashboardType = "overview" | "energy" | "air" | "water" | "certification" |
 // Chart axis styling
 const axisStyle = {
   fontSize: 11,
-  fontFamily: "'Montserrat', sans-serif",
-  fill: '#64748b',
-  fontWeight: 500
+  fontFamily: "'Futura', sans-serif",
+  fill: '#94a3b8',
+  fontWeight: 400
 };
 
 const gridStyle = {
-  strokeDasharray: "4 4",
-  stroke: "#e2e8f0"
+  strokeDasharray: "3 6",
+  stroke: "#f1f5f9",
+  strokeOpacity: 0.8
 };
 
-// Custom tooltip style
+// Custom tooltip style — Apple-inspired frosted glass
 const tooltipStyle = {
   contentStyle: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    border: 'none',
-    borderRadius: '12px',
-    boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-    padding: '12px 16px',
-    fontFamily: "'Montserrat', sans-serif"
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(0,0,0,0.06)',
+    borderRadius: '16px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+    padding: '14px 18px',
+    fontFamily: "'Futura', sans-serif"
   },
-  itemStyle: { color: '#334155', fontWeight: 500 },
-  labelStyle: { color: '#64748b', fontWeight: 600, marginBottom: 4 }
+  itemStyle: { color: '#1e293b', fontWeight: 500, fontSize: 13 },
+  labelStyle: { color: '#94a3b8', fontWeight: 600, marginBottom: 6, fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }
 };
+
+// Apple-style card class for air module
+const airCardClass = "bg-white/[0.97] backdrop-blur-xl rounded-[20px] p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-black/[0.04] transition-shadow hover:shadow-[0_4px_25px_-5px_rgba(0,0,0,0.1),0_10px_30px_-5px_rgba(0,0,0,0.06)]";
+const airKpiCardClass = "bg-gradient-to-br from-white/95 to-gray-50/90 backdrop-blur-xl rounded-2xl p-4 border border-black/[0.04] shadow-[0_1px_8px_rgba(0,0,0,0.04)]";
+const airChartAxisLine = { stroke: '#f1f5f9', strokeWidth: 1 };
+const airTickLine = { stroke: 'transparent' };
 
 /**
  * Domain helper: keeps Recharts autoscaling but adds padding, and avoids [0,0]
@@ -168,17 +177,17 @@ const ChartFullscreenModal = ({
   
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fade-in"
+      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-fade-in"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl w-full max-w-6xl max-h-[90vh] overflow-auto shadow-2xl animate-scale-in"
+        className="bg-white rounded-[24px] w-full max-w-6xl max-h-[90vh] overflow-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white z-10 flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-600" />
+        <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 flex justify-between items-center px-8 py-5 border-b border-gray-100/80">
+          <h2 className="text-lg font-bold text-gray-800 tracking-tight">{title}</h2>
+          <button onClick={onClose} className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
         <div className="p-6 md:p-8" style={{ minHeight: '500px' }}>
@@ -200,18 +209,18 @@ interface ExportButtonsProps {
 const ExportButtons = ({ chartRef, data, filename, onExpand }: ExportButtonsProps) => (
   <div className="flex gap-1">
     {onExpand && (
-      <button onClick={onExpand} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Fullscreen">
-        <Maximize2 className="w-3.5 h-3.5 text-gray-600" />
+      <button onClick={onExpand} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Fullscreen">
+        <Maximize2 className="w-3.5 h-3.5 text-gray-400" />
       </button>
     )}
-    <button onClick={() => exportAsImage(chartRef, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export PNG">
-      <Image className="w-3.5 h-3.5 text-gray-600" />
+    <button onClick={() => exportAsImage(chartRef, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export PNG">
+      <Image className="w-3.5 h-3.5 text-gray-400" />
     </button>
-    <button onClick={() => exportAsCSV(data, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export CSV">
-      <FileSpreadsheet className="w-3.5 h-3.5 text-gray-600" />
+    <button onClick={() => exportAsCSV(data, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export CSV">
+      <FileSpreadsheet className="w-3.5 h-3.5 text-gray-400" />
     </button>
-    <button onClick={() => exportAsJSON(data, filename)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors" title="Export JSON">
-      <FileJson className="w-3.5 h-3.5 text-gray-600" />
+    <button onClick={() => exportAsJSON(data, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export JSON">
+      <FileJson className="w-3.5 h-3.5 text-gray-400" />
     </button>
   </div>
 );
@@ -3659,9 +3668,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <>
                 {/* Slide 1: Overview + CO2 + TVOC */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* Air Quality Overview Card */}
-                    <div ref={airQualityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
+                    <div ref={airQualityRef} className={`lg:col-span-3 ${airCardClass}`}>
                       <div className="absolute top-4 right-4">
                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                       </div>
@@ -3672,161 +3681,186 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           onChange={setSelectedAirDeviceIds}
                         />
                       </div>
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-xs font-bold`}>
-                          <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                      <div className="flex items-center gap-4 mb-5">
+                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-[10px] font-semibold tracking-wider uppercase`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                           LIVE
                         </div>
                         <div>
                           <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
                             {project.data.aq}
                           </h3>
-                          <p className="text-gray-500 uppercase tracking-widest text-[10px]">Indoor Air Quality</p>
+                          <p className="text-gray-400 uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Wind className="w-4 h-4 text-sky-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{Math.round(airLatestByMetric["iaq.co2"] ?? project.data.co2)}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">ppm CO₂</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center mb-2">
+                            <Wind className="w-3.5 h-3.5 text-sky-500" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{Math.round(airLatestByMetric["iaq.co2"] ?? project.data.co2)}</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO₂</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Activity className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.voc"] == null ? "—" : Math.round(airLatestByMetric["iaq.voc"])}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">ppb TVOC</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
+                            <Activity className="w-3.5 h-3.5 text-purple-500" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.voc"] == null ? "—" : Math.round(airLatestByMetric["iaq.voc"])}</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb TVOC</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Thermometer className="w-4 h-4 text-orange-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["env.temperature"] == null ? "—" : `${Math.round(airLatestByMetric["env.temperature"])}` }°</div>
-                          <div className="text-[9px] text-gray-500 uppercase">°C Temp</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center mb-2">
+                            <Thermometer className="w-3.5 h-3.5 text-orange-500" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.temperature"] == null ? "—" : `${Math.round(airLatestByMetric["env.temperature"])}` }°</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">°C Temp</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Droplets className="w-4 h-4 text-cyan-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["env.humidity"] == null ? "—" : Math.round(airLatestByMetric["env.humidity"])}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">% Humidity</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center mb-2">
+                            <Droplets className="w-3.5 h-3.5 text-cyan-500" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.humidity"] == null ? "—" : Math.round(airLatestByMetric["env.humidity"])}</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">% Humidity</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Cloud className="w-4 h-4 text-amber-600 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.pm25"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm25"])}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">µg/m³ PM2.5</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                            <Cloud className="w-3.5 h-3.5 text-amber-600" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm25"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm25"])}</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">µg/m³ PM2.5</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Cloud className="w-4 h-4 text-amber-800 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.pm10"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm10"])}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">µg/m³ PM10</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                            <Cloud className="w-3.5 h-3.5 text-amber-800" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm10"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm10"])}</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">µg/m³ PM10</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Gauge className="w-4 h-4 text-red-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.co"] == null ? "—" : airLatestByMetric["iaq.co"].toFixed(2)}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">ppm CO</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center mb-2">
+                            <Gauge className="w-3.5 h-3.5 text-red-500" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.co"] == null ? "—" : airLatestByMetric["iaq.co"].toFixed(2)}</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-xl text-center">
-                          <Sparkles className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-gray-800">{airLatestByMetric["iaq.o3"] == null ? "—" : Math.round(airLatestByMetric["iaq.o3"])}</div>
-                          <div className="text-[9px] text-gray-500 uppercase">ppb O₃</div>
+                        <div className={airKpiCardClass}>
+                          <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center mb-2">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                          </div>
+                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.o3"] == null ? "—" : Math.round(airLatestByMetric["iaq.o3"])}</div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb O₃</div>
                         </div>
                       </div>
                     </div>
 
                     {/* CO2 Trend Chart */}
-                    <div ref={co2TrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">CO₂ Trend ({periodLabel})</h3>
+                    <div ref={co2TrendRef} className={airCardClass}>
+                      <div className="flex justify-between items-center mb-5">
+                        <div>
+                          <h3 className="text-base font-bold text-gray-800 tracking-tight">CO₂</h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{periodLabel} · ppm</p>
+                        </div>
                         <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
                       <div className="relative w-full h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradCO2" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ef4444" />
-                                <stop offset="16%" stopColor="#ef4444" />
-                                <stop offset="16%" stopColor="#eab308" />
-                                <stop offset="33%" stopColor="#eab308" />
-                                <stop offset="33%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#10b981" />
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="16%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="16%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="33%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="33%" stopColor="#10b981" stopOpacity={0.06} />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.06} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid {...gridStyle} />
-                            <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2)" fillOpacity={0.15} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2)" fillOpacity={1} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limite" />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limite" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
                     {/* TVOC Trend Chart */}
-                    <div ref={tvocTrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">TVOC Trend ({periodLabel})</h3>
+                    <div ref={tvocTrendRef} className={airCardClass}>
+                      <div className="flex justify-between items-center mb-5">
+                        <div>
+                          <h3 className="text-base font-bold text-gray-800 tracking-tight">TVOC</h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{periodLabel} · ppb</p>
+                        </div>
                         <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
                       <div className="relative w-full h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradTVOC" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ef4444" />
-                                <stop offset="16%" stopColor="#ef4444" />
-                                <stop offset="16%" stopColor="#eab308" />
-                                <stop offset="58%" stopColor="#eab308" />
-                                <stop offset="58%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#10b981" />
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="16%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="16%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="58%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="58%" stopColor="#10b981" stopOpacity={0.06} />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.06} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid {...gridStyle} />
-                            <ReferenceArea y1={0} y2={600} fill="url(#gradTVOC)" fillOpacity={0.15} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <ReferenceArea y1={0} y2={600} fill="url(#gradTVOC)" fillOpacity={1} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Limit" />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limit" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
                     {/* Temperature & Humidity Chart - Full Width */}
-                    <div ref={tempHumidityRef} className="lg:col-span-3 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Temperature & Relative Humidity ({periodLabel})</h3>
+                    <div ref={tempHumidityRef} className={`lg:col-span-3 ${airCardClass}`}>
+                      <div className="flex justify-between items-center mb-5">
+                        <div>
+                          <h3 className="text-base font-bold text-gray-800 tracking-tight">Temperature & Humidity</h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{periodLabel} · °C / %RH</p>
+                        </div>
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
                       <div className="relative w-full h-[220px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradTemp" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ef4444" />
-                                <stop offset="36%" stopColor="#ef4444" />
-                                <stop offset="36%" stopColor="#10b981" />
-                                <stop offset="68%" stopColor="#10b981" />
-                                <stop offset="68%" stopColor="#3b82f6" />
-                                <stop offset="100%" stopColor="#3b82f6" />
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.10} />
+                                <stop offset="36%" stopColor="#ef4444" stopOpacity={0.10} />
+                                <stop offset="36%" stopColor="#10b981" stopOpacity={0.06} />
+                                <stop offset="68%" stopColor="#10b981" stopOpacity={0.06} />
+                                <stop offset="68%" stopColor="#3b82f6" stopOpacity={0.08} />
+                                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.08} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid {...gridStyle} />
-                            <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTemp)" fillOpacity={0.15} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[20, 70]} label={{ value: '%HR', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTemp)" fillOpacity={1} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[20, 70]} label={{ value: '%RH', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
+                              <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
                             ))}
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={2.25} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} />
+                              <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
                             ))}
                           </LineChart>
                         </ResponsiveContainer>
@@ -3837,85 +3871,85 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                 {/* Slide 2: Particulate Matter PM2.5 & PM10 */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* PM2.5 Chart */}
-                    <div ref={pm25Ref} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
+                    <div ref={pm25Ref} className={airCardClass}>
+                      <div className="flex justify-between items-center mb-5">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">PM2.5 - Fine Particulate</h3>
-                          <p className="text-xs text-gray-500">Trend ({periodLabel})</p>
+                          <h3 className="text-base font-bold text-gray-800 tracking-tight">PM2.5</h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">Fine Particulate · {periodLabel}</p>
                         </div>
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
                       <div className="relative w-full h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradPM25" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ef4444" />
-                                <stop offset="50%" stopColor="#ef4444" />
-                                <stop offset="50%" stopColor="#eab308" />
-                                <stop offset="70%" stopColor="#eab308" />
-                                <stop offset="70%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#10b981" />
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="50%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="50%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="70%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="70%" stopColor="#10b981" stopOpacity={0.06} />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.06} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid {...gridStyle} />
-                            <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={0.15} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={1} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                        <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
+                      <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
+                        <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
                         <span>WHO Limit: 25 μg/m³</span>
                       </div>
                     </div>
 
                     {/* PM10 Chart */}
-                    <div ref={pm10Ref} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
+                    <div ref={pm10Ref} className={airCardClass}>
+                      <div className="flex justify-between items-center mb-5">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">PM10 - Coarse Particulate</h3>
-                          <p className="text-xs text-gray-500">Trend ({periodLabel})</p>
+                          <h3 className="text-base font-bold text-gray-800 tracking-tight">PM10</h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">Coarse Particulate · {periodLabel}</p>
                         </div>
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
                       <div className="relative w-full h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradPM10" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ef4444" />
-                                <stop offset="37.5%" stopColor="#ef4444" />
-                                <stop offset="37.5%" stopColor="#eab308" />
-                                <stop offset="68.75%" stopColor="#eab308" />
-                                <stop offset="68.75%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#10b981" />
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="37.5%" stopColor="#ef4444" stopOpacity={0.12} />
+                                <stop offset="37.5%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="68.75%" stopColor="#eab308" stopOpacity={0.08} />
+                                <stop offset="68.75%" stopColor="#10b981" stopOpacity={0.06} />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.06} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid {...gridStyle} />
-                            <ReferenceArea y1={0} y2={80} fill="url(#gradPM10)" fillOpacity={0.15} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <ReferenceArea y1={0} y2={80} fill="url(#gradPM10)" fillOpacity={1} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="WHO Limit" />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                        <span className="w-3 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
+                      <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
+                        <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
                         <span>WHO Limit: 50 μg/m³</span>
                       </div>
                     </div>
@@ -3926,10 +3960,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         const pm25In = airIndoorAvg['iaq.pm25'];
                         const q = getAirQualityLabel(pm25In, { good: 15, moderate: 25 });
                         return (
-                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                          <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25In != null ? Math.round(pm25In) : '—'}</div>
-                            <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Indoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM2.5 Indoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -3937,10 +3971,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         const pm25Out = outdoorAirAvg.pm2_5;
                         const q = getAirQualityLabel(pm25Out, { good: 15, moderate: 25 });
                         return (
-                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                          <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25Out != null ? Math.round(pm25Out) : '—'}</div>
-                            <div className="text-xs text-gray-500 uppercase mt-1">PM2.5 Outdoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM2.5 Outdoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -3948,10 +3982,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         const pm10In = airIndoorAvg['iaq.pm10'];
                         const q = getAirQualityLabel(pm10In, { good: 25, moderate: 50 });
                         return (
-                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                          <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10In != null ? Math.round(pm10In) : '—'}</div>
-                            <div className="text-xs text-gray-500 uppercase mt-1">PM10 Indoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM10 Indoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -3959,10 +3993,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         const pm10Out = outdoorAirAvg.pm10;
                         const q = getAirQualityLabel(pm10Out, { good: 25, moderate: 50 });
                         return (
-                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                          <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10Out != null ? Math.round(pm10Out) : '—'}</div>
-                            <div className="text-xs text-gray-500 uppercase mt-1">PM10 Outdoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1`}>● {q.label}</div>
+                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM10 Outdoor</div>
+                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -3972,31 +4006,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                 {/* Slide 3: CO & O3 */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* CO & O3 Combined Chart */}
-                    <div ref={coO3Ref} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
+                    <div ref={coO3Ref} className={`lg:col-span-2 ${airCardClass}`}>
+                      <div className="flex justify-between items-center mb-5">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Carbon Monoxide (CO) & Ozone (O₃)</h3>
-                          <p className="text-xs text-gray-500">Daily trend</p>
+                          <h3 className="text-base font-bold text-gray-800 tracking-tight">CO & O₃</h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">Carbon Monoxide · Ozone · {periodLabel}</p>
                         </div>
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
                       <div className="relative w-full h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <CartesianGrid {...gridStyle} />
-                            <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.05} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
+                              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
                             ))}
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={2.25} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} />
+                              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
                             ))}
                           </LineChart>
                         </ResponsiveContainer>
@@ -4010,21 +4044,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       const coPct = coVal != null ? Math.min((coVal / coLimit) * 100, 100) : 0;
                       const coQ = getAirQualityLabel(coVal, { good: 4, moderate: 9 });
                       return (
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                          <h3 className="text-lg font-bold text-gray-800 mb-4">CO - Carbon Monoxide</h3>
-                          <div className="flex items-center gap-6">
+                        <div className={airCardClass}>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+                              <Gauge className="w-4 h-4 text-red-500" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-800 tracking-tight">CO</h3>
+                          </div>
+                          <div className="flex items-end gap-6">
                             <div className="flex-1">
-                              <div className={`text-4xl font-bold ${coQ.color}`}>{coVal != null ? coVal.toFixed(1) : '—'}</div>
-                              <div className="text-sm text-gray-500">ppm ({periodLabel})</div>
+                              <div className={`text-4xl font-bold tracking-tight ${coQ.color}`}>{coVal != null ? coVal.toFixed(1) : '—'}</div>
+                              <div className="text-[11px] text-gray-400 mt-1">ppm · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-gray-500 mb-1">Safety limit</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{coLimit} ppm</div>
-                              <div className={`text-xs ${coQ.color} mt-1`}>● {coQ.label}</div>
+                              <div className={`text-[10px] ${coQ.color} mt-1 font-medium`}>● {coQ.label}</div>
                             </div>
                           </div>
-                          <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: `${coPct}%` }} />
+                          <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-700" style={{ width: `${coPct}%` }} />
                           </div>
                         </div>
                       );
@@ -4036,21 +4075,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       const o3Pct = o3Val != null ? Math.min((o3Val / o3Limit) * 100, 100) : 0;
                       const o3Q = getAirQualityLabel(o3Val, { good: 50, moderate: 100 });
                       return (
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                          <h3 className="text-lg font-bold text-gray-800 mb-4">O₃ - Ozone</h3>
-                          <div className="flex items-center gap-6">
+                        <div className={airCardClass}>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+                              <Sparkles className="w-4 h-4 text-indigo-500" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-800 tracking-tight">O₃</h3>
+                          </div>
+                          <div className="flex items-end gap-6">
                             <div className="flex-1">
-                              <div className={`text-4xl font-bold ${o3Q.color}`}>{o3Val != null ? Math.round(o3Val) : '—'}</div>
-                              <div className="text-sm text-gray-500">ppb ({periodLabel})</div>
+                              <div className={`text-4xl font-bold tracking-tight ${o3Q.color}`}>{o3Val != null ? Math.round(o3Val) : '—'}</div>
+                              <div className="text-[11px] text-gray-400 mt-1">ppb · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-gray-500 mb-1">Limite OMS</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">WHO Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{o3Limit} ppb</div>
-                              <div className={`text-xs ${o3Q.color} mt-1`}>● {o3Q.label}</div>
+                              <div className={`text-[10px] ${o3Q.color} mt-1 font-medium`}>● {o3Q.label}</div>
                             </div>
                           </div>
-                          <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: `${o3Pct}%` }} />
+                          <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-700" style={{ width: `${o3Pct}%` }} />
                           </div>
                         </div>
                       );
@@ -5051,31 +5095,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'co2Trend'}
         onClose={() => setFullscreenChart(null)}
-        title={`CO₂ Trend (${periodLabel})`}
+        title={`CO₂ · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={co2MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradCO2FS" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" />
-                  <stop offset="16%" stopColor="#ef4444" />
-                  <stop offset="16%" stopColor="#eab308" />
-                  <stop offset="33%" stopColor="#eab308" />
-                  <stop offset="33%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#10b981" />
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="16%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="16%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="33%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="33%" stopColor="#10b981" stopOpacity={0.05} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid {...gridStyle} />
-              <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2FS)" fillOpacity={0.15} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 1200]} />
+              <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2FS)" fillOpacity={1} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 1200]} />
               <Tooltip {...tooltipStyle} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={3} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limit" />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -5085,31 +5129,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'tvocTrend'}
         onClose={() => setFullscreenChart(null)}
-        title={`TVOC Trend (${periodLabel})`}
+        title={`TVOC · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={tvocMultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradTVOCFS" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" />
-                  <stop offset="16%" stopColor="#ef4444" />
-                  <stop offset="16%" stopColor="#eab308" />
-                  <stop offset="58%" stopColor="#eab308" />
-                  <stop offset="58%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#10b981" />
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="16%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="16%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="58%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="58%" stopColor="#10b981" stopOpacity={0.05} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid {...gridStyle} />
-              <ReferenceArea y1={0} y2={600} fill="url(#gradTVOCFS)" fillOpacity={0.15} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} />
+              <ReferenceArea y1={0} y2={600} fill="url(#gradTVOCFS)" fillOpacity={1} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} />
               <Tooltip {...tooltipStyle} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={3} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Limit" />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -5119,33 +5163,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'tempHumidity'}
         onClose={() => setFullscreenChart(null)}
-        title={`Temperature & Humidity (${periodLabel})`}
+        title={`Temperature & Humidity · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradTempFS" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" />
-                  <stop offset="36%" stopColor="#ef4444" />
-                  <stop offset="36%" stopColor="#10b981" />
-                  <stop offset="68%" stopColor="#10b981" />
-                  <stop offset="68%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#3b82f6" />
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="36%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="36%" stopColor="#10b981" stopOpacity={0.05} />
+                  <stop offset="68%" stopColor="#10b981" stopOpacity={0.05} />
+                  <stop offset="68%" stopColor="#3b82f6" stopOpacity={0.07} />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.07} />
                 </linearGradient>
               </defs>
               <CartesianGrid {...gridStyle} />
-              <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTempFS)" fillOpacity={0.15} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-              <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 100]} label={{ value: '%HR', angle: 90, position: 'insideRight' }} />
+              <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTempFS)" fillOpacity={1} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
+              <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 100]} label={{ value: '%RH', angle: 90, position: 'insideRight' }} />
               <Tooltip {...tooltipStyle} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={3} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
+                <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
               ))}
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={2} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} />
+                <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -5156,36 +5200,36 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'pm25'}
         onClose={() => setFullscreenChart(null)}
-        title={`PM2.5 - Fine Particulate (${periodLabel})`}
+        title={`PM2.5 · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={pm25MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradPM25FS" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" />
-                  <stop offset="50%" stopColor="#ef4444" />
-                  <stop offset="50%" stopColor="#eab308" />
-                  <stop offset="70%" stopColor="#eab308" />
-                  <stop offset="70%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#10b981" />
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="50%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="50%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="70%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="70%" stopColor="#10b981" stopOpacity={0.05} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid {...gridStyle} />
-              <ReferenceArea y1={0} y2={50} fill="url(#gradPM25FS)" fillOpacity={0.15} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+              <ReferenceArea y1={0} y2={50} fill="url(#gradPM25FS)" fillOpacity={1} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={3} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="WHO Limit" />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 px-8">
-          <span className="w-4 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 px-8">
+          <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
           <span>WHO Limit: 25 μg/m³</span>
         </div>
       </ChartFullscreenModal>
@@ -5194,36 +5238,36 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'pm10'}
         onClose={() => setFullscreenChart(null)}
-        title={`PM10 - Coarse Particulate (${periodLabel})`}
+        title={`PM10 · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={pm10MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradPM10FS" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" />
-                  <stop offset="37.5%" stopColor="#ef4444" />
-                  <stop offset="37.5%" stopColor="#eab308" />
-                  <stop offset="68.75%" stopColor="#eab308" />
-                  <stop offset="68.75%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#10b981" />
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="37.5%" stopColor="#ef4444" stopOpacity={0.10} />
+                  <stop offset="37.5%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="68.75%" stopColor="#eab308" stopOpacity={0.07} />
+                  <stop offset="68.75%" stopColor="#10b981" stopOpacity={0.05} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid {...gridStyle} />
-              <ReferenceArea y1={0} y2={80} fill="url(#gradPM10FS)" fillOpacity={0.15} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+              <ReferenceArea y1={0} y2={80} fill="url(#gradPM10FS)" fillOpacity={1} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 80]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={3} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#e63f26" strokeWidth={2} strokeDasharray="5 5" dot={false} name="WHO Limit" />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 px-8">
-          <span className="w-4 h-0.5 rounded" style={{ backgroundColor: '#e63f26' }} />
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 px-8">
+          <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
           <span>WHO Limit: 50 μg/m³</span>
         </div>
       </ChartFullscreenModal>
@@ -5232,23 +5276,23 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'coO3'}
         onClose={() => setFullscreenChart(null)}
-        title="Carbon Monoxide (CO) & Ozone (O₃)"
+        title="CO & O₃"
       >
         <div className="relative w-full h-[500px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={coO3MultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
-              <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.05} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-              <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
+              <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
+              <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
               <Tooltip {...tooltipStyle} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={3} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
+                <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
               ))}
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={2} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} />
+                <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
               ))}
             </LineChart>
           </ResponsiveContainer>
