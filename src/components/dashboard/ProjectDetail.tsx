@@ -4006,31 +4006,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                 {/* Slide 3: CO & O3 */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* CO & O3 Combined Chart */}
-                    <div ref={coO3Ref} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
+                    <div ref={coO3Ref} className={`lg:col-span-2 ${airCardClass}`}>
+                      <div className="flex justify-between items-center mb-5">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Carbon Monoxide (CO) & Ozone (O₃)</h3>
-                          <p className="text-xs text-gray-500">Daily trend</p>
+                          <h3 className="text-base font-bold text-gray-800 tracking-tight">CO & O₃</h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">Carbon Monoxide · Ozone · {periodLabel}</p>
                         </div>
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
                       <div className="relative w-full h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                          <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <CartesianGrid {...gridStyle} />
-                            <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.05} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2.25} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
+                              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
                             ))}
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={2.25} strokeDasharray="4 4" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} />
+                              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
                             ))}
                           </LineChart>
                         </ResponsiveContainer>
@@ -4044,21 +4044,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       const coPct = coVal != null ? Math.min((coVal / coLimit) * 100, 100) : 0;
                       const coQ = getAirQualityLabel(coVal, { good: 4, moderate: 9 });
                       return (
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                          <h3 className="text-lg font-bold text-gray-800 mb-4">CO - Carbon Monoxide</h3>
-                          <div className="flex items-center gap-6">
+                        <div className={airCardClass}>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+                              <Gauge className="w-4 h-4 text-red-500" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-800 tracking-tight">CO</h3>
+                          </div>
+                          <div className="flex items-end gap-6">
                             <div className="flex-1">
-                              <div className={`text-4xl font-bold ${coQ.color}`}>{coVal != null ? coVal.toFixed(1) : '—'}</div>
-                              <div className="text-sm text-gray-500">ppm ({periodLabel})</div>
+                              <div className={`text-4xl font-bold tracking-tight ${coQ.color}`}>{coVal != null ? coVal.toFixed(1) : '—'}</div>
+                              <div className="text-[11px] text-gray-400 mt-1">ppm · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-gray-500 mb-1">Safety limit</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{coLimit} ppm</div>
-                              <div className={`text-xs ${coQ.color} mt-1`}>● {coQ.label}</div>
+                              <div className={`text-[10px] ${coQ.color} mt-1 font-medium`}>● {coQ.label}</div>
                             </div>
                           </div>
-                          <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: `${coPct}%` }} />
+                          <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-700" style={{ width: `${coPct}%` }} />
                           </div>
                         </div>
                       );
@@ -4070,21 +4075,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       const o3Pct = o3Val != null ? Math.min((o3Val / o3Limit) * 100, 100) : 0;
                       const o3Q = getAirQualityLabel(o3Val, { good: 50, moderate: 100 });
                       return (
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                          <h3 className="text-lg font-bold text-gray-800 mb-4">O₃ - Ozone</h3>
-                          <div className="flex items-center gap-6">
+                        <div className={airCardClass}>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+                              <Sparkles className="w-4 h-4 text-indigo-500" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-800 tracking-tight">O₃</h3>
+                          </div>
+                          <div className="flex items-end gap-6">
                             <div className="flex-1">
-                              <div className={`text-4xl font-bold ${o3Q.color}`}>{o3Val != null ? Math.round(o3Val) : '—'}</div>
-                              <div className="text-sm text-gray-500">ppb ({periodLabel})</div>
+                              <div className={`text-4xl font-bold tracking-tight ${o3Q.color}`}>{o3Val != null ? Math.round(o3Val) : '—'}</div>
+                              <div className="text-[11px] text-gray-400 mt-1">ppb · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-gray-500 mb-1">Limite OMS</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">WHO Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{o3Limit} ppb</div>
-                              <div className={`text-xs ${o3Q.color} mt-1`}>● {o3Q.label}</div>
+                              <div className={`text-[10px] ${o3Q.color} mt-1 font-medium`}>● {o3Q.label}</div>
                             </div>
                           </div>
-                          <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full" style={{ width: `${o3Pct}%` }} />
+                          <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-700" style={{ width: `${o3Pct}%` }} />
                           </div>
                         </div>
                       );
