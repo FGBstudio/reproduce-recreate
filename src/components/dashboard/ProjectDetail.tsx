@@ -75,29 +75,38 @@ type DashboardType = "overview" | "energy" | "air" | "water" | "certification" |
 // Chart axis styling
 const axisStyle = {
   fontSize: 11,
-  fontFamily: "'Montserrat', sans-serif",
-  fill: '#64748b',
-  fontWeight: 500
+  fontFamily: "'Futura', sans-serif",
+  fill: '#94a3b8',
+  fontWeight: 400
 };
 
 const gridStyle = {
-  strokeDasharray: "4 4",
-  stroke: "#e2e8f0"
+  strokeDasharray: "3 6",
+  stroke: "#f1f5f9",
+  strokeOpacity: 0.8
 };
 
-// Custom tooltip style
+// Custom tooltip style — Apple-inspired frosted glass
 const tooltipStyle = {
   contentStyle: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    border: 'none',
-    borderRadius: '12px',
-    boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-    padding: '12px 16px',
-    fontFamily: "'Montserrat', sans-serif"
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(0,0,0,0.06)',
+    borderRadius: '16px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+    padding: '14px 18px',
+    fontFamily: "'Futura', sans-serif"
   },
-  itemStyle: { color: '#334155', fontWeight: 500 },
-  labelStyle: { color: '#64748b', fontWeight: 600, marginBottom: 4 }
+  itemStyle: { color: '#1e293b', fontWeight: 500, fontSize: 13 },
+  labelStyle: { color: '#94a3b8', fontWeight: 600, marginBottom: 6, fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }
 };
+
+// Apple-style card class for air module
+const airCardClass = "bg-white/[0.97] backdrop-blur-xl rounded-[20px] p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-black/[0.04] transition-shadow hover:shadow-[0_4px_25px_-5px_rgba(0,0,0,0.1),0_10px_30px_-5px_rgba(0,0,0,0.06)]";
+const airKpiCardClass = "bg-gradient-to-br from-white/95 to-gray-50/90 backdrop-blur-xl rounded-2xl p-4 border border-black/[0.04] shadow-[0_1px_8px_rgba(0,0,0,0.04)]";
+const airChartAxisLine = { stroke: '#f1f5f9', strokeWidth: 1 };
+const airTickLine = { stroke: 'transparent' };
 
 /**
  * Domain helper: keeps Recharts autoscaling but adds padding, and avoids [0,0]
