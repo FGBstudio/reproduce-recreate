@@ -3784,7 +3784,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={600} fill="url(#gradTVOC)" fillOpacity={0.15} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
                             {selectedAirDevices.map((d) => (
@@ -5103,7 +5103,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={600} fill="url(#gradTVOCFS)" fillOpacity={0.15} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} />
               <Tooltip {...tooltipStyle} />
               <Legend />
               {selectedAirDevices.map((d) => (
