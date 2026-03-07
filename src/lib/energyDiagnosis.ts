@@ -3,7 +3,7 @@
  * Calls the edge function to generate AI-powered energy diagnostics
  */
 
-export type DiagnosisLanguage = 'en' | 'it';
+export type DiagnosisLanguage = 'en' | 'it' | 'fr';
 
 export interface EnergyDiagnosisInput {
   projectName: string;
