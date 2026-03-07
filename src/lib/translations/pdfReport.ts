@@ -1,9 +1,9 @@
 /**
  * PDF Report Translations
- * Bilingual support for PDF report generation (EN/IT)
+ * Multilingual support for PDF report generation (EN/IT/FR)
  */
 
-export type ReportLanguage = 'en' | 'it';
+export type ReportLanguage = 'en' | 'it' | 'fr';
 
 export interface ReportTranslations {
   // Progress messages
@@ -230,11 +230,84 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     aiSection: {
       badge: "Questa analisi è generata da FGB-AI",
       disclaimerLine1: "Questa diagnosi è generata dai modelli FGB-AI ed è solo a scopo indicativo",
-      disclaimerLine2: "Per ulteriori verifiche, contatta il nostro team di professionisti all’indirizzo monitoring@fgb-studio.com",
+      disclaimerLine2: "Per ulteriori verifiche, contatta il nostro team di professionisti all'indirizzo monitoring@fgb-studio.com",
     },
     footer: {
       page: "Pagina",
       of: "di",
+    },
+  },
+  fr: {
+    progress: {
+      capturingCharts: "Capture des graphiques...",
+      generatingAiDiagnosis: "Génération du diagnostic énergétique IA...",
+      savingPdf: "Enregistrement du PDF...",
+    },
+    cover: {
+      title: "Rapport du tableau de bord",
+      period: "Période",
+      address: "Adresse",
+      brand: "Marque",
+      holding: "Groupe",
+      region: "Région",
+      generatedOn: "Généré le",
+      currentKpis: "KPI actuels",
+    },
+    kpis: {
+      temperature: "Température",
+      co2: "CO₂",
+      humidity: "Humidité",
+      airQuality: "Qualité de l'air",
+    },
+    sections: {
+      energyDashboard: "📊 Tableau de bord Énergie",
+      waterDashboard: "💧 Tableau de bord Eau",
+      airQualityDashboard: "🌬️ Tableau de bord Qualité de l'air",
+      aiDiagnosis: "Diagnostic des performances",
+    },
+    energy: {
+      consumptionChart: "Graphique de consommation énergétique",
+      consumption: "Consommation énergétique",
+      deviceChart: "Graphique de consommation par appareil",
+      deviceConsumption: "Consommation par appareil",
+      co2Emissions: "Émissions de CO₂",
+    },
+    water: {
+      consumptionChart: "Graphique de consommation d'eau",
+      consumption: "Consommation d'eau",
+      quality: "Qualité de l'eau",
+      leakDetection: "Détection de fuites",
+    },
+    airQuality: {
+      chart: "Graphique qualité de l'air",
+      co2TvocHistory: "Historique CO₂ et TVOC",
+      tempHumidity: "Température et Humidité",
+      particulates: "Particules (PM2.5 / PM10)",
+    },
+    tables: {
+      device: "Appareil",
+      consumptionKwh: "Consommation (kWh)",
+      category: "Catégorie",
+      zone: "Zone",
+      leakRate: "Taux de fuite (L/h)",
+      status: "Statut",
+      detected: "Détecté",
+      co2Kg: "CO₂ (kg)",
+      consumptionL: "Consommation (L)",
+    },
+    status: {
+      ok: "✓ OK",
+      warning: "⚠ Avertissement",
+      critical: "⚠ Critique",
+    },
+    aiSection: {
+      badge: "Cette analyse est générée par FGB-AI",
+      disclaimerLine1: "Ce diagnostic est généré par les modèles FGB-AI et est fourni à titre indicatif uniquement.",
+      disclaimerLine2: "Pour une validation complémentaire, contactez notre équipe professionnelle à monitoring@fgb-studio.com.",
+    },
+    footer: {
+      page: "Page",
+      of: "de",
     },
   },
 };
@@ -247,6 +320,10 @@ export const getDateLocale = async (lang: ReportLanguage) => {
   if (lang === 'it') {
     const { it } = await import('date-fns/locale');
     return it;
+  }
+  if (lang === 'fr') {
+    const { fr } = await import('date-fns/locale');
+    return fr;
   }
   const { enUS } = await import('date-fns/locale');
   return enUS;
