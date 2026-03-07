@@ -1,314 +1,76 @@
 /**
  * PDF Report Translations
- * Multilingual support for PDF report generation (EN/IT/FR)
+ * Multilingual support for PDF report generation (EN/IT/FR/ES)
  */
 
-export type ReportLanguage = 'en' | 'it' | 'fr';
+export type ReportLanguage = 'en' | 'it' | 'fr' | 'es';
 
 export interface ReportTranslations {
-  // Progress messages
-  progress: {
-    capturingCharts: string;
-    generatingAiDiagnosis: string;
-    savingPdf: string;
-  };
-  // Cover page
-  cover: {
-    title: string;
-    period: string;
-    address: string;
-    brand: string;
-    holding: string;
-    region: string;
-    generatedOn: string;
-    currentKpis: string;
-  };
-  // KPI labels
-  kpis: {
-    temperature: string;
-    co2: string;
-    humidity: string;
-    airQuality: string;
-  };
-  // Section headers
-  sections: {
-    energyDashboard: string;
-    waterDashboard: string;
-    airQualityDashboard: string;
-    aiDiagnosis: string;
-  };
-  // Energy section
-  energy: {
-    consumptionChart: string;
-    consumption: string;
-    deviceChart: string;
-    deviceConsumption: string;
-    co2Emissions: string;
-  };
-  // Water section
-  water: {
-    consumptionChart: string;
-    consumption: string;
-    quality: string;
-    leakDetection: string;
-  };
-  // Air quality section
-  airQuality: {
-    chart: string;
-    co2TvocHistory: string;
-    tempHumidity: string;
-    particulates: string;
-  };
-  // Table headers
-  tables: {
-    device: string;
-    consumptionKwh: string;
-    category: string;
-    zone: string;
-    leakRate: string;
-    status: string;
-    detected: string;
-    co2Kg: string;
-    consumptionL: string;
-  };
-  // Status labels
-  status: {
-    ok: string;
-    warning: string;
-    critical: string;
-  };
-  // AI Diagnosis section
-  aiSection: {
-    badge: string;
-    disclaimerLine1: string;
-    disclaimerLine2: string;
-  };
-  // Footer
-  footer: {
-    page: string;
-    of: string;
-  };
+  progress: { capturingCharts: string; generatingAiDiagnosis: string; savingPdf: string; };
+  cover: { title: string; period: string; address: string; brand: string; holding: string; region: string; generatedOn: string; currentKpis: string; };
+  kpis: { temperature: string; co2: string; humidity: string; airQuality: string; };
+  sections: { energyDashboard: string; waterDashboard: string; airQualityDashboard: string; aiDiagnosis: string; };
+  energy: { consumptionChart: string; consumption: string; deviceChart: string; deviceConsumption: string; co2Emissions: string; };
+  water: { consumptionChart: string; consumption: string; quality: string; leakDetection: string; };
+  airQuality: { chart: string; co2TvocHistory: string; tempHumidity: string; particulates: string; };
+  tables: { device: string; consumptionKwh: string; category: string; zone: string; leakRate: string; status: string; detected: string; co2Kg: string; consumptionL: string; };
+  status: { ok: string; warning: string; critical: string; };
+  aiSection: { badge: string; disclaimerLine1: string; disclaimerLine2: string; };
+  footer: { page: string; of: string; };
 }
 
 const translations: Record<ReportLanguage, ReportTranslations> = {
   en: {
-    progress: {
-      capturingCharts: "Capturing charts...",
-      generatingAiDiagnosis: "Generating AI energy diagnosis...",
-      savingPdf: "Saving PDF...",
-    },
-    cover: {
-      title: "Dashboard Report",
-      period: "Period",
-      address: "Address",
-      brand: "Brand",
-      holding: "Holding",
-      region: "Region",
-      generatedOn: "Generated on",
-      currentKpis: "Current KPIs",
-    },
-    kpis: {
-      temperature: "Temperature",
-      co2: "CO₂",
-      humidity: "Humidity",
-      airQuality: "Air Quality",
-    },
-    sections: {
-      energyDashboard: "📊 Energy Dashboard",
-      waterDashboard: "💧 Water Dashboard",
-      airQualityDashboard: "🌬️ Air Quality Dashboard",
-      aiDiagnosis: "Feature Diagnosis",
-    },
-    energy: {
-      consumptionChart: "Energy Consumption Chart",
-      consumption: "Energy Consumption",
-      deviceChart: "Device Consumption Chart",
-      deviceConsumption: "Consumption by Device",
-      co2Emissions: "CO₂ Emissions",
-    },
-    water: {
-      consumptionChart: "Water Consumption Chart",
-      consumption: "Water Consumption",
-      quality: "Water Quality",
-      leakDetection: "Leak Detection",
-    },
-    airQuality: {
-      chart: "Air Quality Chart",
-      co2TvocHistory: "CO₂ and TVOC History",
-      tempHumidity: "Temperature and Humidity",
-      particulates: "Particulates (PM2.5 / PM10)",
-    },
-    tables: {
-      device: "Device",
-      consumptionKwh: "Consumption (kWh)",
-      category: "Category",
-      zone: "Zone",
-      leakRate: "Leak Rate (L/h)",
-      status: "Status",
-      detected: "Detected",
-      co2Kg: "CO₂ (kg)",
-      consumptionL: "Consumption (L)",
-    },
-    status: {
-      ok: "✓ OK",
-      warning: "⚠ Warning",
-      critical: "⚠ Critical",
-    },
-    aiSection: {
-      badge: "This analysis is powerd by FGB-AI",
-      disclaimerLine1: "This diagnosis is generated by FGB-AI models and is for indicative purposes only.",
-      disclaimerLine2: "For further validation please contatct our professional team at monitoring@fgb-studio.com.",
-    },
-    footer: {
-      page: "Page",
-      of: "of",
-    },
+    progress: { capturingCharts: "Capturing charts...", generatingAiDiagnosis: "Generating AI energy diagnosis...", savingPdf: "Saving PDF..." },
+    cover: { title: "Dashboard Report", period: "Period", address: "Address", brand: "Brand", holding: "Holding", region: "Region", generatedOn: "Generated on", currentKpis: "Current KPIs" },
+    kpis: { temperature: "Temperature", co2: "CO₂", humidity: "Humidity", airQuality: "Air Quality" },
+    sections: { energyDashboard: "📊 Energy Dashboard", waterDashboard: "💧 Water Dashboard", airQualityDashboard: "🌬️ Air Quality Dashboard", aiDiagnosis: "Feature Diagnosis" },
+    energy: { consumptionChart: "Energy Consumption Chart", consumption: "Energy Consumption", deviceChart: "Device Consumption Chart", deviceConsumption: "Consumption by Device", co2Emissions: "CO₂ Emissions" },
+    water: { consumptionChart: "Water Consumption Chart", consumption: "Water Consumption", quality: "Water Quality", leakDetection: "Leak Detection" },
+    airQuality: { chart: "Air Quality Chart", co2TvocHistory: "CO₂ and TVOC History", tempHumidity: "Temperature and Humidity", particulates: "Particulates (PM2.5 / PM10)" },
+    tables: { device: "Device", consumptionKwh: "Consumption (kWh)", category: "Category", zone: "Zone", leakRate: "Leak Rate (L/h)", status: "Status", detected: "Detected", co2Kg: "CO₂ (kg)", consumptionL: "Consumption (L)" },
+    status: { ok: "✓ OK", warning: "⚠ Warning", critical: "⚠ Critical" },
+    aiSection: { badge: "This analysis is powerd by FGB-AI", disclaimerLine1: "This diagnosis is generated by FGB-AI models and is for indicative purposes only.", disclaimerLine2: "For further validation please contatct our professional team at monitoring@fgb-studio.com." },
+    footer: { page: "Page", of: "of" },
   },
   it: {
-    progress: {
-      capturingCharts: "Acquisizione grafici...",
-      generatingAiDiagnosis: "Generazione diagnosi energetica AI...",
-      savingPdf: "Salvataggio PDF...",
-    },
-    cover: {
-      title: "Report Dashboard",
-      period: "Periodo",
-      address: "Indirizzo",
-      brand: "Brand",
-      holding: "Holding",
-      region: "Regione",
-      generatedOn: "Generato il",
-      currentKpis: "KPI Attuali",
-    },
-    kpis: {
-      temperature: "Temperatura",
-      co2: "CO₂",
-      humidity: "Umidità",
-      airQuality: "Qualità Aria",
-    },
-    sections: {
-      energyDashboard: "📊 Dashboard Energia",
-      waterDashboard: "💧 Dashboard Acqua",
-      airQualityDashboard: "🌬️ Dashboard Qualità Aria",
-      aiDiagnosis: "Diagnosi delle performances",
-    },
-    energy: {
-      consumptionChart: "Grafico Consumi Energetici",
-      consumption: "Consumi Energetici",
-      deviceChart: "Grafico Consumi per Dispositivo",
-      deviceConsumption: "Consumi per Dispositivo",
-      co2Emissions: "Emissioni CO₂",
-    },
-    water: {
-      consumptionChart: "Grafico Consumi Idrici",
-      consumption: "Consumi Idrici",
-      quality: "Qualità Acqua",
-      leakDetection: "Rilevamento Perdite",
-    },
-    airQuality: {
-      chart: "Grafico Qualità Aria",
-      co2TvocHistory: "Storico CO₂ e TVOC",
-      tempHumidity: "Temperatura e Umidità",
-      particulates: "Particolato (PM2.5 / PM10)",
-    },
-    tables: {
-      device: "Dispositivo",
-      consumptionKwh: "Consumo (kWh)",
-      category: "Categoria",
-      zone: "Zona",
-      leakRate: "Tasso Perdita (L/h)",
-      status: "Stato",
-      detected: "Rilevato",
-      co2Kg: "CO₂ (kg)",
-      consumptionL: "Consumo (L)",
-    },
-    status: {
-      ok: "✓ OK",
-      warning: "⚠ Attenzione",
-      critical: "⚠ Critico",
-    },
-    aiSection: {
-      badge: "Questa analisi è generata da FGB-AI",
-      disclaimerLine1: "Questa diagnosi è generata dai modelli FGB-AI ed è solo a scopo indicativo",
-      disclaimerLine2: "Per ulteriori verifiche, contatta il nostro team di professionisti all'indirizzo monitoring@fgb-studio.com",
-    },
-    footer: {
-      page: "Pagina",
-      of: "di",
-    },
+    progress: { capturingCharts: "Acquisizione grafici...", generatingAiDiagnosis: "Generazione diagnosi energetica AI...", savingPdf: "Salvataggio PDF..." },
+    cover: { title: "Report Dashboard", period: "Periodo", address: "Indirizzo", brand: "Brand", holding: "Holding", region: "Regione", generatedOn: "Generato il", currentKpis: "KPI Attuali" },
+    kpis: { temperature: "Temperatura", co2: "CO₂", humidity: "Umidità", airQuality: "Qualità Aria" },
+    sections: { energyDashboard: "📊 Dashboard Energia", waterDashboard: "💧 Dashboard Acqua", airQualityDashboard: "🌬️ Dashboard Qualità Aria", aiDiagnosis: "Diagnosi delle performances" },
+    energy: { consumptionChart: "Grafico Consumi Energetici", consumption: "Consumi Energetici", deviceChart: "Grafico Consumi per Dispositivo", deviceConsumption: "Consumi per Dispositivo", co2Emissions: "Emissioni CO₂" },
+    water: { consumptionChart: "Grafico Consumi Idrici", consumption: "Consumi Idrici", quality: "Qualità Acqua", leakDetection: "Rilevamento Perdite" },
+    airQuality: { chart: "Grafico Qualità Aria", co2TvocHistory: "Storico CO₂ e TVOC", tempHumidity: "Temperatura e Umidità", particulates: "Particolato (PM2.5 / PM10)" },
+    tables: { device: "Dispositivo", consumptionKwh: "Consumo (kWh)", category: "Categoria", zone: "Zona", leakRate: "Tasso Perdita (L/h)", status: "Stato", detected: "Rilevato", co2Kg: "CO₂ (kg)", consumptionL: "Consumo (L)" },
+    status: { ok: "✓ OK", warning: "⚠ Attenzione", critical: "⚠ Critico" },
+    aiSection: { badge: "Questa analisi è generata da FGB-AI", disclaimerLine1: "Questa diagnosi è generata dai modelli FGB-AI ed è solo a scopo indicativo", disclaimerLine2: "Per ulteriori verifiche, contatta il nostro team di professionisti all'indirizzo monitoring@fgb-studio.com" },
+    footer: { page: "Pagina", of: "di" },
   },
   fr: {
-    progress: {
-      capturingCharts: "Capture des graphiques...",
-      generatingAiDiagnosis: "Génération du diagnostic énergétique IA...",
-      savingPdf: "Enregistrement du PDF...",
-    },
-    cover: {
-      title: "Rapport du tableau de bord",
-      period: "Période",
-      address: "Adresse",
-      brand: "Marque",
-      holding: "Groupe",
-      region: "Région",
-      generatedOn: "Généré le",
-      currentKpis: "KPI actuels",
-    },
-    kpis: {
-      temperature: "Température",
-      co2: "CO₂",
-      humidity: "Humidité",
-      airQuality: "Qualité de l'air",
-    },
-    sections: {
-      energyDashboard: "📊 Tableau de bord Énergie",
-      waterDashboard: "💧 Tableau de bord Eau",
-      airQualityDashboard: "🌬️ Tableau de bord Qualité de l'air",
-      aiDiagnosis: "Diagnostic des performances",
-    },
-    energy: {
-      consumptionChart: "Graphique de consommation énergétique",
-      consumption: "Consommation énergétique",
-      deviceChart: "Graphique de consommation par appareil",
-      deviceConsumption: "Consommation par appareil",
-      co2Emissions: "Émissions de CO₂",
-    },
-    water: {
-      consumptionChart: "Graphique de consommation d'eau",
-      consumption: "Consommation d'eau",
-      quality: "Qualité de l'eau",
-      leakDetection: "Détection de fuites",
-    },
-    airQuality: {
-      chart: "Graphique qualité de l'air",
-      co2TvocHistory: "Historique CO₂ et TVOC",
-      tempHumidity: "Température et Humidité",
-      particulates: "Particules (PM2.5 / PM10)",
-    },
-    tables: {
-      device: "Appareil",
-      consumptionKwh: "Consommation (kWh)",
-      category: "Catégorie",
-      zone: "Zone",
-      leakRate: "Taux de fuite (L/h)",
-      status: "Statut",
-      detected: "Détecté",
-      co2Kg: "CO₂ (kg)",
-      consumptionL: "Consommation (L)",
-    },
-    status: {
-      ok: "✓ OK",
-      warning: "⚠ Avertissement",
-      critical: "⚠ Critique",
-    },
-    aiSection: {
-      badge: "Cette analyse est générée par FGB-AI",
-      disclaimerLine1: "Ce diagnostic est généré par les modèles FGB-AI et est fourni à titre indicatif uniquement.",
-      disclaimerLine2: "Pour une validation complémentaire, contactez notre équipe professionnelle à monitoring@fgb-studio.com.",
-    },
-    footer: {
-      page: "Page",
-      of: "de",
-    },
+    progress: { capturingCharts: "Capture des graphiques...", generatingAiDiagnosis: "Génération du diagnostic énergétique IA...", savingPdf: "Enregistrement du PDF..." },
+    cover: { title: "Rapport du tableau de bord", period: "Période", address: "Adresse", brand: "Marque", holding: "Groupe", region: "Région", generatedOn: "Généré le", currentKpis: "KPI actuels" },
+    kpis: { temperature: "Température", co2: "CO₂", humidity: "Humidité", airQuality: "Qualité de l'air" },
+    sections: { energyDashboard: "📊 Tableau de bord Énergie", waterDashboard: "💧 Tableau de bord Eau", airQualityDashboard: "🌬️ Tableau de bord Qualité de l'air", aiDiagnosis: "Diagnostic des performances" },
+    energy: { consumptionChart: "Graphique de consommation énergétique", consumption: "Consommation énergétique", deviceChart: "Graphique de consommation par appareil", deviceConsumption: "Consommation par appareil", co2Emissions: "Émissions de CO₂" },
+    water: { consumptionChart: "Graphique de consommation d'eau", consumption: "Consommation d'eau", quality: "Qualité de l'eau", leakDetection: "Détection de fuites" },
+    airQuality: { chart: "Graphique qualité de l'air", co2TvocHistory: "Historique CO₂ et TVOC", tempHumidity: "Température et Humidité", particulates: "Particules (PM2.5 / PM10)" },
+    tables: { device: "Appareil", consumptionKwh: "Consommation (kWh)", category: "Catégorie", zone: "Zone", leakRate: "Taux de fuite (L/h)", status: "Statut", detected: "Détecté", co2Kg: "CO₂ (kg)", consumptionL: "Consommation (L)" },
+    status: { ok: "✓ OK", warning: "⚠ Avertissement", critical: "⚠ Critique" },
+    aiSection: { badge: "Cette analyse est générée par FGB-AI", disclaimerLine1: "Ce diagnostic est généré par les modèles FGB-AI et est fourni à titre indicatif uniquement.", disclaimerLine2: "Pour une validation complémentaire, contactez notre équipe professionnelle à monitoring@fgb-studio.com." },
+    footer: { page: "Page", of: "de" },
+  },
+  es: {
+    progress: { capturingCharts: "Capturando gráficos...", generatingAiDiagnosis: "Generando diagnóstico energético IA...", savingPdf: "Guardando PDF..." },
+    cover: { title: "Informe del panel", period: "Período", address: "Dirección", brand: "Marca", holding: "Grupo", region: "Región", generatedOn: "Generado el", currentKpis: "KPI actuales" },
+    kpis: { temperature: "Temperatura", co2: "CO₂", humidity: "Humedad", airQuality: "Calidad del aire" },
+    sections: { energyDashboard: "📊 Panel de Energía", waterDashboard: "💧 Panel de Agua", airQualityDashboard: "🌬️ Panel de Calidad del Aire", aiDiagnosis: "Diagnóstico de rendimiento" },
+    energy: { consumptionChart: "Gráfico de consumo energético", consumption: "Consumo energético", deviceChart: "Gráfico de consumo por dispositivo", deviceConsumption: "Consumo por dispositivo", co2Emissions: "Emisiones de CO₂" },
+    water: { consumptionChart: "Gráfico de consumo de agua", consumption: "Consumo de agua", quality: "Calidad del agua", leakDetection: "Detección de fugas" },
+    airQuality: { chart: "Gráfico de calidad del aire", co2TvocHistory: "Historial de CO₂ y TVOC", tempHumidity: "Temperatura y Humedad", particulates: "Partículas (PM2.5 / PM10)" },
+    tables: { device: "Dispositivo", consumptionKwh: "Consumo (kWh)", category: "Categoría", zone: "Zona", leakRate: "Tasa de fuga (L/h)", status: "Estado", detected: "Detectado", co2Kg: "CO₂ (kg)", consumptionL: "Consumo (L)" },
+    status: { ok: "✓ OK", warning: "⚠ Advertencia", critical: "⚠ Crítico" },
+    aiSection: { badge: "Este análisis es generado por FGB-AI", disclaimerLine1: "Este diagnóstico es generado por los modelos FGB-AI y tiene fines meramente indicativos.", disclaimerLine2: "Para una validación adicional, contacte a nuestro equipo profesional en monitoring@fgb-studio.com." },
+    footer: { page: "Página", of: "de" },
   },
 };
 
@@ -317,14 +79,8 @@ export const getTranslations = (lang: ReportLanguage): ReportTranslations => {
 };
 
 export const getDateLocale = async (lang: ReportLanguage) => {
-  if (lang === 'it') {
-    const { it } = await import('date-fns/locale');
-    return it;
-  }
-  if (lang === 'fr') {
-    const { fr } = await import('date-fns/locale');
-    return fr;
-  }
-  const { enUS } = await import('date-fns/locale');
-  return enUS;
+  if (lang === 'it') { const { it } = await import('date-fns/locale'); return it; }
+  if (lang === 'fr') { const { fr } = await import('date-fns/locale'); return fr; }
+  if (lang === 'es') { const { es } = await import('date-fns/locale'); return es; }
+  const { enUS } = await import('date-fns/locale'); return enUS;
 };
