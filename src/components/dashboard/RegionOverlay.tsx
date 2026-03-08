@@ -557,7 +557,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             {mobileDrawerContent === 'alerts' && siteAlertsList.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-emerald-400">
                 <span className="text-lg mb-1">✓</span>
-                <span className="text-xs">{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</span>
+                <span className="text-xs">{t('region.no_active_alerts')}</span>
               </div>
             )}
           </div>
