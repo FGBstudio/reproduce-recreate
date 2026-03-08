@@ -447,7 +447,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         </div>
                       </div>
                     )) : (
-                      <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</p>
+                      <p className="text-xs text-muted-foreground text-center py-3">{t('brand.no_active_alerts')}</p>
                     )}
                   </div>
                 </ScrollArea>
