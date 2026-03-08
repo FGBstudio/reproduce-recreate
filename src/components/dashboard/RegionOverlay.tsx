@@ -257,7 +257,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                 <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('air') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex justify-between items-end mb-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-muted-foreground">Air Quality Score</span>
+                      <span className="text-sm text-muted-foreground">{t('region.air_quality_score')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
