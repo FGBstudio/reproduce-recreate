@@ -21,7 +21,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerContent, setMobileDrawerContent] = useState<string | null>(null);
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const region = regions[currentRegion];
   
   // Get all projects (real + mock merged)
@@ -150,10 +150,12 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   }[s] || "text-muted-foreground");
 
   const statusLabel = (s: string) => {
-    if (language === 'it') {
-      return { online: 'Online', offline: 'Offline', not_installed: 'Da installare' }[s] ?? s;
-    }
-    return { online: 'Online', offline: 'Offline', not_installed: 'Ready to install' }[s] ?? s;
+    const map: Record<string, string> = {
+      online: t('region.status_online'),
+      offline: t('region.status_offline'),
+      not_installed: t('region.status_not_installed'),
+    };
+    return map[s] ?? s;
   };
 
   return (
@@ -170,7 +172,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           <div>
             <h2 className="text-3xl font-serif text-foreground mb-1">{region.name}</h2>
             <div className="text-xs text-fgb-accent uppercase tracking-widest">
-              Regional Performance
+              {t('region.performance')}
             </div>
           </div>
           {isMobile && (
@@ -194,15 +196,13 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                 <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('energy') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">Avg. Energy Density</span>
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">{t('region.avg_energy_density')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0" />
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[240px] text-xs">
-                          {language === 'it'
-                            ? "Media dei consumi energetici (MWh) divisi per la superficie (m²) di ogni sito, calcolata sugli ultimi 30 giorni con i contatori 'general'."
-                            : "Average energy consumption (MWh) divided by each site's floor area (m²), calculated over the last 30 days using 'general' meters."}
+                          {t('region.energy_intensity_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -221,10 +221,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
                 <div className="p-4 border-b border-border/30 bg-accent/5">
                   <h4 className="text-sm font-semibold text-foreground">
-                    {language === 'it' ? 'Intensità Energetica per Sito' : 'Energy Intensity by Site'}
+                    {t('region.energy_intensity_title')}
                   </h4>
                   <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                    {language === 'it' ? 'kWh/m² · Ultimi 30 giorni · Contatori general · Dal più alto al più basso' : 'kWh/m² · Last 30 days · General meters · Highest to lowest'}
+                    {t('region.energy_intensity_subtitle')}
                   </p>
                 </div>
                 <ScrollArea className="h-[240px]">
@@ -244,7 +244,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     </div>
                   ) : (
                     <div className="p-6 text-xs text-muted-foreground text-center">
-                      {language === 'it' ? 'Nessun dato disponibile' : 'No data available'}
+                      {t('region.no_data')}
                     </div>
                   )}
                 </ScrollArea>
@@ -257,15 +257,13 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                 <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('air') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex justify-between items-end mb-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-muted-foreground">Air Quality Score</span>
+                      <span className="text-sm text-muted-foreground">{t('region.air_quality_score')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[240px] text-xs">
-                          {language === 'it'
-                            ? "Giudizio basato sulla media CO₂ (ppm) a 30 giorni: Excellent <400, Good <600, Moderate <1000, Poor ≥1000."
-                            : "Rating based on 30-day avg CO₂ (ppm): Excellent <400, Good <600, Moderate <1000, Poor ≥1000."}
+                          {t('region.air_quality_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -286,10 +284,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
                 <div className="p-4 border-b border-border/30 bg-accent/5">
                   <h4 className="text-sm font-semibold text-foreground">
-                    {language === 'it' ? 'Qualità dell\'Aria per Sito' : 'Air Quality by Site'}
+                    {t('region.air_quality_title')}
                   </h4>
                   <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                    {language === 'it' ? 'CO₂ media 30 giorni · Dal migliore al peggiore' : 'Avg CO₂ 30 days · Best to worst'}
+                    {t('region.air_quality_subtitle')}
                   </p>
                 </div>
                 <ScrollArea className="h-[240px]">
@@ -310,7 +308,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     </div>
                   ) : (
                     <div className="p-6 text-xs text-muted-foreground text-center">
-                      {language === 'it' ? 'Nessun dato disponibile' : 'No data available'}
+                      {t('region.no_data')}
                     </div>
                   )}
                 </ScrollArea>
@@ -325,15 +323,13 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                   <div className="text-center p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                     <div className="text-2xl font-bold text-foreground">{displayOnline}</div>
                     <div className="flex items-center justify-center gap-1">
-                      <span className="text-[10px] uppercase text-muted-foreground">Active Sites</span>
+                      <span className="text-[10px] uppercase text-muted-foreground">{t('region.active_sites')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-[220px] text-xs">
-                          {language === 'it'
-                            ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora."
-                            : "Sites with at least one telemetry reading in the last hour."}
+                          {t('region.active_sites_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -341,12 +337,12 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                 </PopoverTrigger>
                 <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
                   <div className="p-4 border-b border-border/30 bg-accent/5">
-                    <h4 className="text-sm font-semibold text-foreground">
-                      {language === 'it' ? 'Stato Siti' : 'Sites Status'}
-                    </h4>
-                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                      {language === 'it' ? 'Verde = online · Arancio = offline · Rosso = da installare' : 'Green = online · Orange = offline · Red = ready to install'}
-                    </p>
+                  <h4 className="text-sm font-semibold text-foreground">
+                    {t('region.sites_status')}
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    {t('region.sites_status_subtitle')}
+                  </p>
                   </div>
                   <ScrollArea className="h-[240px]">
                     {siteStatusList.length > 0 ? (
@@ -364,9 +360,9 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                         ))}
                       </div>
                     ) : (
-                      <div className="p-6 text-xs text-muted-foreground text-center">
-                        {language === 'it' ? 'Nessun sito' : 'No sites'}
-                      </div>
+                    <div className="p-6 text-xs text-muted-foreground text-center">
+                      {t('region.no_sites')}
+                    </div>
                     )}
                   </ScrollArea>
                 </PopoverContent>
@@ -380,15 +376,13 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                       {displayCritical}
                     </div>
                     <div className="flex items-center justify-center gap-1">
-                      <span className="text-[10px] uppercase text-muted-foreground">Critical Alerts</span>
+                      <span className="text-[10px] uppercase text-muted-foreground">{t('region.critical_alerts')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-[220px] text-xs">
-                          {language === 'it'
-                            ? "Somma degli eventi con severità 'critical' e 'warning' attivi per i siti della regione."
-                            : "Sum of active 'critical' and 'warning' severity events across sites in this region."}
+                          {t('region.critical_alerts_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -396,12 +390,12 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                 </PopoverTrigger>
                 <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
                   <div className="p-4 border-b border-border/30 bg-accent/5">
-                    <h4 className="text-sm font-semibold text-foreground">
-                      {language === 'it' ? 'Allarmi per Sito' : 'Alerts by Site'}
-                    </h4>
-                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                      {language === 'it' ? 'Siti con allarmi attivi · Ordinati per gravità' : 'Sites with active alerts · Sorted by severity'}
-                    </p>
+                  <h4 className="text-sm font-semibold text-foreground">
+                    {t('region.alerts_title')}
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    {t('region.alerts_subtitle')}
+                  </p>
                   </div>
                   <ScrollArea className="h-[240px]">
                     {siteAlertsList.length > 0 ? (
@@ -423,7 +417,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     ) : (
                       <div className="p-6 text-xs text-emerald-400 text-center flex flex-col items-center gap-1">
                         <span>✓</span>
-                        <span>{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</span>
+                        <span>{t('region.no_active_alerts')}</span>
                       </div>
                     )}
                   </ScrollArea>
@@ -435,10 +429,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             <div className="mt-6 pt-4 border-t border-white/10 text-center">
               <p className="text-xs text-muted-foreground italic">
                 {(hasRealIntensity || hasRealCo2)
-                  ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} sites with live data · 30-day avg` 
+                  ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} ${t('region.sites_live_data')}` 
                   : aggregated.hasRealData 
-                    ? `${sitesCount} sites in region · Live data` 
-                    : "Select a pin on the map to view project details."}
+                    ? `${sitesCount} ${t('region.sites_in_region')}` 
+                    : t('region.select_pin')}
               </p>
             </div>
           </div>
@@ -454,7 +448,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
         <div className="flex items-center justify-between mb-2">
           <div>
             <h3 className="text-sm font-semibold text-foreground">{region.name}</h3>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Regional Performance</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('region.performance')}</p>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-1.5">
@@ -499,10 +493,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
       <DrawerContent className="max-h-[85vh] border-t border-white/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
         <DrawerHeader className="text-left pb-2">
           <DrawerTitle className="text-foreground">
-            {mobileDrawerContent === 'energy' && (language === 'it' ? 'Intensità Energetica' : 'Energy Intensity')}
-            {mobileDrawerContent === 'air' && (language === 'it' ? 'Qualità Aria' : 'Air Quality')}
-            {mobileDrawerContent === 'sites' && (language === 'it' ? 'Stato Siti' : 'Sites Status')}
-            {mobileDrawerContent === 'alerts' && (language === 'it' ? 'Allarmi' : 'Alerts')}
+            {mobileDrawerContent === 'energy' && t('region.energy_intensity')}
+            {mobileDrawerContent === 'air' && t('region.air_quality')}
+            {mobileDrawerContent === 'sites' && t('region.sites_status')}
+            {mobileDrawerContent === 'alerts' && t('region.alerts')}
           </DrawerTitle>
           <DrawerDescription className="text-muted-foreground">{region.name}</DrawerDescription>
         </DrawerHeader>
@@ -519,7 +513,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               </div>
             ))}
             {mobileDrawerContent === 'energy' && siteIntensityList.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-6">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+              <p className="text-xs text-muted-foreground text-center py-6">{t('region.no_data_short')}</p>
             )}
 
             {/* Air List */}
@@ -536,7 +530,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               </div>
             ))}
             {mobileDrawerContent === 'air' && siteAqList.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-6">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+              <p className="text-xs text-muted-foreground text-center py-6">{t('region.no_data_short')}</p>
             )}
 
             {/* Sites Status List */}
@@ -563,7 +557,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             {mobileDrawerContent === 'alerts' && siteAlertsList.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-emerald-400">
                 <span className="text-lg mb-1">✓</span>
-                <span className="text-xs">{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</span>
+                <span className="text-xs">{t('region.no_active_alerts')}</span>
               </div>
             )}
           </div>

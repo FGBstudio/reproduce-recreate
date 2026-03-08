@@ -213,10 +213,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     EXCELLENT: 'text-emerald-400', GOOD: 'text-emerald-500', MODERATE: 'text-yellow-500', POOR: 'text-red-400', 'N/A': 'text-muted-foreground'
   };
   const statusColor: Record<string, string> = { online: 'text-emerald-500', offline: 'text-yellow-500', not_installed: 'text-red-400' };
-  const statusLabel: Record<string, Record<string, string>> = {
-    online: { it: 'Online', en: 'Online' },
-    offline: { it: 'Offline', en: 'Offline' },
-    not_installed: { it: 'Da installare', en: 'Ready to install' },
+  const statusLabelMap = (s: string) => {
+    const map: Record<string, string> = { online: t('region.status_online'), offline: t('region.status_offline'), not_installed: t('region.status_not_installed') };
+    return map[s] ?? s;
   };
 
   const displayEntity = brand || holding;
@@ -307,8 +306,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora." : "Sites with at least one telemetry reading received in the last hour."}
+                       <TooltipContent side="top" className="max-w-[220px] text-xs">
+                        {t('brand.sites_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
@@ -318,7 +317,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
-                  <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Stato siti' : 'Sites Status'}</p>
+                  <p className="text-xs font-semibold text-foreground">{t('brand.sites_status')}</p>
                 </div>
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
@@ -326,7 +325,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
                         <Circle className={`w-2.5 h-2.5 fill-current ${statusColor[s.status]}`} />
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
-                        <span className={`text-[10px] ${statusColor[s.status]}`}>{statusLabel[s.status][language]}</span>
+                        <span className={`text-[10px] ${statusColor[s.status]}`}>{statusLabelMap(s.status)}</span>
                       </div>
                     ))}
                   </div>
@@ -342,7 +341,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Consumo totale ultimi 30 giorni, solo contatori 'general'." : "Total energy over 30 days, 'general' category meters only."}
+                        {t('brand.energy_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
@@ -354,7 +353,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
-                  <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Consumo per sito (30g)' : 'Consumption per site (30d)'}</p>
+                  <p className="text-xs font-semibold text-foreground">{t('brand.consumption_per_site')}</p>
                 </div>
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
@@ -365,7 +364,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         <span className="text-xs font-semibold text-foreground tabular-nums">{(s.kwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal">MWh</span></span>
                       </div>
                     )) : (
-                      <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+                      <p className="text-xs text-muted-foreground text-center py-3">{t('region.no_data_short')}</p>
                     )}
                   </div>
                 </ScrollArea>
@@ -380,7 +379,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Media CO₂ (ppm) su 30 giorni per siti con sensori aria." : "30-day avg CO₂ (ppm) for sites with air sensors."}
+                        {t('brand.air_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
@@ -392,7 +391,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
-                  <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Qualità aria per sito' : 'Air quality per site'}</p>
+                  <p className="text-xs font-semibold text-foreground">{t('brand.air_per_site')}</p>
                 </div>
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
@@ -406,7 +405,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         </div>
                       </div>
                     )) : (
-                      <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+                      <p className="text-xs text-muted-foreground text-center py-3">{t('region.no_data_short')}</p>
                     )}
                   </div>
                 </ScrollArea>
@@ -421,7 +420,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Allarmi attivi: eventi critici/warning o siti senza dati da oltre 2 giorni." : "Active alerts: critical/warning events or sites with no data for 2+ days."}
+                        {t('brand.alerts_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
@@ -435,7 +434,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
-                  <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Allarmi per sito' : 'Alerts per site'}</p>
+                  <p className="text-xs font-semibold text-foreground">{t('brand.alerts_per_site')}</p>
                 </div>
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
@@ -448,7 +447,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         </div>
                       </div>
                     )) : (
-                      <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</p>
+                      <p className="text-xs text-muted-foreground text-center py-3">{t('brand.no_active_alerts')}</p>
                     )}
                   </div>
                 </ScrollArea>
@@ -493,20 +492,20 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-foreground">
-                    {language === 'it' ? 'Efficienza vs Comfort' : 'Efficiency vs Comfort'}
+                    {t('brand.efficiency_vs_comfort')}
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {language === 'it' ? 'Energia (MWh) vs CO₂ (ppm) · Ultimi 30 giorni' : 'Energy (MWh) vs CO₂ (ppm) · Last 30 days'}
+                  {t('brand.scatter_subtitle')}
                 </p>
                 {/* Quadrant legend */}
                 <div className="flex flex-wrap gap-3 mb-4">
                   {[
-                    { color: 'bg-emerald-500', label: language === 'it' ? 'Best Performer' : 'Best Performer' },
-                    { color: 'bg-yellow-500', label: language === 'it' ? 'Rischio Salute' : 'Health Risk' },
-                    { color: 'bg-orange-500', label: language === 'it' ? 'Spreco Energia' : 'Energy Waste' },
-                    { color: 'bg-red-500', label: language === 'it' ? 'Critico' : 'Critical' },
+                    { color: 'bg-emerald-500', label: t('brand.best_performer') },
+                    { color: 'bg-yellow-500', label: t('brand.health_risk') },
+                    { color: 'bg-orange-500', label: t('brand.energy_waste') },
+                    { color: 'bg-red-500', label: t('brand.critical') },
                   ].map(q => (
                     <div key={q.label} className="flex items-center gap-1.5">
                       <div className={`w-2.5 h-2.5 rounded-full ${q.color}`} />
@@ -561,19 +560,19 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-foreground">
-                    {language === 'it' ? 'Classifica Siti' : 'Site Leaderboard'}
+                    {t('brand.site_leaderboard')}
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {language === 'it' ? 'Ordinati dal peggiore al migliore · 30 giorni' : 'Sorted worst to best · 30 days'}
+                  {t('brand.leaderboard_subtitle')}
                 </p>
                 <div className="grid grid-cols-2 gap-6 flex-1 min-h-0">
                   {/* Energy leaderboard */}
                   {filterEnergy && energyLeaderboard.length > 0 && (
                     <div className="flex flex-col min-h-0">
                       <p className="text-base text-muted-foreground uppercase tracking-wider mb-3 font-medium">
-                        ⚡ {language === 'it' ? 'Consumo Energia' : 'Energy Consumption'}
+                        ⚡ {t('brand.energy_consumption_label')}
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
@@ -601,7 +600,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {filterAir && airLeaderboard.length > 0 && (
                     <div className="flex flex-col min-h-0">
                       <p className="text-base text-muted-foreground uppercase tracking-wider mb-3 font-medium">
-                        💨 {language === 'it' ? 'Peggiore Aria (CO₂)' : 'Air Quality (CO₂)'}
+                        💨 {t('brand.air_quality_co2')}
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
@@ -634,19 +633,19 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-foreground">
-                    {language === 'it' ? 'Matrice Salute Sistema' : 'System Health Matrix'}
+                    {t('brand.system_health')}
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {language === 'it' ? 'Stato operativo per modulo · Triage immediato' : 'Operational status by module · Immediate triage'}
+                  {t('brand.health_subtitle')}
                 </p>
                 {/* Legend */}
                 <div className="flex items-center gap-4 mb-4">
                   {[
-                    { color: 'bg-emerald-500/80', label: language === 'it' ? 'OK' : 'OK' },
-                    { color: 'bg-yellow-500/80', label: language === 'it' ? 'Attenzione' : 'Warning' },
-                    { color: 'bg-red-500/80', label: language === 'it' ? 'Critico' : 'Critical' },
+                    { color: 'bg-emerald-500/80', label: t('brand.ok') },
+                    { color: 'bg-yellow-500/80', label: t('brand.warning') },
+                    { color: 'bg-red-500/80', label: t('brand.critical') },
                   ].map(l => (
                     <div key={l.label} className="flex items-center gap-1.5">
                       <div className={`w-3 h-3 rounded-sm ${l.color}`} />
@@ -656,7 +655,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 </div>
                 {/* Header */}
                 <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1 shrink-0">
-                  <span className="text-xs text-muted-foreground uppercase font-medium">{language === 'it' ? 'Sito' : 'Site'}</span>
+                  <span className="text-xs text-muted-foreground uppercase font-medium">{t('brand.site')}</span>
                   {filterEnergy && <span className="text-lg text-muted-foreground uppercase text-center">⚡</span>}
                   {!filterEnergy && <span />}
                   {filterAir && <span className="text-lg text-muted-foreground uppercase text-center">💨</span>}
@@ -702,11 +701,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-5 h-5 text-muted-foreground" />
                 <h4 className="text-lg font-semibold text-foreground">
-                  {language === 'it' ? 'Elenco Siti' : 'Site Directory'}
+                  {t('brand.site_directory')}
                 </h4>
               </div>
               <p className="text-sm text-muted-foreground mb-4 shrink-0">
-                {language === 'it' ? `${storeDirectory.length} siti · Ordinamento alfabetico` : `${storeDirectory.length} sites · Alphabetical order`}
+                {`${storeDirectory.length} ${t('brand.sites_alpha')}`}
               </p>
               <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                 <div className="space-y-1">
@@ -817,7 +816,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Energy Leaderboard */}
               {filterEnergy && energyLeaderboard.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">⚡ {language === 'it' ? 'Classifica Energia' : 'Energy Leaderboard'}</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">⚡ {t('brand.energy_leaderboard')}</h4>
                   <div className="space-y-2">
                     {energyLeaderboard.map((s, i) => {
                       const maxVal = energyLeaderboard[0]?.value || 1;
@@ -842,7 +841,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Air Leaderboard */}
               {filterAir && airLeaderboard.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">💨 {language === 'it' ? 'Classifica CO₂' : 'CO₂ Leaderboard'}</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">💨 {t('brand.co2_leaderboard')}</h4>
                   <div className="space-y-2">
                     {airLeaderboard.map((s, i) => {
                       const maxVal = airLeaderboard[0]?.value || 1;
@@ -867,7 +866,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Health Matrix (mobile list format) */}
               {showHealthMatrix && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">🏥 {language === 'it' ? 'Salute Sistema' : 'System Health'}</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">🏥 {t('brand.system_health_short')}</h4>
                   <div className="space-y-1.5">
                     {healthMatrixData.map((site, i) => (
                       <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
@@ -886,7 +885,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
               {/* Store Directory */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {language === 'it' ? 'Elenco Siti' : 'Site Directory'} ({storeDirectory.length})</h4>
+                <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {t('brand.site_directory')} ({storeDirectory.length})</h4>
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
                     <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/5">

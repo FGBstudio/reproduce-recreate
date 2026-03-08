@@ -87,7 +87,7 @@ const MobileBurgerMenu = ({
             onClick={onClose}
             className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
             style={{ minWidth: 48, minHeight: 48 }}
-            aria-label="Chiudi menu"
+            aria-label={t('menu.close')}
           >
             <X className="w-5 h-5 text-foreground" />
           </button>
@@ -117,7 +117,7 @@ const MobileBurgerMenu = ({
           {/* Global Filters */}
           {(canChangeHolding || canChangeBrand) && (
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Filtri Globali</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.global_filters')}</p>
               <div className="space-y-2">
                 {canChangeHolding && (
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/8">
@@ -132,10 +132,10 @@ const MobileBurgerMenu = ({
                       }}
                     >
                       <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
-                        <SelectValue placeholder="Tutti gli Holdings" />
+                        <SelectValue placeholder={t('menu.all_holdings')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tutti gli Holdings</SelectItem>
+                        <SelectItem value="all">{t('menu.all_holdings')}</SelectItem>
                         {holdings.map(h => (
                           <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
                         ))}
@@ -155,10 +155,10 @@ const MobileBurgerMenu = ({
                       }}
                     >
                       <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
-                        <SelectValue placeholder="Tutti i Brand" />
+                        <SelectValue placeholder={t('menu.all_brands')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tutti i Brand</SelectItem>
+                        <SelectItem value="all">{t('menu.all_brands')}</SelectItem>
                         {availableBrands.map(b => (
                           <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
@@ -172,11 +172,11 @@ const MobileBurgerMenu = ({
 
           {/* User settings */}
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Impostazioni Utente</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.user_settings')}</p>
             <div className="space-y-2">
               {user && (
                 <div className="p-3 rounded-xl bg-white/5 border border-white/8">
-                  <p className="text-xs text-muted-foreground">Accesso come</p>
+                  <p className="text-xs text-muted-foreground">{t('menu.logged_as')}</p>
                   <p className="text-sm text-foreground font-medium truncate">{user.email}</p>
                 </div>
               )}
@@ -186,7 +186,7 @@ const MobileBurgerMenu = ({
                   className="flex items-center gap-3 w-full p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/8"
                 >
                   <Shield className="w-4 h-4 text-fgb-accent" />
-                  <span className="text-sm text-foreground flex-1 text-left">Admin Panel</span>
+                  <span className="text-sm text-foreground flex-1 text-left">{t('menu.admin_panel')}</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               )}
@@ -205,7 +205,7 @@ const MobileBurgerMenu = ({
             style={{ minHeight: 48 }}
           >
             <LogOut className="w-4 h-4 text-destructive" />
-            <span className="text-sm text-destructive">Logout</span>
+            <span className="text-sm text-destructive">{t('account.logout')}</span>
           </button>
         </div>
       </div>
