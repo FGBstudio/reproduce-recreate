@@ -21,7 +21,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerContent, setMobileDrawerContent] = useState<string | null>(null);
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const region = regions[currentRegion];
   
   // Get all projects (real + mock merged)
