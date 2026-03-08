@@ -364,7 +364,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         <span className="text-xs font-semibold text-foreground tabular-nums">{(s.kwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal">MWh</span></span>
                       </div>
                     )) : (
-                      <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+                      <p className="text-xs text-muted-foreground text-center py-3">{t('region.no_data_short')}</p>
                     )}
                   </div>
                 </ScrollArea>
