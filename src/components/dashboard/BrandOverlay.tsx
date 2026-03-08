@@ -633,7 +633,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-foreground">
-                    {language === 'it' ? 'Matrice Salute Sistema' : 'System Health Matrix'}
+                    {t('brand.system_health')}
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
