@@ -172,7 +172,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           <div>
             <h2 className="text-3xl font-serif text-foreground mb-1">{region.name}</h2>
             <div className="text-xs text-fgb-accent uppercase tracking-widest">
-              Regional Performance
+              {t('region.performance')}
             </div>
           </div>
           {isMobile && (
