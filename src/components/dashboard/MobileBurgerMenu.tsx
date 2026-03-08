@@ -205,7 +205,7 @@ const MobileBurgerMenu = ({
             style={{ minHeight: 48 }}
           >
             <LogOut className="w-4 h-4 text-destructive" />
-            <span className="text-sm text-destructive">Logout</span>
+            <span className="text-sm text-destructive">{t('account.logout')}</span>
           </button>
         </div>
       </div>
