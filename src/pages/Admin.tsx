@@ -16,6 +16,7 @@ import { HierarchyView } from '@/components/admin/HierarchyView';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminAuthGate } from '@/components/admin/AdminAuthGate';
 import { DevicesManager } from '@/components/admin/DevicesManager';
+import { AccessRequestsManager } from '@/components/admin/AccessRequestsManager';
 
 const Admin = () => {
   const navigate = useNavigate();
