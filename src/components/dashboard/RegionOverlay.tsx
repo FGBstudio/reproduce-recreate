@@ -493,10 +493,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
       <DrawerContent className="max-h-[85vh] border-t border-white/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
         <DrawerHeader className="text-left pb-2">
           <DrawerTitle className="text-foreground">
-            {mobileDrawerContent === 'energy' && (language === 'it' ? 'Intensità Energetica' : 'Energy Intensity')}
-            {mobileDrawerContent === 'air' && (language === 'it' ? 'Qualità Aria' : 'Air Quality')}
-            {mobileDrawerContent === 'sites' && (language === 'it' ? 'Stato Siti' : 'Sites Status')}
-            {mobileDrawerContent === 'alerts' && (language === 'it' ? 'Allarmi' : 'Alerts')}
+            {mobileDrawerContent === 'energy' && t('region.energy_intensity')}
+            {mobileDrawerContent === 'air' && t('region.air_quality')}
+            {mobileDrawerContent === 'sites' && t('region.sites_status')}
+            {mobileDrawerContent === 'alerts' && t('region.alerts')}
           </DrawerTitle>
           <DrawerDescription className="text-muted-foreground">{region.name}</DrawerDescription>
         </DrawerHeader>
