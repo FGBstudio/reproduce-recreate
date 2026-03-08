@@ -1,9 +1,9 @@
 /**
  * PDF Report Translations
- * Multilingual support for PDF report generation (EN/IT/FR/ES)
+ * Multilingual support for PDF report generation (EN/IT/FR/ES/ZH)
  */
 
-export type ReportLanguage = 'en' | 'it' | 'fr' | 'es';
+export type ReportLanguage = 'en' | 'it' | 'fr' | 'es' | 'zh';
 
 export interface ReportTranslations {
   progress: { capturingCharts: string; generatingAiDiagnosis: string; savingPdf: string; };
@@ -72,6 +72,19 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     aiSection: { badge: "Este análisis es generado por FGB-AI", disclaimerLine1: "Este diagnóstico es generado por los modelos FGB-AI y tiene fines meramente indicativos.", disclaimerLine2: "Para una validación adicional, contacte a nuestro equipo profesional en monitoring@fgb-studio.com." },
     footer: { page: "Página", of: "de" },
   },
+  zh: {
+    progress: { capturingCharts: "正在捕获图表...", generatingAiDiagnosis: "正在生成 AI 能源诊断...", savingPdf: "正在保存 PDF..." },
+    cover: { title: "仪表板报告", period: "期间", address: "地址", brand: "品牌", holding: "集团", region: "区域", generatedOn: "生成日期", currentKpis: "当前 KPI" },
+    kpis: { temperature: "温度", co2: "CO₂", humidity: "湿度", airQuality: "空气质量" },
+    sections: { energyDashboard: "📊 能源仪表板", waterDashboard: "💧 水务仪表板", airQualityDashboard: "🌬️ 空气质量仪表板", aiDiagnosis: "性能诊断" },
+    energy: { consumptionChart: "能耗图表", consumption: "能耗", deviceChart: "设备能耗图表", deviceConsumption: "按设备能耗", co2Emissions: "CO₂ 排放" },
+    water: { consumptionChart: "用水量图表", consumption: "用水量", quality: "水质", leakDetection: "漏水检测" },
+    airQuality: { chart: "空气质量图表", co2TvocHistory: "CO₂ 与 TVOC 历史", tempHumidity: "温度与湿度", particulates: "颗粒物 (PM2.5 / PM10)" },
+    tables: { device: "设备", consumptionKwh: "能耗 (kWh)", category: "类别", zone: "区域", leakRate: "泄漏率 (L/h)", status: "状态", detected: "检测时间", co2Kg: "CO₂ (kg)", consumptionL: "消耗量 (L)" },
+    status: { ok: "✓ 正常", warning: "⚠ 警告", critical: "⚠ 严重" },
+    aiSection: { badge: "此分析由 FGB-AI 提供支持", disclaimerLine1: "此诊断由 FGB-AI 模型生成，仅供参考。", disclaimerLine2: "如需进一步验证，请联系我们的专业团队：monitoring@fgb-studio.com。" },
+    footer: { page: "第", of: "页，共" },
+  },
 };
 
 export const getTranslations = (lang: ReportLanguage): ReportTranslations => {
@@ -82,5 +95,6 @@ export const getDateLocale = async (lang: ReportLanguage) => {
   if (lang === 'it') { const { it } = await import('date-fns/locale'); return it; }
   if (lang === 'fr') { const { fr } = await import('date-fns/locale'); return fr; }
   if (lang === 'es') { const { es } = await import('date-fns/locale'); return es; }
+  if (lang === 'zh') { const { zhCN } = await import('date-fns/locale'); return zhCN; }
   const { enUS } = await import('date-fns/locale'); return enUS;
 };
