@@ -306,8 +306,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora." : "Sites with at least one telemetry reading received in the last hour."}
+                       <TooltipContent side="top" className="max-w-[220px] text-xs">
+                        {t('brand.sites_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
