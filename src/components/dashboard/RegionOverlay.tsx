@@ -196,7 +196,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                 <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('energy') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">Avg. Energy Density</span>
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">{t('region.avg_energy_density')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0" />
