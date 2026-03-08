@@ -150,10 +150,12 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   }[s] || "text-muted-foreground");
 
   const statusLabel = (s: string) => {
-    if (language === 'it') {
-      return { online: 'Online', offline: 'Offline', not_installed: 'Da installare' }[s] ?? s;
-    }
-    return { online: 'Online', offline: 'Offline', not_installed: 'Ready to install' }[s] ?? s;
+    const map: Record<string, string> = {
+      online: t('region.status_online'),
+      offline: t('region.status_offline'),
+      not_installed: t('region.status_not_installed'),
+    };
+    return map[s] ?? s;
   };
 
   return (
