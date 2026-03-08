@@ -405,7 +405,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         </div>
                       </div>
                     )) : (
-                      <p className="text-xs text-muted-foreground text-center py-3">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+                      <p className="text-xs text-muted-foreground text-center py-3">{t('region.no_data_short')}</p>
                     )}
                   </div>
                 </ScrollArea>
