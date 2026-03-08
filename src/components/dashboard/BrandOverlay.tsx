@@ -341,7 +341,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Consumo totale ultimi 30 giorni, solo contatori 'general'." : "Total energy over 30 days, 'general' category meters only."}
+                        {t('brand.energy_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
