@@ -158,7 +158,7 @@ const MobileBurgerMenu = ({
                         <SelectValue placeholder={t('menu.all_brands')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tutti i Brand</SelectItem>
+                        <SelectItem value="all">{t('menu.all_brands')}</SelectItem>
                         {availableBrands.map(b => (
                           <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
