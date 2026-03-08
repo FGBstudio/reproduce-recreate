@@ -325,7 +325,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
                         <Circle className={`w-2.5 h-2.5 fill-current ${statusColor[s.status]}`} />
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
-                        <span className={`text-[10px] ${statusColor[s.status]}`}>{statusLabel[s.status][language]}</span>
+                        <span className={`text-[10px] ${statusColor[s.status]}`}>{statusLabelMap(s.status)}</span>
                       </div>
                     ))}
                   </div>
