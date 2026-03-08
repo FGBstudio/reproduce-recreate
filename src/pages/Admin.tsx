@@ -175,6 +175,10 @@ const Admin = () => {
             <TabsContent value="access" className={contentTabClass}>
               <UserAccessManager />
             </TabsContent>
+
+            <TabsContent value="requests" className={contentTabClass}>
+              <AccessRequestsManager />
+            </TabsContent>
           </Tabs>
         </main>
       </div>
