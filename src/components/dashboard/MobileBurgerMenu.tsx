@@ -127,6 +127,8 @@ const MobileBurgerMenu = ({
                       onValueChange={(val) => {
                         onHoldingChange?.(val === "all" ? null : val);
                         onBrandChange?.(null);
+                        // Auto-close menu after selection
+                        if (val !== "all") setTimeout(() => onClose(), 250);
                       }}
                     >
                       <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
@@ -146,7 +148,11 @@ const MobileBurgerMenu = ({
                     <Tag className="w-4 h-4 text-muted-foreground shrink-0" />
                     <Select
                       value={selectedBrand || "all"}
-                      onValueChange={(val) => onBrandChange?.(val === "all" ? null : val)}
+                      onValueChange={(val) => {
+                        onBrandChange?.(val === "all" ? null : val);
+                        // Auto-close menu after selection
+                        if (val !== "all") setTimeout(() => onClose(), 250);
+                      }}
                     >
                       <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
                         <SelectValue placeholder="Tutti i Brand" />

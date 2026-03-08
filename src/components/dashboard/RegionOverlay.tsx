@@ -9,6 +9,7 @@ import { ChevronDown, ChevronUp, Circle, Info } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 
 interface RegionOverlayProps {
   currentRegion: string;
@@ -19,6 +20,7 @@ interface RegionOverlayProps {
 const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy', 'air', 'water'] }: RegionOverlayProps) => {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerContent, setMobileDrawerContent] = useState<string | null>(null);
   const { language } = useLanguage();
   const region = regions[currentRegion];
   
@@ -155,6 +157,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   };
 
   return (
+    <>
     <div 
       className={`fixed top-24 left-4 md:left-8 z-30 w-80 md:w-[340px] pointer-events-none transition-all duration-500 hidden md:block ${
         visible 
@@ -442,6 +445,132 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
         )}
       </div>
     </div>
+
+    {/* ============================================================ */}
+    {/* Mobile: Fixed bottom bar with detail drawers */}
+    {/* ============================================================ */}
+    <div className="md:hidden fixed bottom-20 left-2 right-2 z-30 pointer-events-auto">
+      <div className="glass-panel rounded-xl p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{region.name}</h3>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Regional Performance</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-1.5">
+          {/* Energy Intensity */}
+          <button 
+            onClick={() => activeFilters.includes('energy') && setMobileDrawerContent('energy')}
+            className={`text-center p-2 rounded-lg bg-white/5 border border-white/10 ${activeFilters.includes('energy') ? 'active:bg-white/10' : 'opacity-30 grayscale'}`}
+          >
+            <div className="text-sm font-bold text-foreground">{activeFilters.includes('energy') && displayIntensity > 0 ? (displayIntensity / 1000).toFixed(1) : '—'}</div>
+            <div className="text-[8px] uppercase text-muted-foreground">MWh/m²</div>
+          </button>
+          {/* Air Quality */}
+          <button 
+            onClick={() => activeFilters.includes('air') && setMobileDrawerContent('air')}
+            className={`text-center p-2 rounded-lg bg-white/5 border border-white/10 ${activeFilters.includes('air') ? 'active:bg-white/10' : 'opacity-30 grayscale'}`}
+          >
+            <div className={`text-sm font-bold ${aqColorClass}`}>{activeFilters.includes('air') ? displayAq : '—'}</div>
+            <div className="text-[8px] uppercase text-muted-foreground">Air</div>
+          </button>
+          {/* Active Sites */}
+          <button 
+            onClick={() => setMobileDrawerContent('sites')}
+            className="text-center p-2 rounded-lg bg-white/5 border border-white/10 active:bg-white/10"
+          >
+            <div className="text-sm font-bold text-foreground">{displayOnline}</div>
+            <div className="text-[8px] uppercase text-muted-foreground">Online</div>
+          </button>
+          {/* Alerts */}
+          <button 
+            onClick={() => setMobileDrawerContent('alerts')}
+            className="text-center p-2 rounded-lg bg-white/5 border border-white/10 active:bg-white/10"
+          >
+            <div className={`text-sm font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>{displayCritical}</div>
+            <div className="text-[8px] uppercase text-muted-foreground">Alerts</div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* Mobile Drawer for KPI Details */}
+    <Drawer open={!!mobileDrawerContent} onOpenChange={(open) => !open && setMobileDrawerContent(null)}>
+      <DrawerContent className="max-h-[85vh] border-t border-white/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
+        <DrawerHeader className="text-left pb-2">
+          <DrawerTitle className="text-foreground">
+            {mobileDrawerContent === 'energy' && (language === 'it' ? 'Intensità Energetica' : 'Energy Intensity')}
+            {mobileDrawerContent === 'air' && (language === 'it' ? 'Qualità Aria' : 'Air Quality')}
+            {mobileDrawerContent === 'sites' && (language === 'it' ? 'Stato Siti' : 'Sites Status')}
+            {mobileDrawerContent === 'alerts' && (language === 'it' ? 'Allarmi' : 'Alerts')}
+          </DrawerTitle>
+          <DrawerDescription className="text-muted-foreground">{region.name}</DrawerDescription>
+        </DrawerHeader>
+        <ScrollArea className="flex-1 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+          <div className="space-y-1 pb-6">
+            {/* Energy List */}
+            {mobileDrawerContent === 'energy' && siteIntensityList.map((s, i) => (
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+                <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
+                  <span className="text-muted-foreground/60 font-mono text-[10px] w-4">{i + 1}</span>
+                  <span className="text-foreground truncate">{s.name}</span>
+                </div>
+                <span className="font-semibold text-foreground whitespace-nowrap">{s.intensity?.toFixed(1)} kWh/m²</span>
+              </div>
+            ))}
+            {mobileDrawerContent === 'energy' && siteIntensityList.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-6">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+            )}
+
+            {/* Air List */}
+            {mobileDrawerContent === 'air' && siteAqList.map((s, i) => (
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+                <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
+                  <Circle className={`w-2 h-2 shrink-0 fill-current ${aqLabelColor(s.label)}`} />
+                  <span className="text-foreground truncate">{s.name}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-muted-foreground">{s.co2 ?? '—'} ppm</span>
+                  <span className={`font-semibold ${aqLabelColor(s.label)}`}>{s.label}</span>
+                </div>
+              </div>
+            ))}
+            {mobileDrawerContent === 'air' && siteAqList.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-6">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+            )}
+
+            {/* Sites Status List */}
+            {mobileDrawerContent === 'sites' && siteStatusList.map((s, i) => (
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3">
+                  <Circle className={`w-2.5 h-2.5 shrink-0 fill-current ${statusColor(s.status)}`} />
+                  <span className="text-foreground truncate">{s.name}</span>
+                </div>
+                <span className={`text-[11px] font-medium ${statusColor(s.status)}`}>{statusLabel(s.status)}</span>
+              </div>
+            ))}
+
+            {/* Alerts List */}
+            {mobileDrawerContent === 'alerts' && siteAlertsList.length > 0 && siteAlertsList.map((s, i) => (
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+                <span className="text-foreground truncate min-w-0 flex-1 mr-3">{s.name}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {s.critical > 0 && <span className="px-1.5 py-0.5 rounded-full bg-rose-400/15 text-rose-400 text-[10px] font-semibold">{s.critical} crit</span>}
+                  {s.warning > 0 && <span className="px-1.5 py-0.5 rounded-full bg-yellow-400/15 text-yellow-400 text-[10px] font-semibold">{s.warning} warn</span>}
+                </div>
+              </div>
+            ))}
+            {mobileDrawerContent === 'alerts' && siteAlertsList.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 text-emerald-400">
+                <span className="text-lg mb-1">✓</span>
+                <span className="text-xs">{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</span>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </DrawerContent>
+    </Drawer>
+    </>
   );
 };
 

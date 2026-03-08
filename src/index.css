@@ -255,3 +255,36 @@
 .custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--fgb-accent) / 0.25); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--fgb-accent) / 0.45); }
 .custom-scrollbar { scrollbar-width: thin; scrollbar-color: hsl(var(--fgb-accent) / 0.25) transparent; }
+
+/* Landscape lock for mobile - force portrait */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+  html {
+    transform: rotate(-90deg);
+    transform-origin: left top;
+    width: 100vh;
+    height: 100vw;
+    overflow-x: hidden;
+    position: absolute;
+    top: 100%;
+    left: 0;
+  }
+}
+
+/* Landscape warning overlay (optional visual) */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+  body::before {
+    content: "Per una migliore esperienza, ruota il dispositivo in verticale / Please rotate to portrait";
+    position: fixed;
+    inset: 0;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+  }
+}
