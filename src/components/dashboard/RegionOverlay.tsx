@@ -244,7 +244,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     </div>
                   ) : (
                     <div className="p-6 text-xs text-muted-foreground text-center">
-                      {language === 'it' ? 'Nessun dato disponibile' : 'No data available'}
+                      {t('region.no_data')}
                     </div>
                   )}
                 </ScrollArea>
