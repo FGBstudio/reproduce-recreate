@@ -134,13 +134,11 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex">
       {/* Left Panel - Auth Form */}
       <div className="w-full lg:w-[520px] flex flex-col min-h-screen bg-[#006367] text-white">
-        <header className="p-6 flex items-center justify-between">
-          <div className="flex items-center ml-28">
-            <img src={brandImg} alt="FGB" className="h-20 w-auto" />
-          </div>
+        <header className="flex-shrink-0 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 flex items-center justify-center lg:justify-start lg:pl-6">
+          <img src={brandImg} alt="FGB" className="h-16 md:h-20 w-auto" />
         </header>
 
-        <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 py-8 overflow-y-auto">
+        <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 py-4 lg:py-8 overflow-y-auto">
           <div className="max-w-sm mx-auto w-full">
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-white mb-2">

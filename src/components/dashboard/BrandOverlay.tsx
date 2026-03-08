@@ -748,7 +748,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       )}
 
       {/* ============================================================ */}
-      {/* Mobile: Collapsible summary */}
+      {/* Mobile: Collapsible summary + Detail Drawer */}
       {/* ============================================================ */}
       <div className="md:hidden fixed bottom-20 left-2 right-2 z-30 pointer-events-auto">
         <div className="glass-panel rounded-xl p-3">
@@ -761,9 +761,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               )}
               <span className="text-xs font-semibold text-foreground">{displayEntity.name}</span>
             </div>
-            <button onClick={() => setChartsExpanded(!chartsExpanded)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20">
-              {chartsExpanded ? <ChevronDown className="w-4 h-4 text-foreground" /> : <ChevronUp className="w-4 h-4 text-foreground" />}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setMobileDrawerOpen(true)} className="p-1.5 rounded-lg bg-fgb-accent/20 hover:bg-fgb-accent/30 border border-fgb-accent/30 transition-colors">
+                <LayoutList className="w-4 h-4 text-fgb-accent" />
+              </button>
+              <button onClick={() => setChartsExpanded(!chartsExpanded)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20">
+                {chartsExpanded ? <ChevronDown className="w-4 h-4 text-foreground" /> : <ChevronUp className="w-4 h-4 text-foreground" />}
+              </button>
+            </div>
           </div>
           {chartsExpanded && (
             <div className="mt-2 grid grid-cols-4 gap-1.5">
@@ -791,6 +796,123 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           )}
         </div>
       </div>
+
+      {/* Mobile Detail Drawer */}
+      <Drawer open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+        <DrawerContent className="max-h-[90vh] border-t border-white/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
+          <DrawerHeader className="text-left pb-2">
+            <DrawerTitle className="text-foreground flex items-center gap-2">
+              {displayEntity.logo ? (
+                <img src={displayEntity.logo} alt={displayEntity.name} className="h-6 object-contain" />
+              ) : null}
+              {displayEntity.name}
+            </DrawerTitle>
+            <DrawerDescription className="text-muted-foreground">
+              {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
+            </DrawerDescription>
+          </DrawerHeader>
+          <ScrollArea className="flex-1 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ maxHeight: 'calc(90vh - 100px)' }}>
+            <div className="space-y-6 pb-6">
+
+              {/* Energy Leaderboard */}
+              {filterEnergy && energyLeaderboard.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">⚡ {language === 'it' ? 'Classifica Energia' : 'Energy Leaderboard'}</h4>
+                  <div className="space-y-2">
+                    {energyLeaderboard.map((s, i) => {
+                      const maxVal = energyLeaderboard[0]?.value || 1;
+                      const pct = (s.value / maxVal) * 100;
+                      const barColor = pct > 80 ? 'bg-red-500/70' : pct > 50 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
+                      return (
+                        <div key={i}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-foreground truncate max-w-[180px]">{s.name}</span>
+                            <span className="text-xs font-semibold text-foreground tabular-nums">{(s.value / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MWh</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Air Leaderboard */}
+              {filterAir && airLeaderboard.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">💨 {language === 'it' ? 'Classifica CO₂' : 'CO₂ Leaderboard'}</h4>
+                  <div className="space-y-2">
+                    {airLeaderboard.map((s, i) => {
+                      const maxVal = airLeaderboard[0]?.value || 1;
+                      const pct = (s.value / maxVal) * 100;
+                      const barColor = s.value > 1000 ? 'bg-red-500/70' : s.value > 600 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
+                      return (
+                        <div key={i}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-foreground truncate max-w-[180px]">{s.name}</span>
+                            <span className="text-xs font-semibold text-foreground tabular-nums">{s.value.toLocaleString()} ppm</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Health Matrix (mobile list format) */}
+              {showHealthMatrix && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">🏥 {language === 'it' ? 'Salute Sistema' : 'System Health'}</h4>
+                  <div className="space-y-1.5">
+                    {healthMatrixData.map((site, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
+                        <Circle className={`w-2 h-2 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
+                        <span className="text-xs text-foreground flex-1 truncate">{site.name}</span>
+                        <div className="flex items-center gap-1">
+                          {filterEnergy && <div className={`w-5 h-5 rounded ${healthStatusColors[site.energy.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-white">⚡</span></div>}
+                          {filterAir && <div className={`w-5 h-5 rounded ${healthStatusColors[site.air.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-white">💨</span></div>}
+                          <div className={`w-5 h-5 rounded ${healthStatusColors[site.alerts.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-white">⚠</span></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Store Directory */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {language === 'it' ? 'Elenco Siti' : 'Site Directory'} ({storeDirectory.length})</h4>
+                <div className="space-y-1">
+                  {storeDirectory.map((site, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/5">
+                      <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${
+                        site.isOnline ? 'text-emerald-500' : site.hasData ? 'text-yellow-500' : 'text-red-400'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-foreground truncate">{site.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{site.city} · {site.region}</p>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${
+                        site.isOnline ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
+                          : site.hasData ? 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10'
+                          : 'border-red-400/30 text-red-400 bg-red-400/10'
+                      }`}>
+                        {site.isOnline ? 'Online' : site.hasData ? 'Offline' : 'N/A'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </ScrollArea>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 };
