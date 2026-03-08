@@ -157,6 +157,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   };
 
   return (
+    <>
     <div 
       className={`fixed top-24 left-4 md:left-8 z-30 w-80 md:w-[340px] pointer-events-none transition-all duration-500 hidden md:block ${
         visible 
