@@ -841,7 +841,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Air Leaderboard */}
               {filterAir && airLeaderboard.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">💨 {language === 'it' ? 'Classifica CO₂' : 'CO₂ Leaderboard'}</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">💨 {t('brand.co2_leaderboard')}</h4>
                   <div className="space-y-2">
                     {airLeaderboard.map((s, i) => {
                       const maxVal = airLeaderboard[0]?.value || 1;
