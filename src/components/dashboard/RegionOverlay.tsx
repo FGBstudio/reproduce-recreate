@@ -20,6 +20,7 @@ interface RegionOverlayProps {
 const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy', 'air', 'water'] }: RegionOverlayProps) => {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerContent, setMobileDrawerContent] = useState<string | null>(null);
   const { language } = useLanguage();
   const region = regions[currentRegion];
   
