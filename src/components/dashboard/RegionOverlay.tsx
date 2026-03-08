@@ -360,9 +360,9 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                         ))}
                       </div>
                     ) : (
-                      <div className="p-6 text-xs text-muted-foreground text-center">
-                        {language === 'it' ? 'Nessun sito' : 'No sites'}
-                      </div>
+                    <div className="p-6 text-xs text-muted-foreground text-center">
+                      {t('region.no_sites')}
+                    </div>
                     )}
                   </ScrollArea>
                 </PopoverContent>
