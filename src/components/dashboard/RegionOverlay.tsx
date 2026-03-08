@@ -417,7 +417,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     ) : (
                       <div className="p-6 text-xs text-emerald-400 text-center flex flex-col items-center gap-1">
                         <span>✓</span>
-                        <span>{language === 'it' ? 'Nessun allarme attivo' : 'No active alerts'}</span>
+                        <span>{t('region.no_active_alerts')}</span>
                       </div>
                     )}
                   </ScrollArea>
