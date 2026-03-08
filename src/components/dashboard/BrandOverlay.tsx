@@ -379,7 +379,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Media CO₂ (ppm) su 30 giorni per siti con sensori aria." : "30-day avg CO₂ (ppm) for sites with air sensors."}
+                        {t('brand.air_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
