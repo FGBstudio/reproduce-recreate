@@ -323,7 +323,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                   <div className="text-center p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                     <div className="text-2xl font-bold text-foreground">{displayOnline}</div>
                     <div className="flex items-center justify-center gap-1">
-                      <span className="text-[10px] uppercase text-muted-foreground">Active Sites</span>
+                      <span className="text-[10px] uppercase text-muted-foreground">{t('region.active_sites')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
