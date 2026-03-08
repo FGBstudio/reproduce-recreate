@@ -885,7 +885,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
               {/* Store Directory */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {language === 'it' ? 'Elenco Siti' : 'Site Directory'} ({storeDirectory.length})</h4>
+                <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {t('brand.site_directory')} ({storeDirectory.length})</h4>
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
                     <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/5">
