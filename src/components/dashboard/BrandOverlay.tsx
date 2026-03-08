@@ -5,12 +5,13 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, ReferenceLine, BarChart, Bar, Legend
 } from "recharts";
-import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList } from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
