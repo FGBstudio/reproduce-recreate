@@ -263,9 +263,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                           <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[240px] text-xs">
-                          {language === 'it'
-                            ? "Giudizio basato sulla media CO₂ (ppm) a 30 giorni: Excellent <400, Good <600, Moderate <1000, Poor ≥1000."
-                            : "Rating based on 30-day avg CO₂ (ppm): Excellent <400, Good <600, Moderate <1000, Poor ≥1000."}
+                          {t('region.air_quality_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
