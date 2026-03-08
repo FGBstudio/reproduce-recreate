@@ -117,7 +117,7 @@ const MobileBurgerMenu = ({
           {/* Global Filters */}
           {(canChangeHolding || canChangeBrand) && (
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Filtri Globali</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.global_filters')}</p>
               <div className="space-y-2">
                 {canChangeHolding && (
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/8">
