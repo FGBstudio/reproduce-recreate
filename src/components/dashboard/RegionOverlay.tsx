@@ -221,10 +221,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               <PopoverContent side="right" align="start" className="w-80 p-0 border-border/50 shadow-xl">
                 <div className="p-4 border-b border-border/30 bg-accent/5">
                   <h4 className="text-sm font-semibold text-foreground">
-                    {language === 'it' ? 'Intensità Energetica per Sito' : 'Energy Intensity by Site'}
+                    {t('region.energy_intensity_title')}
                   </h4>
                   <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                    {language === 'it' ? 'kWh/m² · Ultimi 30 giorni · Contatori general · Dal più alto al più basso' : 'kWh/m² · Last 30 days · General meters · Highest to lowest'}
+                    {t('region.energy_intensity_subtitle')}
                   </p>
                 </div>
                 <ScrollArea className="h-[240px]">
