@@ -429,10 +429,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             <div className="mt-6 pt-4 border-t border-white/10 text-center">
               <p className="text-xs text-muted-foreground italic">
                 {(hasRealIntensity || hasRealCo2)
-                  ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} sites with live data · 30-day avg` 
+                  ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} ${t('region.sites_live_data')}` 
                   : aggregated.hasRealData 
-                    ? `${sitesCount} sites in region · Live data` 
-                    : "Select a pin on the map to view project details."}
+                    ? `${sitesCount} ${t('region.sites_in_region')}` 
+                    : t('region.select_pin')}
               </p>
             </div>
           </div>
