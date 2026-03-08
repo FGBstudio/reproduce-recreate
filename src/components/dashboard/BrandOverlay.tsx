@@ -643,9 +643,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 {/* Legend */}
                 <div className="flex items-center gap-4 mb-4">
                   {[
-                    { color: 'bg-emerald-500/80', label: language === 'it' ? 'OK' : 'OK' },
-                    { color: 'bg-yellow-500/80', label: language === 'it' ? 'Attenzione' : 'Warning' },
-                    { color: 'bg-red-500/80', label: language === 'it' ? 'Critico' : 'Critical' },
+                    { color: 'bg-emerald-500/80', label: t('brand.ok') },
+                    { color: 'bg-yellow-500/80', label: t('brand.warning') },
+                    { color: 'bg-red-500/80', label: t('brand.critical') },
                   ].map(l => (
                     <div key={l.label} className="flex items-center gap-1.5">
                       <div className={`w-3 h-3 rounded-sm ${l.color}`} />
