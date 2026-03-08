@@ -213,10 +213,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     EXCELLENT: 'text-emerald-400', GOOD: 'text-emerald-500', MODERATE: 'text-yellow-500', POOR: 'text-red-400', 'N/A': 'text-muted-foreground'
   };
   const statusColor: Record<string, string> = { online: 'text-emerald-500', offline: 'text-yellow-500', not_installed: 'text-red-400' };
-  const statusLabel: Record<string, Record<string, string>> = {
-    online: { it: 'Online', en: 'Online' },
-    offline: { it: 'Offline', en: 'Offline' },
-    not_installed: { it: 'Da installare', en: 'Ready to install' },
+  const statusLabelMap = (s: string) => {
+    const map: Record<string, string> = { online: t('region.status_online'), offline: t('region.status_offline'), not_installed: t('region.status_not_installed') };
+    return map[s] ?? s;
   };
 
   const displayEntity = brand || holding;
