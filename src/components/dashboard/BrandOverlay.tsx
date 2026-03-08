@@ -353,7 +353,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
                 <div className="px-3 py-2 border-b border-border/30">
-                  <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Consumo per sito (30g)' : 'Consumption per site (30d)'}</p>
+                  <p className="text-xs font-semibold text-foreground">{t('brand.consumption_per_site')}</p>
                 </div>
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
