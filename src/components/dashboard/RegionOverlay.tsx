@@ -202,9 +202,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                           <Info className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0" />
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[240px] text-xs">
-                          {language === 'it'
-                            ? "Media dei consumi energetici (MWh) divisi per la superficie (m²) di ogni sito, calcolata sugli ultimi 30 giorni con i contatori 'general'."
-                            : "Average energy consumption (MWh) divided by each site's floor area (m²), calculated over the last 30 days using 'general' meters."}
+                          {t('region.energy_intensity_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
