@@ -315,45 +315,8 @@ const Auth = () => {
         </footer>
       </div>
 
-      {/* Right Panel */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-[#006367]">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 opacity-10" style={{
-            backgroundImage: "url('/white.png')",
-            backgroundSize: '80px',
-            backgroundRepeat: 'repeat',
-            backgroundPosition: '0 0'
-          }} />
-          <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-white/10 rounded-full blur-[100px] animate-pulse" />
-          <div className="absolute bottom-1/3 left-1/3 w-96 h-96 bg-white/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-        </div>
-
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12 text-white">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8 backdrop-blur-sm">
-            <Zap className="w-4 h-4 text-white" />
-            <span className="text-sm font-medium text-white">Live Monitoring</span>
-          </div>
-
-          <h2 className="text-4xl lg:text-5xl font-bold text-white text-center mb-6 max-w-lg">
-            {t('auth.hero_title')}
-          </h2>
-          
-          <p className="text-lg text-white/80 text-center max-w-md mb-12">
-            {t('auth.hero_subtitle')}
-          </p>
-
-          <div className="flex items-center gap-6">
-            {[{ icon: BarChart3, label: 'Analytics' }, { icon: Zap, label: 'Energy' }, { icon: Shield, label: 'Security' }].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center gap-2">
-                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
-                  <Icon className="w-7 h-7 text-white" />
-                </div>
-                <span className="text-xs text-white/70">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Right Panel - Floating Bento */}
+      <FloatingBentoPanel />
     </div>
   );
 };

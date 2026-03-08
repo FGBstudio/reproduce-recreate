@@ -18,7 +18,7 @@ const floatAnimation = (duration: number, distance: number) => ({
     duration,
     repeat: Infinity,
     repeatType: "reverse" as const,
-    ease: "easeInOut",
+    ease: "easeInOut" as const,
   },
 });
 
