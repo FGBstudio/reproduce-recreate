@@ -513,7 +513,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               </div>
             ))}
             {mobileDrawerContent === 'energy' && siteIntensityList.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-6">{language === 'it' ? 'Nessun dato' : 'No data'}</p>
+              <p className="text-xs text-muted-foreground text-center py-6">{t('region.no_data_short')}</p>
             )}
 
             {/* Air List */}
