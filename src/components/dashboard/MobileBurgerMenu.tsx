@@ -176,7 +176,7 @@ const MobileBurgerMenu = ({
             <div className="space-y-2">
               {user && (
                 <div className="p-3 rounded-xl bg-white/5 border border-white/8">
-                  <p className="text-xs text-muted-foreground">Accesso come</p>
+                  <p className="text-xs text-muted-foreground">{t('menu.logged_as')}</p>
                   <p className="text-sm text-foreground font-medium truncate">{user.email}</p>
                 </div>
               )}
