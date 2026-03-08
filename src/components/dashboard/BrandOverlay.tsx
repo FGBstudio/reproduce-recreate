@@ -638,7 +638,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {language === 'it' ? 'Stato operativo per modulo · Triage immediato' : 'Operational status by module · Immediate triage'}
+                  {t('brand.health_subtitle')}
                 </p>
                 {/* Legend */}
                 <div className="flex items-center gap-4 mb-4">
