@@ -329,9 +329,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                           <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-[220px] text-xs">
-                          {language === 'it'
-                            ? "Siti con almeno un dato telemetrico ricevuto nell'ultima ora."
-                            : "Sites with at least one telemetry reading in the last hour."}
+                          {t('region.active_sites_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
