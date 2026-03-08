@@ -172,7 +172,7 @@ const MobileBurgerMenu = ({
 
           {/* User settings */}
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Impostazioni Utente</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.user_settings')}</p>
             <div className="space-y-2">
               {user && (
                 <div className="p-3 rounded-xl bg-white/5 border border-white/8">
