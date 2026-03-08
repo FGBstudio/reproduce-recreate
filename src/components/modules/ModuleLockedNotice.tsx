@@ -19,23 +19,32 @@ const moduleIcons: Record<ModuleType, string> = {
 const moduleLabels: Record<string, Record<ModuleType, string>> = {
   en: { energy: 'Energy', air: 'Air Quality', water: 'Water' },
   it: { energy: 'Energia', air: 'Qualità dell\'Aria', water: 'Acqua' },
+  fr: { energy: 'Énergie', air: "Qualité de l'air", water: 'Eau' },
+  es: { energy: 'Energía', air: 'Calidad del aire', water: 'Agua' },
+  zh: { energy: '能源', air: '空气质量', water: '水' },
 };
 
-const i18n = {
+const i18n: Record<string, { emailSubject: string; whatsappText: string }> = {
   en: { emailSubject: 'Module activation request', whatsappText: 'I would like to activate the module' },
   it: { emailSubject: 'Richiesta attivazione modulo', whatsappText: 'Vorrei attivare il modulo' },
+  fr: { emailSubject: "Demande d'activation du module", whatsappText: "Je souhaite activer le module" },
+  es: { emailSubject: 'Solicitud de activación del módulo', whatsappText: 'Me gustaría activar el módulo' },
+  zh: { emailSubject: '模块激活请求', whatsappText: '我希望激活模块' },
 };
 
-const defaultLockCopy = {
+const defaultLockCopy: Record<string, { title: string; description: string; ctaLabel: string }> = {
   en: { title: 'Module Not Active', description: 'This module is not currently active for the selected project. Contact us to activate it.', ctaLabel: 'Request Activation' },
   it: { title: 'Modulo Non Attivo', description: 'Questo modulo non è attualmente attivo per il progetto selezionato. Contattaci per attivarlo.', ctaLabel: 'Richiedi Attivazione' },
+  fr: { title: 'Module non actif', description: "Ce module n'est pas actif pour le projet sélectionné. Contactez-nous pour l'activer.", ctaLabel: "Demander l'activation" },
+  es: { title: 'Módulo no activo', description: 'Este módulo no está activo para el proyecto seleccionado. Contáctenos para activarlo.', ctaLabel: 'Solicitar activación' },
+  zh: { title: '模块未激活', description: '此模块尚未为所选项目激活。请联系我们进行激活。', ctaLabel: '请求激活' },
 };
 
 export const ModuleLockedNotice = ({ module, config, children }: ModuleLockedNoticeProps) => {
   const { language } = useLanguage();
-  const labels = moduleLabels[language];
-  const t = i18n[language];
-  const defaults = defaultLockCopy[language];
+  const labels = moduleLabels[language] || moduleLabels.en;
+  const t = i18n[language] || i18n.en;
+  const defaults = defaultLockCopy[language] || defaultLockCopy.en;
   const itDefaults = defaultLockCopy.it;
 
   // If config values match Italian defaults, use translated version instead

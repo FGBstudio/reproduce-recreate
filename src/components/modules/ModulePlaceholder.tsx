@@ -26,7 +26,7 @@ const placeholderIcons = {
   table: BarChart3,
 };
 
-const i18n = {
+const i18n: Record<string, { activate: string; available: string }> = {
   en: {
     activate: 'Activate the module to view data',
     available: 'Telemetry data will be available after activation',
@@ -35,12 +35,24 @@ const i18n = {
     activate: 'Attiva il modulo per visualizzare i dati',
     available: 'I dati di telemetria saranno disponibili dopo l\'attivazione',
   },
+  fr: {
+    activate: 'Activez le module pour voir les données',
+    available: 'Les données de télémétrie seront disponibles après activation',
+  },
+  es: {
+    activate: 'Activa el módulo para ver los datos',
+    available: 'Los datos de telemetría estarán disponibles tras la activación',
+  },
+  zh: {
+    activate: '激活模块以查看数据',
+    available: '激活后可查看遥测数据',
+  },
 };
 
 export const ModulePlaceholder = ({ module, variant = 'chart', className = '' }: ModulePlaceholderProps) => {
   const Icon = placeholderIcons[variant];
   const { language } = useLanguage();
-  const t = i18n[language];
+  const t = i18n[language] || i18n.en;
   
   return (
     <div className={`bg-gradient-to-br ${moduleColors[module]} border rounded-xl p-6 flex flex-col items-center justify-center min-h-[200px] ${className}`}>
