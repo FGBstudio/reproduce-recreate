@@ -420,7 +420,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        {language === 'it' ? "Allarmi attivi: eventi critici/warning o siti senza dati da oltre 2 giorni." : "Active alerts: critical/warning events or sites with no data for 2+ days."}
+                        {t('brand.alerts_tooltip')}
                       </TooltipContent>
                     </UITooltip>
                   </div>
