@@ -108,6 +108,9 @@ const Admin = () => {
                 <TabsTrigger value="access" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
                   <Users className="w-4 h-4" /> <span className="hidden lg:inline">Accessi</span>
                 </TabsTrigger>
+                <TabsTrigger value="requests" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <Inbox className="w-4 h-4" /> <span className="hidden lg:inline">Richieste</span>
+                </TabsTrigger>
               </TabsList>
             </div>
 
