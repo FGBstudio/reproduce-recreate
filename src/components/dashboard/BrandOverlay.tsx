@@ -502,10 +502,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 {/* Quadrant legend */}
                 <div className="flex flex-wrap gap-3 mb-4">
                   {[
-                    { color: 'bg-emerald-500', label: language === 'it' ? 'Best Performer' : 'Best Performer' },
-                    { color: 'bg-yellow-500', label: language === 'it' ? 'Rischio Salute' : 'Health Risk' },
-                    { color: 'bg-orange-500', label: language === 'it' ? 'Spreco Energia' : 'Energy Waste' },
-                    { color: 'bg-red-500', label: language === 'it' ? 'Critico' : 'Critical' },
+                    { color: 'bg-emerald-500', label: t('brand.best_performer') },
+                    { color: 'bg-yellow-500', label: t('brand.health_risk') },
+                    { color: 'bg-orange-500', label: t('brand.energy_waste') },
+                    { color: 'bg-red-500', label: t('brand.critical') },
                   ].map(q => (
                     <div key={q.label} className="flex items-center gap-1.5">
                       <div className={`w-2.5 h-2.5 rounded-full ${q.color}`} />
