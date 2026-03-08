@@ -186,7 +186,7 @@ const MobileBurgerMenu = ({
                   className="flex items-center gap-3 w-full p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/8"
                 >
                   <Shield className="w-4 h-4 text-fgb-accent" />
-                  <span className="text-sm text-foreground flex-1 text-left">Admin Panel</span>
+                  <span className="text-sm text-foreground flex-1 text-left">{t('menu.admin_panel')}</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               )}
