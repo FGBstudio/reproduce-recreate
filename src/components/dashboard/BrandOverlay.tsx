@@ -565,7 +565,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {language === 'it' ? 'Ordinati dal peggiore al migliore · 30 giorni' : 'Sorted worst to best · 30 days'}
+                  {t('brand.leaderboard_subtitle')}
                 </p>
                 <div className="grid grid-cols-2 gap-6 flex-1 min-h-0">
                   {/* Energy leaderboard */}
