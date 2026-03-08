@@ -497,7 +497,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {language === 'it' ? 'Energia (MWh) vs CO₂ (ppm) · Ultimi 30 giorni' : 'Energy (MWh) vs CO₂ (ppm) · Last 30 days'}
+                  {t('brand.scatter_subtitle')}
                 </p>
                 {/* Quadrant legend */}
                 <div className="flex flex-wrap gap-3 mb-4">
