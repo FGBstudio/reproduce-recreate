@@ -705,7 +705,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 </h4>
               </div>
               <p className="text-sm text-muted-foreground mb-4 shrink-0">
-                {language === 'it' ? `${storeDirectory.length} siti · Ordinamento alfabetico` : `${storeDirectory.length} sites · Alphabetical order`}
+                {`${storeDirectory.length} ${t('brand.sites_alpha')}`}
               </p>
               <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                 <div className="space-y-1">
