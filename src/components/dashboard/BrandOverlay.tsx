@@ -25,6 +25,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   const { t, language } = useLanguage();
   const [chartsExpanded, setChartsExpanded] = useState(false);
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const { brands } = useAllBrands();
   const { holdings } = useAllHoldings();
