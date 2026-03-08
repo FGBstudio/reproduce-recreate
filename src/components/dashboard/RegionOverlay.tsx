@@ -382,9 +382,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                           <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-[220px] text-xs">
-                          {language === 'it'
-                            ? "Somma degli eventi con severità 'critical' e 'warning' attivi per i siti della regione."
-                            : "Sum of active 'critical' and 'warning' severity events across sites in this region."}
+                          {t('region.critical_alerts_tooltip')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
