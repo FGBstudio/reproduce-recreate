@@ -351,6 +351,35 @@ const translations: Record<string, Record<Language, string>> = {
   'time.cancel': { en: 'Cancel', it: 'Annulla', fr: 'Annuler', es: 'Cancelar', zh: '取消' },
   'time.apply': { en: 'Apply', it: 'Applica', fr: 'Appliquer', es: 'Aplicar', zh: '应用' },
   'time.dates': { en: 'Dates', it: 'Date', fr: 'Dates', es: 'Fechas', zh: '日期' },
+
+  // Access Request form
+  'auth.request_access': { en: 'Request Access', it: 'Richiedi Accesso', fr: "Demander l'accès", es: 'Solicitar Acceso', zh: '申请访问' },
+  'auth.request_subtitle': { en: 'Fill out the form to request access to FGB Studio', it: 'Compila il modulo per richiedere accesso a FGB Studio', fr: "Remplissez le formulaire pour demander l'accès à FGB Studio", es: 'Completa el formulario para solicitar acceso a FGB Studio', zh: '填写表格以申请访问 FGB Studio' },
+  'auth.first_name': { en: 'First Name', it: 'Nome', fr: 'Prénom', es: 'Nombre', zh: '名' },
+  'auth.last_name': { en: 'Last Name', it: 'Cognome', fr: 'Nom', es: 'Apellido', zh: '姓' },
+  'auth.company': { en: 'Company', it: 'Azienda', fr: 'Entreprise', es: 'Empresa', zh: '公司' },
+  'auth.job_title': { en: 'Job Title', it: 'Ruolo', fr: 'Poste', es: 'Cargo', zh: '职位' },
+  'auth.request_message': { en: 'Message (why do you need access?)', it: 'Messaggio (perché hai bisogno dell\'accesso?)', fr: "Message (pourquoi avez-vous besoin d'un accès ?)", es: 'Mensaje (¿por qué necesitas acceso?)', zh: '留言（您为什么需要访问？）' },
+  'auth.request_message_placeholder': { en: 'Briefly describe why you need access to the platform...', it: 'Descrivi brevemente perché hai bisogno di accedere alla piattaforma...', fr: "Décrivez brièvement pourquoi vous avez besoin d'accéder à la plateforme...", es: 'Describe brevemente por qué necesitas acceder a la plataforma...', zh: '请简要描述您为什么需要访问该平台...' },
+  'auth.submit_request': { en: 'Submit Request', it: 'Invia Richiesta', fr: 'Envoyer la demande', es: 'Enviar Solicitud', zh: '提交申请' },
+  'auth.request_sent': { en: 'Request submitted successfully! You will receive an email once your request is approved.', it: 'Richiesta inviata con successo! Riceverai un\'email una volta che la tua richiesta sarà approvata.', fr: 'Demande envoyée avec succès ! Vous recevrez un e-mail une fois votre demande approuvée.', es: '¡Solicitud enviada con éxito! Recibirás un correo cuando tu solicitud sea aprobada.', zh: '申请已成功提交！您的申请获批后将收到电子邮件通知。' },
+  'auth.request_error': { en: 'Error submitting request. Please try again.', it: 'Errore nell\'invio della richiesta. Riprova.', fr: "Erreur lors de l'envoi de la demande. Veuillez réessayer.", es: 'Error al enviar la solicitud. Inténtalo de nuevo.', zh: '提交申请时出错，请重试。' },
+  'auth.first_name_required': { en: 'First name is required', it: 'Il nome è obbligatorio', fr: 'Le prénom est requis', es: 'El nombre es obligatorio', zh: '请填写名字' },
+  'auth.last_name_required': { en: 'Last name is required', it: 'Il cognome è obbligatorio', fr: 'Le nom est requis', es: 'El apellido es obligatorio', zh: '请填写姓氏' },
+  'auth.company_required': { en: 'Company is required', it: "L'azienda è obbligatoria", fr: "L'entreprise est requise", es: 'La empresa es obligatoria', zh: '请填写公司名称' },
+  'auth.email_required': { en: 'Business email is required', it: "L'email aziendale è obbligatoria", fr: "L'e-mail professionnel est requis", es: 'El correo corporativo es obligatorio', zh: '请填写企业邮箱' },
+  'auth.back_to_login': { en: 'Back to Sign In', it: 'Torna al Login', fr: 'Retour à la connexion', es: 'Volver al inicio de sesión', zh: '返回登录' },
+
+  // Admin access requests
+  'admin.access_requests': { en: 'Access Requests', it: 'Richieste di Accesso', fr: "Demandes d'accès", es: 'Solicitudes de Acceso', zh: '访问请求' },
+  'admin.access_requests_desc': { en: 'Review and manage access requests from new users', it: 'Revisiona e gestisci le richieste di accesso dei nuovi utenti', fr: "Examinez et gérez les demandes d'accès des nouveaux utilisateurs", es: 'Revisa y gestiona las solicitudes de acceso de nuevos usuarios', zh: '审核和管理新用户的访问请求' },
+  'admin.pending': { en: 'Pending', it: 'In attesa', fr: 'En attente', es: 'Pendiente', zh: '待处理' },
+  'admin.approved': { en: 'Approved', it: 'Approvata', fr: 'Approuvée', es: 'Aprobada', zh: '已批准' },
+  'admin.rejected': { en: 'Rejected', it: 'Rifiutata', fr: 'Refusée', es: 'Rechazada', zh: '已拒绝' },
+  'admin.approve': { en: 'Approve', it: 'Approva', fr: 'Approuver', es: 'Aprobar', zh: '批准' },
+  'admin.reject': { en: 'Reject', it: 'Rifiuta', fr: 'Refuser', es: 'Rechazar', zh: '拒绝' },
+  'admin.no_requests': { en: 'No access requests', it: 'Nessuna richiesta di accesso', fr: "Aucune demande d'accès", es: 'Sin solicitudes de acceso', zh: '暂无访问请求' },
+  'admin.request_from': { en: 'Request from', it: 'Richiesta da', fr: 'Demande de', es: 'Solicitud de', zh: '来自' },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

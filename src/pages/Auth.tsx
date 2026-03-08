@@ -2,35 +2,40 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
-  User, Lock, Mail, Eye, EyeOff, ArrowRight,
-  Globe, Zap, BarChart3, Shield
+  User, Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft,
+  Globe, Zap, BarChart3, Shield, Building2, Briefcase, MessageSquare
 } from "lucide-react";
 import brandImg from "@/assets/brand-white.png";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "request";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login, signup, mockLogin, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, mockLogin, isAuthenticated, isLoading: authLoading } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
   
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Request form fields
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [company, setCompany] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [requestMessage, setRequestMessage] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -38,7 +43,7 @@ const Auth = () => {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -46,13 +51,6 @@ const Auth = () => {
     if (!email || !password) {
       setError(t('auth.email_password_required'));
       return;
-    }
-
-    if (mode === "signup") {
-      if (!displayName) { setError(t('auth.name_required')); return; }
-      if (password !== confirmPassword) { setError(t('auth.passwords_mismatch')); return; }
-      if (password.length < 6) { setError(t('auth.password_min')); return; }
-      if (!termsAccepted) { setError(t('auth.terms_required')); return; }
     }
 
     setIsSubmitting(true);
@@ -63,26 +61,59 @@ const Auth = () => {
         return;
       }
 
-      if (mode === "login") {
-        const { error: loginError } = await login(email, password);
-        if (loginError) {
-          setError(loginError.message.includes("Invalid login credentials")
-            ? t('auth.invalid_credentials')
-            : loginError.message);
-        }
-      } else {
-        const { error: signupError } = await signup(email, password, { display_name: displayName });
-        if (signupError) {
-          setError(signupError.message.includes("already registered")
-            ? t('auth.already_registered')
-            : signupError.message);
-        } else {
-          setSuccessMessage(t('auth.signup_success'));
-          setMode("login");
-        }
+      const { error: loginError } = await login(email, password);
+      if (loginError) {
+        setError(loginError.message.includes("Invalid login credentials")
+          ? t('auth.invalid_credentials')
+          : loginError.message);
       }
     } catch (err: any) {
       setError(err.message || t('auth.auth_error'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRequestAccess = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
+    if (!firstName.trim()) { setError(t('auth.first_name_required')); return; }
+    if (!lastName.trim()) { setError(t('auth.last_name_required')); return; }
+    if (!email.trim()) { setError(t('auth.email_required')); return; }
+    if (!company.trim()) { setError(t('auth.company_required')); return; }
+    if (!termsAccepted) { setError(t('auth.terms_required')); return; }
+
+    setIsSubmitting(true);
+    try {
+      if (!isSupabaseConfigured) {
+        setSuccessMessage(t('auth.request_sent'));
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from('access_requests')
+        .insert({
+          email: email.trim().toLowerCase(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          company: company.trim(),
+          job_title: jobTitle.trim() || null,
+          message: requestMessage.trim() || null,
+        });
+
+      if (insertError) {
+        console.error('Error submitting request:', insertError);
+        setError(t('auth.request_error'));
+      } else {
+        setSuccessMessage(t('auth.request_sent'));
+        // Reset form
+        setFirstName(""); setLastName(""); setEmail(""); setCompany("");
+        setJobTitle(""); setRequestMessage(""); setTermsAccepted(false);
+      }
+    } catch (err: any) {
+      setError(err.message || t('auth.request_error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -102,31 +133,22 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left Panel - Auth Form */}
-      <div className="w-full lg:w-[480px] flex flex-col min-h-screen bg-[#006367] text-white">
+      <div className="w-full lg:w-[520px] flex flex-col min-h-screen bg-[#006367] text-white">
         <header className="p-6 flex items-center justify-between">
           <div className="flex items-center ml-28">
             <img src={brandImg} alt="FGB" className="h-20 w-auto" />
           </div>
-          {/*
-          <button
-            onClick={toggleLanguage}
-            className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors"
-          >
-            <Globe className="w-4 h-4" />
-            {language.toUpperCase()}
-          </button>
-          */}
         </header>
 
-        <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 py-8">
+        <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 py-8 overflow-y-auto">
           <div className="max-w-sm mx-auto w-full">
-            <div className="mb-8">
+            <div className="mb-6">
               <h1 className="text-3xl font-bold text-white mb-2">
-                {mode === "login" ? t('auth.welcome_back') : t('auth.welcome')}
+                {mode === "login" ? t('auth.welcome_back') : t('auth.request_access')}
               </h1>
-              {mode === "login" && (
-                <p className="text-white/70 text-sm">{t('auth.login_subtitle')}</p>
-              )}
+              <p className="text-white/70 text-sm">
+                {mode === "login" ? t('auth.login_subtitle') : t('auth.request_subtitle')}
+              </p>
             </div>
 
             {error && (
@@ -140,95 +162,144 @@ const Auth = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {mode === "signup" && (
+            {mode === "login" ? (
+              /* ========== LOGIN FORM ========== */
+              <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="displayName" className="text-sm text-white/80">{t('auth.full_name')}</Label>
+                  <Label htmlFor="email" className="text-sm text-white/80">{t('auth.email')}</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><User className="w-5 h-5" /></div>
-                    <Input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Mario Rossi"
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Mail className="w-5 h-5" /></div>
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@company.com"
                       className="pl-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
                   </div>
                 </div>
-              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm text-white/80">{t('auth.email')}</Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Mail className="w-5 h-5" /></div>
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
-                    className="pl-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm text-white/80">{t('auth.password')}</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
+                    <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="pl-11 pr-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors">
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm text-white/80">{t('auth.password')}</Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
-                  <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-11 pr-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors">
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              {mode === "signup" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm text-white/80">{t('auth.confirm_password')}</Label>
+                <Button type="submit" disabled={isSubmitting}
+                  className="w-full h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {t('auth.login')}
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            ) : (
+              /* ========== ACCESS REQUEST FORM ========== */
+              <form onSubmit={handleRequestAccess} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="firstName" className="text-sm text-white/80">{t('auth.first_name')} *</Label>
                     <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
-                      <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="pl-11 pr-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
-                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors">
-                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><User className="w-4 h-4" /></div>
+                      <Input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="Mario"
+                        className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                      className="mt-0.5 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#911141]" />
-                    <Label htmlFor="terms" className="text-sm text-white/80 cursor-pointer">
-                      {t('auth.terms_accept')}{" "}
-                      <a href="#" className="text-white hover:underline font-semibold">{t('auth.terms_link')}</a>
-                    </Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lastName" className="text-sm text-white/80">{t('auth.last_name')} *</Label>
+                    <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Rossi"
+                      className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
                   </div>
-                </>
-              )}
+                </div>
 
-              <Button type="submit" disabled={isSubmitting}
-                className="w-full h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
-                {isSubmitting ? (
-                  <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    {mode === "login" ? t('auth.login') : t('auth.signup')}
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </Button>
-            </form>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reqEmail" className="text-sm text-white/80">{t('auth.email')} *</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Mail className="w-4 h-4" /></div>
+                    <Input id="reqEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@company.com"
+                      className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="company" className="text-sm text-white/80">{t('auth.company')} *</Label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Building2 className="w-4 h-4" /></div>
+                      <Input id="company" type="text" value={company} onChange={(e) => setCompany(e.target.value)}
+                        placeholder="Acme Corp"
+                        className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="jobTitle" className="text-sm text-white/80">{t('auth.job_title')}</Label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Briefcase className="w-4 h-4" /></div>
+                      <Input id="jobTitle" type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}
+                        placeholder="Energy Manager"
+                        className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="message" className="text-sm text-white/80">{t('auth.request_message')}</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-3 text-white/60"><MessageSquare className="w-4 h-4" /></div>
+                    <Textarea id="message" value={requestMessage} onChange={(e) => setRequestMessage(e.target.value)}
+                      placeholder={t('auth.request_message_placeholder')}
+                      rows={3}
+                      className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all resize-none" />
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                    className="mt-0.5 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#911141]" />
+                  <Label htmlFor="terms" className="text-sm text-white/80 cursor-pointer">
+                    {t('auth.terms_accept')}{" "}
+                    <a href="#" className="text-white hover:underline font-semibold">{t('auth.terms_link')}</a>
+                  </Label>
+                </div>
+
+                <Button type="submit" disabled={isSubmitting}
+                  className="w-full h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {t('auth.submit_request')}
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
 
             <div className="mt-6 text-center">
               {mode === "login" ? (
                 <p className="text-sm text-white/70">
                   {t('auth.no_account')}{" "}
-                  <button onClick={() => { setMode("signup"); setError(null); }}
-                    className="text-white hover:underline font-semibold hover:text-white/90">{t('auth.register')}</button>
+                  <button onClick={() => { setMode("request"); setError(null); setSuccessMessage(null); }}
+                    className="text-white hover:underline font-semibold hover:text-white/90">{t('auth.request_access')}</button>
                 </p>
               ) : (
-                <p className="text-sm text-white/70">
-                  {t('auth.has_account')}{" "}
-                  <button onClick={() => { setMode("login"); setError(null); }}
-                    className="text-white hover:underline font-semibold hover:text-white/90">{t('auth.login')}</button>
-                </p>
+                <button onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}
+                  className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors mx-auto">
+                  <ArrowLeft className="w-4 h-4" />
+                  {t('auth.back_to_login')}
+                </button>
               )}
             </div>
 
