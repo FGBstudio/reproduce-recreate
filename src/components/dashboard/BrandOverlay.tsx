@@ -866,7 +866,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Health Matrix (mobile list format) */}
               {showHealthMatrix && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">🏥 {language === 'it' ? 'Salute Sistema' : 'System Health'}</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">🏥 {t('brand.system_health_short')}</h4>
                   <div className="space-y-1.5">
                     {healthMatrixData.map((site, i) => (
                       <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
