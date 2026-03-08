@@ -127,6 +127,8 @@ const MobileBurgerMenu = ({
                       onValueChange={(val) => {
                         onHoldingChange?.(val === "all" ? null : val);
                         onBrandChange?.(null);
+                        // Auto-close menu after selection
+                        if (val !== "all") setTimeout(() => onClose(), 250);
                       }}
                     >
                       <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
