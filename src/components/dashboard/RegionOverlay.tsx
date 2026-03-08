@@ -448,7 +448,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
         <div className="flex items-center justify-between mb-2">
           <div>
             <h3 className="text-sm font-semibold text-foreground">{region.name}</h3>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Regional Performance</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('region.performance')}</p>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-1.5">
