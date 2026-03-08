@@ -132,7 +132,7 @@ const MobileBurgerMenu = ({
                       }}
                     >
                       <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
-                        <SelectValue placeholder="Tutti gli Holdings" />
+                        <SelectValue placeholder={t('menu.all_holdings')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tutti gli Holdings</SelectItem>
