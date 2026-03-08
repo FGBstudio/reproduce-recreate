@@ -376,7 +376,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                       {displayCritical}
                     </div>
                     <div className="flex items-center justify-center gap-1">
-                      <span className="text-[10px] uppercase text-muted-foreground">Critical Alerts</span>
+                      <span className="text-[10px] uppercase text-muted-foreground">{t('region.critical_alerts')}</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
