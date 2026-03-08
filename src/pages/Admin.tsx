@@ -74,7 +74,7 @@ const Admin = () => {
             
             {/* Menu Tab Fisso in alto */}
             <div className="flex-shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
-              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-11 gap-1 bg-transparent h-auto p-0">
+              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 gap-1 bg-transparent h-auto p-0">
                 <TabsTrigger value="dashboard" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
                   <LayoutDashboard className="w-4 h-4" /> <span className="hidden lg:inline">Dashboard</span>
                 </TabsTrigger>
