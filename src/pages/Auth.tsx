@@ -10,9 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   User, Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft,
-  Globe, Zap, BarChart3, Shield, Building2, Briefcase, MessageSquare
+  Building2, Briefcase, MessageSquare
 } from "lucide-react";
 import brandImg from "@/assets/brand-white.png";
+import FloatingBentoPanel from "@/components/auth/FloatingBentoPanel";
 
 type AuthMode = "login" | "request";
 
