@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard, Cpu, UserPlus } from 'lucide-react';
+import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard, Cpu, UserPlus, Inbox } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { HierarchyView } from '@/components/admin/HierarchyView';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminAuthGate } from '@/components/admin/AdminAuthGate';
 import { DevicesManager } from '@/components/admin/DevicesManager';
+import { AccessRequestsManager } from '@/components/admin/AccessRequestsManager';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ const Admin = () => {
             
             {/* Menu Tab Fisso in alto */}
             <div className="flex-shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
-              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-11 gap-1 bg-transparent h-auto p-0">
+              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 gap-1 bg-transparent h-auto p-0">
                 <TabsTrigger value="dashboard" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
                   <LayoutDashboard className="w-4 h-4" /> <span className="hidden lg:inline">Dashboard</span>
                 </TabsTrigger>
@@ -106,6 +107,9 @@ const Admin = () => {
                 </TabsTrigger>
                 <TabsTrigger value="access" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
                   <Users className="w-4 h-4" /> <span className="hidden lg:inline">Accessi</span>
+                </TabsTrigger>
+                <TabsTrigger value="requests" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                  <Inbox className="w-4 h-4" /> <span className="hidden lg:inline">Richieste</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -170,6 +174,10 @@ const Admin = () => {
             
             <TabsContent value="access" className={contentTabClass}>
               <UserAccessManager />
+            </TabsContent>
+
+            <TabsContent value="requests" className={contentTabClass}>
+              <AccessRequestsManager />
             </TabsContent>
           </Tabs>
         </main>
