@@ -87,7 +87,7 @@ const MobileBurgerMenu = ({
             onClick={onClose}
             className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
             style={{ minWidth: 48, minHeight: 48 }}
-            aria-label="Chiudi menu"
+            aria-label={t('menu.close')}
           >
             <X className="w-5 h-5 text-foreground" />
           </button>
