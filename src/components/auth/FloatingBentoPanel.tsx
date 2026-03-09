@@ -1,10 +1,10 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ChevronLeft, Zap, Leaf, Wind, Sun, Moon, Droplets } from "lucide-react";
+import { ChevronRight, ChevronLeft, Zap, Leaf, Wind, Sun, Moon } from "lucide-react";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceArea
+  ResponsiveContainer
 } from "recharts";
 
 /* ═══════════════════════════════════════════════
@@ -14,28 +14,31 @@ const carbonBarData = [{ bucket: "Jan", "2025": 420, "2024": 480 }, { bucket: "F
 const dayNightData = [{ name: "Day", value: 62, fill: "#38bdf8" }, { name: "Night", value: 38, fill: "#334155" }];
 const co2LineData = [{ time: "06:00", co2: 410 }, { time: "08:00", co2: 520 }, { time: "10:00", co2: 680 }, { time: "12:00", co2: 750 }, { time: "14:00", co2: 620 }, { time: "16:00", co2: 580 }];
 
-const axisStyle = { fontSize: 10, fontFamily: "'Futura', sans-serif", fill: "#94a3b8", fontWeight: 500 };
-const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", borderRadius: "12px", boxShadow: "0 10px 40px rgba(0,0,0,0.1)", padding: "10px 14px", border: "none", fontSize: 11 };
+const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
+const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
 
 /* ═══════════════════════════════════════════════
-   APPLE GLASS CARD BASE (Miniaturizzata per l'effetto)
+   ULTRA-FINE APPLE GLASS CARD BASE
    ═══════════════════════════════════════════════ */
-const cardBase = "bg-white/80 backdrop-blur-2xl border border-white/60 shadow-[0_20px_40px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] rounded-[24px] overflow-hidden w-full h-full flex flex-col p-5";
+// Ombre ridotte al minimo, blur estremo, bordi microscopici (Hairline)
+const cardBase = "bg-white/60 backdrop-blur-[32px] border border-white/30 shadow-[0_30px_60px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.7)] rounded-[28px] overflow-hidden w-full h-full flex flex-col p-6 transition-all duration-500 hover:bg-white/70";
 
 const TrueHeatmapCard = () => (
   <div className={cardBase}>
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center">
-        <Zap className="w-4 h-4 text-teal-600" />
-      </div>
-      <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Heatmap</h4>
-        <p className="text-[10px] text-gray-400">Analisi Sprechi</p>
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-teal-100/50 flex items-center justify-center">
+          <Zap className="w-4 h-4 text-teal-700" strokeWidth={1.5} />
+        </div>
+        <div>
+          <h4 className="text-xs font-semibold text-gray-800 tracking-tight">Energy Heatmap</h4>
+          <p className="text-[10px] text-gray-400 font-medium">Weekly Analysis</p>
+        </div>
       </div>
     </div>
-    <div className="flex-1 w-full px-2 pb-2 flex items-end gap-[1px] opacity-90">
+    <div className="flex-1 w-full px-1 pb-1 flex items-end gap-[2px] opacity-80">
       {Array.from({length: 24}).map((_, i) => (
-        <div key={i} className="flex-1 rounded-t-[2px] bg-[#009193] transition-all" style={{ height: `${Math.random() * 80 + 20}%`, opacity: Math.random() * 0.4 + 0.6 }} />
+        <div key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-teal-600 to-teal-400 transition-all hover:opacity-100" style={{ height: `${Math.random() * 80 + 20}%`, opacity: Math.random() * 0.3 + 0.7 }} />
       ))}
     </div>
   </div>
@@ -43,38 +46,64 @@ const TrueHeatmapCard = () => (
 
 const CarbonCard = () => (
   <div className={cardBase}>
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center"><Leaf className="w-4 h-4 text-emerald-600" /></div>
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-8 h-8 rounded-full bg-emerald-100/50 flex items-center justify-center">
+        <Leaf className="w-4 h-4 text-emerald-700" strokeWidth={1.5} />
+      </div>
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Carbon</h4>
-        <p className="text-[10px] text-gray-400">kgCO₂e</p>
+        <h4 className="text-xs font-semibold text-gray-800 tracking-tight">Carbon Target</h4>
+        <p className="text-[10px] text-gray-400 font-medium">YoY Reduction</p>
       </div>
     </div>
-    <div className="flex-1 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={carbonBarData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barGap={2}><XAxis dataKey="bucket" tick={axisStyle} axisLine={false} tickLine={false} /><YAxis tick={axisStyle} axisLine={false} tickLine={false} /><Bar dataKey="2025" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar dataKey="2024" fill="#cbd5e1" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+    <div className="flex-1 w-full relative">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={carbonBarData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barGap={3}>
+          <XAxis dataKey="bucket" tick={axisStyle} axisLine={false} tickLine={false} dy={8} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} />
+          <Bar dataKey="2025" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={12} />
+          <Bar dataKey="2024" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={12} opacity={0.5} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   </div>
 );
 
 const CO2Card = () => (
   <div className={cardBase}>
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center"><Wind className="w-4 h-4 text-sky-600" /></div>
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-8 h-8 rounded-full bg-sky-100/50 flex items-center justify-center">
+        <Wind className="w-4 h-4 text-sky-700" strokeWidth={1.5} />
+      </div>
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Indoor Air</h4>
-        <p className="text-[10px] text-gray-400">ppm</p>
+        <h4 className="text-xs font-semibold text-gray-800 tracking-tight">Air Quality</h4>
+        <p className="text-[10px] text-gray-400 font-medium">Indoor CO2 (ppm)</p>
       </div>
     </div>
-    <div className="flex-1 w-full"><ResponsiveContainer width="100%" height="100%"><LineChart data={co2LineData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}><CartesianGrid strokeDasharray="3 6" stroke="#f1f5f9" vertical={false} /><XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} /><YAxis tick={axisStyle} axisLine={false} tickLine={false} domain={[300, 800]} /><Line type="monotone" dataKey="co2" stroke="#0ea5e9" strokeWidth={3} dot={false} /></LineChart></ResponsiveContainer></div>
+    <div className="flex-1 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={co2LineData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 6" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={8} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} domain={[300, 800]} />
+          <Line type="monotone" dataKey="co2" stroke="#0ea5e9" strokeWidth={2.5} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   </div>
 );
 
 /* ═══════════════════════════════════════════════
    GALLERY ITEM WRAPPER
    ═══════════════════════════════════════════════ */
-const GalleryItem = ({ headline, children, isDark = false }: any) => (
-  <li className={`gallery-item snap-center shrink-0 w-[88vw] max-w-[1024px] h-[75vh] min-h-[550px] max-h-[800px] rounded-[40px] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.08)] ${isDark ? "bg-black" : "bg-white"}`}>
+const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) => (
+  <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[70vh] min-h-[500px] max-h-[750px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#111111]" : "bg-white"}`}>
     <div className="w-full h-full flex flex-col relative">
-      <div className="absolute top-12 left-12 right-12 z-30 pointer-events-none">
-        <p className={`text-3xl md:text-5xl font-semibold tracking-tight leading-[1.15] max-w-3xl ${isDark ? "text-white" : "text-gray-900"}`} dangerouslySetInnerHTML={{ __html: headline }} />
+      {/* Tipografia Ultra-Clean Apple */}
+      <div className="absolute top-16 left-16 right-16 z-30 pointer-events-none flex flex-col gap-3">
+        <h2 className={`text-4xl md:text-[56px] font-semibold tracking-tighter leading-[1.1] max-w-3xl ${isDark ? "text-[#f5f5f7]" : "text-[#1d1d1f]"}`} dangerouslySetInnerHTML={{ __html: headline }} />
+        {subheadline && (
+           <p className={`text-xl md:text-2xl font-medium tracking-tight ${isDark ? "text-[#a1a1a6]" : "text-[#86868b]"}`}>{subheadline}</p>
+        )}
       </div>
       <figure className="w-full h-full absolute inset-0 z-10 flex items-end justify-center overflow-visible">
         {children}
@@ -88,67 +117,89 @@ const GalleryItem = ({ headline, children, isDark = false }: any) => (
    ═══════════════════════════════════════════════ */
 const FloatingBentoPanel = () => {
   const scrollRef = useRef<HTMLUListElement>(null);
-  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -900, behavior: 'smooth' });
-  const scrollRight = () => scrollRef.current?.scrollBy({ left: 900, behavior: 'smooth' });
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const totalSlides = 3;
 
-  // Curva di animazione fluida stile Apple
-  const appleEase = [0.16, 1, 0.3, 1];
+  // Gestione dello scroll per l'indicatore attivo
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const scrollPosition = scrollRef.current.scrollLeft;
+    const slideWidth = scrollRef.current.clientWidth;
+    const newIndex = Math.round(scrollPosition / slideWidth);
+    setCurrentSlide(newIndex);
+  };
+
+  const scrollToSlide = (index: number) => {
+    if (!scrollRef.current) return;
+    const slideWidth = scrollRef.current.clientWidth;
+    scrollRef.current.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
+  };
+
+  const scrollLeft = () => scrollToSlide(Math.max(0, currentSlide - 1));
+  const scrollRight = () => scrollToSlide(Math.min(totalSlides - 1, currentSlide + 1));
+
+  // Curva di animazione Apple Ethereal
+  const appleEase = [0.25, 1, 0.5, 1]; 
 
   return (
-    <div className="flex-1 relative overflow-hidden bg-[#f5f5f7] flex flex-col justify-center py-20">
+    <div className="flex-1 relative overflow-hidden bg-[#fbfbfd] flex flex-col justify-center py-20 font-sans">
       
-      {/* Controlli */}
-      <div className="absolute top-8 right-[6vw] z-40 flex gap-4">
-        <button onClick={scrollLeft} className="w-12 h-12 rounded-full bg-gray-200/60 backdrop-blur-md flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors"><ChevronLeft className="w-6 h-6" /></button>
-        <button onClick={scrollRight} className="w-12 h-12 rounded-full bg-gray-200/60 backdrop-blur-md flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors"><ChevronRight className="w-6 h-6" /></button>
-      </div>
-
-      <ul ref={scrollRef} className="item-container flex overflow-x-auto snap-x snap-mandatory gap-6 px-[6vw] w-full items-center" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <ul 
+        ref={scrollRef} 
+        onScroll={handleScroll}
+        className="item-container flex overflow-x-auto snap-x snap-mandatory gap-8 px-[7.5vw] w-full items-center pb-20" 
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         <style>{`.item-container::-webkit-scrollbar { display: none; }`}</style>
 
         {/* ── SLIDE 1: VIDEO CONCEPT ── */}
-        <GalleryItem isDark={true} headline="Il tuo intero ecosistema energetico.<br/>Sincronizzato istantaneamente.">
-          <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-80">
+        <GalleryItem 
+          isDark={true} 
+          headline="Il tuo intero ecosistema energetico.<br/>Sincronizzato istantaneamente."
+          subheadline="Tutti i dati, ovunque tu sia."
+        >
+          <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-70 scale-105">
             <source src="https://www.apple.com/105/media/us/mac-pro/2019/14fa6eba-2882-4f36-81c9-63c6d4ba4c8a/anim/hero/large.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#111111] via-[#111111]/80 to-transparent" />
         </GalleryItem>
 
-        {/* ── SLIDE 2: L'EFFETTO "REVEAL" DELLO STUDIO DISPLAY ── */}
-        <GalleryItem headline="Un'unica piattaforma.<br/>Tutti i tuoi KPI ambientali al loro posto.">
-          <div className="relative w-full h-full flex items-center justify-center pb-12 mt-32 perspective-1000">
+        {/* ── SLIDE 2: THE REVEAL ── */}
+        <GalleryItem 
+          headline="Un'unica piattaforma.<br/>Tutti i tuoi KPI ambientali al loro posto."
+          subheadline="Monitoraggio predittivo in tempo reale."
+        >
+          <div className="relative w-full h-full flex items-center justify-center pb-8 mt-40">
             
-            {/* Grafico di Sinistra (Esce da dietro) */}
+            {/* Grafico di Sinistra */}
             <motion.div 
-              className="absolute w-[30%] h-[280px] z-10 hidden md:block"
-              initial={{ x: "0%", scale: 0.8, opacity: 0 }}
-              whileInView={{ x: "-105%", scale: 0.85, opacity: 0.9 }} // Translate negativo: scivola a sinistra
-              transition={{ duration: 1.4, ease: appleEase, delay: 0.15 }}
-              viewport={{ once: false, amount: 0.5 }} // Si riavvia se fai scroll avanti e indietro
+              className="absolute w-[28%] h-[300px] z-10 hidden md:block"
+              initial={{ x: "0%", scale: 0.85, opacity: 0, filter: "blur(10px)" }}
+              whileInView={{ x: "-110%", scale: 0.9, opacity: 0.85, filter: "blur(0px)" }}
+              transition={{ duration: 1.6, ease: appleEase, delay: 0.1 }}
+              viewport={{ once: false, amount: 0.6 }}
             >
               <CarbonCard />
             </motion.div>
 
-            {/* Grafico Centrale (Heatmap) */}
+            {/* Grafico Centrale (Hero) */}
             <motion.div 
-              className="absolute w-[45%] h-[340px] z-30"
-              initial={{ y: 50, scale: 0.95, opacity: 0 }}
+              className="absolute w-[42%] h-[360px] z-30"
+              initial={{ y: 40, scale: 0.95, opacity: 0 }}
               whileInView={{ y: 0, scale: 1, opacity: 1 }}
-              transition={{ duration: 1.2, ease: appleEase }}
-              viewport={{ once: false, amount: 0.5 }}
+              transition={{ duration: 1.4, ease: appleEase }}
+              viewport={{ once: false, amount: 0.6 }}
             >
-              <div className="w-full h-full drop-shadow-2xl">
-                <TrueHeatmapCard />
-              </div>
+              <TrueHeatmapCard />
             </motion.div>
 
-            {/* Grafico di Destra (Esce da dietro) */}
+            {/* Grafico di Destra */}
             <motion.div 
-              className="absolute w-[30%] h-[280px] z-10 hidden md:block"
-              initial={{ x: "0%", scale: 0.8, opacity: 0 }}
-              whileInView={{ x: "105%", scale: 0.85, opacity: 0.9 }} // Translate positivo: scivola a destra
-              transition={{ duration: 1.4, ease: appleEase, delay: 0.2 }}
-              viewport={{ once: false, amount: 0.5 }}
+              className="absolute w-[28%] h-[300px] z-10 hidden md:block"
+              initial={{ x: "0%", scale: 0.85, opacity: 0, filter: "blur(10px)" }}
+              whileInView={{ x: "110%", scale: 0.9, opacity: 0.85, filter: "blur(0px)" }}
+              transition={{ duration: 1.6, ease: appleEase, delay: 0.2 }}
+              viewport={{ once: false, amount: 0.6 }}
             >
               <CO2Card />
             </motion.div>
@@ -156,27 +207,63 @@ const FloatingBentoPanel = () => {
           </div>
         </GalleryItem>
 
-        {/* ── SLIDE 3: DAY/NIGHT FOCUS ── */}
-        <GalleryItem headline="Ottimizza gli sprechi notturni.<br/>Il ciclo di vita del tuo edificio.">
-          <div className="w-full flex items-center justify-center pb-20">
-            <div className="relative w-72 h-72 drop-shadow-xl">
+        {/* ── SLIDE 3: FOCUS ── */}
+        <GalleryItem 
+          headline="Ottimizza gli sprechi notturni.<br/>Il ciclo di vita del tuo edificio."
+          subheadline="Analisi distributiva del carico base 24h."
+        >
+          <div className="w-full flex items-center justify-center pb-24">
+            <div className="relative w-80 h-80">
+              {/* Soft glow Apple style */}
+              <div className="absolute inset-0 bg-blue-400/20 blur-[80px] rounded-full" />
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dayNightData} cx="50%" cy="50%" innerRadius="75%" outerRadius="100%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>
+                  <Pie data={dayNightData} cx="50%" cy="50%" innerRadius="80%" outerRadius="100%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>
                     {dayNightData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-5xl font-black text-gray-900">1,240</span>
-                <span className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">kWh</span>
+                <span className="text-6xl font-semibold tracking-tighter text-[#1d1d1f]">1,240</span>
+                <span className="text-xs text-[#86868b] font-medium uppercase tracking-[0.2em] mt-2">kWh Total</span>
               </div>
             </div>
           </div>
         </GalleryItem>
 
       </ul>
+
+      {/* ── LA BARRA DI SCORRIMENTO "GLASS PILL" (Apple Dynamic Island Style) ── */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 flex items-center gap-6 px-6 py-3 rounded-full bg-black/5 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.6)]">
+        <button 
+          onClick={scrollLeft} 
+          disabled={currentSlide === 0}
+          className="text-[#1d1d1f]/50 hover:text-[#1d1d1f] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
+        </button>
+        
+        {/* Punti Indicatori */}
+        <div className="flex gap-2.5">
+          {Array.from({ length: totalSlides }).map((_, i) => (
+            <button 
+              key={i}
+              onClick={() => scrollToSlide(i)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${currentSlide === i ? 'bg-[#1d1d1f] scale-110' : 'bg-[#1d1d1f]/20 hover:bg-[#1d1d1f]/40'}`}
+            />
+          ))}
+        </div>
+
+        <button 
+          onClick={scrollRight} 
+          disabled={currentSlide === totalSlides - 1}
+          className="text-[#1d1d1f]/50 hover:text-[#1d1d1f] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
+        </button>
+      </div>
+
     </div>
   );
 };
