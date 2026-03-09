@@ -9,7 +9,7 @@ import {
 } from "recharts";
 
 /* ═══════════════════════════════════════════════
-   MOCK DATA — same structure as ProjectDetail
+   MOCK DATA
    ═══════════════════════════════════════════════ */
 
 const energyAreaData = [
@@ -62,7 +62,7 @@ const waterBarData = [
 ];
 
 /* ═══════════════════════════════════════════════
-   SHARED STYLES — Apple aesthetic
+   SHARED CHART STYLES
    ═══════════════════════════════════════════════ */
 
 const axisStyle = {
@@ -90,21 +90,23 @@ const tooltipContentStyle = {
 };
 
 /* ═══════════════════════════════════════════════
-   ANIMATION HELPERS
+   SPRING ANIMATION PRESETS
    ═══════════════════════════════════════════════ */
 
-const springTransition = (delay: number) => ({
+// Heavy spring — overshoots then settles (gravity feel)
+const dropSpring = (delay: number) => ({
   type: "spring" as const,
-  stiffness: 100,
-  damping: 12,
-  mass: 1,
+  stiffness: 80,
+  damping: 10,
+  mass: 1.2,
   delay,
 });
 
-const floatAnimation = (duration: number, distance: number) => ({
-  y: [0, -distance, 0],
+// Gentle perpetual float
+const floatLoop = (dur: number, dist: number) => ({
+  y: [0, -dist, 0],
   transition: {
-    duration,
+    duration: dur,
     repeat: Infinity,
     repeatType: "reverse" as const,
     ease: "easeInOut" as const,
@@ -112,39 +114,37 @@ const floatAnimation = (duration: number, distance: number) => ({
 });
 
 /* ═══════════════════════════════════════════════
-   BENTO CARD WRAPPER
+   CARD COMPONENTS
    ═══════════════════════════════════════════════ */
 
-const bentoCard = "bg-white rounded-[20px] border border-gray-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
+const cardBase =
+  "bg-white rounded-[22px] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-visible";
 
-/* ═══════════════════════════════════════════════
-   CARD 1 — Energy AreaChart (same as ProjectDetail)
-   ═══════════════════════════════════════════════ */
-
-const EnergyAreaCard = () => (
-  <div className={bentoCard} style={{ minHeight: 220 }}>
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center">
-        <Zap className="w-3.5 h-3.5 text-teal-600" />
+/* ── ACT I — Central Energy Heatmap (large) ── */
+const EnergyHeatmap = () => (
+  <div className={`${cardBase} p-6`} style={{ minHeight: 280 }}>
+    <div className="flex items-center gap-2 mb-4">
+      <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center">
+        <Zap className="w-4 h-4 text-teal-600" />
       </div>
       <div>
-        <h4 className="text-xs font-bold text-gray-800 tracking-tight">Energy Consumption</h4>
+        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Energy Consumption</h4>
         <p className="text-[10px] text-gray-400">kW · Today</p>
       </div>
     </div>
-    <div className="w-full" style={{ height: 160 }}>
+    <div className="w-full" style={{ height: 210 }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={energyAreaData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <defs>
-            <linearGradient id="bentoGeneral" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="bGeneral" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#009193" stopOpacity={0.35} />
               <stop offset="95%" stopColor="#009193" stopOpacity={0} />
             </linearGradient>
-            <linearGradient id="bentoHVAC" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="bHVAC" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#006367" stopOpacity={0.3} />
               <stop offset="95%" stopColor="#006367" stopOpacity={0} />
             </linearGradient>
-            <linearGradient id="bentoLighting" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="bLighting" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#e63f26" stopOpacity={0.3} />
               <stop offset="95%" stopColor="#e63f26" stopOpacity={0} />
             </linearGradient>
@@ -153,21 +153,18 @@ const EnergyAreaCard = () => (
           <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} />
           <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={30} />
           <Tooltip contentStyle={tooltipContentStyle} />
-          <Area type="monotone" dataKey="General" stroke="#009193" fill="url(#bentoGeneral)" strokeWidth={2} />
-          <Area type="monotone" dataKey="HVAC" stroke="#006367" fill="url(#bentoHVAC)" strokeWidth={1.5} />
-          <Area type="monotone" dataKey="Lighting" stroke="#e63f26" fill="url(#bentoLighting)" strokeWidth={1.5} />
+          <Area type="monotone" dataKey="General" stroke="#009193" fill="url(#bGeneral)" strokeWidth={2} />
+          <Area type="monotone" dataKey="HVAC" stroke="#006367" fill="url(#bHVAC)" strokeWidth={1.5} />
+          <Area type="monotone" dataKey="Lighting" stroke="#e63f26" fill="url(#bLighting)" strokeWidth={1.5} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
   </div>
 );
 
-/* ═══════════════════════════════════════════════
-   CARD 2 — Carbon Footprint BarChart (same as ProjectDetail)
-   ═══════════════════════════════════════════════ */
-
-const CarbonBarCard = () => (
-  <div className={bentoCard} style={{ minHeight: 220 }}>
+/* ── Carbon ── */
+const CarbonCard = () => (
+  <div className={`${cardBase} p-5`} style={{ minHeight: 200 }}>
     <div className="flex items-center gap-2 mb-3">
       <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
         <Leaf className="w-3.5 h-3.5 text-emerald-600" />
@@ -177,7 +174,7 @@ const CarbonBarCard = () => (
         <p className="text-[10px] text-gray-400">kgCO₂e · YoY</p>
       </div>
     </div>
-    <div className="w-full" style={{ height: 160 }}>
+    <div className="w-full" style={{ height: 140 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={carbonBarData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }} barGap={2}>
           <CartesianGrid {...gridStyle} vertical={false} />
@@ -185,31 +182,28 @@ const CarbonBarCard = () => (
           <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={30} />
           <Tooltip contentStyle={tooltipContentStyle} />
           <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} iconType="circle" />
-          <Bar dataKey="2025" fill="#009193" radius={[4, 4, 0, 0]} maxBarSize={20} />
-          <Bar dataKey="2024" fill="#d1d5db" radius={[4, 4, 0, 0]} maxBarSize={20} />
+          <Bar dataKey="2025" fill="#009193" radius={[4, 4, 0, 0]} maxBarSize={18} />
+          <Bar dataKey="2024" fill="#d1d5db" radius={[4, 4, 0, 0]} maxBarSize={18} />
         </BarChart>
       </ResponsiveContainer>
     </div>
   </div>
 );
 
-/* ═══════════════════════════════════════════════
-   CARD 3 — Day vs Night PieChart (same as ProjectDetail)
-   ═══════════════════════════════════════════════ */
-
-const DayNightPieCard = () => (
-  <div className={bentoCard} style={{ minHeight: 200 }}>
+/* ── Day / Night ── */
+const DayNightCard = () => (
+  <div className={`${cardBase} p-5`} style={{ minHeight: 180 }}>
     <div className="flex items-center gap-2 mb-2">
       <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
         <Sun className="w-3.5 h-3.5 text-amber-500" />
       </div>
       <div>
         <h4 className="text-xs font-bold text-gray-800 tracking-tight">Day vs Night</h4>
-        <p className="text-[10px] text-gray-400">24h Energy Cycle</p>
+        <p className="text-[10px] text-gray-400">24h Cycle</p>
       </div>
     </div>
     <div className="flex items-center gap-4">
-      <div className="relative" style={{ width: 120, height: 120 }}>
+      <div className="relative" style={{ width: 110, height: 110 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -227,17 +221,17 @@ const DayNightPieCard = () => (
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg font-black text-gray-800">1,240</span>
-          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">kWh</span>
+          <span className="text-base font-black text-gray-800">1,240</span>
+          <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest">kWh</span>
         </div>
       </div>
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Sun className="w-3.5 h-3.5 text-amber-500" />
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+          <Sun className="w-3 h-3 text-amber-500" />
           <span>Day <b className="text-gray-900">62%</b></span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Moon className="w-3.5 h-3.5 text-indigo-500" />
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+          <Moon className="w-3 h-3 text-indigo-500" />
           <span>Night <b className="text-gray-900">38%</b></span>
         </div>
       </div>
@@ -245,12 +239,9 @@ const DayNightPieCard = () => (
   </div>
 );
 
-/* ═══════════════════════════════════════════════
-   CARD 4 — CO₂ LineChart (same as ProjectDetail)
-   ═══════════════════════════════════════════════ */
-
-const CO2LineCard = () => (
-  <div className={bentoCard} style={{ minHeight: 200 }}>
+/* ── CO₂ ── */
+const CO2Card = () => (
+  <div className={`${cardBase} p-5`} style={{ minHeight: 180 }}>
     <div className="flex items-center gap-2 mb-3">
       <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center">
         <Wind className="w-3.5 h-3.5 text-sky-600" />
@@ -263,7 +254,7 @@ const CO2LineCard = () => (
         Good
       </span>
     </div>
-    <div className="w-full" style={{ height: 140 }}>
+    <div className="w-full" style={{ height: 120 }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={co2LineData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid {...gridStyle} />
@@ -277,12 +268,9 @@ const CO2LineCard = () => (
   </div>
 );
 
-/* ═══════════════════════════════════════════════
-   CARD 5 — Water BarChart (same chart type as ProjectDetail)
-   ═══════════════════════════════════════════════ */
-
-const WaterBarCard = () => (
-  <div className={bentoCard} style={{ minHeight: 190 }}>
+/* ── Water ── */
+const WaterCard = () => (
+  <div className={`${cardBase} p-5`} style={{ minHeight: 170 }}>
     <div className="flex items-center gap-2 mb-3">
       <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
         <Droplets className="w-3.5 h-3.5 text-blue-600" />
@@ -292,14 +280,14 @@ const WaterBarCard = () => (
         <p className="text-[10px] text-gray-400">Liters · Monthly</p>
       </div>
     </div>
-    <div className="w-full" style={{ height: 130 }}>
+    <div className="w-full" style={{ height: 110 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={waterBarData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid {...gridStyle} vertical={false} />
           <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} />
           <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={30} />
           <Tooltip contentStyle={tooltipContentStyle} />
-          <Bar dataKey="usage" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={18} />
+          <Bar dataKey="usage" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={16} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -307,98 +295,107 @@ const WaterBarCard = () => (
 );
 
 /* ═══════════════════════════════════════════════
-   CARDS CONFIG — asymmetric layout with overlap
-   ═══════════════════════════════════════════════ */
-
-const cards: {
-  id: string;
-  component: React.FC;
-  className: string;
-  delay: number;
-  float: { duration: number; distance: number };
-}[] = [
-  {
-    id: "energy",
-    component: EnergyAreaCard,
-    className: "top-[3%] left-[4%] w-[52%]",
-    delay: 0.1,
-    float: { duration: 5, distance: 5 },
-  },
-  {
-    id: "co2",
-    component: CO2LineCard,
-    className: "top-[2%] right-[3%] w-[46%]",
-    delay: 0.25,
-    float: { duration: 5.5, distance: 6 },
-  },
-  {
-    id: "carbon",
-    component: CarbonBarCard,
-    className: "top-[36%] left-[6%] w-[48%]",
-    delay: 0.4,
-    float: { duration: 4.8, distance: 4 },
-  },
-  {
-    id: "daynight",
-    component: DayNightPieCard,
-    className: "top-[34%] right-[4%] w-[44%]",
-    delay: 0.55,
-    float: { duration: 5.2, distance: 5 },
-  },
-  {
-    id: "water",
-    component: WaterBarCard,
-    className: "bottom-[6%] left-[16%] w-[48%]",
-    delay: 0.7,
-    float: { duration: 6, distance: 4 },
-  },
-];
-
-/* ═══════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════ */
 
 const FloatingBentoPanel = () => (
   <div
-    className="hidden lg:flex flex-1 relative overflow-hidden"
+    className="hidden lg:flex flex-1 relative overflow-hidden items-center justify-center"
     style={{
       background: "linear-gradient(145deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
     }}
   >
-    {/* Subtle dot grid */}
+    {/* Dot grid */}
     <div
-      className="absolute inset-0 opacity-[0.35]"
+      className="absolute inset-0 opacity-[0.3]"
       style={{
         backgroundImage: "radial-gradient(circle, #cbd5e1 0.8px, transparent 0.8px)",
         backgroundSize: "32px 32px",
       }}
     />
 
-    {/* Soft ambient glow */}
-    <div className="absolute top-1/4 left-1/3 w-80 h-80 rounded-full bg-teal-200 opacity-[0.15] blur-[100px]" />
-    <div className="absolute bottom-1/3 right-1/4 w-96 h-96 rounded-full bg-indigo-200 opacity-[0.12] blur-[120px]" />
+    {/* Ambient glows */}
+    <div className="absolute top-1/4 left-1/3 w-80 h-80 rounded-full bg-teal-200 opacity-[0.12] blur-[100px]" />
+    <div className="absolute bottom-1/3 right-1/4 w-96 h-96 rounded-full bg-indigo-200 opacity-[0.10] blur-[120px]" />
 
-    {/* Floating cards */}
-    {cards.map(({ id, component: Component, className, delay, float }) => (
+    {/* ── Overlapping composition container ── */}
+    <div className="relative w-[92%] max-w-[680px]" style={{ height: "88%" }}>
+
+      {/* ACT I — Central Energy Heatmap (z-10, base layer) */}
       <motion.div
-        key={id}
-        className={`absolute ${className} z-10`}
-        initial={{ y: -100, opacity: 0, scale: 0.9 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        transition={springTransition(delay)}
+        className="absolute left-[5%] right-[5%] top-[12%]"
+        style={{ zIndex: 10 }}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0)}
       >
-        <motion.div animate={floatAnimation(float.duration, float.distance)}>
-          <Component />
+        <motion.div animate={floatLoop(6, 3)}>
+          <EnergyHeatmap />
         </motion.div>
       </motion.div>
-    ))}
 
-    {/* Bottom payoff text */}
+      {/* ACT II — Peripheral cards (z-20+, overlap heatmap edges) */}
+
+      {/* Carbon — top-left, overlaps heatmap top-left corner */}
+      <motion.div
+        className="absolute left-[-2%] top-[2%] w-[48%]"
+        style={{ zIndex: 20 }}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.3)}
+      >
+        <motion.div animate={floatLoop(5.2, 4)}>
+          <CarbonCard />
+        </motion.div>
+      </motion.div>
+
+      {/* CO₂ — top-right, overlaps heatmap top-right corner */}
+      <motion.div
+        className="absolute right-[-2%] top-[4%] w-[44%]"
+        style={{ zIndex: 21 }}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.45)}
+      >
+        <motion.div animate={floatLoop(5.6, 5)}>
+          <CO2Card />
+        </motion.div>
+      </motion.div>
+
+      {/* Day/Night — bottom-left, overlaps heatmap bottom-left */}
+      <motion.div
+        className="absolute left-[0%] bottom-[10%] w-[46%]"
+        style={{ zIndex: 22 }}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.6)}
+      >
+        <motion.div animate={floatLoop(5, 4.5)}>
+          <DayNightCard />
+        </motion.div>
+      </motion.div>
+
+      {/* Water — bottom-right, overlaps heatmap bottom-right */}
+      <motion.div
+        className="absolute right-[0%] bottom-[12%] w-[44%]"
+        style={{ zIndex: 23 }}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.75)}
+      >
+        <motion.div animate={floatLoop(5.8, 3.5)}>
+          <WaterCard />
+        </motion.div>
+      </motion.div>
+    </div>
+
+    {/* Payoff text */}
     <motion.div
-      className="absolute bottom-[2%] inset-x-0 text-center px-8 z-20"
-      initial={{ opacity: 0, y: 20 }}
+      className="absolute bottom-[2%] inset-x-0 text-center px-8"
+      style={{ zIndex: 30 }}
+      initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.2, duration: 0.6, ease: "easeOut" }}
+      transition={{ delay: 1.2, duration: 0.7, ease: "easeOut" }}
     >
       <h2 className="text-3xl xl:text-4xl font-bold text-gray-800 leading-tight tracking-tight">
         The future of
