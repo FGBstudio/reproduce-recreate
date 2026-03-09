@@ -9,7 +9,7 @@ import {
 } from "recharts";
 
 /* ═══════════════════════════════════════════════
-   MOCK DATA (Mantenuti intatti)
+   MOCK DATA
    ═══════════════════════════════════════════════ */
 
 const energyAreaData = [
@@ -90,22 +90,19 @@ const tooltipContentStyle = {
 };
 
 /* ═══════════════════════════════════════════════
-   GRAVITY CHOREOGRAPHY (Keyframes)
+   SPRING ANIMATION PRESETS
    ═══════════════════════════════════════════════ */
 
-// Caduta libera, impatto col fondo schermo, rimbalzo e assestamento
-const gravityDrop = (delay: number) => ({
-  y: ["-120vh", "35vh", "-8vh", "0vh"],
-  opacity: [0, 1, 1, 1],
-  transition: {
-    duration: 1.8, 
-    times: [0, 0.45, 0.75, 1], // 45% del tempo per cadere, poi rimbalza in alto, poi scende al centro
-    ease: ["easeIn", "easeOut", "easeInOut"],
-    delay: delay,
-  }
+// Heavy spring — overshoots then settles (gravity feel)
+const dropSpring = (delay: number) => ({
+  type: "spring" as const,
+  stiffness: 80,
+  damping: 10,
+  mass: 1.2,
+  delay,
 });
 
-// Respiro galleggiante continuo post-assestamento
+// Gentle perpetual float
 const floatLoop = (dur: number, dist: number) => ({
   y: [0, -dist, 0],
   transition: {
@@ -117,25 +114,25 @@ const floatLoop = (dur: number, dist: number) => ({
 });
 
 /* ═══════════════════════════════════════════════
-   CARD COMPONENTS (Dimensioni aumentate)
+   CARD COMPONENTS
    ═══════════════════════════════════════════════ */
 
 const cardBase =
-  "bg-white rounded-[24px] border border-gray-100 shadow-[0_15px_40px_rgb(0,0,0,0.06)] overflow-visible w-full h-full flex flex-col";
+  "bg-white rounded-[22px] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-visible";
 
-/* ── ACT I — Central Energy Heatmap ── */
+/* ── ACT I — Central Energy Heatmap (large) ── */
 const EnergyHeatmap = () => (
-  <div className={`${cardBase} p-8`}>
-    <div className="flex items-center gap-3 mb-6">
-      <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
-        <Zap className="w-5 h-5 text-teal-600" />
+  <div className={`${cardBase} p-6`} style={{ minHeight: 280 }}>
+    <div className="flex items-center gap-2 mb-4">
+      <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center">
+        <Zap className="w-4 h-4 text-teal-600" />
       </div>
       <div>
-        <h4 className="text-lg font-bold text-gray-800 tracking-tight">Energy Consumption</h4>
-        <p className="text-xs text-gray-400">kW · Today</p>
+        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Energy Consumption</h4>
+        <p className="text-[10px] text-gray-400">kW · Today</p>
       </div>
     </div>
-    <div className="flex-1 w-full min-h-[250px]">
+    <div className="w-full" style={{ height: 210 }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={energyAreaData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <defs>
@@ -167,17 +164,17 @@ const EnergyHeatmap = () => (
 
 /* ── Carbon ── */
 const CarbonCard = () => (
-  <div className={`${cardBase} p-6`}>
-    <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-        <Leaf className="w-4 h-4 text-emerald-600" />
+  <div className={`${cardBase} p-5`} style={{ minHeight: 200 }}>
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+        <Leaf className="w-3.5 h-3.5 text-emerald-600" />
       </div>
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Carbon Footprint</h4>
+        <h4 className="text-xs font-bold text-gray-800 tracking-tight">Carbon Footprint</h4>
         <p className="text-[10px] text-gray-400">kgCO₂e · YoY</p>
       </div>
     </div>
-    <div className="flex-1 w-full min-h-[140px]">
+    <div className="w-full" style={{ height: 140 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={carbonBarData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }} barGap={2}>
           <CartesianGrid {...gridStyle} vertical={false} />
@@ -195,18 +192,18 @@ const CarbonCard = () => (
 
 /* ── Day / Night ── */
 const DayNightCard = () => (
-  <div className={`${cardBase} p-6`}>
-    <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-        <Sun className="w-4 h-4 text-amber-500" />
+  <div className={`${cardBase} p-5`} style={{ minHeight: 180 }}>
+    <div className="flex items-center gap-2 mb-2">
+      <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+        <Sun className="w-3.5 h-3.5 text-amber-500" />
       </div>
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Day vs Night</h4>
+        <h4 className="text-xs font-bold text-gray-800 tracking-tight">Day vs Night</h4>
         <p className="text-[10px] text-gray-400">24h Cycle</p>
       </div>
     </div>
-    <div className="flex-1 flex items-center gap-4">
-      <div className="relative flex-1 aspect-square min-h-[100px]">
+    <div className="flex items-center gap-4">
+      <div className="relative" style={{ width: 110, height: 110 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -224,18 +221,18 @@ const DayNightCard = () => (
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg font-black text-gray-800">1,240</span>
-          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">kWh</span>
+          <span className="text-base font-black text-gray-800">1,240</span>
+          <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest">kWh</span>
         </div>
       </div>
-      <div className="space-y-3 w-1/3">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Sun className="w-3.5 h-3.5 text-amber-500" />
-          <span>Day <b className="text-gray-900 block">62%</b></span>
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+          <Sun className="w-3 h-3 text-amber-500" />
+          <span>Day <b className="text-gray-900">62%</b></span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Moon className="w-3.5 h-3.5 text-indigo-500" />
-          <span>Night <b className="text-gray-900 block">38%</b></span>
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+          <Moon className="w-3 h-3 text-indigo-500" />
+          <span>Night <b className="text-gray-900">38%</b></span>
         </div>
       </div>
     </div>
@@ -244,20 +241,20 @@ const DayNightCard = () => (
 
 /* ── CO₂ ── */
 const CO2Card = () => (
-  <div className={`${cardBase} p-6`}>
-    <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
-        <Wind className="w-4 h-4 text-sky-600" />
+  <div className={`${cardBase} p-5`} style={{ minHeight: 180 }}>
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center">
+        <Wind className="w-3.5 h-3.5 text-sky-600" />
       </div>
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">CO₂ Trend</h4>
+        <h4 className="text-xs font-bold text-gray-800 tracking-tight">CO₂ Trend</h4>
         <p className="text-[10px] text-gray-400">ppm · Today</p>
       </div>
-      <span className="ml-auto text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 font-semibold">
+      <span className="ml-auto text-[9px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 font-semibold">
         Good
       </span>
     </div>
-    <div className="flex-1 w-full min-h-[120px]">
+    <div className="w-full" style={{ height: 120 }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={co2LineData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid {...gridStyle} />
@@ -273,17 +270,17 @@ const CO2Card = () => (
 
 /* ── Water ── */
 const WaterCard = () => (
-  <div className={`${cardBase} p-6`}>
-    <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-        <Droplets className="w-4 h-4 text-blue-600" />
+  <div className={`${cardBase} p-5`} style={{ minHeight: 170 }}>
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+        <Droplets className="w-3.5 h-3.5 text-blue-600" />
       </div>
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Water Usage</h4>
+        <h4 className="text-xs font-bold text-gray-800 tracking-tight">Water Usage</h4>
         <p className="text-[10px] text-gray-400">Liters · Monthly</p>
       </div>
     </div>
-    <div className="flex-1 w-full min-h-[120px]">
+    <div className="w-full" style={{ height: 110 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={waterBarData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid {...gridStyle} vertical={false} />
@@ -310,78 +307,83 @@ const FloatingBentoPanel = () => (
   >
     {/* Dot grid */}
     <div
-      className="absolute inset-0 opacity-[0.4]"
+      className="absolute inset-0 opacity-[0.3]"
       style={{
-        backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
+        backgroundImage: "radial-gradient(circle, #cbd5e1 0.8px, transparent 0.8px)",
         backgroundSize: "32px 32px",
       }}
     />
 
     {/* Ambient glows */}
-    <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full bg-teal-200 opacity-[0.15] blur-[100px]" />
-    <div className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] rounded-full bg-indigo-200 opacity-[0.12] blur-[120px]" />
+    <div className="absolute top-1/4 left-1/3 w-80 h-80 rounded-full bg-teal-200 opacity-[0.12] blur-[100px]" />
+    <div className="absolute bottom-1/3 right-1/4 w-96 h-96 rounded-full bg-indigo-200 opacity-[0.10] blur-[120px]" />
 
-    {/* ── Overlapping composition container (Aumentato per grafici più grandi) ── */}
-    <div className="relative w-full max-w-[1100px] aspect-[16/10] max-h-[90vh]">
+    {/* ── Overlapping composition container ── */}
+    <div className="relative w-[92%] max-w-[680px]" style={{ height: "88%" }}>
 
-      {/* ACT I — Central Energy Heatmap */}
+      {/* ACT I — Central Energy Heatmap (z-10, base layer) */}
       <motion.div
-        className="absolute w-[50%] h-[55%] left-[25%] top-[20%]"
+        className="absolute left-[5%] right-[5%] top-[12%]"
         style={{ zIndex: 10 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(0.1)}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0)}
       >
-        <motion.div animate={floatLoop(6, 4)} className="w-full h-full">
+        <motion.div animate={floatLoop(6, 3)}>
           <EnergyHeatmap />
         </motion.div>
       </motion.div>
 
-      {/* ACT II — Peripheral cards */}
+      {/* ACT II — Peripheral cards (z-20+, overlap heatmap edges) */}
 
-      {/* Carbon — top-left */}
+      {/* Carbon — top-left, overlaps heatmap top-left corner */}
       <motion.div
-        className="absolute w-[28%] h-[38%] left-[7%] top-[10%]"
+        className="absolute left-[-2%] top-[2%] w-[48%]"
         style={{ zIndex: 20 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(0.6)}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.3)}
       >
-        <motion.div animate={floatLoop(5.2, 5)} className="w-full h-full">
+        <motion.div animate={floatLoop(5.2, 4)}>
           <CarbonCard />
         </motion.div>
       </motion.div>
 
-      {/* CO₂ — top-right */}
+      {/* CO₂ — top-right, overlaps heatmap top-right corner */}
       <motion.div
-        className="absolute w-[30%] h-[35%] right-[5%] top-[15%]"
+        className="absolute right-[-2%] top-[4%] w-[44%]"
         style={{ zIndex: 21 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(0.8)}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.45)}
       >
-        <motion.div animate={floatLoop(5.6, 6)} className="w-full h-full">
+        <motion.div animate={floatLoop(5.6, 5)}>
           <CO2Card />
         </motion.div>
       </motion.div>
 
-      {/* Day/Night — bottom-left */}
+      {/* Day/Night — bottom-left, overlaps heatmap bottom-left */}
       <motion.div
-        className="absolute w-[26%] h-[34%] left-[10%] bottom-[12%]"
+        className="absolute left-[0%] bottom-[10%] w-[46%]"
         style={{ zIndex: 22 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(1.0)}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.6)}
       >
-        <motion.div animate={floatLoop(5, 4.5)} className="w-full h-full">
+        <motion.div animate={floatLoop(5, 4.5)}>
           <DayNightCard />
         </motion.div>
       </motion.div>
 
-      {/* Water — bottom-right */}
+      {/* Water — bottom-right, overlaps heatmap bottom-right */}
       <motion.div
-        className="absolute w-[27%] h-[32%] right-[12%] bottom-[15%]"
+        className="absolute right-[0%] bottom-[12%] w-[44%]"
         style={{ zIndex: 23 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(1.2)}
+        initial={{ y: "-100vh", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={dropSpring(0.75)}
       >
-        <motion.div animate={floatLoop(5.8, 3.5)} className="w-full h-full">
+        <motion.div animate={floatLoop(5.8, 3.5)}>
           <WaterCard />
         </motion.div>
       </motion.div>
@@ -389,11 +391,11 @@ const FloatingBentoPanel = () => (
 
     {/* Payoff text */}
     <motion.div
-      className="absolute bottom-[4%] inset-x-0 text-center px-8"
+      className="absolute bottom-[2%] inset-x-0 text-center px-8"
       style={{ zIndex: 30 }}
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 2.2, duration: 0.8, ease: "easeOut" }}
+      transition={{ delay: 1.2, duration: 0.7, ease: "easeOut" }}
     >
       <h2 className="text-3xl xl:text-4xl font-bold text-gray-800 leading-tight tracking-tight">
         The future of
@@ -402,7 +404,7 @@ const FloatingBentoPanel = () => (
           energy management
         </span>
       </h2>
-      <p className="mt-3 text-sm text-gray-500 font-medium tracking-wide">
+      <p className="mt-2 text-xs text-gray-400 max-w-sm mx-auto tracking-wide">
         Real-time IoT monitoring · AI-powered analytics · Sustainability tracking
       </p>
     </motion.div>
