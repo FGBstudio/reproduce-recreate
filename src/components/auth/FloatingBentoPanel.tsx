@@ -3,27 +3,14 @@ import {
   Zap, Droplets, Wind, Sun, Moon, Leaf,
 } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer, Legend, ReferenceArea
 } from "recharts";
 
 /* ═══════════════════════════════════════════════
-   MOCK DATA (Mantenuti intatti)
+   MOCK DATA
    ═══════════════════════════════════════════════ */
-
-const energyAreaData = [
-  { label: "00:00", General: 12, HVAC: 5, Lighting: 3, Other: 1.5 },
-  { label: "04:00", General: 9,  HVAC: 4, Lighting: 1, Other: 1 },
-  { label: "08:00", General: 22, HVAC: 11, Lighting: 6, Other: 3 },
-  { label: "10:00", General: 28, HVAC: 14, Lighting: 7, Other: 4 },
-  { label: "12:00", General: 32, HVAC: 16, Lighting: 8, Other: 5 },
-  { label: "14:00", General: 30, HVAC: 15, Lighting: 7, Other: 4.5 },
-  { label: "16:00", General: 26, HVAC: 12, Lighting: 6, Other: 3.5 },
-  { label: "18:00", General: 20, HVAC: 9,  Lighting: 5, Other: 2.5 },
-  { label: "20:00", General: 16, HVAC: 7,  Lighting: 4, Other: 2 },
-  { label: "23:00", General: 11, HVAC: 4,  Lighting: 2, Other: 1 },
-];
 
 const carbonBarData = [
   { bucket: "Jan", "2025": 420, "2024": 480 },
@@ -35,34 +22,25 @@ const carbonBarData = [
 ];
 
 const dayNightData = [
-  { name: "Day", value: 62, fill: "#f59e0b" },
-  { name: "Night", value: 38, fill: "#6366f1" },
+  { name: "Day", value: 62, fill: "#38bdf8" }, // Sky 400
+  { name: "Night", value: 38, fill: "#334155" }, // Slate 700
 ];
 
 const co2LineData = [
-  { time: "06:00", co2: 410 },
-  { time: "08:00", co2: 520 },
-  { time: "10:00", co2: 680 },
-  { time: "12:00", co2: 750 },
-  { time: "14:00", co2: 620 },
-  { time: "16:00", co2: 580 },
-  { time: "18:00", co2: 490 },
-  { time: "20:00", co2: 430 },
+  { time: "06:00", co2: 410 }, { time: "08:00", co2: 520 },
+  { time: "10:00", co2: 680 }, { time: "12:00", co2: 750 },
+  { time: "14:00", co2: 620 }, { time: "16:00", co2: 580 },
+  { time: "18:00", co2: 490 }, { time: "20:00", co2: 430 },
 ];
 
 const waterBarData = [
-  { label: "Jan", usage: 1200 },
-  { label: "Feb", usage: 980 },
-  { label: "Mar", usage: 1350 },
-  { label: "Apr", usage: 1100 },
-  { label: "May", usage: 900 },
-  { label: "Jun", usage: 1450 },
-  { label: "Jul", usage: 1600 },
-  { label: "Aug", usage: 1520 },
+  { label: "Jan", usage: 1200 }, { label: "Feb", usage: 980 },
+  { label: "Mar", usage: 1350 }, { label: "Apr", usage: 1100 },
+  { label: "May", usage: 900 },  { label: "Jun", usage: 1450 },
 ];
 
 /* ═══════════════════════════════════════════════
-   SHARED CHART STYLES
+   SHARED STYLES & APPLE GLASS ESTHETIC
    ═══════════════════════════════════════════════ */
 
 const axisStyle = {
@@ -79,33 +57,37 @@ const gridStyle = {
 };
 
 const tooltipContentStyle = {
-  backgroundColor: "rgba(255,255,255,0.95)",
+  backgroundColor: "rgba(255,255,255,0.92)",
   backdropFilter: "blur(20px)",
   border: "1px solid rgba(0,0,0,0.06)",
-  borderRadius: "12px",
+  borderRadius: "16px",
   boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
   padding: "10px 14px",
   fontFamily: "'Futura', sans-serif",
   fontSize: 11,
 };
 
+// Apple visionOS inspired glass card
+const cardBase =
+  "bg-white/80 backdrop-blur-2xl border border-white/60 shadow-[0_30px_60px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] rounded-[32px] overflow-hidden w-full h-full flex flex-col";
+
 /* ═══════════════════════════════════════════════
-   GRAVITY CHOREOGRAPHY (Keyframes)
+   APPLE-STYLE SMOOTH ANIMATIONS
    ═══════════════════════════════════════════════ */
 
-// Caduta libera, impatto col fondo schermo, rimbalzo e assestamento
-const gravityDrop = (delay: number) => ({
-  y: ["-120vh", "35vh", "-8vh", "0vh"],
-  opacity: [0, 1, 1, 1],
+// Caduta morbida con effetto blur (Simula un vetro che si posa)
+const appleDrop = (delay: number) => ({
+  y: ["-40vh", "0vh"],
+  opacity: [0, 1],
+  filter: ["blur(12px)", "blur(0px)"],
+  scale: [0.95, 1],
   transition: {
-    duration: 1.8, 
-    times: [0, 0.45, 0.75, 1], // 45% del tempo per cadere, poi rimbalza in alto, poi scende al centro
-    ease: ["easeIn", "easeOut", "easeInOut"],
+    duration: 1.4,
+    ease: [0.16, 1, 0.3, 1], // Curva "Expo Out" fluida di iOS
     delay: delay,
   }
 });
 
-// Respiro galleggiante continuo post-assestamento
 const floatLoop = (dur: number, dist: number) => ({
   y: [0, -dist, 0],
   transition: {
@@ -117,53 +99,78 @@ const floatLoop = (dur: number, dist: number) => ({
 });
 
 /* ═══════════════════════════════════════════════
-   CARD COMPONENTS (Dimensioni aumentate)
+   CARD COMPONENTS
    ═══════════════════════════════════════════════ */
 
-const cardBase =
-  "bg-white rounded-[24px] border border-gray-100 shadow-[0_15px_40px_rgb(0,0,0,0.06)] overflow-visible w-full h-full flex flex-col";
+/* ── ACT I — TRUE CSS HEATMAP (Replicata da ProjectDetail) ── */
+const TrueHeatmapCard = () => {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const heatmapColors = ['#f1f5f9', '#cffafe', '#5eead4', '#14b8a6', '#0f766e']; // Teal palette FGB-friendly
 
-/* ── ACT I — Central Energy Heatmap ── */
-const EnergyHeatmap = () => (
-  <div className={`${cardBase} p-8`}>
-    <div className="flex items-center gap-3 mb-6">
-      <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
-        <Zap className="w-5 h-5 text-teal-600" />
+  return (
+    <div className={`${cardBase} p-8`}>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-teal-600" />
+          </div>
+          <div>
+            <h4 className="text-lg font-bold text-gray-800 tracking-tight">Energy Consumption Heatmap</h4>
+            <p className="text-xs text-gray-500">Weekly historical pattern</p>
+          </div>
+        </div>
+        {/* Heatmap Legend */}
+        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium">
+          <span>Low</span>
+          <div className="flex gap-1">
+            {heatmapColors.map((c) => (
+              <div key={c} className="w-3 h-3 rounded-[3px]" style={{ backgroundColor: c }} />
+            ))}
+          </div>
+          <span>High</span>
+        </div>
       </div>
-      <div>
-        <h4 className="text-lg font-bold text-gray-800 tracking-tight">Energy Consumption</h4>
-        <p className="text-xs text-gray-400">kW · Today</p>
+      
+      {/* CSS Matrix Grid */}
+      <div className="flex-1 flex flex-col justify-between w-full h-full min-h-[220px]">
+        <div className="flex flex-1 gap-2 h-full">
+          {/* Y Axis (Hours) */}
+          <div className="flex flex-col justify-between text-[10px] text-gray-400 font-medium py-1">
+            {['00:00','04:00','08:00','12:00','16:00','20:00','23:00'].map(t => <div key={t}>{t}</div>)}
+          </div>
+          {/* Grid Area */}
+          <div className="flex-1 flex flex-col gap-[3px]">
+            {Array.from({length: 24}).map((_, hour) => (
+              <div key={hour} className="flex-1 flex gap-[3px]">
+                {days.map((day, dayIdx) => {
+                  // Generatore mock di intensità (più alto di giorno e a metà settimana)
+                  const baseIntensity = Math.sin(hour / 3.8) * Math.cos((dayIdx - 3) / 3);
+                  const randomNoise = Math.random() * 0.5;
+                  const intensity = Math.max(0, baseIntensity + randomNoise);
+                  const colorIdx = intensity > 1.2 ? 4 : intensity > 0.8 ? 3 : intensity > 0.4 ? 2 : intensity > 0.1 ? 1 : 0;
+                  
+                  return (
+                    <div 
+                      key={`${day}-${hour}`} 
+                      className="flex-1 rounded-[3px] transition-all duration-300 hover:scale-110 hover:shadow-sm" 
+                      style={{ backgroundColor: heatmapColors[colorIdx] }} 
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* X Axis (Days) */}
+        <div className="flex pl-10 pt-2">
+          {days.map(d => (
+            <div key={d} className="flex-1 text-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">{d}</div>
+          ))}
+        </div>
       </div>
     </div>
-    <div className="flex-1 w-full min-h-[250px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={energyAreaData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-          <defs>
-            <linearGradient id="bGeneral" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#009193" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="#009193" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="bHVAC" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#006367" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#006367" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="bLighting" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#e63f26" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#e63f26" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid {...gridStyle} />
-          <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={30} />
-          <Tooltip contentStyle={tooltipContentStyle} />
-          <Area type="monotone" dataKey="General" stroke="#009193" fill="url(#bGeneral)" strokeWidth={2} />
-          <Area type="monotone" dataKey="HVAC" stroke="#006367" fill="url(#bHVAC)" strokeWidth={1.5} />
-          <Area type="monotone" dataKey="Lighting" stroke="#e63f26" fill="url(#bLighting)" strokeWidth={1.5} />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-);
+  );
+};
 
 /* ── Carbon ── */
 const CarbonCard = () => (
@@ -174,19 +181,18 @@ const CarbonCard = () => (
       </div>
       <div>
         <h4 className="text-sm font-bold text-gray-800 tracking-tight">Carbon Footprint</h4>
-        <p className="text-[10px] text-gray-400">kgCO₂e · YoY</p>
+        <p className="text-[10px] text-gray-400">kgCO₂e</p>
       </div>
     </div>
     <div className="flex-1 w-full min-h-[140px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={carbonBarData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }} barGap={2}>
+        <BarChart data={carbonBarData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }} barGap={2}>
           <CartesianGrid {...gridStyle} vertical={false} />
           <XAxis dataKey="bucket" tick={axisStyle} axisLine={false} tickLine={false} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={30} />
-          <Tooltip contentStyle={tooltipContentStyle} />
-          <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} iconType="circle" />
-          <Bar dataKey="2025" fill="#009193" radius={[4, 4, 0, 0]} maxBarSize={18} />
-          <Bar dataKey="2024" fill="#d1d5db" radius={[4, 4, 0, 0]} maxBarSize={18} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} />
+          <Tooltip contentStyle={tooltipContentStyle} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+          <Bar dataKey="2025" fill="#009193" radius={[4, 4, 0, 0]} maxBarSize={14} />
+          <Bar dataKey="2024" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={14} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -196,46 +202,36 @@ const CarbonCard = () => (
 /* ── Day / Night ── */
 const DayNightCard = () => (
   <div className={`${cardBase} p-6`}>
-    <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-        <Sun className="w-4 h-4 text-amber-500" />
-      </div>
+    <div className="flex justify-between items-start mb-2">
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Day vs Night</h4>
-        <p className="text-[10px] text-gray-400">24h Cycle</p>
+        <h4 className="text-sm font-bold text-gray-800 tracking-tight">24h Cycle</h4>
+        <p className="text-[10px] text-gray-400">Day vs Night</p>
       </div>
     </div>
-    <div className="flex-1 flex items-center gap-4">
-      <div className="relative flex-1 aspect-square min-h-[100px]">
+    <div className="flex-1 flex flex-col items-center justify-center relative mt-2">
+      <div className="relative w-28 h-28 drop-shadow-md">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={dayNightData}
-              cx="50%" cy="50%"
-              innerRadius="70%" outerRadius="100%"
-              stroke="none" dataKey="value"
-              startAngle={90} endAngle={-270}
+              data={dayNightData} cx="50%" cy="50%" innerRadius="70%" outerRadius="100%"
+              stroke="none" dataKey="value" startAngle={90} endAngle={-270}
             >
-              {dayNightData.map((entry, i) => (
-                <Cell key={i} fill={entry.fill} />
-              ))}
+              {dayNightData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
             </Pie>
             <Tooltip contentStyle={tooltipContentStyle} />
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg font-black text-gray-800">1,240</span>
-          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">kWh</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-xl font-black text-gray-800">1,240</span>
+          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">kWh</span>
         </div>
       </div>
-      <div className="space-y-3 w-1/3">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Sun className="w-3.5 h-3.5 text-amber-500" />
-          <span>Day <b className="text-gray-900 block">62%</b></span>
+      <div className="flex w-full justify-between px-2 mt-3">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-sky-500">
+          <Sun className="w-3.5 h-3.5" /> 62%
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Moon className="w-3.5 h-3.5 text-indigo-500" />
-          <span>Night <b className="text-gray-900 block">38%</b></span>
+        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+          <Moon className="w-3.5 h-3.5" /> 38%
         </div>
       </div>
     </div>
@@ -246,25 +242,29 @@ const DayNightCard = () => (
 const CO2Card = () => (
   <div className={`${cardBase} p-6`}>
     <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
-        <Wind className="w-4 h-4 text-sky-600" />
+      <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+        <Wind className="w-4 h-4 text-red-500" />
       </div>
       <div>
-        <h4 className="text-sm font-bold text-gray-800 tracking-tight">CO₂ Trend</h4>
-        <p className="text-[10px] text-gray-400">ppm · Today</p>
+        <h4 className="text-sm font-bold text-gray-800 tracking-tight">Indoor CO₂</h4>
+        <p className="text-[10px] text-gray-400">ppm</p>
       </div>
-      <span className="ml-auto text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 font-semibold">
-        Good
-      </span>
     </div>
     <div className="flex-1 w-full min-h-[120px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={co2LineData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+        <LineChart data={co2LineData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gradCO2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.1} />
+              <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
           <CartesianGrid {...gridStyle} />
+          <ReferenceArea y1={0} y2={600} fill="url(#gradCO2)" fillOpacity={1} />
           <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={30} domain={[300, 800]} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} domain={[300, 800]} />
           <Tooltip contentStyle={tooltipContentStyle} />
-          <Line type="monotone" dataKey="co2" stroke="#009193" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="co2" stroke="#10b981" strokeWidth={2.5} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -280,16 +280,16 @@ const WaterCard = () => (
       </div>
       <div>
         <h4 className="text-sm font-bold text-gray-800 tracking-tight">Water Usage</h4>
-        <p className="text-[10px] text-gray-400">Liters · Monthly</p>
+        <p className="text-[10px] text-gray-400">Liters</p>
       </div>
     </div>
     <div className="flex-1 w-full min-h-[120px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={waterBarData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+        <BarChart data={waterBarData} margin={{ top: 5, right: 0, left: -10, bottom: 0 }}>
           <CartesianGrid {...gridStyle} vertical={false} />
           <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={30} />
-          <Tooltip contentStyle={tooltipContentStyle} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} />
+          <Tooltip contentStyle={tooltipContentStyle} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
           <Bar dataKey="usage" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={16} />
         </BarChart>
       </ResponsiveContainer>
@@ -305,107 +305,96 @@ const FloatingBentoPanel = () => (
   <div
     className="hidden lg:flex flex-1 relative overflow-hidden items-center justify-center"
     style={{
-      background: "linear-gradient(145deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
+      background: "#f8fafc", // Sfondo grigio chiarissimo purissimo
     }}
   >
-    {/* Dot grid */}
-    <div
-      className="absolute inset-0 opacity-[0.4]"
-      style={{
-        backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
-        backgroundSize: "32px 32px",
-      }}
-    />
+    {/* Minimalist Ambient Lights (Molto soffuse per stile Apple) */}
+    <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full bg-teal-100 opacity-40 blur-[120px]" />
+    <div className="absolute bottom-0 right-1/4 w-[700px] h-[700px] rounded-full bg-indigo-50 opacity-50 blur-[150px]" />
 
-    {/* Ambient glows */}
-    <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full bg-teal-200 opacity-[0.15] blur-[100px]" />
-    <div className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] rounded-full bg-indigo-200 opacity-[0.12] blur-[120px]" />
+    {/* ── Title at the Top ── */}
+    <motion.div
+      className="absolute top-[8%] inset-x-0 text-center px-8 z-30"
+      initial={{ opacity: 0, filter: "blur(10px)", y: -20 }}
+      animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <h2 className="text-4xl xl:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight">
+        The future of
+        <span className="ml-2 bg-gradient-to-r from-[#009193] to-[#0f766e] bg-clip-text text-transparent">
+          energy management
+        </span>
+      </h2>
+      <p className="mt-4 text-sm text-gray-500 font-medium tracking-wide">
+        Real-time IoT monitoring · AI-powered analytics · Sustainability tracking
+      </p>
+    </motion.div>
 
-    {/* ── Overlapping composition container (Aumentato per grafici più grandi) ── */}
-    <div className="relative w-full max-w-[1100px] aspect-[16/10] max-h-[90vh]">
+    {/* ── Overlapping composition container ── */}
+    <div className="relative w-full max-w-[1100px] aspect-[16/10] max-h-[80vh] mt-20">
 
-      {/* ACT I — Central Energy Heatmap */}
+      {/* ACT I — Central True Heatmap */}
       <motion.div
-        className="absolute w-[50%] h-[55%] left-[25%] top-[20%]"
+        className="absolute w-[54%] h-[60%] left-[23%] top-[20%]"
         style={{ zIndex: 10 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(0.1)}
+        initial={{ y: "-80vh", opacity: 0 }}
+        animate={appleDrop(0.1)}
       >
-        <motion.div animate={floatLoop(6, 4)} className="w-full h-full">
-          <EnergyHeatmap />
+        <motion.div animate={floatLoop(7, 6)} className="w-full h-full">
+          <TrueHeatmapCard />
         </motion.div>
       </motion.div>
 
-      {/* ACT II — Peripheral cards */}
+      {/* ACT II — Peripheral cards (Incastro organico e pulito) */}
 
       {/* Carbon — top-left */}
       <motion.div
-        className="absolute w-[28%] h-[38%] left-[7%] top-[10%]"
+        className="absolute w-[24%] h-[34%] left-[7%] top-[12%]"
         style={{ zIndex: 20 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(0.6)}
+        initial={{ y: "-80vh", opacity: 0 }}
+        animate={appleDrop(0.4)}
       >
-        <motion.div animate={floatLoop(5.2, 5)} className="w-full h-full">
+        <motion.div animate={floatLoop(5.5, 8)} className="w-full h-full">
           <CarbonCard />
         </motion.div>
       </motion.div>
 
       {/* CO₂ — top-right */}
       <motion.div
-        className="absolute w-[30%] h-[35%] right-[5%] top-[15%]"
+        className="absolute w-[24%] h-[34%] right-[7%] top-[16%]"
         style={{ zIndex: 21 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(0.8)}
+        initial={{ y: "-80vh", opacity: 0 }}
+        animate={appleDrop(0.55)}
       >
-        <motion.div animate={floatLoop(5.6, 6)} className="w-full h-full">
+        <motion.div animate={floatLoop(6.5, 7)} className="w-full h-full">
           <CO2Card />
         </motion.div>
       </motion.div>
 
       {/* Day/Night — bottom-left */}
       <motion.div
-        className="absolute w-[26%] h-[34%] left-[10%] bottom-[12%]"
+        className="absolute w-[22%] h-[32%] left-[10%] bottom-[12%]"
         style={{ zIndex: 22 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(1.0)}
+        initial={{ y: "-80vh", opacity: 0 }}
+        animate={appleDrop(0.7)}
       >
-        <motion.div animate={floatLoop(5, 4.5)} className="w-full h-full">
+        <motion.div animate={floatLoop(6, 5)} className="w-full h-full">
           <DayNightCard />
         </motion.div>
       </motion.div>
 
       {/* Water — bottom-right */}
       <motion.div
-        className="absolute w-[27%] h-[32%] right-[12%] bottom-[15%]"
+        className="absolute w-[25%] h-[30%] right-[11%] bottom-[16%]"
         style={{ zIndex: 23 }}
-        initial={{ y: "-120vh", opacity: 0 }}
-        animate={gravityDrop(1.2)}
+        initial={{ y: "-80vh", opacity: 0 }}
+        animate={appleDrop(0.85)}
       >
-        <motion.div animate={floatLoop(5.8, 3.5)} className="w-full h-full">
+        <motion.div animate={floatLoop(7.5, 6)} className="w-full h-full">
           <WaterCard />
         </motion.div>
       </motion.div>
     </div>
-
-    {/* Payoff text */}
-    <motion.div
-      className="absolute bottom-[4%] inset-x-0 text-center px-8"
-      style={{ zIndex: 30 }}
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 2.2, duration: 0.8, ease: "easeOut" }}
-    >
-      <h2 className="text-3xl xl:text-4xl font-bold text-gray-800 leading-tight tracking-tight">
-        The future of
-        <br />
-        <span className="bg-gradient-to-r from-[#009193] to-[#006367] bg-clip-text text-transparent">
-          energy management
-        </span>
-      </h2>
-      <p className="mt-3 text-sm text-gray-500 font-medium tracking-wide">
-        Real-time IoT monitoring · AI-powered analytics · Sustainability tracking
-      </p>
-    </motion.div>
   </div>
 );
 
