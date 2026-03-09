@@ -1,8 +1,5 @@
-import { motion } from "framer-motion";
-import {
-  Zap, Droplets, Wind, Sun, Moon, Leaf, ChevronRight, ChevronLeft
-} from "lucide-react";
 import { useRef } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -10,7 +7,7 @@ import {
 } from "recharts";
 
 /* ═══════════════════════════════════════════════
-   MOCK DATA (Mantenuti per consistenza)
+   MOCK DATA
    ═══════════════════════════════════════════════ */
 const carbonBarData = [{ bucket: "Jan", "2025": 420, "2024": 480 }, { bucket: "Feb", "2025": 390, "2024": 460 }, { bucket: "Mar", "2025": 450, "2024": 500 }, { bucket: "Apr", "2025": 380, "2024": 440 }, { bucket: "May", "2025": 350, "2024": 410 }, { bucket: "Jun", "2025": 400, "2024": 470 }];
 const dayNightData = [{ name: "Day", value: 62, fill: "#38bdf8" }, { name: "Night", value: 38, fill: "#334155" }];
@@ -20,117 +17,113 @@ const axisStyle = { fontSize: 12, fontFamily: "'Futura', sans-serif", fill: "#94
 const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", borderRadius: "16px", boxShadow: "0 10px 40px rgba(0,0,0,0.1)", padding: "12px 16px", border: "none" };
 
 /* ═══════════════════════════════════════════════
-   APPLE HIGHLIGHTS CARD COMPONENT
+   APPLE-STRUCTURED GALLERY ITEM
+   Struttura DOM fedele al tag <li class="gallery-item"> di Apple
    ═══════════════════════════════════════════════ */
-// La vera magia Apple: Grandi dimensioni, typography massiccia, e il contenuto (grafico) che respira.
-const GalleryCard = ({ title, subtitle, icon: Icon, colorClass, children }: any) => (
-  <div className="relative snap-center shrink-0 w-[85vw] max-w-[900px] h-[65vh] min-h-[500px] max-h-[700px] rounded-[40px] bg-white/70 backdrop-blur-3xl border border-white/60 shadow-[0_40px_80px_rgba(0,0,0,0.07),inset_0_1px_0_rgba(255,255,255,0.8)] overflow-hidden flex flex-col transition-transform duration-500 hover:scale-[1.01]">
-    
-    {/* Contenuto Testuale (Alto) */}
-    <div className="p-10 md:p-14 z-10 flex flex-col gap-4">
-      <div className={`w-14 h-14 rounded-2xl ${colorClass} flex items-center justify-center shadow-inner`}>
-        <Icon className="w-7 h-7" />
-      </div>
-      <h3 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight max-w-2xl">
-        {title}
-      </h3>
-      <p className="text-lg md:text-xl text-gray-500 font-medium tracking-wide max-w-xl">
-        {subtitle}
-      </p>
-    </div>
-
-    {/* Area Grafico (Basso/Centro) */}
-    <div className="flex-1 w-full relative px-10 pb-10 flex items-end">
-      {children}
-    </div>
-  </div>
-);
-
-/* ═══════════════════════════════════════════════
-   MAIN COMPONENT: THE HORIZONTAL GALLERY
-   ═══════════════════════════════════════════════ */
-const FloatingBentoPanel = () => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const scrollLeft = () => scrollContainerRef.current?.scrollBy({ left: -800, behavior: 'smooth' });
-  const scrollRight = () => scrollContainerRef.current?.scrollBy({ left: 800, behavior: 'smooth' });
+const GalleryItem = ({ headline, mediaType, children, isDark = false }: any) => {
+  const textColor = isDark ? "text-white" : "text-gray-900";
+  const bgColor = isDark ? "bg-black" : "bg-white";
 
   return (
-    <div className="flex-1 relative overflow-hidden bg-[#f5f5f7] flex flex-col justify-center">
-      
-      {/* Intestazione Globale fissa */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}
-        className="absolute top-[6%] left-[8%] z-30"
-      >
-        <h2 className="text-4xl md:text-6xl font-extrabold text-gray-900 tracking-tight">
-          Scopri le tue <br/>
-          <span className="bg-gradient-to-r from-teal-500 to-emerald-600 bg-clip-text text-transparent">
-            prestazioni ambientali.
-          </span>
-        </h2>
-      </motion.div>
+    <li className={`gallery-item snap-center shrink-0 w-[88vw] max-w-[1024px] h-[75vh] min-h-[550px] max-h-[800px] rounded-[40px] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.08)] ${bgColor}`}>
+      <div className="gallery-item-crop w-full h-full flex flex-col relative">
+        
+        {/* Apple Caption Container */}
+        <div className="caption-container absolute top-12 left-12 right-12 z-20 pointer-events-none">
+          <p className={`caption text-3xl md:text-5xl font-semibold tracking-tight leading-[1.15] max-w-3xl ${textColor}`} dangerouslySetInnerHTML={{ __html: headline }} />
+        </div>
 
-      {/* Pulsanti di Navigazione Custom (Stile Apple) */}
-      <div className="absolute bottom-[8%] right-[8%] z-30 flex gap-4">
-        <button onClick={scrollLeft} className="w-14 h-14 rounded-full bg-white/80 backdrop-blur-md shadow-lg flex items-center justify-center text-gray-800 hover:bg-white transition-all">
+        {/* Apple Media Container */}
+        <figure className="media-container w-full h-full absolute inset-0 z-10 flex items-end justify-center" data-media-type={mediaType}>
+          {children}
+        </figure>
+      </div>
+    </li>
+  );
+};
+
+/* ═══════════════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════════════ */
+const FloatingBentoPanel = () => {
+  const scrollRef = useRef<HTMLUListElement>(null);
+
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -900, behavior: 'smooth' });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 900, behavior: 'smooth' });
+
+  return (
+    <div className="flex-1 relative overflow-hidden bg-[#f5f5f7] flex flex-col justify-center py-20">
+      
+      {/* Navigation Controls */}
+      <div className="absolute top-8 right-[6vw] z-30 flex gap-4">
+        <button onClick={scrollLeft} className="w-12 h-12 rounded-full bg-gray-200/60 backdrop-blur-md flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <button onClick={scrollRight} className="w-14 h-14 rounded-full bg-gray-900 shadow-lg flex items-center justify-center text-white hover:bg-black transition-all">
+        <button onClick={scrollRight} className="w-12 h-12 rounded-full bg-gray-200/60 backdrop-blur-md flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors">
           <ChevronRight className="w-6 h-6" />
         </button>
       </div>
 
-      {/* Il Container a Scorrimento (Scroll Snapping CSS) */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.2, delay: 0.2 }}
-        ref={scrollContainerRef}
-        // Il trucco è qui: overflow-x-auto, snap-x e snap-mandatory. Nascondiamo la scrollbar nativa.
-        className="flex overflow-x-auto snap-x snap-mandatory gap-8 px-[8vw] pb-10 pt-32 w-full items-center"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Nasconde scrollbar Firefox/IE
+      {/* FEDELE ALLA STRUTTURA APPLE: <ul class="item-container"> */}
+      <ul 
+        ref={scrollRef}
+        className="item-container flex overflow-x-auto snap-x snap-mandatory gap-6 px-[6vw] w-full items-center"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        <style>{`::-webkit-scrollbar { display: none; }`}</style> {/* Nasconde scrollbar Chrome/Safari */}
+        <style>{`.item-container::-webkit-scrollbar { display: none; }`}</style>
 
-        {/* SLIDE 1: HEATMAP (Ricreata CSS) */}
-        <GalleryCard 
-          title="La tua firma energetica settimanale, visibile a colpo d'occhio."
-          subtitle="Energy Heatmap rileva pattern anomali di consumo isolando gli sprechi notturni."
-          icon={Zap} colorClass="bg-teal-100 text-teal-700"
+        {/* ── SLIDE 1: IL VIDEO CONCEPT (L'Ecosistema Fluido) ── */}
+        <GalleryItem 
+          isDark={true}
+          mediaType="video"
+          headline="Il tuo intero ecosistema energetico.<br/>Sincronizzato istantaneamente su Mac, iPad e iPhone."
         >
-           <div className="w-full h-full flex items-end gap-1 opacity-90">
-             {Array.from({length: 40}).map((_, i) => (
-               <div key={i} className="flex-1 rounded-t-lg bg-teal-500" style={{ height: `${Math.random() * 80 + 20}%`, opacity: Math.random() * 0.5 + 0.5 }} />
+          {/* Sostituisci il src con il video generato dall'IA quando lo avrai */}
+          <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-80">
+            <source src="https://www.apple.com/105/media/us/mac-pro/2019/14fa6eba-2882-4f36-81c9-63c6d4ba4c8a/anim/hero/large.mp4" type="video/mp4" />
+          </video>
+          {/* Gradiente nero sul fondo per non tagliare di netto */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black to-transparent" />
+        </GalleryItem>
+
+        {/* ── SLIDE 2: TRUE HEATMAP ── */}
+        <GalleryItem 
+          mediaType="component"
+          headline="La tua firma energetica settimanale.<br/>Scopri gli sprechi invisibili a colpo d'occhio."
+        >
+          <div className="w-full h-[60%] px-12 pb-12 flex items-end gap-[2px] opacity-90 max-w-5xl mx-auto">
+             {Array.from({length: 48}).map((_, i) => (
+               <div key={i} className="flex-1 rounded-t-[4px] bg-[#009193] transition-all hover:bg-teal-400" 
+                    style={{ height: `${Math.random() * 80 + 20}%`, opacity: Math.random() * 0.4 + 0.6 }} />
              ))}
-           </div>
-        </GalleryCard>
+          </div>
+        </GalleryItem>
 
-        {/* SLIDE 2: CARBON FOOTPRINT */}
-        <GalleryCard 
-          title="Le emissioni calano anno su anno. L'impatto cresce."
-          subtitle="Confronta l'impronta carbonica (kgCO₂e) di quest'anno rispetto al benchmark precedente."
-          icon={Leaf} colorClass="bg-emerald-100 text-emerald-700"
+        {/* ── SLIDE 3: CARBON FOOTPRINT ── */}
+        <GalleryItem 
+          mediaType="chart"
+          headline="Emissioni sotto controllo.<br/>L'impatto reale rispetto all'anno precedente."
         >
-          <div className="w-full h-[300px]">
+          <div className="w-full h-[50%] px-12 pb-12 max-w-5xl mx-auto">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={carbonBarData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barGap={6}>
+              <BarChart data={carbonBarData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barGap={8}>
                 <CartesianGrid strokeDasharray="3 6" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="bucket" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
                 <YAxis tick={axisStyle} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-                <Bar dataKey="2025" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                <Bar dataKey="2024" fill="#cbd5e1" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="2025" fill="#10b981" radius={[8, 8, 0, 0]} maxBarSize={60} />
+                <Bar dataKey="2024" fill="#cbd5e1" radius={[8, 8, 0, 0]} maxBarSize={60} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </GalleryCard>
+        </GalleryItem>
 
-        {/* SLIDE 3: INDOOR AIR QUALITY (CO2) */}
-        <GalleryCard 
-          title="La qualità dell'aria che respiri, monitorata istante per istante."
-          subtitle="Trend della CO2 indoor con soglie di sicurezza per garantire il massimo comfort."
-          icon={Wind} colorClass="bg-sky-100 text-sky-700"
+        {/* ── SLIDE 4: AIR QUALITY ── */}
+        <GalleryItem 
+          mediaType="chart"
+          headline="Respira meglio. Lavora meglio.<br/>Monitoraggio continuo della CO2 indoor."
         >
-          <div className="w-full h-[300px]">
+          <div className="w-full h-[55%] px-12 pb-12 max-w-5xl mx-auto">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={co2LineData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <defs>
@@ -144,37 +137,13 @@ const FloatingBentoPanel = () => {
                 <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
                 <YAxis tick={axisStyle} axisLine={false} tickLine={false} domain={[300, 800]} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Line type="monotone" dataKey="co2" stroke="#0ea5e9" strokeWidth={4} dot={false} />
+                <Line type="monotone" dataKey="co2" stroke="#0ea5e9" strokeWidth={5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </GalleryCard>
+        </GalleryItem>
 
-        {/* SLIDE 4: DAY/NIGHT CYCLE */}
-        <GalleryCard 
-          title="Il ciclo vitale dell'edificio."
-          subtitle="Analisi distributiva del carico energetico 24h. Ottimizza lo switch-off."
-          icon={Sun} colorClass="bg-amber-100 text-amber-700"
-        >
-          <div className="w-full flex items-center justify-center h-[280px]">
-            <div className="relative w-64 h-64 drop-shadow-xl">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={dayNightData} cx="50%" cy="50%" innerRadius="70%" outerRadius="100%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>
-                    {dayNightData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-4xl font-black text-gray-900">1,240</span>
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">kWh</span>
-              </div>
-            </div>
-          </div>
-        </GalleryCard>
-
-      </motion.div>
+      </ul>
     </div>
   );
 };
