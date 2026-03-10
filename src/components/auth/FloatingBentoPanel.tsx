@@ -13,8 +13,6 @@ import {
 const carbonBarData = [{ bucket: "Jan", "2025": 420, "2024": 480 }, { bucket: "Feb", "2025": 390, "2024": 460 }, { bucket: "Mar", "2025": 450, "2024": 500 }, { bucket: "Apr", "2025": 380, "2024": 440 }, { bucket: "May", "2025": 350, "2024": 410 }, { bucket: "Jun", "2025": 400, "2024": 470 }];
 const dayNightData = [{ name: "Day", value: 62, fill: "#38bdf8" }, { name: "Night", value: 38, fill: "#334155" }];
 const co2LineData = [{ time: "06:00", co2: 410 }, { time: "08:00", co2: 520 }, { time: "10:00", co2: 680 }, { time: "12:00", co2: 750 }, { time: "14:00", co2: 620 }, { time: "16:00", co2: 580 }];
-
-// Dati per il mini-widget Water Distribution (Area Chart)
 const miniAreaChartData = [{ value: 15 }, { value: 25 }, { value: 18 }, { value: 45 }, { value: 30 }, { value: 55 }, { value: 48 }];
 
 const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
@@ -85,90 +83,90 @@ const CO2Card = () => (
   </div>
 );
 
+// OVERLAP PREVENTION: pt-40 per allontanare il contenuto dal titolo, pb-24 per allontanarlo dalla pillola in basso.
 const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) => (
   <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[70vh] min-h-[500px] max-h-[750px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#111111]" : "bg-white"}`}>
-    <div className="w-full h-full flex flex-col relative">
-      <div className="absolute top-16 left-16 right-16 z-30 pointer-events-none flex flex-col gap-3">
-        <h2 className={`text-4xl md:text-[56px] font-semibold tracking-tighter leading-[1.1] max-w-3xl ${isDark ? "text-[#f5f5f7]" : "text-[#1d1d1f]"}`} dangerouslySetInnerHTML={{ __html: headline }} />
-        {subheadline && <p className={`text-xl md:text-2xl font-medium tracking-tight ${isDark ? "text-[#a1a1a6]" : "text-[#86868b]"}`}>{subheadline}</p>}
+    <div className="w-full h-full flex flex-col relative pt-40 pb-24">
+      <div className="absolute top-12 left-12 right-12 z-30 pointer-events-none flex flex-col gap-2">
+        <h2 className={`text-4xl md:text-[52px] font-semibold tracking-tighter leading-[1.1] max-w-3xl ${isDark ? "text-[#f5f5f7]" : "text-[#1d1d1f]"}`} dangerouslySetInnerHTML={{ __html: headline }} />
+        {subheadline && <p className={`text-xl md:text-xl font-medium tracking-tight ${isDark ? "text-[#a1a1a6]" : "text-[#86868b]"}`}>{subheadline}</p>}
       </div>
-      <figure className="w-full h-full absolute inset-0 z-10 flex items-end justify-center overflow-visible">{children}</figure>
+      <figure className="flex-1 w-full relative z-10 flex items-center justify-center overflow-visible">{children}</figure>
     </div>
   </li>
 );
 
 /* ═══════════════════════════════════════════════
-   ESG GAMIFICATION COMPONENT (PURE SVG + MOTION)
+   ESG GAMIFICATION COMPONENT (WITH PUBLIC LOGOS)
    ═══════════════════════════════════════════════ */
 const ESGRingsCard = () => {
   return (
-    <div className="w-full max-w-4xl h-[450px] bg-[#111111]/80 backdrop-blur-3xl border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[40px] p-10 flex items-center justify-between gap-12 overflow-hidden relative">
+    <div className="w-full max-w-4xl h-[400px] bg-[#111111]/80 backdrop-blur-3xl border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[40px] p-8 flex items-center justify-between gap-12 overflow-hidden relative">
       
       {/* Glow Sfondo */}
       <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[300px] h-[300px] bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
 
       {/* ── LEFT: The SVG Rings ── */}
-      <div className="relative flex items-center justify-center w-[320px] h-[320px] shrink-0 z-10">
+      <div className="relative flex items-center justify-center w-[280px] h-[280px] shrink-0 z-10 ml-4">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 400 400">
-          {/* Energy Ring (Outer - Teal) */}
-          <circle cx="200" cy="200" r="160" stroke="rgba(20,184,166,0.15)" strokeWidth="28" fill="none" />
-          <motion.circle cx="200" cy="200" r="160" stroke="#14b8a6" strokeWidth="28" fill="none" strokeLinecap="round"
+          <circle cx="200" cy="200" r="160" stroke="rgba(20,184,166,0.15)" strokeWidth="26" fill="none" />
+          <motion.circle cx="200" cy="200" r="160" stroke="#14b8a6" strokeWidth="26" fill="none" strokeLinecap="round"
             initial={{ pathLength: 0 }} whileInView={{ pathLength: 15/18 }} transition={{ duration: 2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
 
-          {/* Water Ring (Middle - Blue) */}
-          <circle cx="200" cy="200" r="120" stroke="rgba(59,130,246,0.15)" strokeWidth="28" fill="none" />
-          <motion.circle cx="200" cy="200" r="120" stroke="#3b82f6" strokeWidth="28" fill="none" strokeLinecap="round"
+          <circle cx="200" cy="200" r="120" stroke="rgba(59,130,246,0.15)" strokeWidth="26" fill="none" />
+          <motion.circle cx="200" cy="200" r="120" stroke="#3b82f6" strokeWidth="26" fill="none" strokeLinecap="round"
             initial={{ pathLength: 0 }} whileInView={{ pathLength: 8/11 }} transition={{ duration: 2, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
 
-          {/* Air Quality Ring (Inner - Emerald) */}
-          <circle cx="200" cy="200" r="80" stroke="rgba(16,185,129,0.15)" strokeWidth="28" fill="none" />
-          <motion.circle cx="200" cy="200" r="80" stroke="#10b981" strokeWidth="28" fill="none" strokeLinecap="round"
+          <circle cx="200" cy="200" r="80" stroke="rgba(16,185,129,0.15)" strokeWidth="26" fill="none" />
+          <motion.circle cx="200" cy="200" r="80" stroke="#10b981" strokeWidth="26" fill="none" strokeLinecap="round"
             initial={{ pathLength: 0 }} whileInView={{ pathLength: 14/15 }} transition={{ duration: 2, delay: 0.3, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
         </svg>
 
         {/* Center Target Info */}
         <div className="absolute flex flex-col items-center justify-center text-center mt-2">
-          <img src="/leed_logo.png" alt="LEED" className="h-8 mb-1 object-contain brightness-0 invert opacity-90" />
-          <span className="text-white font-extrabold text-4xl tracking-tighter">82<span className="text-lg text-gray-500 font-medium">/110</span></span>
+          <span className="text-white font-extrabold text-4xl tracking-tighter">82<span className="text-base text-gray-500 font-medium">/110</span></span>
           <span className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">Total Score</span>
         </div>
       </div>
 
-      {/* ── RIGHT: The Legend & Data ── */}
-      <div className="flex-1 flex flex-col justify-center gap-6 z-10">
-        <div className="flex flex-col gap-1">
-          <h3 className="text-2xl font-semibold text-white tracking-tight">Certification Progress</h3>
-          <p className="text-sm text-gray-400 font-medium">Real-time point accumulation for LEED v4.1 O+M</p>
+      {/* ── RIGHT: The Legend & Supported Certs ── */}
+      <div className="flex-1 flex flex-col justify-center gap-6 z-10 mr-4">
+        
+        {/* Cerfication Logos Row (PUBLIC FOLDER) */}
+        <div className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
+          <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mr-2">Tracked:</span>
+          <img src="/leed_logo.png" alt="LEED" className="h-6 object-contain opacity-80 hover:opacity-100 transition-opacity" />
+          <div className="w-px h-4 bg-white/20" />
+          <img src="/breeam_logo.png" alt="BREEAM" className="h-6 object-contain opacity-80 hover:opacity-100 transition-opacity" />
+          <div className="w-px h-4 bg-white/20" />
+          <img src="/well_logo.png" alt="WELL" className="h-6 object-contain opacity-80 hover:opacity-100 transition-opacity" />
         </div>
 
-        <div className="flex flex-col gap-5 mt-4">
-          {/* Legend Item 1 */}
+        <div className="flex flex-col gap-4 mt-2">
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.4 }} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.6)]" />
-              <span className="text-white font-medium">Energy & Atmosphere</span>
+              <span className="text-white text-sm font-medium">Energy & Atmosphere</span>
             </div>
-            <span className="text-white font-bold font-mono">15/18 <span className="text-gray-500 text-xs">pt</span></span>
+            <span className="text-white font-bold font-mono">15/18</span>
           </motion.div>
           <div className="w-full h-px bg-white/10" />
 
-          {/* Legend Item 2 */}
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
-              <span className="text-white font-medium">Water Efficiency</span>
+              <span className="text-white text-sm font-medium">Water Efficiency</span>
             </div>
-            <span className="text-white font-bold font-mono">8/11 <span className="text-gray-500 text-xs">pt</span></span>
+            <span className="text-white font-bold font-mono">8/11</span>
           </motion.div>
           <div className="w-full h-px bg-white/10" />
 
-          {/* Legend Item 3 */}
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.6 }} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
-              <span className="text-white font-medium">Indoor Env. Quality</span>
+              <span className="text-white text-sm font-medium">Indoor Env. Quality</span>
             </div>
-            <span className="text-white font-bold font-mono">14/15 <span className="text-gray-500 text-xs">pt</span></span>
+            <span className="text-white font-bold font-mono">14/15</span>
           </motion.div>
         </div>
       </div>
@@ -184,7 +182,7 @@ const FloatingBentoPanel = () => {
   const scrollRef = useRef<HTMLUListElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 4; // AGGIORNATO A 4 SLIDE
+  const totalSlides = 4;
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -218,7 +216,6 @@ const FloatingBentoPanel = () => {
       {/* ═════ SEZIONE 1: THE CONVERGENCE HERO ═════ */}
       <section className="w-full h-[100dvh] flex flex-col items-center justify-center relative snap-start overflow-hidden">
         
-        {/* Glow Etereo di Fondo */}
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           whileInView={{ scale: 1, opacity: 1 }}
@@ -227,10 +224,10 @@ const FloatingBentoPanel = () => {
           className="absolute m-auto w-[600px] h-[600px] bg-gradient-to-tr from-teal-200/40 via-sky-200/30 to-blue-300/30 rounded-full blur-[120px] z-0 pointer-events-none"
         />
 
-        {/* Core Animation Area (Widget Collage - DRITTO E LEGGIBILE) */}
+        {/* Core Animation Area */}
         <div className="relative w-full max-w-4xl aspect-[21/9] flex items-center justify-center z-10 -mt-32">
           
-          {/* 1. VERA HEATMAP CSS (Top Left) - Dritta */}
+          {/* 1. HEATMAP (Top Left) */}
           <motion.div
             initial={{ x: -300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -140, y: -70, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -241,7 +238,6 @@ const FloatingBentoPanel = () => {
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
             </div>
-            {/* Matrice 24x7 Reale in miniatura */}
             <div className="flex-1 w-full flex flex-col gap-[2px] opacity-90">
               {Array.from({length: 12}).map((_, h) => (
                 <div key={h} className="flex-1 flex gap-[2px]">
@@ -255,7 +251,7 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 2. INDOOR AIR CO2 VALUE (Top Right) - Dritta */}
+          {/* 2. CO2 VALUE (Top Right) */}
           <motion.div
             initial={{ x: 300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: 140, y: -50, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -273,7 +269,7 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 3. WATER DISTRIBUTION (Bottom Left) - Dritta */}
+          {/* 3. WATER DISTRIBUTION (Bottom Left) */}
           <motion.div
             initial={{ x: -300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -120, y: 100, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -297,7 +293,7 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 4. LEED LOGO STANDALONE (Bottom Right) - Dritta */}
+          {/* 4. LEED LOGO (Bottom Right) */}
           <motion.div
             initial={{ x: 300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: 110, y: 110, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -346,84 +342,49 @@ const FloatingBentoPanel = () => {
         <ul 
           ref={scrollRef} 
           onScroll={handleScroll}
-          className="item-container flex overflow-x-auto snap-x snap-mandatory gap-8 px-[7.5vw] w-full items-center pb-12" 
+          className="item-container flex overflow-x-auto snap-x snap-mandatory gap-8 px-[7.5vw] w-full items-center h-full" 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {/* ── SLIDE 1: L'ECOSISTEMA UNIVERSALE (REAL IMAGE MOCKUPS) ── */}
+          {/* SLIDE 1 */}
           <GalleryItem 
             isDark={true} 
             headline="Your entire energy ecosystem.<br/>Instantly synchronized." 
             subheadline="Everywhere you are."
           >
-            {/* Sfondo Cinematico Profondo */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#050505] via-[#0a0a0c] to-[#001214]" />
             <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-            {/* Container dei Dispositivi */}
-            <div className="relative w-full max-w-6xl h-full flex items-center justify-center mt-10">
-              
-              {/* 1. THE MAC (Centro/Dietro) */}
-              <motion.div 
-                initial={{ y: 80, opacity: 0, scale: 0.9 }}
-                whileInView={{ y: 0, opacity: 1, scale: 1 }}
-                transition={{ duration: 1.4, ease: appleEase }}
-                viewport={{ once: false, amount: 0.5 }}
-                className="absolute z-10 w-[65%] md:w-[750px] flex justify-center drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]"
-              >
-                <img src="/FGB_Mac.png" alt="FGB Studio on Mac" className="w-full h-auto object-contain" />
+            <div className="w-full max-w-6xl h-full flex items-center justify-center relative">
+              <motion.div initial={{ y: 80, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-10 w-[65%] drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
+                <img src="/FGB_Mac.png" alt="Mac" className="w-full h-auto object-contain" />
               </motion.div>
-
-              {/* 2. THE iPAD (Sinistra/Avanti) */}
-              <motion.div 
-                initial={{ x: -60, y: 60, opacity: 0, scale: 0.85, rotate: -4 }}
-                whileInView={{ x: -280, y: 40, opacity: 1, scale: 1, rotate: -2 }}
-                transition={{ duration: 1.4, delay: 0.15, ease: appleEase }}
-                viewport={{ once: false, amount: 0.5 }}
-                className="absolute z-20 w-[25%] md:w-[280px] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]"
-              >
-                <img src="/FGB_Pad.png" alt="FGB Studio on iPad" className="w-full h-auto object-contain" />
+              <motion.div initial={{ x: -60, y: 60, opacity: 0 }} whileInView={{ x: -280, y: 40, opacity: 1 }} transition={{ duration: 1.4, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-20 w-[25%] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]">
+                <img src="/FGB_Pad.png" alt="iPad" className="w-full h-auto object-contain" />
               </motion.div>
-
-              {/* 3. THE iPHONE (Destra/Avanti massima) */}
-              <motion.div 
-                initial={{ x: 60, y: 80, opacity: 0, scale: 0.85, rotate: 4 }}
-                whileInView={{ x: 320, y: 60, opacity: 1, scale: 1, rotate: 3 }}
-                transition={{ duration: 1.4, delay: 0.25, ease: appleEase }}
-                viewport={{ once: false, amount: 0.5 }}
-                className="absolute z-30 w-[14%] md:w-[150px] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]"
-              >
-                <img src="/FGB_Phone.png" alt="FGB Studio on iPhone" className="w-full h-auto object-contain" />
+              <motion.div initial={{ x: 60, y: 80, opacity: 0 }} whileInView={{ x: 320, y: 60, opacity: 1 }} transition={{ duration: 1.4, delay: 0.25, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-30 w-[14%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]">
+                <img src="/FGB_Phone.png" alt="iPhone" className="w-full h-auto object-contain" />
               </motion.div>
-
             </div>
           </GalleryItem>
 
           {/* SLIDE 2: THE REVEAL */}
           <GalleryItem headline="A single platform.<br/>All your KPIs in one place." subheadline="Predictive real-time monitoring.">
-            <div className="relative w-full h-full flex items-center justify-center pb-8 mt-32 perspective-1000">
+            <div className="relative w-full h-full flex items-center justify-center perspective-1000">
               <motion.div className="absolute w-[28%] h-[300px] z-10 hidden md:block" initial={{ x: "0%", scale: 0.85, opacity: 0, filter: "blur(10px)" }} whileInView={{ x: "-110%", scale: 0.9, opacity: 0.85, filter: "blur(0px)" }} transition={{ duration: 1.6, ease: appleEase, delay: 0.1 }} viewport={{ once: false, amount: 0.6 }}><CarbonCard /></motion.div>
               <motion.div className="absolute w-[42%] h-[360px] z-30" initial={{ y: 40, scale: 0.95, opacity: 0 }} whileInView={{ y: 0, scale: 1, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.6 }}><TrueHeatmapCard /></motion.div>
               <motion.div className="absolute w-[28%] h-[300px] z-10 hidden md:block" initial={{ x: "0%", scale: 0.85, opacity: 0, filter: "blur(10px)" }} whileInView={{ x: "110%", scale: 0.9, opacity: 0.85, filter: "blur(0px)" }} transition={{ duration: 1.6, ease: appleEase, delay: 0.2 }} viewport={{ once: false, amount: 0.6 }}><CO2Card /></motion.div>
             </div>
           </GalleryItem>
 
-          {/* SLIDE 3: ESG GAMIFICATION (PURE CSS RINGS) */}
+          {/* SLIDE 3: ESG GAMIFICATION */}
           <GalleryItem 
             isDark={true} 
             headline="Your path to ESG excellence.<br/>Precisely measured." 
-            subheadline="Automated tracking for LEED, BREEAM, and WELL certifications."
+            subheadline="Automated tracking for top certifications."
           >
-            {/* Sfondo Dark dedicato per far risaltare il glow degli anelli */}
             <div className="absolute inset-0 bg-[#050505]" />
-            
-            <div className="relative w-full h-full flex items-center justify-center pb-[8vh] z-10">
-              <motion.div
-                initial={{ y: 60, opacity: 0, scale: 0.95 }}
-                whileInView={{ y: 0, opacity: 1, scale: 1 }}
-                transition={{ duration: 1.4, ease: appleEase }}
-                viewport={{ once: false, amount: 0.5 }}
-                className="w-full flex justify-center"
-              >
+            <div className="relative w-full h-full flex items-center justify-center z-10">
+              <motion.div initial={{ y: 60, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="w-full flex justify-center">
                 <ESGRingsCard />
               </motion.div>
             </div>
@@ -431,7 +392,7 @@ const FloatingBentoPanel = () => {
 
           {/* SLIDE 4: OPTIMIZE WASTE */}
           <GalleryItem headline="Optimize waste.<br/>Your building's lifecycle." subheadline="24h distributive analysis.">
-            <div className="w-full flex items-center justify-center pb-24">
+            <div className="w-full h-full flex items-center justify-center">
               <div className="relative w-80 h-80">
                 <div className="absolute inset-0 bg-blue-400/20 blur-[80px] rounded-full pointer-events-none" />
                 <ResponsiveContainer width="100%" height="100%">
