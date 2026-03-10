@@ -132,14 +132,22 @@ const ESGRingsCard = () => {
       {/* ── RIGHT: The Legend & Supported Certs ── */}
       <div className="flex-1 flex flex-col justify-center gap-6 z-10 mr-4">
         
-        {/* Cerfication Logos Row (CONTRAST FIX: brightness-0 invert) */}
-        <div className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
-          <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mr-2">Tracked:</span>
-          <img src="/leed_logo.png" alt="LEED" className="h-6 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
-          <div className="w-px h-4 bg-white/20" />
-          <img src="/breeam_logo.png" alt="BREEAM" className="h-6 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
-          <div className="w-px h-4 bg-white/20" />
-          <img src="/well_logo.png" alt="WELL" className="h-6 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
+        {/* Cerfication Logos Row */}
+        <div className="flex items-center gap-5 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
+          <span className="text-[11px] text-gray-400 uppercase tracking-widest font-semibold mr-2">Tracked:</span>
+          
+          {/* LEED: Rimosso 'brightness-0 invert'. Ingrandito a h-8 */}
+          <img src="/leed_logo.png" alt="LEED" className="h-8 object-contain opacity-80 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]" />
+          
+          <div className="w-px h-6 bg-white/20" />
+          
+          {/* BREEAM: Mantiene l'inversione. Ingrandito a h-8 */}
+          <img src="/breeam_logo.png" alt="BREEAM" className="h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
+          
+          <div className="w-px h-6 bg-white/20" />
+          
+          {/* WELL: Mantiene l'inversione. Ingrandito a h-8 */}
+          <img src="/well_logo.png" alt="WELL" className="h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
         </div>
 
         <div className="flex flex-col gap-4 mt-2">
