@@ -22,7 +22,7 @@ const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter
 const appleEase = [0.25, 1, 0.5, 1]; 
 
 const waterDistributionData = [
-  { name: 'DHWvalue: 35, color: '#2563eb' },   // blue-600
+  { name: 'DHW', value: 35, color: '#2563eb' },   // blue-600
   { name: 'HVAC', value: 28, color: '#3b82f6' },       // blue-500
   { name: 'Watering', value: 18, color: '#60a5fa' },// blue-400
   { name: 'Other', value: 19, color: '#93c5fd' },      // blue-300
