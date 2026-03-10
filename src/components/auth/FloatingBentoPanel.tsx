@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ChevronLeft, ChevronDown, Zap, Leaf, Wind } from "lucide-react";
+import { ChevronRight, ChevronLeft, ChevronDown, Zap, Leaf, Wind, Droplet } from "lucide-react";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
-  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ReferenceArea
 } from "recharts";
 
 /* ═══════════════════════════════════════════════
@@ -14,8 +14,13 @@ const carbonBarData = [{ bucket: "Jan", "2025": 420, "2024": 480 }, { bucket: "F
 const dayNightData = [{ name: "Day", value: 62, fill: "#38bdf8" }, { name: "Night", value: 38, fill: "#334155" }];
 const co2LineData = [{ time: "06:00", co2: 410 }, { time: "08:00", co2: 520 }, { time: "10:00", co2: 680 }, { time: "12:00", co2: 750 }, { time: "14:00", co2: 620 }, { time: "16:00", co2: 580 }];
 
-// Dati fittizi per il mini-widget Area Chart
-const miniAreaChartData = [{ value: 15 }, { value: 25 }, { value: 18 }, { value: 45 }, { value: 30 }, { value: 55 }, { value: 48 }];
+// Data estratta da ProjectDetail per il Water Distribution
+const waterDistributionData = [
+  { name: 'Sanitari', value: 35, color: 'hsl(200, 80%, 50%)' },
+  { name: 'HVAC', value: 28, color: 'hsl(200, 60%, 40%)' },
+  { name: 'Irrigazione', value: 18, color: 'hsl(200, 70%, 60%)' },
+  { name: 'Altro', value: 19, color: 'hsl(200, 50%, 70%)' },
+];
 
 const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
 const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
@@ -36,8 +41,16 @@ const TrueHeatmapCard = () => (
         <div><h4 className="text-xs font-semibold text-gray-800 tracking-tight">Energy Heatmap</h4><p className="text-[10px] text-gray-400 font-medium">Weekly Analysis</p></div>
       </div>
     </div>
-    <div className="flex-1 w-full px-1 pb-1 flex items-end gap-[2px] opacity-80">
-      {Array.from({length: 24}).map((_, i) => (<div key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-teal-600 to-teal-400 transition-all hover:opacity-100" style={{ height: `${Math.random() * 80 + 20}%`, opacity: Math.random() * 0.3 + 0.7 }} />))}
+    <div className="flex-1 w-full flex flex-col gap-[2px] opacity-80 mt-2">
+      {Array.from({length: 12}).map((_, h) => (
+        <div key={h} className="flex-1 flex gap-[2px]">
+          {Array.from({length: 7}).map((_, d) => {
+            const val = Math.random();
+            const bg = val > 0.85 ? '#0f766e' : val > 0.6 ? '#14b8a6' : val > 0.35 ? '#5eead4' : val > 0.15 ? '#cffafe' : '#f1f5f9';
+            return <div key={d} className="flex-1 rounded-[2px]" style={{ backgroundColor: bg }} />
+          })}
+        </div>
+      ))}
     </div>
   </div>
 );
@@ -127,89 +140,116 @@ const FloatingBentoPanel = () => {
     >
       <style>{`::-webkit-scrollbar { display: none; }`}</style>
 
-      {/* ═════ SEZIONE 1: THE CONVERGENCE HERO (CON MICRO-WIDGET REALI) ═════ */}
+      {/* ═════ SEZIONE 1: THE CONVERGENCE HERO (CON 4 MICRO-WIDGET REALI) ═════ */}
       <section className="w-full h-[100dvh] flex flex-col items-center justify-center relative snap-start overflow-hidden">
         
         {/* Glow Etereo di Fondo */}
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           whileInView={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 2.5, delay: 1.0, ease: appleEase }}
+          transition={{ duration: 2.5, delay: 0.8, ease: appleEase }}
           viewport={{ once: false, amount: 0.5 }}
           className="absolute m-auto w-[600px] h-[600px] bg-gradient-to-tr from-teal-200/40 via-sky-200/30 to-blue-300/30 rounded-full blur-[120px] z-0 pointer-events-none"
         />
 
-        {/* Core Animation Area (Il Collage) */}
-        <div className="relative w-full max-w-2xl aspect-square flex items-center justify-center z-10 mt-12">
+        {/* Core Animation Area (Spostata molto in alto per non collidere col titolo) */}
+        <div className="relative w-full max-w-3xl aspect-[16/9] flex items-center justify-center z-10 -mt-32">
           
-          {/* ── Micro-Widget 1: Energy Heatmap + LEED ── */}
-          {/* Entra da in alto a sinistra e si posiziona in modo asimmetrico */}
+          {/* 1. VERA HEATMAP CSS + LEED (Top Left) */}
           <motion.div
-            initial={{ x: -300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: -5 }}
-            whileInView={{ x: -90, y: -60, scale: 1, opacity: 1, filter: "blur(0px)", rotate: -2 }}
+            initial={{ x: -350, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: -6 }}
+            whileInView={{ x: -120, y: -60, scale: 1, opacity: 1, filter: "blur(0px)", rotate: -3 }}
             transition={{ duration: 1.8, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[220px] h-[140px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(20,184,166,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-20"
+            className="absolute w-[180px] h-[160px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(20,184,166,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-20"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
-              {/* Immagine LEED pescata dalla cartella public */}
-              <img src="/leed_logo.png" alt="LEED Certified" className="h-5 object-contain" />
+              <span className="text-[9px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
+              <img src="/leed_logo.png" alt="LEED" className="h-4 object-contain" />
             </div>
-            <div className="flex-1 w-full flex items-end gap-[2px] opacity-90">
-              {Array.from({length: 16}).map((_, i) => (
-                <div key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-teal-500 to-teal-300" style={{ height: `${Math.random() * 80 + 20}%` }} />
+            {/* Matrice 24x7 Reale in miniatura */}
+            <div className="flex-1 w-full flex flex-col gap-[2px] opacity-90">
+              {Array.from({length: 12}).map((_, h) => (
+                <div key={h} className="flex-1 flex gap-[2px]">
+                  {Array.from({length: 7}).map((_, d) => {
+                    const val = Math.random();
+                    const bg = val > 0.85 ? '#0f766e' : val > 0.6 ? '#14b8a6' : val > 0.35 ? '#5eead4' : val > 0.15 ? '#cffafe' : '#f1f5f9';
+                    return <div key={d} className="flex-1 rounded-[1.5px]" style={{ backgroundColor: bg }} />
+                  })}
+                </div>
               ))}
             </div>
           </motion.div>
 
-          {/* ── Micro-Widget 2: Indoor Air CO2 Box ── */}
-          {/* Entra da in alto a destra */}
+          {/* 2. INDOOR AIR CO2 VALUE (Top Right) */}
           <motion.div
-            initial={{ x: 300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: 5 }}
-            whileInView={{ x: 90, y: -30, scale: 1, opacity: 1, filter: "blur(0px)", rotate: 2 }}
+            initial={{ x: 350, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: 6 }}
+            whileInView={{ x: 100, y: -40, scale: 1, opacity: 1, filter: "blur(0px)", rotate: 4 }}
             transition={{ duration: 1.8, delay: 0.1, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[160px] h-[150px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(14,165,233,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col items-center justify-center p-4 z-30"
+            className="absolute w-[150px] h-[150px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(14,165,233,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col items-center justify-center p-4 z-30"
           >
-            <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Indoor Air Quality</span>
-            <div className="flex items-baseline gap-1">
+            <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-widest mb-1 text-center">Indoor Air<br/>Quality</span>
+            <div className="flex items-baseline gap-1 mt-1">
               <span className="text-5xl font-bold tracking-tighter text-gray-900">412</span>
             </div>
-            <span className="text-xs text-gray-400 font-medium mb-3">ppm</span>
-            <div className="text-[9px] px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-bold tracking-wide border border-emerald-200">
+            <span className="text-[10px] text-gray-400 font-medium mb-3">ppm CO₂</span>
+            <div className="text-[8px] px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-bold tracking-wide border border-emerald-200">
               EXCELLENT
             </div>
           </motion.div>
 
-          {/* ── Micro-Widget 3: Consumption Distribution (Area Chart) ── */}
-          {/* Entra dal basso al centro */}
+          {/* 3. WATER CONSUMPTION DISTRIBUTION (Bottom Left) */}
           <motion.div
-            initial={{ x: 0, y: 300, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: -10, y: 80, scale: 1, opacity: 1, filter: "blur(0px)" }}
-            transition={{ duration: 1.8, delay: 0.2, ease: appleEase }}
+            initial={{ x: -350, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: -4 }}
+            whileInView={{ x: -100, y: 70, scale: 1, opacity: 1, filter: "blur(0px)", rotate: -1 }}
+            transition={{ duration: 1.8, delay: 0.15, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[240px] h-[130px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col overflow-hidden z-25"
+            className="absolute w-[160px] h-[160px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
           >
-            <span className="text-[10px] font-bold text-gray-800 tracking-tight pl-5 pt-4 absolute z-10">CONSUMPTION DIST.</span>
-            <div className="flex-1 w-full h-full mt-4">
-              <ResponsiveContainer width="105%" height="110%" className="-ml-2">
-                <AreaChart data={miniAreaChartData}>
-                  <defs>
-                    <linearGradient id="colorMiniArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.6}/>
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  {/* Linea morbida, nessun asse, puro colpo d'occhio */}
-                  <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="url(#colorMiniArea)" strokeWidth={3} dot={false} isAnimationActive={false} />
-                </AreaChart>
+            <span className="text-[9px] font-bold text-gray-800 tracking-tight text-center">WATER DISTRIBUTION</span>
+            <div className="flex-1 w-full relative mt-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={waterDistributionData} innerRadius="55%" outerRadius="85%" paddingAngle={2} dataKey="value" stroke="none">
+                    {waterDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
+                <Droplet className="w-5 h-5 text-blue-500" strokeWidth={2.5} />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* 4. CARBON FOOTPRINT CHART (Bottom Right) */}
+          <motion.div
+            initial={{ x: 350, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: 4 }}
+            whileInView={{ x: 110, y: 80, scale: 1, opacity: 1, filter: "blur(0px)", rotate: 2 }}
+            transition={{ duration: 1.8, delay: 0.25, ease: appleEase }}
+            viewport={{ once: false, amount: 0.5 }}
+            className="absolute w-[190px] h-[130px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(16,185,129,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-3 z-20"
+          >
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <Leaf className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-[9px] font-bold text-gray-800 tracking-tight uppercase">Carbon Target</span>
+            </div>
+            <div className="flex-1 w-full -ml-3 mt-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={carbonBarData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barGap={2}>
+                  <YAxis domain={[0, 'dataMax']} hide />
+                  <Bar dataKey="2025" fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={10} isAnimationActive={false} />
+                  <Bar dataKey="2024" fill="#cbd5e1" radius={[3, 3, 0, 0]} maxBarSize={10} opacity={0.6} isAnimationActive={false} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </motion.div>
+
         </div>
 
-        {/* Tipografia Monumentale (Inglese Premium) */}
+        {/* Tipografia Monumentale (Ancorata in basso) */}
         <motion.div
           initial={{ opacity: 0, y: 30, filter: "blur(12px)" }}
           whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
