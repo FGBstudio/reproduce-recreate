@@ -270,11 +270,99 @@ const FloatingBentoPanel = () => {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {/* SLIDE 1 */}
-          <GalleryItem isDark={true} headline="Your entire energy ecosystem.<br/>Instantly synchronized." subheadline="Everywhere you are.">
-            <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-70 scale-105">
-              <source src="https://www.apple.com/105/media/us/mac-pro/2019/14fa6eba-2882-4f36-81c9-63c6d4ba4c8a/anim/hero/large.mp4" type="video/mp4" />
-            </video>
-            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#111111] via-[#111111]/80 to-transparent" />
+          {/* ── SLIDE 1: L'ECOSISTEMA UNIVERSALE (CSS DEVICE MOCKUPS) ── */}
+          <GalleryItem 
+            isDark={true} 
+            headline="Tutti i tuoi edifici,<br/>ovunque tu sia. In tempo reale." 
+            subheadline="Il tuo ecosistema energetico perfettamente sincronizzato."
+          >
+            {/* Sfondo Cinematico */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#111111] to-[#001a1c]" />
+            <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-teal-500/10 blur-[100px] rounded-full pointer-events-none" />
+
+            {/* Container dei Dispositivi */}
+            <div className="relative w-full max-w-5xl h-full flex items-center justify-center mt-20">
+              
+              {/* 1. THE MAC (Centro/Dietro) */}
+              <motion.div 
+                initial={{ y: 60, opacity: 0, scale: 0.95 }}
+                whileInView={{ y: 0, opacity: 1, scale: 1 }}
+                transition={{ duration: 1.2, ease: appleEase }}
+                viewport={{ once: false, amount: 0.5 }}
+                className="absolute z-10 w-[700px] h-[420px] bg-[#1a1a1c] rounded-t-2xl border-x-4 border-t-4 border-[#2a2a2c] shadow-[0_30px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col"
+              >
+                {/* Mac Header */}
+                <div className="w-full h-6 bg-[#2a2a2c] flex items-center px-4 gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                </div>
+                {/* Mac Screen Content (Area Chart) */}
+                <div className="flex-1 w-full p-6 flex flex-col">
+                  <div className="w-40 h-4 bg-white/10 rounded mb-6" />
+                  <div className="flex-1 w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={co2LineData}>
+                        <defs>
+                          <linearGradient id="macGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.4}/>
+                            <stop offset="100%" stopColor="#14b8a6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="co2" stroke="#14b8a6" fill="url(#macGradient)" strokeWidth={3} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* 2. THE iPAD (Sinistra/Avanti) */}
+              <motion.div 
+                initial={{ x: -100, y: 40, opacity: 0, rotate: -5 }}
+                whileInView={{ x: -280, y: 30, opacity: 1, rotate: -2 }}
+                transition={{ duration: 1.4, delay: 0.1, ease: appleEase }}
+                viewport={{ once: false, amount: 0.5 }}
+                className="absolute z-20 w-[260px] h-[360px] bg-[#0d0d0e] rounded-[20px] border-[6px] border-[#2a2a2c] shadow-[0_20px_40px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col p-4"
+              >
+                {/* iPad Content (Heatmap Simulation) */}
+                <div className="w-24 h-3 bg-white/10 rounded mb-4" />
+                <div className="flex-1 w-full flex flex-col gap-1">
+                  {Array.from({length: 10}).map((_, h) => (
+                    <div key={h} className="flex-1 flex gap-1">
+                      {Array.from({length: 7}).map((_, d) => (
+                        <div key={d} className="flex-1 rounded-sm bg-teal-500" style={{ opacity: Math.random() * 0.8 + 0.2 }} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* 3. THE iPHONE (Destra/Avanti massima) */}
+              <motion.div 
+                initial={{ x: 100, y: 60, opacity: 0, rotate: 5 }}
+                whileInView={{ x: 300, y: 50, opacity: 1, rotate: 3 }}
+                transition={{ duration: 1.4, delay: 0.2, ease: appleEase }}
+                viewport={{ once: false, amount: 0.5 }}
+                className="absolute z-30 w-[140px] h-[290px] bg-[#0a0a0b] rounded-[32px] border-[5px] border-[#3a3a3c] shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_0_0_1px_rgba(255,255,255,0.1)] overflow-hidden flex flex-col p-3"
+              >
+                {/* Dynamic Island */}
+                <div className="w-12 h-3.5 bg-black rounded-full mx-auto mb-4" />
+                {/* iPhone Content (Donut Chart) */}
+                <div className="flex-1 w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={dayNightData} innerRadius="65%" outerRadius="90%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>
+                        {dayNightData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                     <span className="text-white font-bold text-lg">62%</span>
+                  </div>
+                </div>
+              </motion.div>
+
+            </div>
           </GalleryItem>
 
           {/* SLIDE 2: THE REVEAL */}
