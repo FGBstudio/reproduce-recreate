@@ -1,4 +1,3 @@
-
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, ChevronDown, Zap, Leaf, Wind, Droplet } from "lucide-react";
@@ -99,13 +98,93 @@ const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) =
 );
 
 /* ═══════════════════════════════════════════════
+   ESG GAMIFICATION COMPONENT (PURE SVG + MOTION)
+   ═══════════════════════════════════════════════ */
+const ESGRingsCard = () => {
+  return (
+    <div className="w-full max-w-4xl h-[450px] bg-[#111111]/80 backdrop-blur-3xl border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[40px] p-10 flex items-center justify-between gap-12 overflow-hidden relative">
+      
+      {/* Glow Sfondo */}
+      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[300px] h-[300px] bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
+
+      {/* ── LEFT: The SVG Rings ── */}
+      <div className="relative flex items-center justify-center w-[320px] h-[320px] shrink-0 z-10">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 400 400">
+          {/* Energy Ring (Outer - Teal) */}
+          <circle cx="200" cy="200" r="160" stroke="rgba(20,184,166,0.15)" strokeWidth="28" fill="none" />
+          <motion.circle cx="200" cy="200" r="160" stroke="#14b8a6" strokeWidth="28" fill="none" strokeLinecap="round"
+            initial={{ pathLength: 0 }} whileInView={{ pathLength: 15/18 }} transition={{ duration: 2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
+
+          {/* Water Ring (Middle - Blue) */}
+          <circle cx="200" cy="200" r="120" stroke="rgba(59,130,246,0.15)" strokeWidth="28" fill="none" />
+          <motion.circle cx="200" cy="200" r="120" stroke="#3b82f6" strokeWidth="28" fill="none" strokeLinecap="round"
+            initial={{ pathLength: 0 }} whileInView={{ pathLength: 8/11 }} transition={{ duration: 2, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
+
+          {/* Air Quality Ring (Inner - Emerald) */}
+          <circle cx="200" cy="200" r="80" stroke="rgba(16,185,129,0.15)" strokeWidth="28" fill="none" />
+          <motion.circle cx="200" cy="200" r="80" stroke="#10b981" strokeWidth="28" fill="none" strokeLinecap="round"
+            initial={{ pathLength: 0 }} whileInView={{ pathLength: 14/15 }} transition={{ duration: 2, delay: 0.3, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
+        </svg>
+
+        {/* Center Target Info */}
+        <div className="absolute flex flex-col items-center justify-center text-center mt-2">
+          <img src="/leed_logo.png" alt="LEED" className="h-8 mb-1 object-contain brightness-0 invert opacity-90" />
+          <span className="text-white font-extrabold text-4xl tracking-tighter">82<span className="text-lg text-gray-500 font-medium">/110</span></span>
+          <span className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">Total Score</span>
+        </div>
+      </div>
+
+      {/* ── RIGHT: The Legend & Data ── */}
+      <div className="flex-1 flex flex-col justify-center gap-6 z-10">
+        <div className="flex flex-col gap-1">
+          <h3 className="text-2xl font-semibold text-white tracking-tight">Certification Progress</h3>
+          <p className="text-sm text-gray-400 font-medium">Real-time point accumulation for LEED v4.1 O+M</p>
+        </div>
+
+        <div className="flex flex-col gap-5 mt-4">
+          {/* Legend Item 1 */}
+          <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.4 }} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.6)]" />
+              <span className="text-white font-medium">Energy & Atmosphere</span>
+            </div>
+            <span className="text-white font-bold font-mono">15/18 <span className="text-gray-500 text-xs">pt</span></span>
+          </motion.div>
+          <div className="w-full h-px bg-white/10" />
+
+          {/* Legend Item 2 */}
+          <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
+              <span className="text-white font-medium">Water Efficiency</span>
+            </div>
+            <span className="text-white font-bold font-mono">8/11 <span className="text-gray-500 text-xs">pt</span></span>
+          </motion.div>
+          <div className="w-full h-px bg-white/10" />
+
+          {/* Legend Item 3 */}
+          <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.6 }} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+              <span className="text-white font-medium">Indoor Env. Quality</span>
+            </div>
+            <span className="text-white font-bold font-mono">14/15 <span className="text-gray-500 text-xs">pt</span></span>
+          </motion.div>
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════
    MAIN COMPONENT: THE MATRIX SCROLL
    ═══════════════════════════════════════════════ */
 const FloatingBentoPanel = () => {
   const scrollRef = useRef<HTMLUListElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 3;
+  const totalSlides = 4; // AGGIORNATO A 4 SLIDE
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -270,7 +349,6 @@ const FloatingBentoPanel = () => {
           className="item-container flex overflow-x-auto snap-x snap-mandatory gap-8 px-[7.5vw] w-full items-center pb-12" 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {/* SLIDE 1 */}
           {/* ── SLIDE 1: L'ECOSISTEMA UNIVERSALE (REAL IMAGE MOCKUPS) ── */}
           <GalleryItem 
             isDark={true} 
@@ -292,7 +370,6 @@ const FloatingBentoPanel = () => {
                 viewport={{ once: false, amount: 0.5 }}
                 className="absolute z-10 w-[65%] md:w-[750px] flex justify-center drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]"
               >
-                {/* Assicurati che l'estensione sia corretta (.png o .jpg) */}
                 <img src="/FGB_Mac.png" alt="FGB Studio on Mac" className="w-full h-auto object-contain" />
               </motion.div>
 
@@ -330,7 +407,29 @@ const FloatingBentoPanel = () => {
             </div>
           </GalleryItem>
 
-          {/* SLIDE 3 */}
+          {/* SLIDE 3: ESG GAMIFICATION (PURE CSS RINGS) */}
+          <GalleryItem 
+            isDark={true} 
+            headline="Your path to ESG excellence.<br/>Precisely measured." 
+            subheadline="Automated tracking for LEED, BREEAM, and WELL certifications."
+          >
+            {/* Sfondo Dark dedicato per far risaltare il glow degli anelli */}
+            <div className="absolute inset-0 bg-[#050505]" />
+            
+            <div className="relative w-full h-full flex items-center justify-center pb-[8vh] z-10">
+              <motion.div
+                initial={{ y: 60, opacity: 0, scale: 0.95 }}
+                whileInView={{ y: 0, opacity: 1, scale: 1 }}
+                transition={{ duration: 1.4, ease: appleEase }}
+                viewport={{ once: false, amount: 0.5 }}
+                className="w-full flex justify-center"
+              >
+                <ESGRingsCard />
+              </motion.div>
+            </div>
+          </GalleryItem>
+
+          {/* SLIDE 4: OPTIMIZE WASTE */}
           <GalleryItem headline="Optimize waste.<br/>Your building's lifecycle." subheadline="24h distributive analysis.">
             <div className="w-full flex items-center justify-center pb-24">
               <div className="relative w-80 h-80">
