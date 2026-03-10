@@ -13,7 +13,9 @@ import {
 const carbonBarData = [{ bucket: "Jan", "2025": 420, "2024": 480 }, { bucket: "Feb", "2025": 390, "2024": 460 }, { bucket: "Mar", "2025": 450, "2024": 500 }, { bucket: "Apr", "2025": 380, "2024": 440 }, { bucket: "May", "2025": 350, "2024": 410 }, { bucket: "Jun", "2025": 400, "2024": 470 }];
 const dayNightData = [{ name: "Day", value: 62, fill: "#38bdf8" }, { name: "Night", value: 38, fill: "#334155" }];
 const co2LineData = [{ time: "06:00", co2: 410 }, { time: "08:00", co2: 520 }, { time: "10:00", co2: 680 }, { time: "12:00", co2: 750 }, { time: "14:00", co2: 620 }, { time: "16:00", co2: 580 }];
-const miniAreaChartData = [{ value: 10 }, { value: 22 }, { value: 15 }, { value: 38 }, { value: 28 }, { value: 50 }, { value: 42 }];
+
+// Dati fittizi per il mini-widget Area Chart
+const miniAreaChartData = [{ value: 15 }, { value: 25 }, { value: 18 }, { value: 45 }, { value: 30 }, { value: 55 }, { value: 48 }];
 
 const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
 const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
@@ -125,8 +127,8 @@ const FloatingBentoPanel = () => {
     >
       <style>{`::-webkit-scrollbar { display: none; }`}</style>
 
-      {/* ═════ SEZIONE 1: THE CONVERGENCE HERO (WITH REAL WIDGETS) ═════ */}
-      <section className="w-full h-[100dvh] flex flex-col items-center justify-center relative snap-start">
+      {/* ═════ SEZIONE 1: THE CONVERGENCE HERO (CON MICRO-WIDGET REALI) ═════ */}
+      <section className="w-full h-[100dvh] flex flex-col items-center justify-center relative snap-start overflow-hidden">
         
         {/* Glow Etereo di Fondo */}
         <motion.div
@@ -134,81 +136,86 @@ const FloatingBentoPanel = () => {
           whileInView={{ scale: 1, opacity: 1 }}
           transition={{ duration: 2.5, delay: 1.0, ease: appleEase }}
           viewport={{ once: false, amount: 0.5 }}
-          className="absolute m-auto w-[500px] h-[500px] bg-gradient-to-tr from-teal-200/40 via-sky-200/30 to-blue-300/30 rounded-full blur-[120px] z-0 pointer-events-none"
+          className="absolute m-auto w-[600px] h-[600px] bg-gradient-to-tr from-teal-200/40 via-sky-200/30 to-blue-300/30 rounded-full blur-[120px] z-0 pointer-events-none"
         />
 
-        {/* Core Animation Area (Widget Collage) */}
-        <div className="relative w-full max-w-xl aspect-square flex items-center justify-center z-10">
+        {/* Core Animation Area (Il Collage) */}
+        <div className="relative w-full max-w-2xl aspect-square flex items-center justify-center z-10 mt-12">
           
-          {/* Micro-Widget 1: Energy Heatmap + LEED (Entra da in alto a sx) */}
+          {/* ── Micro-Widget 1: Energy Heatmap + LEED ── */}
+          {/* Entra da in alto a sinistra e si posiziona in modo asimmetrico */}
           <motion.div
-            initial={{ x: -280, y: -180, scale: 0.4, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: -75, y: -45, scale: 1, opacity: 1, filter: "blur(0px)" }}
+            initial={{ x: -300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: -5 }}
+            whileInView={{ x: -90, y: -60, scale: 1, opacity: 1, filter: "blur(0px)", rotate: -2 }}
             transition={{ duration: 1.8, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-44 h-28 bg-white/70 backdrop-blur-2xl rounded-[20px] shadow-[0_20px_40px_rgba(20,184,166,0.15)] border border-white/80 flex flex-col p-3 z-20"
+            className="absolute w-[220px] h-[140px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(20,184,166,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-20"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
-              <img src="/leed_logo.png" alt="LEED" className="h-4 object-contain opacity-90" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
+              {/* Immagine LEED pescata dalla cartella public */}
+              <img src="/leed_logo.png" alt="LEED Certified" className="h-5 object-contain" />
             </div>
-            <div className="flex-1 w-full flex items-end gap-[1px] opacity-90">
-              {Array.from({length: 18}).map((_, i) => (
-                <div key={i} className="flex-1 rounded-t-[1.5px] bg-gradient-to-t from-teal-500 to-teal-300" style={{ height: `${Math.random() * 80 + 20}%` }} />
+            <div className="flex-1 w-full flex items-end gap-[2px] opacity-90">
+              {Array.from({length: 16}).map((_, i) => (
+                <div key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-teal-500 to-teal-300" style={{ height: `${Math.random() * 80 + 20}%` }} />
               ))}
             </div>
           </motion.div>
 
-          {/* Micro-Widget 2: Indoor Air CO2 (Entra da in alto a dx) */}
+          {/* ── Micro-Widget 2: Indoor Air CO2 Box ── */}
+          {/* Entra da in alto a destra */}
           <motion.div
-            initial={{ x: 280, y: -180, scale: 0.4, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: 80, y: -25, scale: 1, opacity: 1, filter: "blur(0px)" }}
+            initial={{ x: 300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)", rotate: 5 }}
+            whileInView={{ x: 90, y: -30, scale: 1, opacity: 1, filter: "blur(0px)", rotate: 2 }}
             transition={{ duration: 1.8, delay: 0.1, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-32 h-32 bg-white/70 backdrop-blur-2xl rounded-[20px] shadow-[0_20px_40px_rgba(14,165,233,0.15)] border border-white/80 flex flex-col items-center justify-center p-3 z-30"
+            className="absolute w-[160px] h-[150px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(14,165,233,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col items-center justify-center p-4 z-30"
           >
-            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">Indoor Air</span>
-            <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">412</span>
-              <span className="text-[10px] text-gray-500 font-medium">ppm</span>
+            <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Indoor Air Quality</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-5xl font-bold tracking-tighter text-gray-900">412</span>
             </div>
-            <div className="text-[8px] px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold tracking-wide border border-emerald-200/50">
+            <span className="text-xs text-gray-400 font-medium mb-3">ppm</span>
+            <div className="text-[9px] px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-bold tracking-wide border border-emerald-200">
               EXCELLENT
             </div>
           </motion.div>
 
-          {/* Micro-Widget 3: Consumption Distribution (Entra dal basso) */}
+          {/* ── Micro-Widget 3: Consumption Distribution (Area Chart) ── */}
+          {/* Entra dal basso al centro */}
           <motion.div
-            initial={{ x: 0, y: 280, scale: 0.4, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: -10, y: 65, scale: 1, opacity: 1, filter: "blur(0px)" }}
+            initial={{ x: 0, y: 300, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
+            whileInView={{ x: -10, y: 80, scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, delay: 0.2, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-44 h-[104px] bg-white/70 backdrop-blur-2xl rounded-[20px] shadow-[0_20px_40px_rgba(59,130,246,0.15)] border border-white/80 flex flex-col pt-3 px-3 overflow-hidden z-25"
+            className="absolute w-[240px] h-[130px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col overflow-hidden z-25"
           >
-            <span className="text-[9px] font-bold text-gray-800 tracking-tight mb-1">CONSUMPTION DIST.</span>
-            <div className="flex-1 w-[120%] -ml-3">
-              <ResponsiveContainer width="100%" height="100%">
+            <span className="text-[10px] font-bold text-gray-800 tracking-tight pl-5 pt-4 absolute z-10">CONSUMPTION DIST.</span>
+            <div className="flex-1 w-full h-full mt-4">
+              <ResponsiveContainer width="105%" height="110%" className="-ml-2">
                 <AreaChart data={miniAreaChartData}>
                   <defs>
                     <linearGradient id="colorMiniArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5}/>
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.6}/>
                       <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="url(#colorMiniArea)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  {/* Linea morbida, nessun asse, puro colpo d'occhio */}
+                  <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="url(#colorMiniArea)" strokeWidth={3} dot={false} isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </motion.div>
         </div>
 
-        {/* Tipografia Monumentale (English) */}
+        {/* Tipografia Monumentale (Inglese Premium) */}
         <motion.div
           initial={{ opacity: 0, y: 30, filter: "blur(12px)" }}
           whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ duration: 1.6, delay: 1.2, ease: appleEase }}
           viewport={{ once: false, amount: 0.5 }}
-          className="absolute bottom-[22%] text-center z-30 flex flex-col items-center px-4"
+          className="absolute bottom-[20%] text-center z-40 flex flex-col items-center px-4"
         >
           <h1 className="text-5xl md:text-7xl lg:text-[84px] font-semibold tracking-tighter text-[#1d1d1f] leading-[1.05]">
             Air. Water. Energy. <br />
@@ -231,7 +238,7 @@ const FloatingBentoPanel = () => {
         </motion.button>
       </section>
 
-      {/* ═════ SEZIONE 2: HORIZONTAL GALLERY (Vertical Snap 2) ═════ */}
+      {/* ═════ SEZIONE 2: HORIZONTAL GALLERY ═════ */}
       <section className="w-full h-[100dvh] relative snap-start flex flex-col justify-center">
         
         <ul 
