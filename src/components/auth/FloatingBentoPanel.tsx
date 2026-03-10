@@ -21,6 +21,13 @@ const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter
 // Curva di animazione Apple Ethereal
 const appleEase = [0.25, 1, 0.5, 1]; 
 
+const waterDistributionData = [
+  { name: 'DHWvalue: 35, color: '#2563eb' },   // blue-600
+  { name: 'HVAC', value: 28, color: '#3b82f6' },       // blue-500
+  { name: 'Watering', value: 18, color: '#60a5fa' },// blue-400
+  { name: 'Other', value: 19, color: '#93c5fd' },      // blue-300
+];
+
 /* ═══════════════════════════════════════════════
    COMPONENTS: GALLERY CARDS (ENGLISH)
    ═══════════════════════════════════════════════ */
@@ -277,27 +284,37 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 3. WATER DISTRIBUTION (Bottom Left) */}
+          {/* 3. WATER DISTRIBUTION (Bottom Left) - Dritta con Areogramma */}
           <motion.div
             initial={{ x: -300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -120, y: 100, scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, delay: 0.15, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[180px] h-[130px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col overflow-hidden z-25"
+            className="absolute w-[160px] h-[160px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
           >
-            <span className="text-[9px] font-bold text-gray-800 tracking-tight pl-4 pt-3 absolute z-10">WATER DIST.</span>
-            <div className="flex-1 w-full h-full mt-3">
-              <ResponsiveContainer width="105%" height="115%" className="-ml-2">
-                <AreaChart data={miniAreaChartData}>
-                  <defs>
-                    <linearGradient id="colorMiniArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.6}/>
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="url(#colorMiniArea)" strokeWidth={3} dot={false} isAnimationActive={false} />
-                </AreaChart>
+            <span className="text-[9px] font-bold text-gray-800 tracking-tight text-center">WATER DIST.</span>
+            <div className="flex-1 w-full relative mt-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie 
+                    data={waterDistributionData} 
+                    innerRadius="55%" 
+                    outerRadius="85%" 
+                    paddingAngle={3} 
+                    dataKey="value" 
+                    stroke="none"
+                    isAnimationActive={false}
+                  >
+                    {waterDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
               </ResponsiveContainer>
+              {/* Icona goccia perfettamente centrata nel buco del Donut */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <Droplet className="w-5 h-5 text-blue-500 fill-blue-500/20" strokeWidth={2} />
+              </div>
             </div>
           </motion.div>
 
