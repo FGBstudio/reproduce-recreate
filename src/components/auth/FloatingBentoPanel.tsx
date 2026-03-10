@@ -1,3 +1,4 @@
+
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, ChevronDown, Zap, Leaf, Wind, Droplet } from "lucide-react";
@@ -6,11 +7,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, AreaChart, Area
 } from "recharts";
-
-// IMPORT ASSET IMMAGINI (Corretto per Vite/Webpack)
-import macImg from "../assets/FGB_Mac.png";
-import padImg from "../assets/FGB_Pad.png";
-import phoneImg from "../assets/FGB_Phone.png";
 
 /* ═══════════════════════════════════════════════
    MOCK DATA & CONFIG
@@ -25,7 +21,7 @@ const miniAreaChartData = [{ value: 15 }, { value: 25 }, { value: 18 }, { value:
 const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
 const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
 
-// Curva di animazione Apple Ethereal globale
+// Curva di animazione Apple Ethereal
 const appleEase = [0.25, 1, 0.5, 1]; 
 
 /* ═══════════════════════════════════════════════
@@ -155,7 +151,7 @@ const FloatingBentoPanel = () => {
         {/* Core Animation Area (Widget Collage - DRITTO E LEGGIBILE) */}
         <div className="relative w-full max-w-4xl aspect-[21/9] flex items-center justify-center z-10 -mt-32">
           
-          {/* 1. VERA HEATMAP CSS (Top Left) */}
+          {/* 1. VERA HEATMAP CSS (Top Left) - Dritta */}
           <motion.div
             initial={{ x: -300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -140, y: -70, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -166,6 +162,7 @@ const FloatingBentoPanel = () => {
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
             </div>
+            {/* Matrice 24x7 Reale in miniatura */}
             <div className="flex-1 w-full flex flex-col gap-[2px] opacity-90">
               {Array.from({length: 12}).map((_, h) => (
                 <div key={h} className="flex-1 flex gap-[2px]">
@@ -179,7 +176,7 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 2. INDOOR AIR CO2 VALUE (Top Right) */}
+          {/* 2. INDOOR AIR CO2 VALUE (Top Right) - Dritta */}
           <motion.div
             initial={{ x: 300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: 140, y: -50, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -197,7 +194,7 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 3. WATER DISTRIBUTION (Bottom Left) */}
+          {/* 3. WATER DISTRIBUTION (Bottom Left) - Dritta */}
           <motion.div
             initial={{ x: -300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -120, y: 100, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -221,7 +218,7 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 4. LEED LOGO STANDALONE (Bottom Right) */}
+          {/* 4. LEED LOGO STANDALONE (Bottom Right) - Dritta */}
           <motion.div
             initial={{ x: 300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: 110, y: 110, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -273,6 +270,7 @@ const FloatingBentoPanel = () => {
           className="item-container flex overflow-x-auto snap-x snap-mandatory gap-8 px-[7.5vw] w-full items-center pb-12" 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
+          {/* SLIDE 1 */}
           {/* ── SLIDE 1: L'ECOSISTEMA UNIVERSALE (REAL IMAGE MOCKUPS) ── */}
           <GalleryItem 
             isDark={true} 
@@ -283,40 +281,41 @@ const FloatingBentoPanel = () => {
             <div className="absolute inset-0 bg-gradient-to-br from-[#050505] via-[#0a0a0c] to-[#001214]" />
             <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-            {/* Container dei Dispositivi - Ancorato in basso (items-end) */}
-            <div className="relative w-full max-w-6xl h-full flex items-end justify-center pb-[12vh] z-10">
+            {/* Container dei Dispositivi */}
+            <div className="relative w-full max-w-6xl h-full flex items-center justify-center mt-10">
               
-              {/* 1. THE MAC (Centro/Dietro) - Drittissimo */}
+              {/* 1. THE MAC (Centro/Dietro) */}
               <motion.div 
-                initial={{ y: 80, opacity: 0, scale: 0.95 }}
+                initial={{ y: 80, opacity: 0, scale: 0.9 }}
                 whileInView={{ y: 0, opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, ease: appleEase }}
+                transition={{ duration: 1.4, ease: appleEase }}
                 viewport={{ once: false, amount: 0.5 }}
-                className="absolute z-10 w-[60%] md:w-[700px] drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]"
+                className="absolute z-10 w-[65%] md:w-[750px] flex justify-center drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]"
               >
-                <img src={macImg} alt="FGB Studio on Mac" className="w-full h-auto object-contain" />
+                {/* Assicurati che l'estensione sia corretta (.png o .jpg) */}
+                <img src="/FGB_Mac.png" alt="FGB Studio on Mac" className="w-full h-auto object-contain" />
               </motion.div>
 
-              {/* 2. THE iPAD (Sinistra/Avanti) - Drittissimo */}
+              {/* 2. THE iPAD (Sinistra/Avanti) */}
               <motion.div 
-                initial={{ x: -40, y: 60, opacity: 0, scale: 0.9 }}
-                whileInView={{ x: -320, y: 30, opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, delay: 0.1, ease: appleEase }}
+                initial={{ x: -60, y: 60, opacity: 0, scale: 0.85, rotate: -4 }}
+                whileInView={{ x: -280, y: 40, opacity: 1, scale: 1, rotate: -2 }}
+                transition={{ duration: 1.4, delay: 0.15, ease: appleEase }}
                 viewport={{ once: false, amount: 0.5 }}
-                className="absolute z-20 w-[22%] md:w-[260px] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]"
+                className="absolute z-20 w-[25%] md:w-[280px] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]"
               >
-                <img src={padImg} alt="FGB Studio on iPad" className="w-full h-auto object-contain" />
+                <img src="/FGB_Pad.png" alt="FGB Studio on iPad" className="w-full h-auto object-contain" />
               </motion.div>
 
-              {/* 3. THE iPHONE (Destra/Avanti massima) - Drittissimo */}
+              {/* 3. THE iPHONE (Destra/Avanti massima) */}
               <motion.div 
-                initial={{ x: 40, y: 80, opacity: 0, scale: 0.9 }}
-                whileInView={{ x: 340, y: 50, opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, delay: 0.2, ease: appleEase }}
+                initial={{ x: 60, y: 80, opacity: 0, scale: 0.85, rotate: 4 }}
+                whileInView={{ x: 320, y: 60, opacity: 1, scale: 1, rotate: 3 }}
+                transition={{ duration: 1.4, delay: 0.25, ease: appleEase }}
                 viewport={{ once: false, amount: 0.5 }}
-                className="absolute z-30 w-[12%] md:w-[140px] drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)]"
+                className="absolute z-30 w-[14%] md:w-[150px] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]"
               >
-                <img src={phoneImg} alt="FGB Studio on iPhone" className="w-full h-auto object-contain" />
+                <img src="/FGB_Phone.png" alt="FGB Studio on iPhone" className="w-full h-auto object-contain" />
               </motion.div>
 
             </div>
