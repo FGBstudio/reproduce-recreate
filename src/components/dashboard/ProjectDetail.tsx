@@ -505,6 +505,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const energyMetrics = useMemo(
     () => [
       'energy.power_kw',
+      'energy.active_energy', // <--- ADD THIS
       'energy.hvac_kw',
       'energy.lighting_kw',
       'energy.plugs_kw',
@@ -992,6 +993,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const groupedMap = new Map<string, any>();
 
     rawData.forEach((d) => {
+      // ADD THIS FILTER: Skip active_energy because this chart is only for Power (kW)
+      if (d.metric === 'energy.active_energy') return;
       // A. Parsing Data Sicuro
       const rawTs = d.ts_bucket || d.ts || d.ts_hour || d.ts_day;
       const dateObj = parseTimestamp(rawTs);
@@ -1103,7 +1106,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // 1. SAFE DATA CALCULATION: Daily breakdown for the Fullscreen Bar Chart
   const dayNightData = useMemo(() => {
-    if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
+    const rawData = energyTimeseriesResp?.data;
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) return [];
 
     const siteTz = resolveTimezone(project?.timezone);
     const DAY_START = 8; 
@@ -1111,28 +1115,23 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
 
-    energyConsumptionData.forEach(point => {
-      // 1. Safe Date parsing (Guaranteed to have a valid timestamp)
-      const dateObj = new Date(point.ts);
+    rawData.forEach(d => {
+      // 1. FILTER: Only use the true energy metric!
+      if (d.metric !== 'energy.active_energy') return;
+
+      // 2. Prevent double-counting by only using the main 'general' meter
+      const info = deviceMap.get(d.device_id);
+      const isGeneral = info?.category === 'general' || !info;
+      if (!isGeneral) return;
+
+      const dateObj = new Date(d.ts_bucket || d.ts);
       const parts = getPartsInTz(dateObj, siteTz);
       const isDay = parts.hour >= DAY_START && parts.hour < DAY_END;
 
-     // 2. Safe Power calculation
-      let totalKw = point.General || 0;
-      if (!totalKw) {
-          Object.keys(point).forEach(k => {
-              if (k !== 'ts' && k !== 'label' && typeof point[k] === 'number') {
-                  // ADD THIS IF STATEMENT: Prevent double-counting components in the total 24h cycle
-                  if (!k.toLowerCase().includes('component')) {
-                      totalKw += point[k] as number;
-                  }
-              }
-          });
-      }
-
-      // 3. Convert Power to Energy (kWh)
-      const kwh = totalKw * bucketHours;
-      const label = String(point.label);
+      // 3. Safely read the database pre-aggregated kWh sum
+      const kwh = Number(d.value_sum ?? d.value ?? 0);
+      
+      const label = formatChartLabel(dateObj, timeRange.bucket, siteTz, timePeriod as any);
       const tsKey = dateObj.getTime();
       
       if (!map.has(label)) {
@@ -1145,7 +1144,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     });
 
     return Array.from(map.values()).sort((a, b) => a.ts - b.ts);
-  }, [energyConsumptionData, project?.timezone, bucketHours]);
+  }, [energyTimeseriesResp, project?.timezone, timeRange.bucket, timePeriod, deviceMap]);
 
   // 2. RING WIDGET SUMMARY: Calculates the totals for the circular dial
   const dayNightSummary = useMemo(() => {
@@ -1328,31 +1327,30 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     // Mappa per vista "Device"
     const deviceTotals = new Map<string, number>();
 
-   // 3. Somma Valori (kWh)
+   // 3. Somma Valori (Real kWh from the database)
     data.forEach(d => {
-        const val = Number(d.value_sum ?? d.value ?? 0);
-        if (val <= 0) return;
+        // ONLY look at the true energy metric
+        if (d.metric !== 'energy.active_energy') return;
 
+        // Use the pre-aggregated sum from your database
+        const kwh = Number(d.value_sum ?? d.value ?? 0);
+        if (kwh <= 0) return;
+
+        // Find out what kind of device this energy belongs to
         const info = deviceMap.get(d.device_id);
         if (!info) return;
 
+        // Don't double-count random sub-components
         const isComponent = (info.category || '').toLowerCase().includes('component') || 
                             (info.label || '').toLowerCase().includes('component');
-
-        // ALWAYS skip components for the Donut chart so it doesn't double-count
         if (isComponent) return; 
 
-        // Accumula per Categoria
-        if (info.category === 'general') totalGeneral += val;
-        else if (info.category === 'hvac') totalHVAC += val;
-        else if (info.category === 'lighting') totalLighting += val;
-        else if (info.category === 'plugs') totalPlugs += val;
-        else totalOtherDefined += val;
-
-        // Accumula per Device (escludendo il generale per evitare duplicati nella vista device)
-        if (info.category !== 'general') {
-             deviceTotals.set(info.label, (deviceTotals.get(info.label) || 0) + val);
-        }
+        // Add the pure kWh directly to the right category!
+        if (info.category === 'general') totalGeneral += kwh;
+        else if (info.category === 'hvac') sumHvac += kwh;
+        else if (info.category === 'lighting') sumLighting += kwh;
+        else if (info.category === 'plugs') sumPlugs += kwh;
+        else sumOther += kwh;
     });
 
     // 4. Creazione Segmenti in base alla Modalità
@@ -1410,18 +1408,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // Totale per il Centro del Donut
   const totalBreakdownKwh = useMemo(() => {
-    // Il totale deve essere sempre quello del "General" se esiste, 
-    // altrimenti la somma dei segmenti.
     const data = energyTimeseriesResp?.data || [];
     let generalSum = 0;
     
-    // Prova a calcolare il Generale reale dai dati
     data.forEach(d => {
+        // Only use the true energy metric
+        if (d.metric !== 'energy.active_energy') return;
+
         const info = deviceMap.get(d.device_id);
         if (info && info.category === 'general') {
+            // Read the pure database kWh
             generalSum += Number(d.value_sum ?? d.value ?? 0);
         }
     });
+
+    // ... rest of code
 
     // Se abbiamo un generale, usiamo quello (è la verità assoluta del contatore)
     if (generalSum > 0) return generalSum;
