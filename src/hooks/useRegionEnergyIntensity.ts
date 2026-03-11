@@ -50,12 +50,12 @@ async function fetchRegionIntensities(): Promise<{
   // 1) Get ALL sites with region (for both energy + AQ)
   const { data: allSites, error: sitesError } = await supabase
     .from('sites')
-    .select('id, region, area_m2')
+    .select('id, name, region, area_m2')
     .not('region', 'is', null);
 
   if (sitesError || !allSites || allSites.length === 0) {
     console.warn('[useRegionEnergyIntensity] No sites:', sitesError);
-    return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
+    return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {}, siteIntensitiesByRegion: {} };
   }
 
   // Normalize region names to dashboard codes
