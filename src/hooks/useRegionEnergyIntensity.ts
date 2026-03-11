@@ -231,6 +231,7 @@ export function useRegionEnergyIntensity(): RegionIntensityData {
     siteCountByRegion: data?.siteCountByRegion ?? {},
     avgCo2ByRegion: data?.avgCo2ByRegion ?? {},
     co2SiteCountByRegion: data?.co2SiteCountByRegion ?? {},
+    siteIntensitiesByRegion: data?.siteIntensitiesByRegion ?? {},
     isLoading,
   };
 }
