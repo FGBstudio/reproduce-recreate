@@ -26,7 +26,7 @@ const waterDistributionData = [
 const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
 const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
 
-const appleEase = [0.25, 1, 0.5, 1]; 
+const appleEase: [number, number, number, number] = [0.25, 1, 0.5, 1]; 
 
 /* ═══════════════════════════════════════════════
    COMPONENTS
