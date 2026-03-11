@@ -37,7 +37,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   const aggregated = useAggregatedSiteData(regionProjects);
 
   // Get REAL energy intensity from dedicated hook (category=general, 30 days, kWh/m²)
-  const { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion } = useRegionEnergyIntensity();
+  const { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion, siteIntensitiesByRegion } = useRegionEnergyIntensity();
 
   // Use REAL CO2 from dedicated hook
   const realAvgCo2 = avgCo2ByRegion[currentRegion];
@@ -53,19 +53,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     return "POOR";
   }, [displayCo2]);
 
-  // === Per-site intensity data (kWh/m²) ===
+  // === Per-site intensity data (kWh/m²) — from the SAME source as the KPI ===
   const siteIntensityList = useMemo(() => {
-    return aggregated.sites
-      .map(site => {
-        const project = regionProjects.find(p => p.siteId === site.siteId);
-        const area = project?.area_m2 ?? 0;
-        const kwh = site.energy.monthlyKwh ?? 0;
-        const intensity = area > 0 ? (kwh / area) : null; // Nessuna divisione per 1000 qui
-        return { name: site.siteName, intensity, kwh, area };
-      })
-      .filter(s => s.intensity !== null && s.intensity > 0)
-      .sort((a, b) => (b.intensity ?? 0) - (a.intensity ?? 0));
-  }, [aggregated.sites, regionProjects]);
+    return siteIntensitiesByRegion[currentRegion] ?? [];
+  }, [siteIntensitiesByRegion, currentRegion]);
 
   // === Per-site AQ data ===
   const getAqLabel = (co2: number | null): string => {

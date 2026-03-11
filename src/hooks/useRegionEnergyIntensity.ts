@@ -11,6 +11,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
+export interface SiteIntensityEntry {
+  siteId: string;
+  name: string;
+  region: string;
+  intensity: number; // kWh/m²
+  kwh: number;
+  area: number;
+}
+
 export interface RegionIntensityData {
   /** region code → avg kWh/m² (monthly) */
   intensityByRegion: Record<string, number>;
@@ -20,6 +29,8 @@ export interface RegionIntensityData {
   avgCo2ByRegion: Record<string, number>;
   /** region code → number of sites with CO2 data */
   co2SiteCountByRegion: Record<string, number>;
+  /** region code → per-site intensity entries */
+  siteIntensitiesByRegion: Record<string, SiteIntensityEntry[]>;
   isLoading: boolean;
 }
 
@@ -28,8 +39,9 @@ async function fetchRegionIntensities(): Promise<{
   siteCountByRegion: Record<string, number>;
   avgCo2ByRegion: Record<string, number>;
   co2SiteCountByRegion: Record<string, number>;
+  siteIntensitiesByRegion: Record<string, SiteIntensityEntry[]>;
 }> {
-  if (!supabase) return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
+  if (!supabase) return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {}, siteIntensitiesByRegion: {} };
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -38,12 +50,12 @@ async function fetchRegionIntensities(): Promise<{
   // 1) Get ALL sites with region (for both energy + AQ)
   const { data: allSites, error: sitesError } = await supabase
     .from('sites')
-    .select('id, region, area_m2')
+    .select('id, name, region, area_m2')
     .not('region', 'is', null);
 
   if (sitesError || !allSites || allSites.length === 0) {
     console.warn('[useRegionEnergyIntensity] No sites:', sitesError);
-    return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
+    return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {}, siteIntensitiesByRegion: {} };
   }
 
   // Normalize region names to dashboard codes
@@ -87,6 +99,7 @@ async function fetchRegionIntensities(): Promise<{
   // --- ENERGY INTENSITY ---
   const intensityByRegion: Record<string, number> = {};
   const siteCountByRegion: Record<string, number> = {};
+  const siteIntensitiesByRegion: Record<string, SiteIntensityEntry[]> = {};
 
   if (devices && devices.length > 0) {
     const deviceIds = devices.map(d => d.id);
@@ -118,9 +131,25 @@ async function fetchRegionIntensities(): Promise<{
       const site = allSiteMap.get(siteId);
       if (!site || !site.region || !site.area_m2 || Number(site.area_m2) <= 0) return;
       if (kwh <= 0) return;
-      const intensity = kwh / Number(site.area_m2);
+      const area = Number(site.area_m2);
+      const intensity = kwh / area;
       if (!regionIntensities[site.region]) regionIntensities[site.region] = [];
       regionIntensities[site.region].push(intensity);
+      // Build per-site list
+      if (!siteIntensitiesByRegion[site.region]) siteIntensitiesByRegion[site.region] = [];
+      siteIntensitiesByRegion[site.region].push({
+        siteId,
+        name: site.name || siteId,
+        region: site.region,
+        intensity: Math.round(intensity * 10) / 10,
+        kwh: Math.round(kwh),
+        area,
+      });
+    });
+
+    // Sort per-site lists by intensity desc
+    Object.values(siteIntensitiesByRegion).forEach(list => {
+      list.sort((a, b) => b.intensity - a.intensity);
     });
 
     Object.entries(regionIntensities).forEach(([region, values]) => {
@@ -185,7 +214,7 @@ async function fetchRegionIntensities(): Promise<{
 
   console.log('[useRegionEnergyIntensity] Results:', { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion });
 
-  return { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion };
+  return { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion, siteIntensitiesByRegion };
 }
 
 export function useRegionEnergyIntensity(): RegionIntensityData {
@@ -202,6 +231,7 @@ export function useRegionEnergyIntensity(): RegionIntensityData {
     siteCountByRegion: data?.siteCountByRegion ?? {},
     avgCo2ByRegion: data?.avgCo2ByRegion ?? {},
     co2SiteCountByRegion: data?.co2SiteCountByRegion ?? {},
+    siteIntensitiesByRegion: data?.siteIntensitiesByRegion ?? {},
     isLoading,
   };
 }
