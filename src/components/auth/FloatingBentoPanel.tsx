@@ -90,9 +90,10 @@ const CO2Card = () => (
   </div>
 );
 
-// FIX ALTEZZA: h-[80vh] invece di h-[70vh] e rimosso max-h-[750px]
+// FIX COLORE BASE E ALTEZZA
+// Uniformato isDark bg a #0a0a0a
 const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) => (
-  <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[80vh] min-h-[600px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#111111]" : "bg-white"}`}>
+  <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[80vh] min-h-[600px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`}>
     <div className="w-full h-full flex flex-col relative pt-40 pb-24">
       <div className="absolute top-12 left-12 right-12 z-30 pointer-events-none flex flex-col gap-2">
         <h2 className={`text-4xl md:text-[52px] font-semibold tracking-tighter leading-[1.1] max-w-3xl ${isDark ? "text-[#f5f5f7]" : "text-[#1d1d1f]"}`} dangerouslySetInnerHTML={{ __html: headline }} />
@@ -210,25 +211,15 @@ const FloatingBentoPanel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const totalSlides = 5;
 
-  // CALCOLO SCROLL HORIZZONTALE FIXATO PER GESTIRE GAP/MARGINI CORRETTAMENTE
   const handleScroll = () => {
     if (!scrollRef.current) return;
     
-    // Dimensione visibile del contenitore
-    const clientWidth = scrollRef.current.clientWidth;
-    // Posizione attuale dello scroll
     const scrollLeft = scrollRef.current.scrollLeft;
-    
-    // Per trovare l'indice esatto usiamo un calcolo basato sulla dimensione effettiva dello scroll,
-    // tenendo conto che il gap influisce progressivamente.
-    // Troviamo il primo elemento li per capirne la larghezza totale incluso il margine (approx 85vw + gap)
     const firstChild = scrollRef.current.firstElementChild as HTMLElement;
     if(!firstChild) return;
     
-    // La larghezza dell'elemento + gap
-    const itemWidthWithGap = firstChild.offsetWidth + 32; // 32px è il gap-8 di tailwind
+    const itemWidthWithGap = firstChild.offsetWidth + 32; 
     
-    // Indice stimato in base allo spostamento
     const newIndex = Math.round(scrollLeft / itemWidthWithGap);
     
     setCurrentSlide(Math.min(Math.max(newIndex, 0), totalSlides - 1));
@@ -240,7 +231,7 @@ const FloatingBentoPanel = () => {
     const firstChild = scrollRef.current.firstElementChild as HTMLElement;
     if(!firstChild) return;
 
-    const itemWidthWithGap = firstChild.offsetWidth + 32; // 32px (gap-8)
+    const itemWidthWithGap = firstChild.offsetWidth + 32; 
     
     scrollRef.current.scrollTo({ 
       left: index * itemWidthWithGap, 
@@ -278,7 +269,6 @@ const FloatingBentoPanel = () => {
 
         <div className="relative w-full max-w-4xl aspect-[21/9] flex items-center justify-center z-10 -mt-32">
           
-          {/* 1. HEATMAP (Top Left) */}
           <motion.div
             initial={{ x: -300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -140, y: -70, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -302,7 +292,6 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 2. CO2 VALUE (Top Right) */}
           <motion.div
             initial={{ x: 300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: 140, y: -50, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -320,13 +309,12 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 3. WATER DISTRIBUTION (Bottom Left) */}
           <motion.div
             initial={{ x: -300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -120, y: 100, scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, delay: 0.15, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[180px] h-[130px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
+            className="absolute w-[160px] h-[160px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
           >
             <span className="text-[9px] font-bold text-gray-800 tracking-tight text-center">WATER DIST.</span>
             <div className="flex-1 w-full relative mt-1">
@@ -353,7 +341,6 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 4. LEED LOGO (Bottom Right) */}
           <motion.div
             initial={{ x: 300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: 110, y: 110, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -367,7 +354,6 @@ const FloatingBentoPanel = () => {
 
         </div>
 
-        {/* Tipografia Monumentale */}
         <motion.div
           initial={{ opacity: 0, y: 30, filter: "blur(12px)" }}
           whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -381,7 +367,6 @@ const FloatingBentoPanel = () => {
           </h1>
         </motion.div>
 
-        {/* Scroll Indicator */}
         <motion.button 
           onClick={scrollToGallery}
           initial={{ opacity: 0 }}
@@ -405,23 +390,25 @@ const FloatingBentoPanel = () => {
           className="item-container flex overflow-x-auto snap-x snap-mandatory gap-8 px-[7.5vw] w-full items-center h-full" 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {/* SLIDE 1 */}
+          {/* SLIDE 1: FIXATO IL NERO DI SFONDO E SPOSTATO IL MAC IN BASSO */}
           <GalleryItem 
             isDark={true} 
             headline="Your entire energy ecosystem.<br/>Instantly synchronized." 
             subheadline="Everywhere you are."
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-[#050505] via-[#0a0a0c] to-[#001214]" />
+            {/* Sfondo nero uniforme e pulito senza sfumature sporche */}
+            <div className="absolute inset-0 bg-[#0a0a0a]" />
             <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-            <div className="w-full max-w-6xl h-full flex items-center justify-center relative">
-              <motion.div initial={{ y: 80, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-10 w-[65%] drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
+            <div className="w-full max-w-6xl h-full flex items-center justify-center relative mt-16">
+              {/* Il Mac parte da y: 120 e arriva a y: 40 (non a 0), allontanandosi dal testo in alto */}
+              <motion.div initial={{ y: 120, opacity: 0 }} whileInView={{ y: 40, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-10 w-[65%] drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
                 <img src="/FGB_Mac.png" alt="Mac" className="w-full h-auto object-contain" />
               </motion.div>
-              <motion.div initial={{ x: -60, y: 60, opacity: 0 }} whileInView={{ x: -280, y: 40, opacity: 1 }} transition={{ duration: 1.4, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-20 w-[25%] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]">
+              <motion.div initial={{ x: -60, y: 100, opacity: 0 }} whileInView={{ x: -280, y: 80, opacity: 1 }} transition={{ duration: 1.4, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-20 w-[25%] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]">
                 <img src="/FGB_Pad.png" alt="iPad" className="w-full h-auto object-contain" />
               </motion.div>
-              <motion.div initial={{ x: 60, y: 80, opacity: 0 }} whileInView={{ x: 320, y: 60, opacity: 1 }} transition={{ duration: 1.4, delay: 0.25, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-30 w-[14%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]">
+              <motion.div initial={{ x: 60, y: 120, opacity: 0 }} whileInView={{ x: 320, y: 100, opacity: 1 }} transition={{ duration: 1.4, delay: 0.25, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-30 w-[14%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]">
                 <img src="/FGB_Phone.png" alt="iPhone" className="w-full h-auto object-contain" />
               </motion.div>
             </div>
@@ -436,13 +423,13 @@ const FloatingBentoPanel = () => {
             </div>
           </GalleryItem>
 
-          {/* SLIDE 3: ESG GAMIFICATION */}
+          {/* SLIDE 3: ESG GAMIFICATION - FIXATO NERO DI SFONDO */}
           <GalleryItem 
             isDark={true} 
             headline="Your path to ESG excellence.<br/>Precisely measured." 
             subheadline="Automated tracking for top certifications."
           >
-            <div className="absolute inset-0 bg-[#050505]" />
+            <div className="absolute inset-0 bg-[#0a0a0a]" />
             <div className="relative w-full h-full flex items-center justify-center z-10">
               <motion.div initial={{ y: 60, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="w-full flex justify-center">
                 <ESGRingsCard />
