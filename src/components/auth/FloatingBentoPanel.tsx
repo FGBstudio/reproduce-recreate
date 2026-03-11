@@ -376,8 +376,8 @@ const FloatingBentoPanel = () => {
           className="absolute bottom-[18%] text-center z-40 flex flex-col items-center px-4"
         >
           <h1 className="text-5xl md:text-7xl lg:text-[84px] font-semibold tracking-tighter text-[#1d1d1f] leading-[1.05]">
-            Air. Water. Energy. <br />
-            <span className="text-[#86868b]">The fusion of your data.</span>
+            Air. Water. Energy. Awards. <br />
+            <span className="text-[#86868b]">The sustainability fusion of your data.</span>
           </h1>
         </motion.div>
 
