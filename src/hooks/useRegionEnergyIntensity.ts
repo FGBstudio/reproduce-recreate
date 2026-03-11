@@ -99,6 +99,7 @@ async function fetchRegionIntensities(): Promise<{
   // --- ENERGY INTENSITY ---
   const intensityByRegion: Record<string, number> = {};
   const siteCountByRegion: Record<string, number> = {};
+  const siteIntensitiesByRegion: Record<string, SiteIntensityEntry[]> = {};
 
   if (devices && devices.length > 0) {
     const deviceIds = devices.map(d => d.id);
@@ -130,9 +131,25 @@ async function fetchRegionIntensities(): Promise<{
       const site = allSiteMap.get(siteId);
       if (!site || !site.region || !site.area_m2 || Number(site.area_m2) <= 0) return;
       if (kwh <= 0) return;
-      const intensity = kwh / Number(site.area_m2);
+      const area = Number(site.area_m2);
+      const intensity = kwh / area;
       if (!regionIntensities[site.region]) regionIntensities[site.region] = [];
       regionIntensities[site.region].push(intensity);
+      // Build per-site list
+      if (!siteIntensitiesByRegion[site.region]) siteIntensitiesByRegion[site.region] = [];
+      siteIntensitiesByRegion[site.region].push({
+        siteId,
+        name: site.name || siteId,
+        region: site.region,
+        intensity: Math.round(intensity * 10) / 10,
+        kwh: Math.round(kwh),
+        area,
+      });
+    });
+
+    // Sort per-site lists by intensity desc
+    Object.values(siteIntensitiesByRegion).forEach(list => {
+      list.sort((a, b) => b.intensity - a.intensity);
     });
 
     Object.entries(regionIntensities).forEach(([region, values]) => {
