@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, ChevronDown, Zap, Leaf, Wind, Droplet, FileText, Sparkles } from "lucide-react";
 import {
@@ -17,20 +17,19 @@ const miniAreaChartData = [{ value: 15 }, { value: 25 }, { value: 18 }, { value:
 const ocrExtractedData = [{ month: 'Jan', cost: 1240 }, { month: 'Feb', cost: 1100 }, { month: 'Mar', cost: 1350 }, { month: 'Apr', cost: 1080 }];
 
 const waterDistributionData = [
-  { name: 'DHW', value: 35, color: '#2563eb' },   // blue-600
-  { name: 'HVAC', value: 28, color: '#3b82f6' },       // blue-500
-  { name: 'Watering', value: 18, color: '#60a5fa' },// blue-400
-  { name: 'Other', value: 19, color: '#93c5fd' },      // blue-300
+  { name: 'DHW', value: 35, color: '#2563eb' },
+  { name: 'HVAC', value: 28, color: '#3b82f6' },
+  { name: 'Watering', value: 18, color: '#60a5fa' },
+  { name: 'Other', value: 19, color: '#93c5fd' },
 ];
 
 const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
 const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
 
-// Curva di animazione Apple Ethereal
 const appleEase = [0.25, 1, 0.5, 1]; 
 
 /* ═══════════════════════════════════════════════
-   COMPONENTS: GALLERY CARDS (ENGLISH)
+   COMPONENTS
    ═══════════════════════════════════════════════ */
 const cardBase = "bg-white/60 backdrop-blur-[32px] border border-white/30 shadow-[0_30px_60px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.7)] rounded-[28px] overflow-hidden w-full h-full flex flex-col p-6 transition-all duration-500 hover:bg-white/70";
 
@@ -103,43 +102,25 @@ const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) =
   </li>
 );
 
-/* ═══════════════════════════════════════════════
-   ESG GAMIFICATION COMPONENT (WITH PUBLIC LOGOS)
-   ═══════════════════════════════════════════════ */
 const ESGRingsCard = () => {
   return (
     <div className="w-full max-w-4xl h-[400px] bg-[#111111]/80 backdrop-blur-3xl border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[40px] p-8 flex items-center justify-between gap-12 overflow-hidden relative">
-      
-      {/* Glow Sfondo */}
       <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[300px] h-[300px] bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
-
-      {/* ── LEFT: The SVG Rings ── */}
       <div className="relative flex items-center justify-center w-[280px] h-[280px] shrink-0 z-10 ml-4">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 400 400">
           <circle cx="200" cy="200" r="160" stroke="rgba(20,184,166,0.15)" strokeWidth="26" fill="none" />
-          <motion.circle cx="200" cy="200" r="160" stroke="#14b8a6" strokeWidth="26" fill="none" strokeLinecap="round"
-            initial={{ pathLength: 0 }} whileInView={{ pathLength: 15/18 }} transition={{ duration: 2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
-
+          <motion.circle cx="200" cy="200" r="160" stroke="#14b8a6" strokeWidth="26" fill="none" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 15/18 }} transition={{ duration: 2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
           <circle cx="200" cy="200" r="120" stroke="rgba(59,130,246,0.15)" strokeWidth="26" fill="none" />
-          <motion.circle cx="200" cy="200" r="120" stroke="#3b82f6" strokeWidth="26" fill="none" strokeLinecap="round"
-            initial={{ pathLength: 0 }} whileInView={{ pathLength: 8/11 }} transition={{ duration: 2, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
-
+          <motion.circle cx="200" cy="200" r="120" stroke="#3b82f6" strokeWidth="26" fill="none" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 8/11 }} transition={{ duration: 2, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
           <circle cx="200" cy="200" r="80" stroke="rgba(16,185,129,0.15)" strokeWidth="26" fill="none" />
-          <motion.circle cx="200" cy="200" r="80" stroke="#10b981" strokeWidth="26" fill="none" strokeLinecap="round"
-            initial={{ pathLength: 0 }} whileInView={{ pathLength: 14/15 }} transition={{ duration: 2, delay: 0.3, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
+          <motion.circle cx="200" cy="200" r="80" stroke="#10b981" strokeWidth="26" fill="none" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 14/15 }} transition={{ duration: 2, delay: 0.3, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
         </svg>
-
-        {/* Center Target Info */}
         <div className="absolute flex flex-col items-center justify-center text-center mt-2">
           <span className="text-white font-extrabold text-4xl tracking-tighter">82<span className="text-base text-gray-500 font-medium">/110</span></span>
           <span className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">Total Score</span>
         </div>
       </div>
-
-      {/* ── RIGHT: The Legend & Supported Certs ── */}
       <div className="flex-1 flex flex-col justify-center gap-6 z-10 mr-4">
-        
-        {/* Cerfication Logos Row */}
         <div className="flex items-center gap-5 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
           <span className="text-[11px] text-gray-400 uppercase tracking-widest font-semibold mr-2">Tracked:</span>
           <img src="/leed_logo.png" alt="LEED" className="h-8 object-contain opacity-80 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]" />
@@ -148,121 +129,57 @@ const ESGRingsCard = () => {
           <div className="w-px h-6 bg-white/20" />
           <img src="/well_logo.png" alt="WELL" className="h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
         </div>
-
         <div className="flex flex-col gap-4 mt-2">
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.4 }} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.6)]" />
-              <span className="text-white text-sm font-medium">Energy & Atmosphere</span>
-            </div>
-            <span className="text-white font-bold font-mono">15/18</span>
+            <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.6)]" /><span className="text-white text-sm font-medium">Energy & Atmosphere</span></div><span className="text-white font-bold font-mono">15/18</span>
           </motion.div>
           <div className="w-full h-px bg-white/10" />
-
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
-              <span className="text-white text-sm font-medium">Water Efficiency</span>
-            </div>
-            <span className="text-white font-bold font-mono">8/11</span>
+            <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.6)]" /><span className="text-white text-sm font-medium">Water Efficiency</span></div><span className="text-white font-bold font-mono">8/11</span>
           </motion.div>
           <div className="w-full h-px bg-white/10" />
-
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.6 }} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
-              <span className="text-white text-sm font-medium">Indoor Env. Quality</span>
-            </div>
-            <span className="text-white font-bold font-mono">14/15</span>
+            <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)]" /><span className="text-white text-sm font-medium">Indoor Env. Quality</span></div><span className="text-white font-bold font-mono">14/15</span>
           </motion.div>
         </div>
       </div>
-
     </div>
   );
 };
 
-/* ═══════════════════════════════════════════════
-   OCR BILL SCANNER COMPONENT (SLIDE 5)
-   ═══════════════════════════════════════════════ */
 const OCRScannerFeature = () => {
   return (
     <div className="w-full flex items-center justify-center gap-6 md:gap-16 z-10 px-4">
-      
-      {/* 1. LEFT: THE PAPER BILL */}
-      <motion.div 
-        initial={{ x: -50, opacity: 0, rotate: -5 }}
-        whileInView={{ x: 0, opacity: 1, rotate: -2 }}
-        transition={{ duration: 1.2, ease: appleEase }}
-        viewport={{ once: false, amount: 0.5 }}
-        className="relative w-[240px] h-[340px] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden flex flex-col p-5"
-      >
-        {/* Bill Skeleton Content */}
+      <motion.div initial={{ x: -50, opacity: 0, rotate: -5 }} whileInView={{ x: 0, opacity: 1, rotate: -2 }} transition={{ duration: 1.2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="relative w-[240px] h-[340px] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden flex flex-col p-5">
         <div className="flex justify-between items-start mb-6 border-b border-gray-200 pb-3">
           <FileText className="text-gray-300 w-8 h-8" />
-          <div className="flex flex-col items-end gap-1">
-            <div className="w-16 h-2 bg-gray-200 rounded" />
-            <div className="w-10 h-2 bg-gray-100 rounded" />
-          </div>
+          <div className="flex flex-col items-end gap-1"><div className="w-16 h-2 bg-gray-200 rounded" /><div className="w-10 h-2 bg-gray-100 rounded" /></div>
         </div>
         <div className="flex flex-col gap-3">
           <div className="flex justify-between"><div className="w-20 h-2 bg-gray-100 rounded" /><div className="w-12 h-2 bg-gray-200 rounded" /></div>
           <div className="flex justify-between"><div className="w-24 h-2 bg-gray-100 rounded" /><div className="w-10 h-2 bg-gray-200 rounded" /></div>
           <div className="flex justify-between"><div className="w-16 h-2 bg-gray-100 rounded" /><div className="w-14 h-2 bg-gray-200 rounded" /></div>
         </div>
-        <div className="mt-auto border-t border-gray-200 pt-3 flex justify-between items-center">
-           <div className="w-12 h-3 bg-gray-300 rounded" />
-           <div className="w-16 h-4 bg-gray-800 rounded" />
-        </div>
-
-        {/* Animated OCR Laser Scanner */}
-        <motion.div 
-          animate={{ top: ["-10%", "110%", "-10%"] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          className="absolute left-0 right-0 h-[2px] bg-sky-400 shadow-[0_0_12px_3px_rgba(56,189,248,0.6)] z-20"
-        />
-        {/* Laser Glow Overlay */}
-        <motion.div 
-          animate={{ top: ["-10%", "110%", "-10%"] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          className="absolute left-0 right-0 h-16 bg-gradient-to-b from-sky-400/0 via-sky-400/10 to-sky-400/0 z-10 -translate-y-8"
-        />
+        <div className="mt-auto border-t border-gray-200 pt-3 flex justify-between items-center"><div className="w-12 h-3 bg-gray-300 rounded" /><div className="w-16 h-4 bg-gray-800 rounded" /></div>
+        <motion.div animate={{ top: ["-10%", "110%", "-10%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute left-0 right-0 h-[2px] bg-sky-400 shadow-[0_0_12px_3px_rgba(56,189,248,0.6)] z-20" />
+        <motion.div animate={{ top: ["-10%", "110%", "-10%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute left-0 right-0 h-16 bg-gradient-to-b from-sky-400/0 via-sky-400/10 to-sky-400/0 z-10 -translate-y-8" />
       </motion.div>
 
-      {/* 2. CENTER: THE AI DATA EXTRACTION BRIDGE */}
       <div className="flex flex-col items-center gap-3">
         <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }} transition={{ duration: 2, repeat: Infinity }}>
           <Sparkles className="w-8 h-8 text-sky-500 drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]" />
         </motion.div>
-        {/* Particle Stream */}
         <div className="flex items-center gap-1.5 h-4">
           {[0, 1, 2].map((i) => (
-            <motion.div 
-              key={i}
-              animate={{ x: [0, 20, 0], opacity: [0.2, 1, 0.2] }} 
-              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }} 
-              className="w-1.5 h-1.5 rounded-full bg-sky-500" 
-            />
+            <motion.div key={i} animate={{ x: [0, 20, 0], opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }} className="w-1.5 h-1.5 rounded-full bg-sky-500" />
           ))}
         </div>
       </div>
 
-      {/* 3. RIGHT: THE DASHBOARD RESULT */}
-      <motion.div 
-        initial={{ x: 50, opacity: 0, rotate: 5 }}
-        whileInView={{ x: 0, opacity: 1, rotate: 2 }}
-        transition={{ duration: 1.2, ease: appleEase }}
-        viewport={{ once: false, amount: 0.5 }}
-        className="w-[280px] h-[340px] bg-[#111111]/90 backdrop-blur-2xl rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/10 flex flex-col p-5"
-      >
+      <motion.div initial={{ x: 50, opacity: 0, rotate: 5 }} whileInView={{ x: 0, opacity: 1, rotate: 2 }} transition={{ duration: 1.2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="w-[280px] h-[340px] bg-[#111111]/90 backdrop-blur-2xl rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/10 flex flex-col p-5">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-sky-400" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-white tracking-tight">Extracted Costs</h4>
-            <p className="text-[9px] text-gray-400 font-medium">Historical Data Sync</p>
-          </div>
+          <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><Zap className="w-4 h-4 text-sky-400" /></div>
+          <div><h4 className="text-xs font-bold text-white tracking-tight">Extracted Costs</h4><p className="text-[9px] text-gray-400 font-medium">Historical Data Sync</p></div>
         </div>
         <div className="flex-1 w-full relative">
           <ResponsiveContainer width="100%" height="100%">
@@ -278,7 +195,6 @@ const OCRScannerFeature = () => {
           </ResponsiveContainer>
         </div>
       </motion.div>
-
     </div>
   );
 };
@@ -293,16 +209,43 @@ const FloatingBentoPanel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const totalSlides = 5;
 
+  // CORREZIONE DEFINITIVA CALCOLO SCROLL
   const handleScroll = () => {
     if (!scrollRef.current) return;
-    const scrollPosition = scrollRef.current.scrollLeft;
-    const slideWidth = scrollRef.current.clientWidth;
-    setCurrentSlide(Math.round(scrollPosition / slideWidth));
+    
+    const scrollContainer = scrollRef.current;
+    const items = Array.from(scrollContainer.children) as HTMLElement[];
+    const containerCenter = scrollContainer.scrollLeft + scrollContainer.clientWidth / 2;
+
+    let closestIndex = 0;
+    let minDistance = Infinity;
+
+    // Calcola quale slide si trova effettivamente al centro dello schermo
+    items.forEach((item, index) => {
+      const itemCenter = item.offsetLeft + item.clientWidth / 2;
+      const distance = Math.abs(containerCenter - itemCenter);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    setCurrentSlide(closestIndex);
   };
 
   const scrollToSlide = (index: number) => {
     if (!scrollRef.current) return;
-    scrollRef.current.scrollTo({ left: scrollRef.current.clientWidth * index, behavior: 'smooth' });
+    
+    // Lo scroll a scatto deve usare l'offset reale dell'elemento target
+    const scrollContainer = scrollRef.current;
+    const targetItem = scrollContainer.children[index] as HTMLElement;
+    
+    if(targetItem) {
+      scrollContainer.scrollTo({
+        left: targetItem.offsetLeft - (scrollContainer.clientWidth - targetItem.clientWidth) / 2,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const scrollLeft = () => scrollToSlide(Math.max(0, currentSlide - 1));
@@ -383,7 +326,7 @@ const FloatingBentoPanel = () => {
             whileInView={{ x: -120, y: 100, scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, delay: 0.15, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[160px] h-[160px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
+            className="absolute w-[180px] h-[130px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
           >
             <span className="text-[9px] font-bold text-gray-800 tracking-tight text-center">WATER DIST.</span>
             <div className="flex-1 w-full relative mt-1">
