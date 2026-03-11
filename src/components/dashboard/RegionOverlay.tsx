@@ -275,9 +275,14 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     </div>
                   )*/}
                   <div className="flex gap-1 mt-2">
-                    <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" || displayAq === "GOOD" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
-                    <span className={`h-2 flex-1 rounded-sm ${displayAq === "EXCELLENT" ? "bg-emerald-500" : "bg-emerald-500/30"}`} />
-                    <span className="h-2 flex-1 rounded-sm bg-emerald-500/30" />
+                    {(() => {
+                      const barsLit = displayAq === "EXCELLENT" ? 3 : displayAq === "GOOD" ? 2 : displayAq === "MODERATE" ? 1 : 0;
+                      const barColor = displayAq === "POOR" ? "bg-rose-500" : displayAq === "MODERATE" ? "bg-yellow-500" : "bg-emerald-500";
+                      const barDim = displayAq === "POOR" ? "bg-rose-500/20" : displayAq === "MODERATE" ? "bg-yellow-500/20" : "bg-emerald-500/20";
+                      return [0, 1, 2].map(i => (
+                        <span key={i} className={`h-2 flex-1 rounded-sm transition-all duration-500 ${i < barsLit ? barColor : barDim}`} />
+                      ));
+                    })()}
                   </div>
                 </div>
               </PopoverTrigger>
