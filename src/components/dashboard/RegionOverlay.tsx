@@ -37,7 +37,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   const aggregated = useAggregatedSiteData(regionProjects);
 
   // Get REAL energy intensity from dedicated hook (category=general, 30 days, kWh/m²)
-  const { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion } = useRegionEnergyIntensity();
+  const { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion, siteIntensitiesByRegion } = useRegionEnergyIntensity();
 
   // Use REAL CO2 from dedicated hook
   const realAvgCo2 = avgCo2ByRegion[currentRegion];
