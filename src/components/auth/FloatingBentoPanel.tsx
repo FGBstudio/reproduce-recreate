@@ -402,13 +402,13 @@ const FloatingBentoPanel = () => {
 
             <div className="w-full max-w-6xl h-full flex items-center justify-center relative mt-16">
               {/* Il Mac parte da y: 120 e arriva a y: 40 (non a 0), allontanandosi dal testo in alto */}
-              <motion.div initial={{ y: 120, opacity: 0 }} whileInView={{ y: 40, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-10 w-[65%] drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
+              <motion.div initial={{ y: 120, opacity: 0 }} whileInView={{ y: 35, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-10 w-[65%] drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
                 <img src="/FGB_Mac.png" alt="Mac" className="w-full h-auto object-contain" />
               </motion.div>
               <motion.div initial={{ x: -60, y: 100, opacity: 0 }} whileInView={{ x: -280, y: 80, opacity: 1 }} transition={{ duration: 1.4, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-20 w-[25%] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]">
                 <img src="/FGB_Pad.png" alt="iPad" className="w-full h-auto object-contain" />
               </motion.div>
-              <motion.div initial={{ x: 60, y: 120, opacity: 0 }} whileInView={{ x: 320, y: 100, opacity: 1 }} transition={{ duration: 1.4, delay: 0.25, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-30 w-[14%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]">
+              <motion.div initial={{ x: 60, y: 120, opacity: 0 }} whileInView={{ x: 300, y: 100, opacity: 1 }} transition={{ duration: 1.4, delay: 0.25, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-30 w-[14%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]">
                 <img src="/FGB_Phone.png" alt="iPhone" className="w-full h-auto object-contain" />
               </motion.div>
             </div>
