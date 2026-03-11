@@ -17,10 +17,10 @@ const miniAreaChartData = [{ value: 15 }, { value: 25 }, { value: 18 }, { value:
 const ocrExtractedData = [{ month: 'Jan', cost: 1240 }, { month: 'Feb', cost: 1100 }, { month: 'Mar', cost: 1350 }, { month: 'Apr', cost: 1080 }];
 
 const waterDistributionData = [
-  { name: 'DHW', value: 35, color: '#2563eb' },
-  { name: 'HVAC', value: 28, color: '#3b82f6' },
+  { name: 'DHW', value: 35, color: '#2563eb' },   
+  { name: 'HVAC', value: 28, color: '#3b82f6' },       
   { name: 'Watering', value: 18, color: '#60a5fa' },
-  { name: 'Other', value: 19, color: '#93c5fd' },
+  { name: 'Other', value: 19, color: '#93c5fd' },      
 ];
 
 const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
@@ -90,14 +90,15 @@ const CO2Card = () => (
   </div>
 );
 
+// FIX ALTEZZA: h-[80vh] invece di h-[70vh] e rimosso max-h-[750px]
 const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) => (
-  <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[70vh] min-h-[500px] max-h-[750px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#111111]" : "bg-white"}`}>
+  <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[80vh] min-h-[600px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#111111]" : "bg-white"}`}>
     <div className="w-full h-full flex flex-col relative pt-40 pb-24">
       <div className="absolute top-12 left-12 right-12 z-30 pointer-events-none flex flex-col gap-2">
         <h2 className={`text-4xl md:text-[52px] font-semibold tracking-tighter leading-[1.1] max-w-3xl ${isDark ? "text-[#f5f5f7]" : "text-[#1d1d1f]"}`} dangerouslySetInnerHTML={{ __html: headline }} />
         {subheadline && <p className={`text-xl md:text-xl font-medium tracking-tight ${isDark ? "text-[#a1a1a6]" : "text-[#86868b]"}`}>{subheadline}</p>}
       </div>
-      <figure className="flex-1 w-full relative z-10 flex items-center justify-center overflow-visible">{children}</figure>
+      <figure className="flex-1 w-full relative z-10 flex items-center justify-center overflow-visible mt-8">{children}</figure>
     </div>
   </li>
 );
@@ -209,43 +210,42 @@ const FloatingBentoPanel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const totalSlides = 5;
 
-  // CORREZIONE DEFINITIVA CALCOLO SCROLL
+  // CALCOLO SCROLL HORIZZONTALE FIXATO PER GESTIRE GAP/MARGINI CORRETTAMENTE
   const handleScroll = () => {
     if (!scrollRef.current) return;
     
-    const scrollContainer = scrollRef.current;
-    const items = Array.from(scrollContainer.children) as HTMLElement[];
-    const containerCenter = scrollContainer.scrollLeft + scrollContainer.clientWidth / 2;
-
-    let closestIndex = 0;
-    let minDistance = Infinity;
-
-    // Calcola quale slide si trova effettivamente al centro dello schermo
-    items.forEach((item, index) => {
-      const itemCenter = item.offsetLeft + item.clientWidth / 2;
-      const distance = Math.abs(containerCenter - itemCenter);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = index;
-      }
-    });
-
-    setCurrentSlide(closestIndex);
+    // Dimensione visibile del contenitore
+    const clientWidth = scrollRef.current.clientWidth;
+    // Posizione attuale dello scroll
+    const scrollLeft = scrollRef.current.scrollLeft;
+    
+    // Per trovare l'indice esatto usiamo un calcolo basato sulla dimensione effettiva dello scroll,
+    // tenendo conto che il gap influisce progressivamente.
+    // Troviamo il primo elemento li per capirne la larghezza totale incluso il margine (approx 85vw + gap)
+    const firstChild = scrollRef.current.firstElementChild as HTMLElement;
+    if(!firstChild) return;
+    
+    // La larghezza dell'elemento + gap
+    const itemWidthWithGap = firstChild.offsetWidth + 32; // 32px è il gap-8 di tailwind
+    
+    // Indice stimato in base allo spostamento
+    const newIndex = Math.round(scrollLeft / itemWidthWithGap);
+    
+    setCurrentSlide(Math.min(Math.max(newIndex, 0), totalSlides - 1));
   };
 
   const scrollToSlide = (index: number) => {
     if (!scrollRef.current) return;
     
-    // Lo scroll a scatto deve usare l'offset reale dell'elemento target
-    const scrollContainer = scrollRef.current;
-    const targetItem = scrollContainer.children[index] as HTMLElement;
+    const firstChild = scrollRef.current.firstElementChild as HTMLElement;
+    if(!firstChild) return;
+
+    const itemWidthWithGap = firstChild.offsetWidth + 32; // 32px (gap-8)
     
-    if(targetItem) {
-      scrollContainer.scrollTo({
-        left: targetItem.offsetLeft - (scrollContainer.clientWidth - targetItem.clientWidth) / 2,
-        behavior: 'smooth'
-      });
-    }
+    scrollRef.current.scrollTo({ 
+      left: index * itemWidthWithGap, 
+      behavior: 'smooth' 
+    });
   };
 
   const scrollLeft = () => scrollToSlide(Math.max(0, currentSlide - 1));
@@ -376,8 +376,8 @@ const FloatingBentoPanel = () => {
           className="absolute bottom-[18%] text-center z-40 flex flex-col items-center px-4"
         >
           <h1 className="text-5xl md:text-7xl lg:text-[84px] font-semibold tracking-tighter text-[#1d1d1f] leading-[1.05]">
-            Air. Energy. Water. Awards. <br />
-            <span className="text-[#86868b]">The fusion of your Sustainability.</span>
+            Air. Water. Energy. <br />
+            <span className="text-[#86868b]">The fusion of your data.</span>
           </h1>
         </motion.div>
 
