@@ -214,7 +214,7 @@ async function fetchRegionIntensities(): Promise<{
 
   console.log('[useRegionEnergyIntensity] Results:', { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion });
 
-  return { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion };
+  return { intensityByRegion, siteCountByRegion, avgCo2ByRegion, co2SiteCountByRegion, siteIntensitiesByRegion };
 }
 
 export function useRegionEnergyIntensity(): RegionIntensityData {
