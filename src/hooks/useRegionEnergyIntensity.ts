@@ -11,6 +11,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
+export interface SiteIntensityEntry {
+  siteId: string;
+  name: string;
+  region: string;
+  intensity: number; // kWh/m²
+  kwh: number;
+  area: number;
+}
+
 export interface RegionIntensityData {
   /** region code → avg kWh/m² (monthly) */
   intensityByRegion: Record<string, number>;
@@ -20,6 +29,8 @@ export interface RegionIntensityData {
   avgCo2ByRegion: Record<string, number>;
   /** region code → number of sites with CO2 data */
   co2SiteCountByRegion: Record<string, number>;
+  /** region code → per-site intensity entries */
+  siteIntensitiesByRegion: Record<string, SiteIntensityEntry[]>;
   isLoading: boolean;
 }
 
