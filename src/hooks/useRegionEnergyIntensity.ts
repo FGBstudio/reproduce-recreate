@@ -39,8 +39,9 @@ async function fetchRegionIntensities(): Promise<{
   siteCountByRegion: Record<string, number>;
   avgCo2ByRegion: Record<string, number>;
   co2SiteCountByRegion: Record<string, number>;
+  siteIntensitiesByRegion: Record<string, SiteIntensityEntry[]>;
 }> {
-  if (!supabase) return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {} };
+  if (!supabase) return { intensityByRegion: {}, siteCountByRegion: {}, avgCo2ByRegion: {}, co2SiteCountByRegion: {}, siteIntensitiesByRegion: {} };
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
