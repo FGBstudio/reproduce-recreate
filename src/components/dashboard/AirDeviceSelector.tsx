@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ApiDevice } from "@/lib/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   devices: ApiDevice[];
@@ -18,15 +19,16 @@ type Props = {
 const getDeviceLabel = (d: ApiDevice) => d.location || d.name || d.device_id || d.id;
 
 export function AirDeviceSelector({ devices, selectedIds, onChange }: Props) {
+  const { t } = useLanguage();
   const allIds = devices.map((d) => d.id);
   const allSelected = allIds.length > 0 && selectedIds.length === allIds.length;
   const noneSelected = selectedIds.length === 0;
 
   const title = allSelected
-    ? `Sonde aria: Tutte (${allIds.length})`
+    ? `${t('air.probes_all')} (${allIds.length})`
     : noneSelected
-      ? "Sonde aria: Nessuna"
-      : `Sonde aria: ${selectedIds.length}/${allIds.length}`;
+      ? t('air.probes_none')
+      : `${t('air.probes_partial')}: ${selectedIds.length}/${allIds.length}`;
 
   return (
     <DropdownMenu>
@@ -39,7 +41,7 @@ export function AirDeviceSelector({ devices, selectedIds, onChange }: Props) {
         align="end"
         className="w-72 z-50 bg-popover text-popover-foreground shadow-md"
       >
-        <DropdownMenuLabel>Seleziona dispositivi (Ambiente)</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('air.select_devices')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
 
         <DropdownMenuCheckboxItem
@@ -48,7 +50,7 @@ export function AirDeviceSelector({ devices, selectedIds, onChange }: Props) {
             onChange(checked ? allIds : []);
           }}
         >
-          Seleziona tutte
+          {t('air.select_all')}
         </DropdownMenuCheckboxItem>
 
         <DropdownMenuSeparator />

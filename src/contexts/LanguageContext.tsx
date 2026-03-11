@@ -468,6 +468,13 @@ const translations: Record<string, Record<Language, string>> = {
   'leed.points_distribution': { en: 'Points Distribution', it: 'Distribuzione Punti', fr: 'Répartition des points', es: 'Distribución de puntos', zh: '分数分布' },
   'leed.categories': { en: 'LEED Categories', it: 'Categorie LEED', fr: 'Catégories LEED', es: 'Categorías LEED', zh: 'LEED 类别' },
   'leed.total': { en: 'Total', it: 'Totale', fr: 'Total', es: 'Total', zh: '总计' },
+
+  // Air device selector
+  'air.probes_all': { en: 'Air probes: All', it: 'Sonde aria: Tutte', fr: 'Sondes air : Toutes', es: 'Sondas aire: Todas', zh: '空气探头：全部' },
+  'air.probes_none': { en: 'Air probes: None', it: 'Sonde aria: Nessuna', fr: 'Sondes air : Aucune', es: 'Sondas aire: Ninguna', zh: '空气探头：无' },
+  'air.probes_partial': { en: 'Air probes', it: 'Sonde aria', fr: 'Sondes air', es: 'Sondas aire', zh: '空气探头' },
+  'air.select_devices': { en: 'Select devices (Room)', it: 'Seleziona dispositivi (Ambiente)', fr: 'Sélectionner appareils (Pièce)', es: 'Seleccionar dispositivos (Ambiente)', zh: '选择设备（房间）' },
+  'air.select_all': { en: 'Select all', it: 'Seleziona tutte', fr: 'Tout sélectionner', es: 'Seleccionar todo', zh: '全选' },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
