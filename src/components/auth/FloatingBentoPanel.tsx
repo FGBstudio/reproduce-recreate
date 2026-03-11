@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ChevronLeft, ChevronDown, Zap, Leaf, Wind, Droplet } from "lucide-react";
+import { ChevronRight, ChevronLeft, ChevronDown, Zap, Leaf, Wind, Droplet, FileText, Sparkles } from "lucide-react";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -14,12 +14,7 @@ const carbonBarData = [{ bucket: "Jan", "2025": 420, "2024": 480 }, { bucket: "F
 const dayNightData = [{ name: "Day", value: 62, fill: "#38bdf8" }, { name: "Night", value: 38, fill: "#334155" }];
 const co2LineData = [{ time: "06:00", co2: 410 }, { time: "08:00", co2: 520 }, { time: "10:00", co2: 680 }, { time: "12:00", co2: 750 }, { time: "14:00", co2: 620 }, { time: "16:00", co2: 580 }];
 const miniAreaChartData = [{ value: 15 }, { value: 25 }, { value: 18 }, { value: 45 }, { value: 30 }, { value: 55 }, { value: 48 }];
-
-const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
-const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
-
-// Curva di animazione Apple Ethereal
-const appleEase = [0.25, 1, 0.5, 1]; 
+const ocrExtractedData = [{ month: 'Jan', cost: 1240 }, { month: 'Feb', cost: 1100 }, { month: 'Mar', cost: 1350 }, { month: 'Apr', cost: 1080 }];
 
 const waterDistributionData = [
   { name: 'DHW', value: 35, color: '#2563eb' },   // blue-600
@@ -27,6 +22,12 @@ const waterDistributionData = [
   { name: 'Watering', value: 18, color: '#60a5fa' },// blue-400
   { name: 'Other', value: 19, color: '#93c5fd' },      // blue-300
 ];
+
+const axisStyle = { fontSize: 10, fontFamily: "system-ui, -apple-system, sans-serif", fill: "#94a3b8", fontWeight: 400 };
+const tooltipStyle = { backgroundColor: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.5)", fontSize: 11 };
+
+// Curva di animazione Apple Ethereal
+const appleEase = [0.25, 1, 0.5, 1]; 
 
 /* ═══════════════════════════════════════════════
    COMPONENTS: GALLERY CARDS (ENGLISH)
@@ -90,7 +91,6 @@ const CO2Card = () => (
   </div>
 );
 
-// OVERLAP PREVENTION: pt-40 per allontanare il contenuto dal titolo, pb-24 per allontanarlo dalla pillola in basso.
 const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) => (
   <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[70vh] min-h-[500px] max-h-[750px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#111111]" : "bg-white"}`}>
     <div className="w-full h-full flex flex-col relative pt-40 pb-24">
@@ -142,18 +142,10 @@ const ESGRingsCard = () => {
         {/* Cerfication Logos Row */}
         <div className="flex items-center gap-5 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
           <span className="text-[11px] text-gray-400 uppercase tracking-widest font-semibold mr-2">Tracked:</span>
-          
-          {/* LEED: Rimosso 'brightness-0 invert'. Ingrandito a h-8 */}
           <img src="/leed_logo.png" alt="LEED" className="h-8 object-contain opacity-80 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]" />
-          
           <div className="w-px h-6 bg-white/20" />
-          
-          {/* BREEAM: Mantiene l'inversione. Ingrandito a h-8 */}
           <img src="/breeam_logo.png" alt="BREEAM" className="h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
-          
           <div className="w-px h-6 bg-white/20" />
-          
-          {/* WELL: Mantiene l'inversione. Ingrandito a h-8 */}
           <img src="/well_logo.png" alt="WELL" className="h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
         </div>
 
@@ -191,13 +183,115 @@ const ESGRingsCard = () => {
 };
 
 /* ═══════════════════════════════════════════════
+   OCR BILL SCANNER COMPONENT (SLIDE 5)
+   ═══════════════════════════════════════════════ */
+const OCRScannerFeature = () => {
+  return (
+    <div className="w-full flex items-center justify-center gap-6 md:gap-16 z-10 px-4">
+      
+      {/* 1. LEFT: THE PAPER BILL */}
+      <motion.div 
+        initial={{ x: -50, opacity: 0, rotate: -5 }}
+        whileInView={{ x: 0, opacity: 1, rotate: -2 }}
+        transition={{ duration: 1.2, ease: appleEase }}
+        viewport={{ once: false, amount: 0.5 }}
+        className="relative w-[240px] h-[340px] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden flex flex-col p-5"
+      >
+        {/* Bill Skeleton Content */}
+        <div className="flex justify-between items-start mb-6 border-b border-gray-200 pb-3">
+          <FileText className="text-gray-300 w-8 h-8" />
+          <div className="flex flex-col items-end gap-1">
+            <div className="w-16 h-2 bg-gray-200 rounded" />
+            <div className="w-10 h-2 bg-gray-100 rounded" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between"><div className="w-20 h-2 bg-gray-100 rounded" /><div className="w-12 h-2 bg-gray-200 rounded" /></div>
+          <div className="flex justify-between"><div className="w-24 h-2 bg-gray-100 rounded" /><div className="w-10 h-2 bg-gray-200 rounded" /></div>
+          <div className="flex justify-between"><div className="w-16 h-2 bg-gray-100 rounded" /><div className="w-14 h-2 bg-gray-200 rounded" /></div>
+        </div>
+        <div className="mt-auto border-t border-gray-200 pt-3 flex justify-between items-center">
+           <div className="w-12 h-3 bg-gray-300 rounded" />
+           <div className="w-16 h-4 bg-gray-800 rounded" />
+        </div>
+
+        {/* Animated OCR Laser Scanner */}
+        <motion.div 
+          animate={{ top: ["-10%", "110%", "-10%"] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          className="absolute left-0 right-0 h-[2px] bg-sky-400 shadow-[0_0_12px_3px_rgba(56,189,248,0.6)] z-20"
+        />
+        {/* Laser Glow Overlay */}
+        <motion.div 
+          animate={{ top: ["-10%", "110%", "-10%"] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          className="absolute left-0 right-0 h-16 bg-gradient-to-b from-sky-400/0 via-sky-400/10 to-sky-400/0 z-10 -translate-y-8"
+        />
+      </motion.div>
+
+      {/* 2. CENTER: THE AI DATA EXTRACTION BRIDGE */}
+      <div className="flex flex-col items-center gap-3">
+        <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }} transition={{ duration: 2, repeat: Infinity }}>
+          <Sparkles className="w-8 h-8 text-sky-500 drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]" />
+        </motion.div>
+        {/* Particle Stream */}
+        <div className="flex items-center gap-1.5 h-4">
+          {[0, 1, 2].map((i) => (
+            <motion.div 
+              key={i}
+              animate={{ x: [0, 20, 0], opacity: [0.2, 1, 0.2] }} 
+              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }} 
+              className="w-1.5 h-1.5 rounded-full bg-sky-500" 
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 3. RIGHT: THE DASHBOARD RESULT */}
+      <motion.div 
+        initial={{ x: 50, opacity: 0, rotate: 5 }}
+        whileInView={{ x: 0, opacity: 1, rotate: 2 }}
+        transition={{ duration: 1.2, ease: appleEase }}
+        viewport={{ once: false, amount: 0.5 }}
+        className="w-[280px] h-[340px] bg-[#111111]/90 backdrop-blur-2xl rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/10 flex flex-col p-5"
+      >
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
+            <Zap className="w-4 h-4 text-sky-400" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-white tracking-tight">Extracted Costs</h4>
+            <p className="text-[9px] text-gray-400 font-medium">Historical Data Sync</p>
+          </div>
+        </div>
+        <div className="flex-1 w-full relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={ocrExtractedData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barGap={4}>
+              <XAxis dataKey="month" tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} dy={8} />
+              <YAxis tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+              <Bar dataKey="cost" fill="#38bdf8" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                {ocrExtractedData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={index === ocrExtractedData.length - 1 ? "#38bdf8" : "#334155"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
+
+    </div>
+  );
+};
+
+
+/* ═══════════════════════════════════════════════
    MAIN COMPONENT: THE MATRIX SCROLL
    ═══════════════════════════════════════════════ */
 const FloatingBentoPanel = () => {
   const scrollRef = useRef<HTMLUListElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 4;
+  const totalSlides = 5;
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -239,7 +333,6 @@ const FloatingBentoPanel = () => {
           className="absolute m-auto w-[600px] h-[600px] bg-gradient-to-tr from-teal-200/40 via-sky-200/30 to-blue-300/30 rounded-full blur-[120px] z-0 pointer-events-none"
         />
 
-        {/* Core Animation Area */}
         <div className="relative w-full max-w-4xl aspect-[21/9] flex items-center justify-center z-10 -mt-32">
           
           {/* 1. HEATMAP (Top Left) */}
@@ -284,7 +377,7 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
-          {/* 3. WATER DISTRIBUTION (Bottom Left) - Dritta con Areogramma */}
+          {/* 3. WATER DISTRIBUTION (Bottom Left) */}
           <motion.div
             initial={{ x: -300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
             whileInView={{ x: -120, y: 100, scale: 1, opacity: 1, filter: "blur(0px)" }}
@@ -311,7 +404,6 @@ const FloatingBentoPanel = () => {
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              {/* Icona goccia perfettamente centrata nel buco del Donut */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <Droplet className="w-5 h-5 text-blue-500 fill-blue-500/20" strokeWidth={2} />
               </div>
@@ -409,13 +501,7 @@ const FloatingBentoPanel = () => {
           >
             <div className="absolute inset-0 bg-[#050505]" />
             <div className="relative w-full h-full flex items-center justify-center z-10">
-              <motion.div 
-                initial={{ y: 60, opacity: 0 }} 
-                whileInView={{ y: 0, opacity: 1 }} 
-                transition={{ duration: 1.4, ease: appleEase }} 
-                viewport={{ once: false, amount: 0.5 }} 
-                className="w-full flex justify-center"
-              >
+              <motion.div initial={{ y: 60, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="w-full flex justify-center">
                 <ESGRingsCard />
               </motion.div>
             </div>
@@ -435,6 +521,17 @@ const FloatingBentoPanel = () => {
               </div>
             </div>
           </GalleryItem>
+
+          {/* ── SLIDE 5: OCR BILLING RECOVERY ── */}
+          <GalleryItem 
+            headline="From paper chaos to absolute clarity.<br/>Upload your historical bills." 
+            subheadline="Instant AI-powered OCR data extraction."
+          >
+            <div className="relative w-full h-full flex items-center justify-center mt-12">
+               <OCRScannerFeature />
+            </div>
+          </GalleryItem>
+
         </ul>
 
         {/* Dynamic Glass Pill */}
