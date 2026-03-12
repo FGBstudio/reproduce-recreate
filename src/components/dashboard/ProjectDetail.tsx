@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment } from "react";
+import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
@@ -508,7 +508,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       'energy.hvac_kw',
       'energy.lighting_kw',
       'energy.plugs_kw',
-      'energy.active_energy', // USE FOR EVERYTHING ELSE
       // optional
       'energy.co2_kg',
       'env.temperature',
@@ -993,8 +992,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const groupedMap = new Map<string, any>();
 
     rawData.forEach((d) => {
-      // 1. SKIP energy metrics so the chart stays pure kW
-      if (d.metric === 'energy.active_energy') return;
+      // A. Parsing Data Sicuro
       const rawTs = d.ts_bucket || d.ts || d.ts_hour || d.ts_day;
       const dateObj = parseTimestamp(rawTs);
 
@@ -1330,33 +1328,31 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     // Mappa per vista "Device"
     const deviceTotals = new Map<string, number>();
 
-   /// 3. Somma Valori (Real kWh from the database)
+   // 3. Somma Valori (kWh)
     data.forEach(d => {
-        // FILTER: Only look at the pure energy metric
-        if (d.metric !== 'energy.active_energy') return;
+        const val = Number(d.value_sum ?? d.value ?? 0);
+        if (val <= 0) return;
 
-        // READ DATABASE SUM: Use the pre-aggregated value_sum
-        const kwh = Number(d.value_sum ?? d.value ?? 0);
-        
-        // CRASH FIX: Stop NaN from breaking the Recharts Pie Chart
-        if (kwh <= 0 || isNaN(kwh)) return;
-
-        // MAP CATEGORY: Fast O(1) lookup
         const info = deviceMap.get(d.device_id);
         if (!info) return;
 
-        // SKIP COMPONENTS: Don't double count sub-components
         const isComponent = (info.category || '').toLowerCase().includes('component') || 
                             (info.label || '').toLowerCase().includes('component');
+
+        // ALWAYS skip components for the Donut chart so it doesn't double-count
         if (isComponent) return; 
 
-        // ASSIGN SLICE: Route the kWh directly to the right category
-        const cat = info.category || 'other';
-        if (cat === 'general') totalGeneral += kwh;
-        else if (cat === 'hvac') sumHvac += kwh;
-        else if (cat === 'lighting') sumLighting += kwh;
-        else if (cat === 'plugs') sumPlugs += kwh;
-        else sumOther += kwh;
+        // Accumula per Categoria
+        if (info.category === 'general') totalGeneral += val;
+        else if (info.category === 'hvac') totalHVAC += val;
+        else if (info.category === 'lighting') totalLighting += val;
+        else if (info.category === 'plugs') totalPlugs += val;
+        else totalOtherDefined += val;
+
+        // Accumula per Device (escludendo il generale per evitare duplicati nella vista device)
+        if (info.category !== 'general') {
+             deviceTotals.set(info.label, (deviceTotals.get(info.label) || 0) + val);
+        }
     });
 
     // 4. Creazione Segmenti in base alla Modalità
@@ -1414,16 +1410,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // Totale per il Centro del Donut
   const totalBreakdownKwh = useMemo(() => {
+    // Il totale deve essere sempre quello del "General" se esiste, 
+    // altrimenti la somma dei segmenti.
     const data = energyTimeseriesResp?.data || [];
     let generalSum = 0;
     
+    // Prova a calcolare il Generale reale dai dati
     data.forEach(d => {
-        if (d.metric !== 'energy.active_energy') return;
-
         const info = deviceMap.get(d.device_id);
         if (info && info.category === 'general') {
-            const kwh = Number(d.value_sum ?? d.value ?? 0);
-            if (!isNaN(kwh)) generalSum += kwh; // CRASH FIX
+            generalSum += Number(d.value_sum ?? d.value ?? 0);
         }
     });
 
@@ -1559,16 +1555,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const kwh = Number(d.value_sum ?? d.value ?? 0);
       if (kwh <= 0) return; // Ignora zero o negativi
 
-    // 3. Parsing Data
+      // 3. Parsing Data
       const ts = d.ts_bucket || d.ts;
       if (!ts) return;
-      
-      // CRASH FIX: Use safe parseTimestamp
-      const date = parseTimestamp(ts);
-      if (!date || date > now) return;
+      const date = new Date(ts);
+
+      // 3b. Scarta date future (protezione anti-anomalie)
+      if (date > now) return;
       
       const monthKey = date.toISOString().slice(0, 7); // "2025-03"
       const dayKey = date.toISOString().slice(0, 10);  // "2025-03-01"
+
       // 4. Inizializza Mese se non esiste
       if (!monthsMap.has(monthKey)) {
         monthsMap.set(monthKey, {
@@ -3011,7 +3008,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               </tr>
                             ) : (
                               energyPeriodsData.map((period) => (
-                                <Fragment key={period.monthKey}>
+                                <>
                                   {/* RIGA MESE (Parent) */}
                                   <tr 
                                     key={period.monthKey} 
@@ -3048,11 +3045,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                       <td className="px-3 py-2 text-right text-xs text-gray-500 tabular-nums">
                                         {day.cost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
                                       </td>
-                                   </tr>
-                                    ))}
-                                  </Fragment>
-                                ))
-                              )}
+                                    </tr>
+                                  ))}
+                                </>
+                              ))
+                            )}
                           </tbody>
                         </table>
                       </div>
