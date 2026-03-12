@@ -409,7 +409,7 @@ const FloatingBentoPanel = () => {
                 <img src="/FGB_Pad.png" alt="iPad" className="w-full h-auto object-contain" />
               </motion.div>
               <motion.div 
-                initial={{ x: 70, y: 110, opacity: 0 }} 
+                initial={{ x: 50, y: 120, opacity: 0 }} 
                 whileInView={{ x: 300, y: 20, opacity: 1 }} 
                 transition={{ duration: 1.4, delay: 0.25, ease: appleEase }} 
                 viewport={{ once: false, amount: 0.5 }} 
