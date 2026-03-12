@@ -1559,7 +1559,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const kwh = Number(d.value_sum ?? d.value ?? 0);
       if (kwh <= 0) return; // Ignora zero o negativi
 
-      // 3. Parsing Data
+    // 3. Parsing Data
       const ts = d.ts_bucket || d.ts;
       if (!ts) return;
       
@@ -1568,12 +1568,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       if (!date || date > now) return;
       
       const monthKey = date.toISOString().slice(0, 7); // "2025-03"
-      // 3b. Scarta date future (protezione anti-anomalie)
-      if (date > now) return;
-      
-      const monthKey = date.toISOString().slice(0, 7); // "2025-03"
       const dayKey = date.toISOString().slice(0, 10);  // "2025-03-01"
-
       // 4. Inizializza Mese se non esiste
       if (!monthsMap.has(monthKey)) {
         monthsMap.set(monthKey, {
@@ -3053,11 +3048,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                       <td className="px-3 py-2 text-right text-xs text-gray-500 tabular-nums">
                                         {day.cost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
                                       </td>
-                                    </tr>
-                                  ))}
-                                </>
-                              ))
-                            )}
+                                   </tr>
+                                    ))}
+                                  </Fragment>
+                                ))
+                              )}
                           </tbody>
                         </table>
                       </div>
