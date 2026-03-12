@@ -1562,8 +1562,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       // 3. Parsing Data
       const ts = d.ts_bucket || d.ts;
       if (!ts) return;
-      const date = new Date(ts);
-
+      
+      // CRASH FIX: Use safe parseTimestamp
+      const date = parseTimestamp(ts);
+      if (!date || date > now) return;
+      
+      const monthKey = date.toISOString().slice(0, 7); // "2025-03"
       // 3b. Scarta date future (protezione anti-anomalie)
       if (date > now) return;
       
@@ -3012,7 +3016,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               </tr>
                             ) : (
                               energyPeriodsData.map((period) => (
-                                <>
+                                <Fragment key={period.monthKey}>
                                   {/* RIGA MESE (Parent) */}
                                   <tr 
                                     key={period.monthKey} 
