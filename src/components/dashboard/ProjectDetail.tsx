@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect } from "react";
+import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
@@ -508,6 +508,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       'energy.hvac_kw',
       'energy.lighting_kw',
       'energy.plugs_kw',
+      'energy.active_energy', // USE FOR EVERYTHING ELSE
       // optional
       'energy.co2_kg',
       'env.temperature',
@@ -992,7 +993,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const groupedMap = new Map<string, any>();
 
     rawData.forEach((d) => {
-      // A. Parsing Data Sicuro
+      // 1. SKIP energy metrics so the chart stays pure kW
+      if (d.metric === 'energy.active_energy') return;
       const rawTs = d.ts_bucket || d.ts || d.ts_hour || d.ts_day;
       const dateObj = parseTimestamp(rawTs);
 
@@ -1103,7 +1105,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
 // 1. SAFE DATA CALCULATION: Daily breakdown for the Fullscreen Bar Chart
   const dayNightData = useMemo(() => {
-    if (!energyConsumptionData || energyConsumptionData.length === 0) return [];
+    const rawData = energyTimeseriesResp?.data;
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) return [];
 
     const siteTz = resolveTimezone(project?.timezone);
     const DAY_START = 8; 
@@ -1111,28 +1114,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
     const map = new Map<string, { label: string, dayKwh: number, nightKwh: number, ts: number }>();
 
-    energyConsumptionData.forEach(point => {
-      // 1. Safe Date parsing (Guaranteed to have a valid timestamp)
-      const dateObj = new Date(point.ts);
+    rawData.forEach(d => {
+      // 1. Use EXACTLY the true database energy metric
+      if (d.metric !== 'energy.active_energy') return;
+
+      const info = deviceMap.get(d.device_id);
+      const category = (info?.category || '').toLowerCase();
+
+      // 2. EXCLUDE COMPONENTS so we don't double count
+      if (category.includes('component')) return;
+      if (category !== 'general') return;
+
+      const dateObj = parseTimestamp(d.ts_bucket || d.ts);
+      if (!dateObj) return;
+
       const parts = getPartsInTz(dateObj, siteTz);
       const isDay = parts.hour >= DAY_START && parts.hour < DAY_END;
 
-     // 2. Safe Power calculation
-      let totalKw = point.General || 0;
-      if (!totalKw) {
-          Object.keys(point).forEach(k => {
-              if (k !== 'ts' && k !== 'label' && typeof point[k] === 'number') {
-                  // ADD THIS IF STATEMENT: Prevent double-counting components in the total 24h cycle
-                  if (!k.toLowerCase().includes('component')) {
-                      totalKw += point[k] as number;
-                  }
-              }
-          });
-      }
+      // 3. DIRECT KWH READ: No more time math!
+      const kwh = Number(d.value_sum ?? 0);
+      if (isNaN(kwh) || kwh <= 0) return;
 
-      // 3. Convert Power to Energy (kWh)
-      const kwh = totalKw * bucketHours;
-      const label = String(point.label);
+      const label = formatChartLabel(dateObj, timeRange.bucket, siteTz, timePeriod as any);
       const tsKey = dateObj.getTime();
       
       if (!map.has(label)) {
@@ -1145,9 +1148,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     });
 
     return Array.from(map.values()).sort((a, b) => a.ts - b.ts);
-  }, [energyConsumptionData, project?.timezone, bucketHours]);
-
-  // 2. RING WIDGET SUMMARY: Calculates the totals for the circular dial
+  }, [energyTimeseriesResp, project?.timezone, timeRange.bucket, timePeriod, deviceMap]);  // 2. RING WIDGET SUMMARY: Calculates the totals for the circular dial
   const dayNightSummary = useMemo(() => {
     let dayTotal = 0;
     let nightTotal = 0;
@@ -1312,121 +1313,92 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
   // Energy distribution with cumulative kWh values based on time period
   // --- NUOVO CALCOLO: ENERGY BREAKDOWN (Donut Chart) ---
-  // --- 4. DATI GRAFICO: ENERGY CONSUMPTION BREAKDOWN (Donut Chart) ---
+// --- 4. DATI GRAFICO: ENERGY CONSUMPTION BREAKDOWN (Donut Chart) ---
   const energyDistributionData = useMemo(() => {
-    // 1. Validazione Dati
     const data = energyTimeseriesResp?.data;
     if (!data || !Array.isArray(data) || data.length === 0) return [];
 
-    // 2. Inizializzazione Totali
-    let totalGeneral = 0;
-    let totalHVAC = 0;
-    let totalLighting = 0;
-    let totalPlugs = 0;
-    let totalOtherDefined = 0; // Device esplicitamente categorizzati come 'other'
-    
-    // Mappa per vista "Device"
+    let totalGeneral = 0; let totalHVAC = 0; let totalLighting = 0; let totalPlugs = 0; let totalOtherDefined = 0; 
     const deviceTotals = new Map<string, number>();
 
-   // 3. Somma Valori (kWh)
     data.forEach(d => {
-        const val = Number(d.value_sum ?? d.value ?? 0);
-        if (val <= 0) return;
+        // 1. EXACT energy metric
+        if (d.metric !== 'energy.active_energy') return;
 
         const info = deviceMap.get(d.device_id);
         if (!info) return;
 
-        const isComponent = (info.category || '').toLowerCase().includes('component') || 
-                            (info.label || '').toLowerCase().includes('component');
+        // 2. EXCLUDE COMPONENTS
+        const category = (info.category || '').toLowerCase();
+        if (category.includes('component')) return; 
 
-        // ALWAYS skip components for the Donut chart so it doesn't double-count
-        if (isComponent) return; 
+        // 3. PURE KWH READ
+        const kwh = Number(d.value_sum ?? 0);
+        if (kwh <= 0 || isNaN(kwh)) return;
 
-        // Accumula per Categoria
-        if (info.category === 'general') totalGeneral += val;
-        else if (info.category === 'hvac') totalHVAC += val;
-        else if (info.category === 'lighting') totalLighting += val;
-        else if (info.category === 'plugs') totalPlugs += val;
-        else totalOtherDefined += val;
+        if (category === 'general') totalGeneral += kwh;
+        else if (category === 'hvac') totalHVAC += kwh;
+        else if (category === 'lighting') totalLighting += kwh;
+        else if (category === 'plugs') totalPlugs += kwh;
+        else totalOtherDefined += kwh;
 
-        // Accumula per Device (escludendo il generale per evitare duplicati nella vista device)
-        if (info.category !== 'general') {
-             deviceTotals.set(info.label, (deviceTotals.get(info.label) || 0) + val);
+        if (category !== 'general') {
+             deviceTotals.set(info.label, (deviceTotals.get(info.label) || 0) + kwh);
         }
     });
 
-    // 4. Creazione Segmenti in base alla Modalità
     let segments = [];
 
     if (energyViewMode === 'category') {
-        // Calcola il totale dei sotto-contatori noti
         const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
         
-        // CASO A: Ho solo il Generale (Nessun sotto-contatore)
-        // "se c'è solo general allora la scritta è general"
         if (subTotal === 0 && totalGeneral > 0) {
-            segments.push({ name: 'General', value: totalGeneral, color: '#009193' }); // FGB Teal
+            segments.push({ name: 'General', value: totalGeneral, color: '#009193' }); 
         } 
-        // CASO B: Ho sotto-contatori
         else {
-            if (totalHVAC > 0) segments.push({ name: 'HVAC', value: totalHVAC, color: '#006367' }); // Dark Teal
-            if (totalLighting > 0) segments.push({ name: 'Lighting', value: totalLighting, color: '#e63f26' }); // Orange-Red
-            if (totalPlugs > 0) segments.push({ name: 'Plugs & Loads', value: totalPlugs, color: '#f8cbcc' }); // Pink Light
-            if (totalOtherDefined > 0) segments.push({ name: 'Other Devices', value: totalOtherDefined, color: '#911140' }); // Burgundy
+            if (totalHVAC > 0) segments.push({ name: 'HVAC', value: totalHVAC, color: '#006367' }); 
+            if (totalLighting > 0) segments.push({ name: 'Lighting', value: totalLighting, color: '#e63f26' }); 
+            if (totalPlugs > 0) segments.push({ name: 'Plugs & Loads', value: totalPlugs, color: '#f8cbcc' }); 
+            if (totalOtherDefined > 0) segments.push({ name: 'Other Devices', value: totalOtherDefined, color: '#911140' }); 
 
-            // Calcola il "Resto" del Generale (consumi non monitorati dai sotto-contatori)
-            // Se il Generale è < della somma (errore dati), il resto è 0.
             const remainder = Math.max(0, totalGeneral - subTotal);
-            
-            // Mostriamo "Other" solo se c'è una differenza significativa (> 1 kWh)
-            // Se il cliente ha "General" e "HVAC", la differenza è il resto dell'edificio.
             if (remainder > 1) {
-                 segments.push({ name: 'Other', value: remainder, color: '#a0d5d6' }); // Teal Light
+                 segments.push({ name: 'Other', value: remainder, color: '#a0d5d6' }); 
             }
         }
     } else {
-        // VISTA DEVICE: Mostra i singoli carichi
-        // Se non ci sono device specifici ma c'è il generale, mostra il generale
         if (deviceTotals.size === 0 && totalGeneral > 0) {
              segments.push({ name: 'General', value: totalGeneral, color: '#009193' });
         } else {
-            // Ordina per consumo decrescente
-            const sortedDevices = Array.from(deviceTotals.entries())
-                .sort((a, b) => b[1] - a[1]);
-            
+            const sortedDevices = Array.from(deviceTotals.entries()).sort((a, b) => b[1] - a[1]);
             sortedDevices.forEach((entry, index) => {
-                segments.push({
-                    name: entry[0],
-                    value: entry[1],
-                    // Cicla sulla palette FGB
-                    color: FGB_PALETTE[index % FGB_PALETTE.length]
-                });
+                segments.push({ name: entry[0], value: entry[1], color: FGB_PALETTE[index % FGB_PALETTE.length] });
             });
         }
     }
-
     return segments;
   }, [energyTimeseriesResp, energyViewMode, deviceMap, FGB_PALETTE]);
-
-  // Totale per il Centro del Donut
+ // Totale per il Centro del Donut
   const totalBreakdownKwh = useMemo(() => {
-    // Il totale deve essere sempre quello del "General" se esiste, 
-    // altrimenti la somma dei segmenti.
     const data = energyTimeseriesResp?.data || [];
     let generalSum = 0;
     
-    // Prova a calcolare il Generale reale dai dati
     data.forEach(d => {
+        if (d.metric !== 'energy.active_energy') return;
+
         const info = deviceMap.get(d.device_id);
-        if (info && info.category === 'general') {
-            generalSum += Number(d.value_sum ?? d.value ?? 0);
+        if (!info) return;
+
+        const category = (info.category || '').toLowerCase();
+        if (category.includes('component')) return;
+
+        if (category === 'general') {
+            const kwh = Number(d.value_sum ?? 0);
+            if (!isNaN(kwh)) generalSum += kwh;
         }
     });
 
-    // Se abbiamo un generale, usiamo quello (è la verità assoluta del contatore)
     if (generalSum > 0) return generalSum;
-
-    // Fallback: Somma dei segmenti (se non c'è un contatore generale ma solo parziali)
     return energyDistributionData.reduce((sum, item) => sum + (item.value || 0), 0);
   }, [energyTimeseriesResp, deviceMap, energyDistributionData]);
   
@@ -1555,17 +1527,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       const kwh = Number(d.value_sum ?? d.value ?? 0);
       if (kwh <= 0) return; // Ignora zero o negativi
 
-      // 3. Parsing Data
+    // 3. Parsing Data
       const ts = d.ts_bucket || d.ts;
       if (!ts) return;
-      const date = new Date(ts);
-
-      // 3b. Scarta date future (protezione anti-anomalie)
-      if (date > now) return;
+      
+      // CRASH FIX: Use safe parseTimestamp
+      const date = parseTimestamp(ts);
+      if (!date || date > now) return;
       
       const monthKey = date.toISOString().slice(0, 7); // "2025-03"
       const dayKey = date.toISOString().slice(0, 10);  // "2025-03-01"
-
       // 4. Inizializza Mese se non esiste
       if (!monthsMap.has(monthKey)) {
         monthsMap.set(monthKey, {
@@ -3008,7 +2979,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               </tr>
                             ) : (
                               energyPeriodsData.map((period) => (
-                                <>
+                                <Fragment key={period.monthKey}>
                                   {/* RIGA MESE (Parent) */}
                                   <tr 
                                     key={period.monthKey} 
@@ -3045,11 +3016,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                       <td className="px-3 py-2 text-right text-xs text-gray-500 tabular-nums">
                                         {day.cost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
                                       </td>
-                                    </tr>
-                                  ))}
-                                </>
-                              ))
-                            )}
+                                   </tr>
+                                    ))}
+                                  </Fragment>
+                                ))
+                              )}
                           </tbody>
                         </table>
                       </div>
