@@ -532,6 +532,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   );
   const energyTimeseriesResp = energyTimeseriesQuery.data;
 
+  // --- PREVIOUS PERIOD: fetch energy data for the equivalent previous time window ---
+  const prevPeriodRange = useMemo(() => {
+    const durationMs = timeRange.end.getTime() - timeRange.start.getTime();
+    const prevEnd = new Date(timeRange.start.getTime());
+    const prevStart = new Date(prevEnd.getTime() - durationMs);
+    return { start: prevStart, end: prevEnd, bucket: timeRange.bucket };
+  }, [timeRange]);
+
+  const { data: prevEnergyTimeseriesResp } = useEnergyTimeseries(
+    {
+      site_id: project?.siteId,
+      device_ids: siteDeviceIds.length > 0 ? siteDeviceIds : undefined,
+      metrics: energyMetrics,
+      start: prevPeriodRange.start.toISOString(),
+      end: prevPeriodRange.end.toISOString(),
+      bucket: prevPeriodRange.bucket,
+    },
+    {
+      enabled: isSupabaseConfigured && (!!project?.siteId || siteDeviceIds.length > 0),
+    }
+  );
+
   // Also fetch energy latest from dedicated table
   const { data: energyLatestResp } = useEnergyLatest(
     project?.siteId ? { site_id: project.siteId } : undefined,
