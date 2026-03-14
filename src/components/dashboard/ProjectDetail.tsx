@@ -3868,7 +3868,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 50]} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 50]} allowDataOverflow={true} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
