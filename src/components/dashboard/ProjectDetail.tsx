@@ -2969,9 +2969,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficiency</p>
-                        <p className="text-xl md:text-3xl font-bold text-emerald-500">87%</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">rating</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-blue-500 font-medium">↑ 3%</div>
+                        <p className={`text-xl md:text-3xl font-bold ${
+                          efficiencyData.percentage === null ? 'text-gray-400' :
+                          efficiencyData.delta! <= 0 ? 'text-emerald-500' : 
+                          efficiencyData.delta! <= 10 ? 'text-amber-500' : 'text-red-500'
+                        }`}>
+                          {efficiencyData.percentage !== null ? `${efficiencyData.percentage}%` : '---'}
+                        </p>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">vs {t(`time.${timePeriod === 'custom' ? 'week' : timePeriod}`)} prec.</p>
+                        {efficiencyData.delta !== null && (
+                          <div className={`mt-1 md:mt-2 text-[10px] md:text-xs font-medium ${
+                            efficiencyData.delta <= 0 ? 'text-emerald-500' : 'text-red-500'
+                          }`}>
+                            {efficiencyData.delta <= 0 ? '↓' : '↑'} {Math.abs(efficiencyData.delta)}%
+                          </div>
+                        )}
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
