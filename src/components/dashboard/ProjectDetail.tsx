@@ -1496,6 +1496,38 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     };
   }, [energyTimeseriesResp, project, deviceMap]);
 
+  // --- EFFICIENCY: Confronto consumo periodo corrente vs periodo precedente ---
+  const efficiencyData = useMemo(() => {
+    // Helper: somma kWh "general" da un dataset
+    const sumGeneralKwh = (data: any[] | undefined | null) => {
+      if (!data || !Array.isArray(data)) return 0;
+      let total = 0;
+      data.forEach(d => {
+        if (d.metric !== 'energy.active_energy') return;
+        const info = deviceMap.get(d.device_id);
+        const isGeneral = (info && info.category === 'general') ||
+          (!info && (d.metric === 'energy.power_kw' || d.metric === 'energy.active_energy'));
+        if (!isGeneral) return;
+        total += Number(d.value_sum ?? d.value ?? 0);
+      });
+      return total;
+    };
+
+    const currentKwh = sumGeneralKwh(energyTimeseriesResp?.data);
+    const prevKwh = sumGeneralKwh(prevEnergyTimeseriesResp?.data);
+
+    if (prevKwh <= 0 || currentKwh <= 0) {
+      return { percentage: null, delta: null };
+    }
+
+    // Efficiency = quanto stiamo consumando rispetto al periodo precedente
+    // < 100% = stiamo consumando meno (positivo), > 100% = stiamo consumando di più (negativo)
+    const ratio = (currentKwh / prevKwh) * 100;
+    const delta = ratio - 100; // positivo = consumiamo di più, negativo = consumiamo meno
+
+    return { percentage: Math.round(ratio), delta: Math.round(delta) };
+  }, [energyTimeseriesResp, prevEnergyTimeseriesResp, deviceMap]);
+
   // --- 5. WIDGET: ENERGY PERIODS (Pivot Table Annuale) ---
   
   // A. Stato per il widget
