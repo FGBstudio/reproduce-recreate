@@ -532,6 +532,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   );
   const energyTimeseriesResp = energyTimeseriesQuery.data;
 
+  // --- PREVIOUS PERIOD: fetch energy data for the equivalent previous time window ---
+  const prevPeriodRange = useMemo(() => {
+    const durationMs = timeRange.end.getTime() - timeRange.start.getTime();
+    const prevEnd = new Date(timeRange.start.getTime());
+    const prevStart = new Date(prevEnd.getTime() - durationMs);
+    return { start: prevStart, end: prevEnd, bucket: timeRange.bucket };
+  }, [timeRange]);
+
+  const { data: prevEnergyTimeseriesResp } = useEnergyTimeseries(
+    {
+      site_id: project?.siteId,
+      device_ids: siteDeviceIds.length > 0 ? siteDeviceIds : undefined,
+      metrics: energyMetrics,
+      start: prevPeriodRange.start.toISOString(),
+      end: prevPeriodRange.end.toISOString(),
+      bucket: prevPeriodRange.bucket,
+    },
+    {
+      enabled: isSupabaseConfigured && (!!project?.siteId || siteDeviceIds.length > 0),
+    }
+  );
+
   // Also fetch energy latest from dedicated table
   const { data: energyLatestResp } = useEnergyLatest(
     project?.siteId ? { site_id: project.siteId } : undefined,
@@ -1473,6 +1495,38 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       pricePerKwh: price
     };
   }, [energyTimeseriesResp, project, deviceMap]);
+
+  // --- EFFICIENCY: Confronto consumo periodo corrente vs periodo precedente ---
+  const efficiencyData = useMemo(() => {
+    // Helper: somma kWh "general" da un dataset
+    const sumGeneralKwh = (data: any[] | undefined | null) => {
+      if (!data || !Array.isArray(data)) return 0;
+      let total = 0;
+      data.forEach(d => {
+        if (d.metric !== 'energy.active_energy') return;
+        const info = deviceMap.get(d.device_id);
+        const isGeneral = (info && info.category === 'general') ||
+          (!info && (d.metric === 'energy.power_kw' || d.metric === 'energy.active_energy'));
+        if (!isGeneral) return;
+        total += Number(d.value_sum ?? d.value ?? 0);
+      });
+      return total;
+    };
+
+    const currentKwh = sumGeneralKwh(energyTimeseriesResp?.data);
+    const prevKwh = sumGeneralKwh(prevEnergyTimeseriesResp?.data);
+
+    if (prevKwh <= 0 || currentKwh <= 0) {
+      return { percentage: null, delta: null };
+    }
+
+    // Efficiency = quanto stiamo consumando rispetto al periodo precedente
+    // < 100% = stiamo consumando meno (positivo), > 100% = stiamo consumando di più (negativo)
+    const ratio = (currentKwh / prevKwh) * 100;
+    const delta = ratio - 100; // positivo = consumiamo di più, negativo = consumiamo meno
+
+    return { percentage: Math.round(ratio), delta: Math.round(delta) };
+  }, [energyTimeseriesResp, prevEnergyTimeseriesResp, deviceMap]);
 
   // --- 5. WIDGET: ENERGY PERIODS (Pivot Table Annuale) ---
   
@@ -2915,9 +2969,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficiency</p>
-                        <p className="text-xl md:text-3xl font-bold text-emerald-500">87%</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">rating</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-blue-500 font-medium">↑ 3%</div>
+                        <p className={`text-xl md:text-3xl font-bold ${
+                          efficiencyData.percentage === null ? 'text-gray-400' :
+                          efficiencyData.delta! <= 0 ? 'text-emerald-500' : 
+                          efficiencyData.delta! <= 10 ? 'text-amber-500' : 'text-red-500'
+                        }`}>
+                          {efficiencyData.percentage !== null ? `${efficiencyData.percentage}%` : '---'}
+                        </p>
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">vs {t(`time.${timePeriod === 'custom' ? 'week' : timePeriod}`)} prec.</p>
+                        {efficiencyData.delta !== null && (
+                          <div className={`mt-1 md:mt-2 text-[10px] md:text-xs font-medium ${
+                            efficiencyData.delta <= 0 ? 'text-emerald-500' : 'text-red-500'
+                          }`}>
+                            {efficiencyData.delta <= 0 ? '↓' : '↑'} {Math.abs(efficiencyData.delta)}%
+                          </div>
+                        )}
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
@@ -4162,9 +4228,21 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
                         <p className="text-sm text-gray-500 mb-1">Efficiency</p>
-                        <p className="text-3xl font-bold text-emerald-500">82%</p>
-                        <p className="text-xs text-gray-500 mt-1">efficient use</p>
-                        <div className="mt-2 text-xs text-blue-500 font-medium">↑ 5% vs last month</div>
+                        <p className={`text-3xl font-bold ${
+                          efficiencyData.percentage === null ? 'text-gray-400' :
+                          efficiencyData.delta! <= 0 ? 'text-emerald-500' : 
+                          efficiencyData.delta! <= 10 ? 'text-amber-500' : 'text-red-500'
+                        }`}>
+                          {efficiencyData.percentage !== null ? `${efficiencyData.percentage}%` : '---'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">vs {t(`time.${timePeriod === 'custom' ? 'week' : timePeriod}`)} prec.</p>
+                        {efficiencyData.delta !== null && (
+                          <div className={`mt-2 text-xs font-medium ${
+                            efficiencyData.delta <= 0 ? 'text-emerald-500' : 'text-red-500'
+                          }`}>
+                            {efficiencyData.delta <= 0 ? '↓' : '↑'} {Math.abs(efficiencyData.delta)}%
+                          </div>
+                        )}
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
                         <p className="text-sm text-gray-500 mb-1">Leaks Detected</p>
