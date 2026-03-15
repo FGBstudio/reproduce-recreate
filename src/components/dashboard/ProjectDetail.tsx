@@ -3776,17 +3776,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <>
                 {/* Slide 1: Overview + CO2 + TVOC */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-                    {/* Site Alerts Widget */}
-                    <div className="col-span-1 lg:col-span-1">
-                      <div className={airCardClass}>
-                        <h3 className="text-sm font-bold text-gray-800 tracking-tight mb-3">{t('pd.site_alerts.title') || 'Site Alerts'}</h3>
-                        <SiteAlertsWidget alertStatus={pdAlertStatus} />
-                      </div>
-                    </div>
-
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* Air Quality Overview Card */}
-                    <div ref={airQualityRef} className={`col-span-1 lg:col-span-2 ${airCardClass}`}>
+                    <div ref={airQualityRef} className={`col-span-1 ${airCardClass} flex flex-col`}>
                       <div className="absolute top-4 right-4">
                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                       </div>
