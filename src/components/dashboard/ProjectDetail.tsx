@@ -4298,20 +4298,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 saved</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Efficiency</p>
+                        <p className="text-sm text-gray-500 mb-1">{t('energy.efficiency')}</p>
                         <p className={`text-3xl font-bold ${
-                          efficiencyData.percentage === null ? 'text-gray-400' :
-                          efficiencyData.delta! <= 0 ? 'text-emerald-500' : 
-                          efficiencyData.delta! <= 10 ? 'text-amber-500' : 'text-red-500'
+                          efficiencyData.delta === null ? 'text-gray-400' :
+                          efficiencyData.delta < 0 ? 'text-emerald-500' : 
+                          efficiencyData.delta === 0 ? 'text-gray-400' : 'text-red-500'
                         }`}>
-                          {efficiencyData.percentage !== null ? `${efficiencyData.percentage}%` : '---'}
+                          {efficiencyData.delta === null ? 'N/A' :
+                           efficiencyData.delta === 0 ? '0%' :
+                           `${efficiencyData.delta > 0 ? '+' : ''}${efficiencyData.delta}%`}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">vs {t(`time.${timePeriod === 'custom' ? 'week' : timePeriod}`)} prec.</p>
-                        {efficiencyData.delta !== null && (
+                        <p className="text-xs text-gray-500 mt-1">{efficiencySubtitle}</p>
+                        {efficiencyData.delta !== null && efficiencyData.delta !== 0 && (
                           <div className={`mt-2 text-xs font-medium ${
-                            efficiencyData.delta <= 0 ? 'text-emerald-500' : 'text-red-500'
+                            efficiencyData.delta < 0 ? 'text-emerald-500' : 'text-red-500'
                           }`}>
-                            {efficiencyData.delta <= 0 ? '↓' : '↑'} {Math.abs(efficiencyData.delta)}%
+                            {efficiencyData.delta < 0 ? '↑' : '↓'} {language === 'it' ? 'efficienza' : 'efficiency'}
                           </div>
                         )}
                       </div>
