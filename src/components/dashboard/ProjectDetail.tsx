@@ -532,13 +532,67 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   );
   const energyTimeseriesResp = energyTimeseriesQuery.data;
 
-  // --- PREVIOUS PERIOD: fetch energy data for the equivalent previous time window ---
+  // --- PREVIOUS PERIOD: Equivalent PTD (Period-To-Date) comparison ---
   const prevPeriodRange = useMemo(() => {
-    const durationMs = timeRange.end.getTime() - timeRange.start.getTime();
-    const prevEnd = new Date(timeRange.start.getTime());
-    const prevStart = new Date(prevEnd.getTime() - durationMs);
-    return { start: prevStart, end: prevEnd, bucket: timeRange.bucket };
-  }, [timeRange]);
+    const now = timeRange.end; // current "now"
+
+    let prevStart: Date;
+    let prevEnd: Date;
+
+    switch (timePeriod) {
+      case 'today': {
+        // Current: today 00:00 → now | Prev: yesterday 00:00 → yesterday same hour
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        prevStart = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
+        prevEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      }
+      case 'week': {
+        // Current: this Monday 00:00 → now | Prev: last Monday 00:00 → last week same day/hour
+        prevStart = new Date(timeRange.start.getTime() - 7 * 24 * 60 * 60 * 1000);
+        prevEnd = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      }
+      case 'month': {
+        // Current: 1st of this month → now | Prev: 1st of last month → last month same day/hour
+        const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        // Same day/time last month, clamped to end of prev month
+        const prevMonthEnd = new Date(now);
+        prevMonthEnd.setMonth(prevMonthEnd.getMonth() - 1);
+        // Handle edge: e.g. March 31 → Feb 28/29
+        if (prevMonthEnd.getMonth() !== ((now.getMonth() - 1 + 12) % 12)) {
+          prevMonthEnd.setDate(0); // last day of the target month
+        }
+        prevStart = prevMonthStart;
+        prevEnd = prevMonthEnd;
+        break;
+      }
+      case 'year': {
+        // Current: Jan 1 this year → now | Prev: Jan 1 last year → last year same day/hour
+        prevStart = new Date(now.getFullYear() - 1, 0, 1);
+        const prevYearEnd = new Date(now);
+        prevYearEnd.setFullYear(prevYearEnd.getFullYear() - 1);
+        prevEnd = prevYearEnd;
+        break;
+      }
+      default: {
+        // custom / fallback: mirror duration
+        const durationMs = timeRange.end.getTime() - timeRange.start.getTime();
+        prevEnd = new Date(timeRange.start.getTime());
+        prevStart = new Date(prevEnd.getTime() - durationMs);
+        break;
+      }
+    }
+
+    // Determine bucket based on prev period duration
+    const durationHours = (prevEnd.getTime() - prevStart.getTime()) / (1000 * 60 * 60);
+    let bucket: '15m' | '1h' | '1d';
+    if (durationHours <= 24) bucket = '15m';
+    else if (durationHours <= 24 * 31) bucket = '1h';
+    else bucket = '1d';
+
+    return { start: prevStart, end: prevEnd, bucket };
+  }, [timeRange, timePeriod]);
 
   const { data: prevEnergyTimeseriesResp } = useEnergyTimeseries(
     {
