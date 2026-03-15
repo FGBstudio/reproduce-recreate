@@ -3868,7 +3868,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
+                  </div>
 
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
                     {/* CO2 Trend Chart */}
                     <div ref={co2TrendRef} className={airCardClass}>
                       <div className="flex justify-between items-center mb-5">
