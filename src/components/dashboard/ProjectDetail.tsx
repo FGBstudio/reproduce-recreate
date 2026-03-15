@@ -532,13 +532,67 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   );
   const energyTimeseriesResp = energyTimeseriesQuery.data;
 
-  // --- PREVIOUS PERIOD: fetch energy data for the equivalent previous time window ---
+  // --- PREVIOUS PERIOD: Equivalent PTD (Period-To-Date) comparison ---
   const prevPeriodRange = useMemo(() => {
-    const durationMs = timeRange.end.getTime() - timeRange.start.getTime();
-    const prevEnd = new Date(timeRange.start.getTime());
-    const prevStart = new Date(prevEnd.getTime() - durationMs);
-    return { start: prevStart, end: prevEnd, bucket: timeRange.bucket };
-  }, [timeRange]);
+    const now = timeRange.end; // current "now"
+
+    let prevStart: Date;
+    let prevEnd: Date;
+
+    switch (timePeriod) {
+      case 'today': {
+        // Current: today 00:00 → now | Prev: yesterday 00:00 → yesterday same hour
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        prevStart = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
+        prevEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      }
+      case 'week': {
+        // Current: this Monday 00:00 → now | Prev: last Monday 00:00 → last week same day/hour
+        prevStart = new Date(timeRange.start.getTime() - 7 * 24 * 60 * 60 * 1000);
+        prevEnd = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      }
+      case 'month': {
+        // Current: 1st of this month → now | Prev: 1st of last month → last month same day/hour
+        const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        // Same day/time last month, clamped to end of prev month
+        const prevMonthEnd = new Date(now);
+        prevMonthEnd.setMonth(prevMonthEnd.getMonth() - 1);
+        // Handle edge: e.g. March 31 → Feb 28/29
+        if (prevMonthEnd.getMonth() !== ((now.getMonth() - 1 + 12) % 12)) {
+          prevMonthEnd.setDate(0); // last day of the target month
+        }
+        prevStart = prevMonthStart;
+        prevEnd = prevMonthEnd;
+        break;
+      }
+      case 'year': {
+        // Current: Jan 1 this year → now | Prev: Jan 1 last year → last year same day/hour
+        prevStart = new Date(now.getFullYear() - 1, 0, 1);
+        const prevYearEnd = new Date(now);
+        prevYearEnd.setFullYear(prevYearEnd.getFullYear() - 1);
+        prevEnd = prevYearEnd;
+        break;
+      }
+      default: {
+        // custom / fallback: mirror duration
+        const durationMs = timeRange.end.getTime() - timeRange.start.getTime();
+        prevEnd = new Date(timeRange.start.getTime());
+        prevStart = new Date(prevEnd.getTime() - durationMs);
+        break;
+      }
+    }
+
+    // Determine bucket based on prev period duration
+    const durationHours = (prevEnd.getTime() - prevStart.getTime()) / (1000 * 60 * 60);
+    let bucket: '15m' | '1h' | '1d';
+    if (durationHours <= 24) bucket = '15m';
+    else if (durationHours <= 24 * 31) bucket = '1h';
+    else bucket = '1d';
+
+    return { start: prevStart, end: prevEnd, bucket };
+  }, [timeRange, timePeriod]);
 
   const { data: prevEnergyTimeseriesResp } = useEnergyTimeseries(
     {
@@ -1496,9 +1550,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     };
   }, [energyTimeseriesResp, project, deviceMap]);
 
-  // --- EFFICIENCY: Confronto consumo periodo corrente vs periodo precedente ---
+  // --- EFFICIENCY: ((current - prev) / prev) * 100 — negative = saving ---
   const efficiencyData = useMemo(() => {
-    // Helper: somma kWh "general" da un dataset
     const sumGeneralKwh = (data: any[] | undefined | null) => {
       if (!data || !Array.isArray(data)) return 0;
       let total = 0;
@@ -1516,17 +1569,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const currentKwh = sumGeneralKwh(energyTimeseriesResp?.data);
     const prevKwh = sumGeneralKwh(prevEnergyTimeseriesResp?.data);
 
-    if (prevKwh <= 0 || currentKwh <= 0) {
-      return { percentage: null, delta: null };
+    // Guard: if prev is 0 or no data, show N/A
+    if (prevKwh <= 0) {
+      return { delta: null, noData: true };
     }
 
-    // Efficiency = quanto stiamo consumando rispetto al periodo precedente
-    // < 100% = stiamo consumando meno (positivo), > 100% = stiamo consumando di più (negativo)
-    const ratio = (currentKwh / prevKwh) * 100;
-    const delta = ratio - 100; // positivo = consumiamo di più, negativo = consumiamo meno
+    // ((curr - prev) / prev) * 100 → negative = saving
+    const delta = Math.round(((currentKwh - prevKwh) / prevKwh) * 100);
 
-    return { percentage: Math.round(ratio), delta: Math.round(delta) };
+    return { delta, noData: false };
   }, [energyTimeseriesResp, prevEnergyTimeseriesResp, deviceMap]);
+
+  // Efficiency comparison subtitle
+  const efficiencySubtitle = useMemo(() => {
+    if (efficiencyData.noData) {
+      return language === 'it' ? 'Dati storici insufficienti' : 'Not enough historical data';
+    }
+    const labels: Record<string, { en: string; it: string }> = {
+      today: { en: 'vs yesterday (same time)', it: 'vs ieri (stessa ora)' },
+      week: { en: 'vs prev. week (same days)', it: 'vs sett. prec. (stessi giorni)' },
+      month: { en: 'vs prev. month (same days)', it: 'vs mese prec. (stessi giorni)' },
+      year: { en: 'vs last year (YTD)', it: "vs anno prec. (YTD)" },
+      custom: { en: 'vs prev. period', it: 'vs periodo prec.' },
+    };
+    const key = timePeriod as string;
+    const l = labels[key] || labels.custom;
+    return language === 'it' ? l.it : l.en;
+  }, [efficiencyData.noData, timePeriod, language]);
 
   // --- 5. WIDGET: ENERGY PERIODS (Pivot Table Annuale) ---
   
@@ -2968,20 +3037,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         {/* <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">Efficiency</p>
+                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('energy.efficiency')}</p>
                         <p className={`text-xl md:text-3xl font-bold ${
-                          efficiencyData.percentage === null ? 'text-gray-400' :
-                          efficiencyData.delta! <= 0 ? 'text-emerald-500' : 
-                          efficiencyData.delta! <= 10 ? 'text-amber-500' : 'text-red-500'
+                          efficiencyData.delta === null ? 'text-gray-400' :
+                          efficiencyData.delta < 0 ? 'text-emerald-500' : 
+                          efficiencyData.delta === 0 ? 'text-gray-400' : 'text-red-500'
                         }`}>
-                          {efficiencyData.percentage !== null ? `${efficiencyData.percentage}%` : '---'}
+                          {efficiencyData.delta === null ? 'N/A' :
+                           efficiencyData.delta === 0 ? '0%' :
+                           `${efficiencyData.delta > 0 ? '+' : ''}${efficiencyData.delta}%`}
                         </p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">vs {t(`time.${timePeriod === 'custom' ? 'week' : timePeriod}`)} prec.</p>
-                        {efficiencyData.delta !== null && (
+                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">{efficiencySubtitle}</p>
+                        {efficiencyData.delta !== null && efficiencyData.delta !== 0 && (
                           <div className={`mt-1 md:mt-2 text-[10px] md:text-xs font-medium ${
-                            efficiencyData.delta <= 0 ? 'text-emerald-500' : 'text-red-500'
+                            efficiencyData.delta < 0 ? 'text-emerald-500' : 'text-red-500'
                           }`}>
-                            {efficiencyData.delta <= 0 ? '↓' : '↑'} {Math.abs(efficiencyData.delta)}%
+                            {efficiencyData.delta < 0 ? '↑' : '↓'} {language === 'it' ? 'efficienza' : 'efficiency'}
                           </div>
                         )}
                       </div>
@@ -4227,20 +4298,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 saved</div>
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Efficiency</p>
+                        <p className="text-sm text-gray-500 mb-1">{t('energy.efficiency')}</p>
                         <p className={`text-3xl font-bold ${
-                          efficiencyData.percentage === null ? 'text-gray-400' :
-                          efficiencyData.delta! <= 0 ? 'text-emerald-500' : 
-                          efficiencyData.delta! <= 10 ? 'text-amber-500' : 'text-red-500'
+                          efficiencyData.delta === null ? 'text-gray-400' :
+                          efficiencyData.delta < 0 ? 'text-emerald-500' : 
+                          efficiencyData.delta === 0 ? 'text-gray-400' : 'text-red-500'
                         }`}>
-                          {efficiencyData.percentage !== null ? `${efficiencyData.percentage}%` : '---'}
+                          {efficiencyData.delta === null ? 'N/A' :
+                           efficiencyData.delta === 0 ? '0%' :
+                           `${efficiencyData.delta > 0 ? '+' : ''}${efficiencyData.delta}%`}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">vs {t(`time.${timePeriod === 'custom' ? 'week' : timePeriod}`)} prec.</p>
-                        {efficiencyData.delta !== null && (
+                        <p className="text-xs text-gray-500 mt-1">{efficiencySubtitle}</p>
+                        {efficiencyData.delta !== null && efficiencyData.delta !== 0 && (
                           <div className={`mt-2 text-xs font-medium ${
-                            efficiencyData.delta <= 0 ? 'text-emerald-500' : 'text-red-500'
+                            efficiencyData.delta < 0 ? 'text-emerald-500' : 'text-red-500'
                           }`}>
-                            {efficiencyData.delta <= 0 ? '↓' : '↑'} {Math.abs(efficiencyData.delta)}%
+                            {efficiencyData.delta < 0 ? '↑' : '↓'} {language === 'it' ? 'efficienza' : 'efficiency'}
                           </div>
                         )}
                       </div>
