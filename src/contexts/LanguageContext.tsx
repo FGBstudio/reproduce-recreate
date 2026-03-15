@@ -312,6 +312,7 @@ const translations: Record<string, Record<Language, string>> = {
   'pd.hm_critical': { en: 'Critical', it: 'Critico', fr: 'Critique', es: 'Crítico', zh: '严重' },
 
   // Site Alerts widget
+  'pd.site_alerts.title': { en: 'Site Alerts', it: 'Alert Sito', fr: 'Alertes du site', es: 'Alertas del sitio', zh: '站点警报' },
   'pd.site_alerts.critical': { en: 'Critical', it: 'Critici', fr: 'Critiques', es: 'Críticos', zh: '严重' },
   'pd.site_alerts.medium': { en: 'Medium', it: 'Medi', fr: 'Moyens', es: 'Medios', zh: '中等' },
   'pd.site_alerts.low': { en: 'Low', it: 'Bassi', fr: 'Faibles', es: 'Bajos', zh: '低' },

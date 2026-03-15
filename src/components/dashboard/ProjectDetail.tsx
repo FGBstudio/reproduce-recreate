@@ -3860,9 +3860,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Site Alerts Widget */}
+                    <div className="col-span-1">
+                      <div className={`${airCardClass} h-full flex flex-col`}>
+                        <h3 className="text-sm font-bold text-gray-800 tracking-tight mb-3">{t('pd.site_alerts.title')}</h3>
+                        <div className="flex-1">
+                          <SiteAlertsWidget alertStatus={pdAlertStatus} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-5">
                     {/* CO2 Trend Chart */}
                     <div ref={co2TrendRef} className={airCardClass}>
                       <div className="flex justify-between items-center mb-5">
