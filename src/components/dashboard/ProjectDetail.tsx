@@ -3776,9 +3776,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <>
                 {/* Slide 1: Overview + CO2 + TVOC */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                    {/* Site Alerts Widget */}
+                    <div className="col-span-1 lg:col-span-1">
+                      <div className={airCardClass}>
+                        <h3 className="text-sm font-bold text-gray-800 tracking-tight mb-3">{t('pd.site_alerts.title') || 'Site Alerts'}</h3>
+                        <SiteAlertsWidget alertStatus={pdAlertStatus} />
+                      </div>
+                    </div>
+
                     {/* Air Quality Overview Card */}
-                    <div ref={airQualityRef} className={`lg:col-span-3 ${airCardClass}`}>
+                    <div ref={airQualityRef} className={`col-span-1 lg:col-span-2 ${airCardClass}`}>
                       <div className="absolute top-4 right-4">
                         <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                       </div>
@@ -3801,7 +3809,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <p className="text-gray-400 uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                         <div className={airKpiCardClass}>
                           <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center mb-2">
                             <Wind className="w-3.5 h-3.5 text-sky-500" />
