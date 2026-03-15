@@ -1550,9 +1550,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     };
   }, [energyTimeseriesResp, project, deviceMap]);
 
-  // --- EFFICIENCY: Confronto consumo periodo corrente vs periodo precedente ---
+  // --- EFFICIENCY: ((current - prev) / prev) * 100 — negative = saving ---
   const efficiencyData = useMemo(() => {
-    // Helper: somma kWh "general" da un dataset
     const sumGeneralKwh = (data: any[] | undefined | null) => {
       if (!data || !Array.isArray(data)) return 0;
       let total = 0;
@@ -1570,17 +1569,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     const currentKwh = sumGeneralKwh(energyTimeseriesResp?.data);
     const prevKwh = sumGeneralKwh(prevEnergyTimeseriesResp?.data);
 
-    if (prevKwh <= 0 || currentKwh <= 0) {
-      return { percentage: null, delta: null };
+    // Guard: if prev is 0 or no data, show N/A
+    if (prevKwh <= 0) {
+      return { delta: null, noData: true };
     }
 
-    // Efficiency = quanto stiamo consumando rispetto al periodo precedente
-    // < 100% = stiamo consumando meno (positivo), > 100% = stiamo consumando di più (negativo)
-    const ratio = (currentKwh / prevKwh) * 100;
-    const delta = ratio - 100; // positivo = consumiamo di più, negativo = consumiamo meno
+    // ((curr - prev) / prev) * 100 → negative = saving
+    const delta = Math.round(((currentKwh - prevKwh) / prevKwh) * 100);
 
-    return { percentage: Math.round(ratio), delta: Math.round(delta) };
+    return { delta, noData: false };
   }, [energyTimeseriesResp, prevEnergyTimeseriesResp, deviceMap]);
+
+  // Efficiency comparison subtitle
+  const efficiencySubtitle = useMemo(() => {
+    if (efficiencyData.noData) {
+      return language === 'it' ? 'Dati storici insufficienti' : 'Not enough historical data';
+    }
+    const labels: Record<string, { en: string; it: string }> = {
+      today: { en: 'vs yesterday (same time)', it: 'vs ieri (stessa ora)' },
+      week: { en: 'vs prev. week (same days)', it: 'vs sett. prec. (stessi giorni)' },
+      month: { en: 'vs prev. month (same days)', it: 'vs mese prec. (stessi giorni)' },
+      year: { en: 'vs last year (YTD)', it: "vs anno prec. (YTD)" },
+      custom: { en: 'vs prev. period', it: 'vs periodo prec.' },
+    };
+    const key = timePeriod as string;
+    const l = labels[key] || labels.custom;
+    return language === 'it' ? l.it : l.en;
+  }, [efficiencyData.noData, timePeriod, language]);
 
   // --- 5. WIDGET: ENERGY PERIODS (Pivot Table Annuale) ---
   
