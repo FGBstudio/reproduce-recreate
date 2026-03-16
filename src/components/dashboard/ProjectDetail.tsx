@@ -3074,7 +3074,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                         <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
                       </div>
-                      <SiteAlertsWidget alertStatus={pdAlertStatus} />
+                      <SiteAlertsWidget alertStatus={pdAlertStatus} moduleFilter="energy" />
                     </div>
                     {/* Energy Periods Pivot Table */}
                     <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg h-full flex flex-col">
