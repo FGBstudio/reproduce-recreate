@@ -3898,13 +3898,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 1200]} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <Tooltip {...tooltipStyle} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limite" strokeOpacity={0.5} />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limite" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -3935,13 +3935,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={600} fill="url(#gradTVOC)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <Tooltip {...tooltipStyle} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limit" strokeOpacity={0.5} />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limit" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -3972,15 +3972,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTemp)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[20, 70]} label={{ value: '%RH', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <Tooltip {...tooltipStyle} />
+                            <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[(dataMin: number) => Math.floor(dataMin - 2), (dataMax: number) => Math.ceil(dataMax + 2)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '%RH', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
+                              <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
                             ))}
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
+                              <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
                             ))}
                           </LineChart>
                         </ResponsiveContainer>
@@ -4017,13 +4017,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 50]} allowDataOverflow={true} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <Tooltip {...tooltipStyle} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -4058,13 +4058,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={80} fill="url(#gradPM10)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 80]} allowDataOverflow={true} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <Tooltip {...tooltipStyle} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                              <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
-                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
+                            <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -4142,15 +4142,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 2]} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 60]} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <Tooltip {...tooltipStyle} />
+                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
+                              <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
                             ))}
                             {selectedAirDevices.map((d) => (
-                              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
+                              <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
                             ))}
                           </LineChart>
                         </ResponsiveContainer>
@@ -5247,13 +5247,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2FS)" fillOpacity={1} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 1200]} />
-              <Tooltip {...tooltipStyle} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} />
+              <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limit" strokeOpacity={0.5} />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -5281,13 +5281,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={600} fill="url(#gradTVOCFS)" fillOpacity={1} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 600]} allowDataOverflow tickFormatter={(v) => Math.round(Number(v)).toString()} />
-              <Tooltip {...tooltipStyle} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} />
+              <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="Limit" strokeOpacity={0.5} />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -5315,15 +5315,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <CartesianGrid {...gridStyle} />
               <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTempFS)" fillOpacity={1} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-              <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[10, 35]} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 100]} label={{ value: '%RH', angle: 90, position: 'insideRight' }} />
-              <Tooltip {...tooltipStyle} />
+              <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[(dataMin: number) => Math.floor(dataMin - 2), (dataMax: number) => Math.ceil(dataMax + 2)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
+              <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '%RH', angle: 90, position: 'insideRight' }} />
+              <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
+                <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
               ))}
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
+                <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -5352,13 +5352,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={50} fill="url(#gradPM25FS)" fillOpacity={1} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 50]} allowDataOverflow={true} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-              <Tooltip {...tooltipStyle} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+              <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -5390,13 +5390,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={80} fill="url(#gradPM10FS)" fillOpacity={1} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, 80]} allowDataOverflow={true} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-              <Tooltip {...tooltipStyle} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+              <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
+                <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
               ))}
-              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={1} strokeDasharray="6 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
+              <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -5418,15 +5418,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <CartesianGrid {...gridStyle} />
               <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-              <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
-              <Tooltip {...tooltipStyle} />
+              <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
+              <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
+              <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={2.5} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
+                <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
               ))}
               {selectedAirDevices.map((d) => (
-                <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
+                <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
               ))}
             </LineChart>
           </ResponsiveContainer>
