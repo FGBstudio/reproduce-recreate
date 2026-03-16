@@ -64,18 +64,36 @@ const MODULE_METRIC_PATTERNS: Record<string, string[]> = {
   water: ['water', 'leak'],
 };
 
-export function SiteAlertsWidget({ alertStatus }: SiteAlertsWidgetProps) {
+export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidgetProps) {
   const { t } = useLanguage();
+
+  // Filter alerts by module if specified
+  const filteredAlerts = useMemo(() => {
+    if (!moduleFilter) return alertStatus.alerts;
+    const patterns = MODULE_METRIC_PATTERNS[moduleFilter] || [];
+    return alertStatus.alerts.filter(a =>
+      a.metric && patterns.some(p => a.metric!.toLowerCase().includes(p))
+    );
+  }, [alertStatus.alerts, moduleFilter]);
 
   // Group alerts by display severity
   const grouped = useMemo(() => {
     const map: Record<DisplaySeverity, ThresholdAlert[]> = { critical: [], medium: [], low: [] };
-    alertStatus.alerts.forEach(a => {
+    filteredAlerts.forEach(a => {
       const ds = severityMap[a.severity];
       map[ds].push(a);
     });
     return map;
-  }, [alertStatus.alerts]);
+  }, [filteredAlerts]);
+
+  const totalCount = filteredAlerts.length;
+  const hasAlerts = totalCount > 0;
+  const worstSeverity = hasAlerts
+    ? filteredAlerts.reduce<AlertSeverity>((worst, a) => {
+        const order: AlertSeverity[] = ['critical', 'warning', 'info'];
+        return order.indexOf(a.severity) < order.indexOf(worst) ? a.severity : worst;
+      }, 'info')
+    : null;
 
   // State: null = master view, string = focused category
   const [focusedCategory, setFocusedCategory] = useState<DisplaySeverity | null>(null);
