@@ -55,7 +55,14 @@ const SEVERITY_ORDER: DisplaySeverity[] = ['critical', 'medium', 'low'];
 
 interface SiteAlertsWidgetProps {
   alertStatus: ThresholdAlertStatus;
+  moduleFilter?: 'energy' | 'air' | 'water';
 }
+
+const MODULE_METRIC_PATTERNS: Record<string, string[]> = {
+  energy: ['energy', 'power'],
+  air: ['iaq', 'env'],
+  water: ['water', 'leak'],
+};
 
 export function SiteAlertsWidget({ alertStatus }: SiteAlertsWidgetProps) {
   const { t } = useLanguage();
