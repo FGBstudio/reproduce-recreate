@@ -113,17 +113,17 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
         <div className="flex items-center gap-3 mb-3">
           <div className="text-center">
             <p className="text-xs text-gray-500">{t('pd.open_now')}</p>
-            <p className={`text-4xl font-bold ${alertStatus.hasAlerts ? 'text-red-600' : 'text-gray-800'}`}>
-              {alertStatus.totalCount}
+            <p className={`text-4xl font-bold ${hasAlerts ? 'text-red-600' : 'text-gray-800'}`}>
+              {totalCount}
             </p>
-            {!alertStatus.hasAlerts && (
+            {!hasAlerts && (
               <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded-full font-medium">
                 {t('pd.site_alerts.all_clear')}
               </span>
             )}
-            {alertStatus.hasAlerts && alertStatus.worstSeverity && (
-              <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] rounded-full font-medium ${severityConfig[severityMap[alertStatus.worstSeverity]].badgeBg} ${severityConfig[severityMap[alertStatus.worstSeverity]].badgeText}`}>
-                {alertStatus.totalCount} {t(severityConfig[severityMap[alertStatus.worstSeverity]].labelKey)}
+            {hasAlerts && worstSeverity && (
+              <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] rounded-full font-medium ${severityConfig[severityMap[worstSeverity]].badgeBg} ${severityConfig[severityMap[worstSeverity]].badgeText}`}>
+                {totalCount} {t(severityConfig[severityMap[worstSeverity]].labelKey)}
               </span>
             )}
           </div>

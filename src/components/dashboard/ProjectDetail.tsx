@@ -3779,26 +3779,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* Air Quality Overview Card */}
                     <div ref={airQualityRef} className={`col-span-1 ${airCardClass} flex flex-col`}>
-                      <div className="absolute top-4 right-4">
-                        <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
-                      </div>
-                     <div className="absolute top-6 left-1/4 -translate-x-1/4 z-10">
-                        <AirDeviceSelector
-                          devices={airDevices}
-                          selectedIds={selectedAirDeviceIds}
-                          onChange={setSelectedAirDeviceIds}
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 mb-5">
-                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-[10px] font-semibold tracking-wider uppercase`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                          LIVE
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                        <div className="flex items-center gap-4">
+                          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-[10px] font-semibold tracking-wider uppercase`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                            LIVE
+                          </div>
+                          <div>
+                            <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
+                              {project.data.aq}
+                            </h3>
+                            <p className="text-gray-400 uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
-                            {project.data.aq}
-                          </h3>
-                          <p className="text-gray-400 uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
+                        <div className="flex items-center gap-3">
+                          <AirDeviceSelector
+                            devices={airDevices}
+                            selectedIds={selectedAirDeviceIds}
+                            onChange={setSelectedAirDeviceIds}
+                          />
+                          <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
