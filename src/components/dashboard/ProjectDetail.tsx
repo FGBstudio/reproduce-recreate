@@ -3866,7 +3866,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className={`${airCardClass} h-full flex flex-col`}>
                         <h3 className="text-sm font-bold text-gray-800 tracking-tight mb-3">{t('pd.site_alerts.title')}</h3>
                         <div className="flex-1">
-                          <SiteAlertsWidget alertStatus={pdAlertStatus} />
+                          <SiteAlertsWidget alertStatus={pdAlertStatus} moduleFilter="air" />
                         </div>
                       </div>
                     </div>
