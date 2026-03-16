@@ -55,20 +55,45 @@ const SEVERITY_ORDER: DisplaySeverity[] = ['critical', 'medium', 'low'];
 
 interface SiteAlertsWidgetProps {
   alertStatus: ThresholdAlertStatus;
+  moduleFilter?: 'energy' | 'air' | 'water';
 }
 
-export function SiteAlertsWidget({ alertStatus }: SiteAlertsWidgetProps) {
+const MODULE_METRIC_PATTERNS: Record<string, string[]> = {
+  energy: ['energy', 'power'],
+  air: ['iaq', 'env'],
+  water: ['water', 'leak'],
+};
+
+export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidgetProps) {
   const { t } = useLanguage();
+
+  // Filter alerts by module if specified
+  const filteredAlerts = useMemo(() => {
+    if (!moduleFilter) return alertStatus.alerts;
+    const patterns = MODULE_METRIC_PATTERNS[moduleFilter] || [];
+    return alertStatus.alerts.filter(a =>
+      a.metric && patterns.some(p => a.metric!.toLowerCase().includes(p))
+    );
+  }, [alertStatus.alerts, moduleFilter]);
 
   // Group alerts by display severity
   const grouped = useMemo(() => {
     const map: Record<DisplaySeverity, ThresholdAlert[]> = { critical: [], medium: [], low: [] };
-    alertStatus.alerts.forEach(a => {
+    filteredAlerts.forEach(a => {
       const ds = severityMap[a.severity];
       map[ds].push(a);
     });
     return map;
-  }, [alertStatus.alerts]);
+  }, [filteredAlerts]);
+
+  const totalCount = filteredAlerts.length;
+  const hasAlerts = totalCount > 0;
+  const worstSeverity = hasAlerts
+    ? filteredAlerts.reduce<AlertSeverity>((worst, a) => {
+        const order: AlertSeverity[] = ['critical', 'warning', 'info'];
+        return order.indexOf(a.severity) < order.indexOf(worst) ? a.severity : worst;
+      }, 'info')
+    : null;
 
   // State: null = master view, string = focused category
   const [focusedCategory, setFocusedCategory] = useState<DisplaySeverity | null>(null);
@@ -88,17 +113,17 @@ export function SiteAlertsWidget({ alertStatus }: SiteAlertsWidgetProps) {
         <div className="flex items-center gap-3 mb-3">
           <div className="text-center">
             <p className="text-xs text-gray-500">{t('pd.open_now')}</p>
-            <p className={`text-4xl font-bold ${alertStatus.hasAlerts ? 'text-red-600' : 'text-gray-800'}`}>
-              {alertStatus.totalCount}
+            <p className={`text-4xl font-bold ${hasAlerts ? 'text-red-600' : 'text-gray-800'}`}>
+              {totalCount}
             </p>
-            {!alertStatus.hasAlerts && (
+            {!hasAlerts && (
               <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded-full font-medium">
                 {t('pd.site_alerts.all_clear')}
               </span>
             )}
-            {alertStatus.hasAlerts && alertStatus.worstSeverity && (
-              <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] rounded-full font-medium ${severityConfig[severityMap[alertStatus.worstSeverity]].badgeBg} ${severityConfig[severityMap[alertStatus.worstSeverity]].badgeText}`}>
-                {alertStatus.totalCount} {t(severityConfig[severityMap[alertStatus.worstSeverity]].labelKey)}
+            {hasAlerts && worstSeverity && (
+              <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] rounded-full font-medium ${severityConfig[severityMap[worstSeverity]].badgeBg} ${severityConfig[severityMap[worstSeverity]].badgeText}`}>
+                {totalCount} {t(severityConfig[severityMap[worstSeverity]].labelKey)}
               </span>
             )}
           </div>
