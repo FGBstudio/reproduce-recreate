@@ -70,7 +70,7 @@ export const UserAccessManager = () => {
   const handleOpenCreate = () => {
     setEditingMembership(null);
     setFormData({
-      userId: users[0]?.id || '',
+      userId: profiles[0]?.id || '',
       scopeType: 'project',
       scopeId: '',
       permission: 'view',
