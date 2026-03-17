@@ -197,9 +197,9 @@ export const UserAccessManager = () => {
                         <SelectValue placeholder="Seleziona utente" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map(u => (
+                        {profiles.map(u => (
                           <SelectItem key={u.id} value={u.id}>
-                            {u.name} ({u.email})
+                            {u.display_name || u.email} ({u.email})
                           </SelectItem>
                         ))}
                       </SelectContent>
