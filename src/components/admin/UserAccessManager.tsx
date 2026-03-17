@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Users, Shield, Eye, Edit, Crown } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { UserMembership, ScopeType, Permission } from '@/lib/types/admin';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
