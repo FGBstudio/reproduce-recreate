@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 export const UserAccountDropdown = () => {
-  const { user, profile, logout, updateUser, updateProfile } = useAuth();
+  const { user, profile, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

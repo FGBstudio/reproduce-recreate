@@ -57,8 +57,7 @@ const Auth = () => {
     setIsSubmitting(true);
     try {
       if (!isSupabaseConfigured) {
-        mockLogin(email, "viewer");
-        navigate("/", { replace: true });
+        setError('Supabase non configurato. Impossibile autenticarsi.');
         return;
       }
 
