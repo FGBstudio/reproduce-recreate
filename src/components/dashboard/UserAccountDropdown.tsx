@@ -85,13 +85,6 @@ export const UserAccountDropdown = () => {
       if (error) {
         console.error('Error saving profile:', error);
       }
-    } else {
-      // Mock update
-      updateUser(user.id, {
-        name: formData.display_name || `${formData.first_name} ${formData.last_name}`.trim(),
-        email: formData.email,
-        avatar: formData.avatar_url,
-      });
     }
     
     setIsSaving(false);
