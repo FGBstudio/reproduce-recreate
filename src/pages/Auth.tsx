@@ -19,7 +19,7 @@ type AuthMode = "login" | "request";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login, mockLogin, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
   
   const [mode, setMode] = useState<AuthMode>("login");
@@ -57,8 +57,7 @@ const Auth = () => {
     setIsSubmitting(true);
     try {
       if (!isSupabaseConfigured) {
-        mockLogin(email, "viewer");
-        navigate("/", { replace: true });
+        setError('Supabase non configurato. Impossibile autenticarsi.');
         return;
       }
 

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Users, Shield, Eye, Edit, Crown } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { UserMembership, ScopeType, Permission } from '@/lib/types/admin';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -34,9 +34,15 @@ const regionOptions = [
   { value: 'MEA', label: 'Middle East & Africa' },
 ];
 
+interface ProfileOption {
+  id: string;
+  display_name: string | null;
+  email: string;
+}
+
 export const UserAccessManager = () => {
   const { holdings, brands, sites, projects, memberships, addMembership, updateMembership, deleteMembership } = useAdminData();
-  const { users } = useAuth();
+  const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMembership, setEditingMembership] = useState<UserMembership | null>(null);
   const [formData, setFormData] = useState({
@@ -47,10 +53,24 @@ export const UserAccessManager = () => {
     allowedRegions: [] as string[],
   });
 
+  // Fetch profiles from Supabase
+  const fetchProfiles = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, display_name, email')
+      .order('display_name');
+    setProfiles(data || []);
+  }, []);
+
+  useEffect(() => {
+    fetchProfiles();
+  }, [fetchProfiles]);
+
   const handleOpenCreate = () => {
     setEditingMembership(null);
     setFormData({
-      userId: users[0]?.id || '',
+      userId: profiles[0]?.id || '',
       scopeType: 'project',
       scopeId: '',
       permission: 'view',
@@ -119,8 +139,11 @@ export const UserAccessManager = () => {
     }
   };
 
-  const getUserName = (userId: string) => users.find(u => u.id === userId)?.name || userId;
-  const getUserEmail = (userId: string) => users.find(u => u.id === userId)?.email || '';
+  const getUserName = (userId: string) => {
+    const p = profiles.find(u => u.id === userId);
+    return p?.display_name || p?.email || userId;
+  };
+  const getUserEmail = (userId: string) => profiles.find(u => u.id === userId)?.email || '';
 
   const getPermissionBadge = (permission: Permission) => {
     const option = permissionOptions.find(p => p.value === permission);
@@ -174,9 +197,9 @@ export const UserAccessManager = () => {
                         <SelectValue placeholder="Seleziona utente" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map(u => (
+                        {profiles.map(u => (
                           <SelectItem key={u.id} value={u.id}>
-                            {u.name} ({u.email})
+                            {u.display_name || u.email} ({u.email})
                           </SelectItem>
                         ))}
                       </SelectContent>

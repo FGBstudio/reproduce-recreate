@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 export const UserAccountDropdown = () => {
-  const { user, profile, logout, updateUser, updateProfile } = useAuth();
+  const { user, profile, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -85,13 +85,6 @@ export const UserAccountDropdown = () => {
       if (error) {
         console.error('Error saving profile:', error);
       }
-    } else {
-      // Mock update
-      updateUser(user.id, {
-        name: formData.display_name || `${formData.first_name} ${formData.last_name}`.trim(),
-        email: formData.email,
-        avatar: formData.avatar_url,
-      });
     }
     
     setIsSaving(false);
