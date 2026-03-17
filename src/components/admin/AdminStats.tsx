@@ -1,53 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Building2, Tag, MapPin, FolderKanban, Users, Zap, Wind, Droplet, TrendingUp, AlertTriangle, Cpu, Inbox } from 'lucide-react';
+import { Building2, Tag, MapPin, FolderKanban, Users, Zap, Wind, Droplet, TrendingUp, AlertTriangle, Cpu } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
-import { User } from '@/lib/types/admin';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 const INBOX_SITE_ID = '00000000-0000-0000-0000-000000000003';
 
-interface AdminStatsProps {
-  users: User[];
-}
-
-export const AdminStats = ({ users }: AdminStatsProps) => {
+export const AdminStats = () => {
   const { holdings, brands, sites, projects, memberships, loading } = useAdminData();
   const [deviceStats, setDeviceStats] = useState({ total: 0, inbox: 0, online: 0 });
+  const [userCount, setUserCount] = useState(0);
 
-  // Fetch device counts
+  // Fetch device counts and user count from Supabase
   useEffect(() => {
-    const fetchDeviceStats = async () => {
+    const fetchStats = async () => {
       if (!isSupabaseConfigured || !supabase) return;
       
       try {
-        // Total devices
-        const { count: totalCount } = await supabase
-          .from('devices')
-          .select('*', { count: 'exact', head: true });
-        
-        // Inbox devices
-        const { count: inboxCount } = await supabase
-          .from('devices')
-          .select('*', { count: 'exact', head: true })
-          .eq('site_id', INBOX_SITE_ID);
-        
-        // Online devices
-        const { count: onlineCount } = await supabase
-          .from('devices')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'online');
+        const [totalRes, inboxRes, onlineRes, usersRes] = await Promise.all([
+          supabase.from('devices').select('*', { count: 'exact', head: true }),
+          supabase.from('devices').select('*', { count: 'exact', head: true }).eq('site_id', INBOX_SITE_ID),
+          supabase.from('devices').select('*', { count: 'exact', head: true }).eq('status', 'online'),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        ]);
         
         setDeviceStats({
-          total: totalCount || 0,
-          inbox: inboxCount || 0,
-          online: onlineCount || 0,
+          total: totalRes.count || 0,
+          inbox: inboxRes.count || 0,
+          online: onlineRes.count || 0,
         });
+        setUserCount(usersRes.count || 0);
       } catch (error) {
-        console.error('Error fetching device stats:', error);
+        console.error('Error fetching stats:', error);
       }
     };
 
-    fetchDeviceStats();
+    fetchStats();
   }, []);
 
   // Calculate module stats
@@ -65,45 +52,12 @@ export const AdminStats = ({ users }: AdminStatsProps) => {
   const pendingProjects = projects.filter(p => p.status === 'pending').length;
 
   const stats = [
-    { 
-      icon: Building2, 
-      label: 'Holdings', 
-      value: holdings.length, 
-      color: 'bg-slate-100 text-slate-700' 
-    },
-    { 
-      icon: Tag, 
-      label: 'Brands', 
-      value: brands.length, 
-      color: 'bg-purple-100 text-purple-700' 
-    },
-    { 
-      icon: MapPin, 
-      label: 'Sites', 
-      value: sites.length, 
-      color: 'bg-blue-100 text-blue-700' 
-    },
-    { 
-      icon: FolderKanban, 
-      label: 'Progetti', 
-      value: projects.length, 
-      sublabel: `${activeProjects} attivi`,
-      color: 'bg-green-100 text-green-700' 
-    },
-    { 
-      icon: Cpu, 
-      label: 'Devices', 
-      value: deviceStats.total, 
-      sublabel: `${deviceStats.online} online`,
-      color: 'bg-cyan-100 text-cyan-700' 
-    },
-    { 
-      icon: Users, 
-      label: 'Utenti', 
-      value: users.length, 
-      sublabel: `${memberships.length} accessi`,
-      color: 'bg-orange-100 text-orange-700' 
-    },
+    { icon: Building2, label: 'Holdings', value: holdings.length, color: 'bg-slate-100 text-slate-700' },
+    { icon: Tag, label: 'Brands', value: brands.length, color: 'bg-purple-100 text-purple-700' },
+    { icon: MapPin, label: 'Sites', value: sites.length, color: 'bg-blue-100 text-blue-700' },
+    { icon: FolderKanban, label: 'Progetti', value: projects.length, sublabel: `${activeProjects} attivi`, color: 'bg-green-100 text-green-700' },
+    { icon: Cpu, label: 'Devices', value: deviceStats.total, sublabel: `${deviceStats.online} online`, color: 'bg-cyan-100 text-cyan-700' },
+    { icon: Users, label: 'Utenti', value: userCount, sublabel: `${memberships.length} accessi`, color: 'bg-orange-100 text-orange-700' },
   ];
 
   const moduleStatItems = [

@@ -20,21 +20,16 @@ import { AccessRequestsManager } from '@/components/admin/AccessRequestsManager'
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { user, users, addUser, updateUser, deleteUser } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // QUESTA è la "magia" per la barra dedicata:
-  // - flex-1: occupa tutto lo spazio verticale disponibile
-  // - overflow-y-auto: se il contenuto è troppo lungo, metti QUI la scrollbar
-  // - h-full: forza l'altezza massima
   const contentTabClass = "flex-1 overflow-y-auto h-full p-1 pb-32"; 
 
   return (
     <AdminAuthGate>
-      {/* 1. Blocchiamo l'altezza della pagina a quella dello schermo (h-screen) */}
       <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
         
-        {/* Header fisso (non scrolla) */}
+        {/* Header fisso */}
         <header className="flex-shrink-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -66,13 +61,12 @@ const Admin = () => {
           </div>
         </header>
 
-        {/* Container principale (si adatta allo spazio rimasto) */}
+        {/* Container principale */}
         <main className="flex-1 flex flex-col overflow-hidden w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           
-          {/* Tabs container: anche lui deve essere flex verticale per spingere giù il contenuto */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full space-y-4">
             
-            {/* Menu Tab Fisso in alto */}
+            {/* Menu Tab Fisso */}
             <div className="flex-shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
               <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 gap-1 bg-transparent h-auto p-0">
                 <TabsTrigger value="dashboard" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
@@ -114,19 +108,12 @@ const Admin = () => {
               </TabsList>
             </div>
 
-            {/* Aree Scrollabili con Barra Dedicata */}
-            
             <TabsContent value="dashboard" className={contentTabClass}>
-              <AdminStats users={users} />
+              <AdminStats />
               <div className="grid lg:grid-cols-2 gap-6 mt-6">
                 <HierarchyView />
                 <div className="space-y-6">
-                  <UsersManager 
-                    users={users}
-                    onAddUser={addUser}
-                    onUpdateUser={updateUser}
-                    onDeleteUser={deleteUser}
-                  />
+                  <UsersManager />
                 </div>
               </div>
             </TabsContent>
@@ -156,12 +143,7 @@ const Admin = () => {
             </TabsContent>
 
             <TabsContent value="users" className={contentTabClass}>
-              <UsersManager 
-                users={users}
-                onAddUser={addUser}
-                onUpdateUser={updateUser}
-                onDeleteUser={deleteUser}
-              />
+              <UsersManager />
             </TabsContent>
 
             <TabsContent value="roles" className={contentTabClass}>
