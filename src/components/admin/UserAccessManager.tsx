@@ -34,9 +34,15 @@ const regionOptions = [
   { value: 'MEA', label: 'Middle East & Africa' },
 ];
 
+interface ProfileOption {
+  id: string;
+  display_name: string | null;
+  email: string;
+}
+
 export const UserAccessManager = () => {
   const { holdings, brands, sites, projects, memberships, addMembership, updateMembership, deleteMembership } = useAdminData();
-  const { users } = useAuth();
+  const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMembership, setEditingMembership] = useState<UserMembership | null>(null);
   const [formData, setFormData] = useState({
@@ -46,6 +52,20 @@ export const UserAccessManager = () => {
     permission: 'view' as Permission,
     allowedRegions: [] as string[],
   });
+
+  // Fetch profiles from Supabase
+  const fetchProfiles = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, display_name, email')
+      .order('display_name');
+    setProfiles(data || []);
+  }, []);
+
+  useEffect(() => {
+    fetchProfiles();
+  }, [fetchProfiles]);
 
   const handleOpenCreate = () => {
     setEditingMembership(null);
