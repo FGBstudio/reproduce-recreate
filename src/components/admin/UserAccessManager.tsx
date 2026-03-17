@@ -139,8 +139,11 @@ export const UserAccessManager = () => {
     }
   };
 
-  const getUserName = (userId: string) => users.find(u => u.id === userId)?.name || userId;
-  const getUserEmail = (userId: string) => users.find(u => u.id === userId)?.email || '';
+  const getUserName = (userId: string) => {
+    const p = profiles.find(u => u.id === userId);
+    return p?.display_name || p?.email || userId;
+  };
+  const getUserEmail = (userId: string) => profiles.find(u => u.id === userId)?.email || '';
 
   const getPermissionBadge = (permission: Permission) => {
     const option = permissionOptions.find(p => p.value === permission);
