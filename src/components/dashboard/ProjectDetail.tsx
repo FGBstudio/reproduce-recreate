@@ -4576,8 +4576,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               }, 0);
 
               // Liste filtrate per i drill-down
-              const completedTimelineCount = projectTimeline.filter(m => m.status === 'completed').length;
-              const inProgressTimelineList = projectTimeline.filter(m => m.status === 'in_progress' || m.status === 'pending');
+              const achievedMilestonesList = projectTimeline.filter(m => m.status === 'completed');
+              const completedTimelineCount = achievedMilestonesList.length;
+              
+              const progressMilestonesList = projectTimeline.filter(m => m.status === 'in_progress' || m.status === 'pending');
+              const inProgressTimelineList = progressMilestonesList;
 
               // Helper Colori per Timeline
               const getTimelineColor = (status: string) => {
