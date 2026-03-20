@@ -4644,7 +4644,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </p>
                             <div>
                               <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
-                              <div className="font-semibold text-gray-800 capitalize">{leedCert?.status?.replace('_', ' ') || 'Pending'}</div>
+                              <div className="font-semibold text-gray-800 capitalize">{leedCert?.status ? String(leedCert.status).replace('_', ' ') : 'Pending'}</div>
                             </div>
                           </div>
                         </div>
@@ -4728,7 +4728,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </p>
                             <div>
                               <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
-                              <div className="font-semibold text-gray-800 capitalize">{wellCert?.status?.replace('_', ' ') || 'Pending'}</div>
+                              <div className="font-semibold text-gray-800 capitalize">{wellCert?.status ? String(wellCert.status).replace('_', ' ') : 'Pending'}</div>
                             </div>
                           </div>
                         </div>
@@ -4850,7 +4850,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                   <div className="text-sm font-bold text-gray-800">{m.title}</div>
                                   <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
                                     <span className={`px-2 py-0.5 rounded uppercase font-semibold text-[10px] ${colors.badge}`}>
-                                      {m.status?.replace('_', ' ')}
+                                      {String(m.status || '').replace('_', ' ')}
                                     </span>
                                     {m.date !== 'TBD' && <span>{m.date}</span>}
                                   </div>
