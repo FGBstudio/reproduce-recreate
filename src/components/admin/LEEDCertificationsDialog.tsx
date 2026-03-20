@@ -204,9 +204,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
       if (timelineMilestones.length > 0) {
         const timelineUpdates = timelineMilestones.map(tm => {
           let compDate = tm.completed_date;
-          // Se completato, setta la data ad oggi (se non c'è già)
           if (tm.status === 'achieved' && !compDate) compDate = new Date().toISOString().split('T')[0];
-          // Se lo riaprono, pulisci la data
           if (tm.status !== 'achieved') compDate = null;
 
           return {
@@ -245,7 +243,6 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
       const { error } = await supabase.rpc('generate_standard_leed_timeline', { p_certification_id: certId });
       if (error) throw error;
       
-      // Ricarica la timeline appena generata per mostrarla nell'editor
       const { data: newTimeline } = await supabase
         .from('certification_milestones')
         .select('*')
@@ -286,7 +283,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
     setTimelineMilestones(prev => [
       ...prev,
       {
-        id: crypto.randomUUID(), // Genera un ID provvisorio che Supabase accetterà
+        id: crypto.randomUUID(), 
         category: 'Nuova Fase Custom',
         status: 'not_started',
         start_date: null,
@@ -402,16 +399,21 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
               ) : (
                 <div className="space-y-3">
                   {timelineMilestones.map((tm, idx) => (
-                    <div key={tm.id} className="p-4 bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow transition-shadow flex flex-col gap-3">
+                    // FIX DARK MODE: Sfondo scuro e testi forzati al bianco per le card della timeline
+                    <div key={tm.id} className="p-4 bg-slate-900 border border-slate-700 rounded-lg shadow-sm transition-shadow flex flex-col gap-3">
                       <div className="flex flex-col">
-                        <Label className="text-[10px] text-slate-600 uppercase tracking-wider mb-1">Nome Fase (Visibile al Cliente)</Label>
-                        <Input className="text-sm font-semibold text-gray-950 border-none px-0 h-auto focus-visible:ring-0 focus-visible:border-b" value={tm.category} onChange={(e) => updateTimelineField(idx, 'category', e.target.value)} />
+                        <Label className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Nome Fase (Visibile al Cliente)</Label>
+                        <Input 
+                          className="text-sm font-semibold text-white bg-transparent border-none px-0 h-auto focus-visible:ring-0 focus-visible:border-b focus-visible:border-slate-500" 
+                          value={tm.category} 
+                          onChange={(e) => updateTimelineField(idx, 'category', e.target.value)} 
+                        />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-slate-500">Stato</Label>
+                          <Label className="text-[10px] text-slate-400">Stato</Label>
                           <Select value={tm.status} onValueChange={(v) => updateTimelineField(idx, 'status', v)}>
-                            <SelectTrigger className="h-8 text-xs">
+                            <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-700 text-white">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -423,12 +425,22 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-slate-500">Data di Inizio</Label>
-                          <Input type="date" className="h-8 text-xs" value={tm.start_date || ''} onChange={(e) => updateTimelineField(idx, 'start_date', e.target.value)} />
+                          <Label className="text-[10px] text-slate-400">Data di Inizio</Label>
+                          <Input 
+                            type="date" 
+                            className="h-8 text-xs bg-slate-800 border-slate-700 text-white placeholder-slate-400 [color-scheme:dark]" 
+                            value={tm.start_date || ''} 
+                            onChange={(e) => updateTimelineField(idx, 'start_date', e.target.value)} 
+                          />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-slate-500">Data Scadenza (Target)</Label>
-                          <Input type="date" className="h-8 text-xs" value={tm.due_date || ''} onChange={(e) => updateTimelineField(idx, 'due_date', e.target.value)} />
+                          <Label className="text-[10px] text-slate-400">Data Scadenza (Target)</Label>
+                          <Input 
+                            type="date" 
+                            className="h-8 text-xs bg-slate-800 border-slate-700 text-white placeholder-slate-400 [color-scheme:dark]" 
+                            value={tm.due_date || ''} 
+                            onChange={(e) => updateTimelineField(idx, 'due_date', e.target.value)} 
+                          />
                         </div>
                       </div>
                     </div>
