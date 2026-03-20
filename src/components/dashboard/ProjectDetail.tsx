@@ -242,6 +242,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [customBgUrl, setCustomBgUrl] = useState<string | undefined>(undefined);
   const [isUploadingBg, setIsUploadingBg] = useState(false);
   const { language, t } = useLanguage();
+  const [expandedCert, setExpandedCert] = useState<string | null>(null);
+  const [activeWidget, setActiveWidget] = useState<'active' | 'achieved' | 'progress' | 'audit' | null>(null);
 
   // Reset custom bg when project changes
   useEffect(() => {
@@ -773,7 +775,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       case "energy": return 4;
       case "air": return 3;
       case "water": return 3;
-      case "certification": return hasLEED ? 3 : 2;
+      case "certification": return 1;
       case "bills": return 1;
       default: return 4;
     }
