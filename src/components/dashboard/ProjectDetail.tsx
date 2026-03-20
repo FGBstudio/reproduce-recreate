@@ -4775,201 +4775,242 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
 
                   {/* --- DRILL-DOWN AREA (Sotto i widget, si espande in base al click) --- */}
-                  <div className={`w-full bg-white/90 backdrop-blur-md rounded-2xl shadow-inner border border-gray-100 overflow-hidden transition-all duration-500 ease-in-out ${activeWidget ? 'max-h-[600px] p-6 opacity-100 mb-8' : 'max-h-0 p-0 border-none opacity-0 m-0'}`}>
+                  <div className={`w-full bg-white/90 backdrop-blur-md rounded-2xl shadow-inner border border-gray-100 overflow-hidden transition-all duration-500 ease-in-out ${activeWidget ? 'max-h-[800px] p-6 opacity-100 mb-8' : 'max-h-0 p-0 border-none opacity-0 m-0'}`}>
                     
-                    {/* 1. Lista Certificazioni Attive */}
-                    {activeWidget === 'active' && (
-                      <div className="animate-fade-in">
-                        <div className="flex items-center justify-between mb-6">
-                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                            <div className="p-1.5 bg-[#a0d5d6]/30 rounded-lg border border-[#009193]/20">
-                              <Award className="text-[#009193] w-4 h-4"/>
-                            </div>
-                            Active Certifications
-                          </h4>
-                        </div>
-                        <div className="space-y-3">
-                          {[leedCert, wellCert].filter(c => c && c.status === 'active').length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                              <Award className="w-10 h-10 text-gray-300 mb-3" />
-                              <p className="text-gray-500 font-medium text-sm">No active certifications yet.</p>
-                            </div>
-                          ) : (
-                            [leedCert, wellCert].filter(c => c && c.status === 'active').map((cert, idx) => {
-                              const expStatus = getExpiryStatus(cert?.expiry_date);
-                              return (
-                                <div key={idx} className="flex items-center justify-between p-4 bg-white border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 hover:border-[#009193]/30">
-                                  <div>
-                                    <div className="font-bold text-gray-800 text-base">{cert?.cert_type}</div>
-                                    <div className="text-xs text-gray-400 mt-0.5">Issued: {cert?.issued_date ? new Date(cert.issued_date).toLocaleDateString() : 'N/A'}</div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="flex items-center justify-end gap-2 mb-1">
-                                      <div className={`w-2.5 h-2.5 rounded-full ${expStatus.color} shadow-sm ring-2 ring-white`} />
-                                      <span className="text-sm font-bold text-gray-700">{expStatus.label}</span>
-                                    </div>
-                                    <div className="text-xs text-gray-400">Exp: {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString() : 'N/A'}</div>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    {(() => {
+                      // Helper Colori per Timeline e Badge (Strict FGB Palette)
+                      const getTimelineStyle = (status: string) => {
+                        const s = String(status || '').toLowerCase();
+                        if (s === 'completed' || s === 'achieved') {
+                          return {
+                            wrapper: 'border-[#009193] bg-[#a0d5d6]/20 shadow-[0_0_15px_rgba(0,145,147,0.25)]',
+                            dot: 'bg-[#009193]',
+                            line: 'bg-gradient-to-b from-[#009193] to-[#009193]/70',
+                            badge: 'bg-[#a0d5d6]/30 text-[#006367] border-[#009193]/20',
+                            text: 'text-gray-900',
+                          };
+                        }
+                        if (s === 'in_progress') {
+                          return {
+                            wrapper: 'border-[#e63f26] bg-[#f8cbcc]/30 shadow-[0_0_15px_rgba(230,63,38,0.3)]',
+                            dot: 'bg-[#e63f26] animate-pulse',
+                            line: 'bg-gradient-to-b from-[#e63f26] to-gray-200',
+                            badge: 'bg-[#f8cbcc]/40 text-[#e63f26] border-[#e63f26]/20',
+                            text: 'text-gray-900',
+                          };
+                        }
+                        return { // pending o default
+                          wrapper: 'border-gray-300 bg-gray-50',
+                          dot: 'bg-gray-300',
+                          line: 'bg-gray-200',
+                          badge: 'bg-gray-100 text-gray-500 border-gray-200',
+                          text: 'text-gray-500',
+                        };
+                      };
 
-                    {/* 2. Milestones Reached */}
-                    {activeWidget === 'achieved' && (
-                      <div className="animate-fade-in">
-                        <div className="flex items-center justify-between mb-6">
-                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                            <div className="p-1.5 bg-[#a0d5d6]/30 rounded-lg border border-[#009193]/20">
-                              <Award className="text-[#009193] w-4 h-4"/>
-                            </div>
-                            Completed Milestones
-                          </h4>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#006367] bg-[#a0d5d6]/20 px-2.5 py-1 rounded-full ring-1 ring-[#009193]/20 shadow-sm">
-                            {achievedMilestonesList.length} Total
-                          </span>
-                        </div>
-
-                        {achievedMilestonesList.length === 0 ? (
-                           <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                             <Award className="w-10 h-10 text-gray-300 mb-3" />
-                             <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
-                           </div>
-                        ) : (
-                          <div className="relative pl-6 sm:pl-8 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4 pb-4">
-                            {/* Elegant Gradient Line */}
-                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-[#009193] via-[#a0d5d6]/50 to-transparent rounded-full" />
-                            
-                            {achievedMilestonesList.map((m, idx) => (
-                              <div key={idx} className="relative flex items-center group cursor-default">
-                                {/* Glowing Dot */}
-                                <div className="absolute -left-[29px] sm:-left-[37px] w-3 h-3 bg-[#009193] rounded-full ring-4 ring-white shadow-[0_0_0_1px_rgba(0,145,147,0.15)] group-hover:scale-125 group-hover:bg-[#006367] transition-all duration-300 z-10" />
-                                
-                                {/* Apple-style Card */}
-                                <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-[#009193]/30 group-hover:-translate-y-0.5">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-                                    <div className="text-sm font-bold text-gray-800 tracking-tight">{m.title}</div>
-                                    <div className="flex items-center gap-2.5">
-                                      {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
-                                      <span className="bg-gradient-to-br from-[#a0d5d6]/10 to-[#a0d5d6]/30 text-[#006367] px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border border-[#009193]/20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                                        Completed
-                                      </span>
-                                    </div>
+                      return (
+                        <>
+                          {/* 1. Lista Certificazioni Attive */}
+                          {activeWidget === 'active' && (
+                            <div className="animate-fade-in">
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="p-1.5 bg-[#a0d5d6]/30 rounded-lg border border-[#009193]/20">
+                                    <Award className="text-[#009193] w-4 h-4"/>
                                   </div>
-                                </div>
+                                  Active Certifications
+                                </h4>
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* 3. In Progress Timeline */}
-                    {activeWidget === 'progress' && (
-                      <div className="animate-fade-in">
-                        <div className="flex items-center justify-between mb-6">
-                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                            <div className="p-1.5 bg-[#f8cbcc]/40 rounded-lg border border-[#e63f26]/20">
-                              <Activity className="text-[#e63f26] w-4 h-4"/>
+                              <div className="space-y-3">
+                                {[leedCert, wellCert].filter(c => c && c.status === 'active').length === 0 ? (
+                                  <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                    <Award className="w-10 h-10 text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-medium text-sm">No active certifications yet.</p>
+                                  </div>
+                                ) : (
+                                  [leedCert, wellCert].filter(c => c && c.status === 'active').map((cert, idx) => {
+                                    const expStatus = getExpiryStatus(cert?.expiry_date);
+                                    return (
+                                      <div key={idx} className="flex items-center justify-between p-4 bg-white border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 hover:border-[#009193]/30">
+                                        <div>
+                                          <div className="font-bold text-gray-800 text-base">{cert?.cert_type}</div>
+                                          <div className="text-xs text-gray-400 mt-0.5">Issued: {cert?.issued_date ? new Date(cert.issued_date).toLocaleDateString() : 'N/A'}</div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="flex items-center justify-end gap-2 mb-1">
+                                            <div className={`w-2.5 h-2.5 rounded-full ${expStatus.color} shadow-sm ring-2 ring-white`} />
+                                            <span className="text-sm font-bold text-gray-700">{expStatus.label}</span>
+                                          </div>
+                                          <div className="text-xs text-gray-400">Exp: {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString() : 'N/A'}</div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
                             </div>
-                            Project Timeline
-                          </h4>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#e63f26] bg-[#f8cbcc]/30 px-2.5 py-1 rounded-full ring-1 ring-[#e63f26]/20 shadow-sm">
-                            {progressMilestonesList.length} Pending
-                          </span>
-                        </div>
+                          )}
 
-                        {progressMilestonesList.length === 0 ? (
-                           <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                             <Activity className="w-10 h-10 text-gray-300 mb-3" />
-                             <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
-                           </div>
-                        ) : (
-                          <div className="relative pl-6 sm:pl-8 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4 pb-4">
-                            {/* Elegant Gradient Line */}
-                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-[#e63f26] via-[#f8cbcc]/50 to-transparent rounded-full" />
-                            
-                            {progressMilestonesList.map((m, idx) => {
-                              const colors = getTimelineColor(m.status);
-                              
-                              return (
-                                <div key={idx} className="relative flex items-center group cursor-default">
-                                  {/* Glowing Dot */}
-                                  <div className={`absolute -left-[29px] sm:-left-[37px] w-3 h-3 rounded-full ring-4 ring-white shadow-[0_0_0_1px_rgba(0,0,0,0.05)] transition-all duration-300 z-10 ${colors.dot} group-hover:scale-125`} />
-                                  
-                                  {/* Apple-style Card */}
-                                  <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-[#e63f26]/30 group-hover:-translate-y-0.5">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-                                      <div className={`text-sm font-bold tracking-tight ${m.status === 'pending' ? 'text-gray-500' : 'text-gray-800'}`}>{m.title}</div>
-                                      <div className="flex items-center gap-2.5">
-                                        {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
-                                        <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${colors.badge}`}>
-                                          {String(m.status || '').replace('_', ' ')}
-                                        </span>
+                          {/* 2. Milestones Reached */}
+                          {activeWidget === 'achieved' && (
+                            <div className="animate-fade-in">
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="p-1.5 bg-[#a0d5d6]/30 rounded-lg border border-[#009193]/20">
+                                    <Award className="text-[#009193] w-4 h-4"/>
+                                  </div>
+                                  Completed Milestones
+                                </h4>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#006367] bg-[#a0d5d6]/20 px-2.5 py-1 rounded-full ring-1 ring-[#009193]/20 shadow-sm">
+                                  {achievedMilestonesList.length} Total
+                                </span>
+                              </div>
+
+                              {achievedMilestonesList.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                  <Award className="w-10 h-10 text-gray-300 mb-3" />
+                                  <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-0 max-h-[450px] overflow-y-auto custom-scrollbar pr-4 pb-4">
+                                  {achievedMilestonesList.map((m, idx) => {
+                                    const isLast = idx === achievedMilestonesList.length - 1;
+                                    const style = getTimelineStyle('completed');
+
+                                    return (
+                                      <div key={idx} className="relative flex items-start group cursor-default">
+                                        {/* Segmento Linea Timeline (collega questo bullet al successivo) */}
+                                        {!isLast && (
+                                          <div className={`absolute left-[11px] top-[30px] bottom-0 w-[2px] ${style.line} z-0 rounded-full`} />
+                                        )}
+                                        
+                                        {/* Glowing Bullet */}
+                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-6 h-6 rounded-full border-2 ${style.wrapper} transition-transform duration-300 group-hover:scale-110 mt-1.5 mr-4 sm:mr-6`}>
+                                          <div className={`w-2 h-2 rounded-full ${style.dot}`} />
+                                        </div>
+
+                                        {/* Apple-style Card */}
+                                        <div className="flex-1 pb-6">
+                                          <div className="w-full bg-white/70 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,145,147,0.15)] group-hover:border-[#009193]/30 group-hover:-translate-y-0.5">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                                              <div className="text-[15px] font-bold text-gray-800 tracking-tight">{m.title}</div>
+                                              <div className="flex items-center gap-2.5">
+                                                {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
+                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${style.badge}`}>
+                                                  Completed
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* 3. In Progress Timeline */}
+                          {activeWidget === 'progress' && (
+                            <div className="animate-fade-in">
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="p-1.5 bg-[#f8cbcc]/40 rounded-lg border border-[#e63f26]/20">
+                                    <Activity className="text-[#e63f26] w-4 h-4"/>
+                                  </div>
+                                  Project Timeline
+                                </h4>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#e63f26] bg-[#f8cbcc]/30 px-2.5 py-1 rounded-full ring-1 ring-[#e63f26]/20 shadow-sm">
+                                  {progressMilestonesList.length} Pending
+                                </span>
+                              </div>
+
+                              {progressMilestonesList.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                  <Activity className="w-10 h-10 text-gray-300 mb-3" />
+                                  <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-0 max-h-[450px] overflow-y-auto custom-scrollbar pr-4 pb-4">
+                                  {progressMilestonesList.map((m, idx) => {
+                                    const isLast = idx === progressMilestonesList.length - 1;
+                                    const style = getTimelineStyle(m.status);
+                                    
+                                    return (
+                                      <div key={idx} className="relative flex items-start group cursor-default">
+                                        {/* Segmento Linea Timeline */}
+                                        {!isLast && (
+                                          <div className={`absolute left-[11px] top-[30px] bottom-0 w-[2px] ${style.line} z-0 rounded-full`} />
+                                        )}
+                                        
+                                        {/* Glowing Bullet */}
+                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-6 h-6 rounded-full border-2 ${style.wrapper} transition-transform duration-300 group-hover:scale-110 mt-1.5 mr-4 sm:mr-6`}>
+                                          <div className={`w-2 h-2 rounded-full ${style.dot}`} />
+                                        </div>
+
+                                        {/* Apple-style Card */}
+                                        <div className="flex-1 pb-6">
+                                          <div className={`w-full bg-white/70 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:-translate-y-0.5 ${m.status === 'in_progress' ? 'group-hover:border-[#e63f26]/30' : 'group-hover:border-gray-300'}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                                              <div className={`text-[15px] font-bold tracking-tight ${style.text}`}>{m.title}</div>
+                                              <div className="flex items-center gap-2.5">
+                                                {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
+                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${style.badge}`}>
+                                                  {String(m.status || '').replace('_', ' ')}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* 4. Audit Schedule */}
+                          {activeWidget === 'audit' && (
+                            <div className="animate-fade-in">
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="p-1.5 bg-[#911140]/10 rounded-lg border border-[#911140]/20">
+                                    <FileText className="text-[#911140] w-4 h-4"/>
+                                  </div>
+                                  Next Audit Schedule
+                                </h4>
+                              </div>
+                              <div className="space-y-3">
+                                {[leedCert, wellCert].filter(c => c && c.expiry_date).length === 0 ? (
+                                  <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                    <FileText className="w-10 h-10 text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-medium text-sm">No audits scheduled.</p>
+                                  </div>
+                                ) : (
+                                  [leedCert, wellCert].filter(c => c && c.expiry_date).map((cert, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-4 bg-[#911140]/5 rounded-2xl border border-[#911140]/10 transition-all duration-300 hover:shadow-[0_8px_25px_-5px_rgba(145,17,64,0.1)] hover:-translate-y-0.5 hover:border-[#911140]/30">
+                                      <div>
+                                        <div className="font-bold text-gray-800 text-base">{cert?.cert_type} Recertification</div>
+                                        <div className="text-xs text-gray-500 mt-0.5">Current Level: <span className="font-semibold">{cert?.level || 'N/A'}</span></div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
+                                        <div className="text-lg font-black text-gray-900 tracking-tight">
+                                          {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'TBD'}
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* 4. Audit Schedule */}
-                    {activeWidget === 'audit' && (
-                      <div className="animate-fade-in">
-                        <div className="flex items-center justify-between mb-6">
-                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                            <div className="p-1.5 bg-[#911140]/10 rounded-lg border border-[#911140]/20">
-                              <FileText className="text-[#911140] w-4 h-4"/>
-                            </div>
-                            Next Audit Schedule
-                          </h4>
-                        </div>
-                        <div className="space-y-3">
-                          {[leedCert, wellCert].filter(c => c && c.expiry_date).length === 0 ? (
-                             <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                               <FileText className="w-10 h-10 text-gray-300 mb-3" />
-                               <p className="text-gray-500 font-medium text-sm">No audits scheduled.</p>
-                             </div>
-                          ) : (
-                            [leedCert, wellCert].filter(c => c && c.expiry_date).map((cert, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-4 bg-[#911140]/5 rounded-2xl border border-[#911140]/10 transition-all duration-300 hover:shadow-[0_8px_25px_-5px_rgba(145,17,64,0.1)] hover:-translate-y-0.5 hover:border-[#911140]/30">
-                                <div>
-                                  <div className="font-bold text-gray-800 text-base">{cert?.cert_type} Recertification</div>
-                                  <div className="text-xs text-gray-500 mt-0.5">Current Level: <span className="font-semibold">{cert?.level || 'N/A'}</span></div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
-                                  <div className="text-lg font-black text-gray-900 tracking-tight">
-                                    {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'TBD'}
-                                  </div>
-                                </div>
+                                  ))
+                                )}
                               </div>
-                            ))
+                            </div>
                           )}
-                        </div>
-                      </div>
-                    )}
+                        </>
+                      );
+                    })()}
                   </div>
-
-                  {/* --- LEED DETAIL SCORECARD (Tabella Crediti Originale) --- */}
-                  {hasLEED && leedCert && (
-                    <div className="mt-8 border-t border-gray-200 pt-8">
-                      <h3 className="text-xl font-bold text-gray-800 mb-1">LEED Credit Scorecard</h3>
-                      <p className="text-sm text-gray-500 mb-6">Detailed breakdown of certification credits and points achieved.</p>
-                      <LEEDCertificationWidget leedCert={leedCert} milestones={leedMilestones || []} />
-                    </div>
-                  )}
-
-                </div>
-              );
-            })()}
 
             {/* BILL ANALYSIS DASHBOARD */}
             {activeDashboard === "bills" && hasBillAnalysis && (
