@@ -4536,21 +4536,57 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               </ModuleGate>
             )}
             
-            {/* CERTIFICATION DASHBOARDS (Renderizzate con Accordion e Drill-Down) */}
+            {/* CERTIFICATION DASHBOARDS (Refactored: Separazione Timeline vs Scorecard) */}
             {activeDashboard === "certification" && hasCertifications && (() => {
-              // Preparazione Dati Dinamici per i Widget
               const activeCertsCount = [leedCert, wellCert].filter(c => c && c.status === 'active').length;
               
-              // Uniamo le milestone e filtriamo per status
-              const allMilestones = [...(leedMilestones || []), ...(wellMilestones || [])];
-              const achievedMilestonesList = allMilestones.filter(m => m.status === 'achieved' || m.status === 'completed');
-              const progressMilestonesList = allMilestones.filter(m => m.status === 'pending' || m.status === 'in_progress' || m.status === 'not_started');
-              
-              // Calcolo del prossimo audit in base alla data di scadenza
+              // --- 1. LA TIMELINE DI PROGETTO REALE ---
+              // Sostituiamo i crediti della scorecard con le vere Milestone di PM.
+              // In futuro, questo array arriverà da Supabase filtrando la tabella milestones per type='timeline'
+              const projectTimeline = [
+                { id: 1, title: 'Provide design project documentation', progressPct: 10, status: 'completed', date: 'June 2025' },
+                { id: 2, title: 'Pre-assessment', progressPct: 20, status: 'completed', date: 'June 2025' },
+                { id: 3, title: 'LEED design project review and tendering requirements for the GC', progressPct: 30, status: 'completed', date: 'TBD' },
+                { id: 4, title: 'Provide tender project documentation', progressPct: 40, status: 'completed', date: 'TBD' },
+                { id: 5, title: 'Start construction phase', progressPct: 45, status: 'in_progress', date: 'TBD' },
+                { id: 6, title: 'GC LEED training', progressPct: 50, status: 'pending', date: 'TBD' },
+                { id: 7, title: 'Provide construction photo or documentations every week', progressPct: 65, status: 'not_started', date: 'TBD' },
+                { id: 8, title: 'LEED construction and documentation review and approvation', progressPct: 80, status: 'not_started', date: 'TBD' },
+                { id: 9, title: 'Construction phase end', progressPct: 90, status: 'not_started', date: 'TBD' },
+                { id: 10, title: 'FGB monitoring delivery', progressPct: 92, status: 'not_started', date: 'TBD' },
+                { id: 11, title: 'Provide full LEED construction package', progressPct: 94, status: 'not_started', date: 'TBD' },
+                { id: 12, title: 'Starting LEED certification process', progressPct: 95, status: 'not_started', date: 'TBD' },
+                { id: 13, title: 'Submission for preliminary review', progressPct: 96, status: 'not_started', date: 'TBD' },
+                { id: 14, title: 'Preliminary review report', progressPct: 97, status: 'not_started', date: 'TBD' },
+                { id: 15, title: 'Submission for final review', progressPct: 98, status: 'not_started', date: 'TBD' },
+                { id: 16, title: 'Final review report', progressPct: 99, status: 'not_started', date: 'TBD' },
+                { id: 17, title: 'CERTIFIED', progressPct: 100, status: 'not_started', date: 'TBD' }
+              ];
+
+              // Calcolo del progresso globale basato sull'ultima milestone completata o in corso
+              const currentProjectProgress = projectTimeline.reduce((max, m) => {
+                if (m.status === 'completed' || m.status === 'in_progress') return Math.max(max, m.progressPct);
+                return max;
+              }, 0);
+
+              // Liste filtrate per i drill-down
+              const completedTimelineCount = projectTimeline.filter(m => m.status === 'completed').length;
+              const inProgressTimelineList = projectTimeline.filter(m => m.status === 'in_progress' || m.status === 'pending');
+
+              // Helper Colori per Timeline
+              const getTimelineColor = (status: string) => {
+                switch(status) {
+                  case 'completed': return { dot: 'bg-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-800' };
+                  case 'in_progress': return { dot: 'bg-sky-500', text: 'text-sky-700', badge: 'bg-sky-100 text-sky-800' };
+                  case 'pending': return { dot: 'bg-rose-500', text: 'text-rose-700', badge: 'bg-rose-100 text-rose-800' };
+                  default: return { dot: 'bg-gray-300', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-600' };
+                }
+              };
+
+              // Calcolo audit e scadenze
               const dates = [leedCert?.expiry_date, wellCert?.expiry_date].filter(Boolean).map(d => new Date(d!).getFullYear());
               const nextAudit = dates.length > 0 ? Math.min(...dates).toString() : '—';
 
-              // Helper per le date di scadenza (semaforo rosso/giallo/verde)
               const getExpiryStatus = (dateStr?: string | null) => {
                 if (!dateStr) return { color: 'bg-gray-400', label: 'No Expiry' };
                 const daysLeft = (new Date(dateStr).getTime() - new Date().getTime()) / (1000 * 3600 * 24);
@@ -4563,13 +4599,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100vh-80px)] pb-24 custom-scrollbar">
                   
                   {/* --- TOP CARDS: FLEX ACCORDION --- */}
-                  <div className="flex flex-col lg:flex-row gap-4 w-full min-h-[320px] pb-8 pt-2">
+                  <div className="flex flex-col lg:flex-row gap-4 w-full min-h-[280px] pb-8 pt-2">
                     
                     {/* LEED CARD */}
                     {hasLEED && (() => {
                       const isExpanded = expandedCert === 'leed' || (!hasBREEAM && !hasWELL);
                       const isCollapsed = expandedCert !== null && expandedCert !== 'leed';
-                      const pct = Math.min(((leedCert?.score || 0) / 110) * 100, 100);
                       
                       return (
                         <div 
@@ -4588,11 +4623,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           
                           <div className="mt-auto space-y-2">
                             <div className="flex justify-between text-sm font-medium">
-                              <span className="text-gray-600 truncate">{isCollapsed ? 'Pts' : 'Points'}</span>
-                              <span className="text-gray-800">{leedCert?.score || 0} <span className="text-gray-400">/ 110</span></span>
+                              <span className="text-gray-600 truncate">{isCollapsed ? 'Prog' : 'Project Progress'}</span>
+                              <span className="text-gray-800 font-bold">{currentProjectProgress}%</span>
                             </div>
                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }} />
+                              <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000" style={{ width: `${currentProjectProgress}%` }} />
                             </div>
                           </div>
 
@@ -4601,15 +4636,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <p className="text-sm text-gray-600 mb-4 leading-relaxed">
                               LEED evaluates the sustainability of building operations, focusing on energy, water, waste, and human experience. Ongoing monitoring is crucial for recertification.
                             </p>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
-                                <div className="font-semibold text-gray-800 capitalize">{leedCert?.status?.replace('_', ' ') || 'Pending'}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Next Audit</div>
-                                <div className="font-semibold text-gray-800">{leedCert?.expiry_date ? new Date(leedCert.expiry_date).toLocaleDateString() : 'TBD'}</div>
-                              </div>
+                            <div>
+                              <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
+                              <div className="font-semibold text-gray-800 capitalize">{leedCert?.status?.replace('_', ' ') || 'Pending'}</div>
                             </div>
                           </div>
                         </div>
@@ -4640,8 +4669,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           
                           <div className="mt-auto space-y-2">
                             <div className="flex justify-between text-sm font-medium">
-                              <span className="text-gray-600 truncate">Score</span>
-                              <span className="text-gray-800">--%</span>
+                              <span className="text-gray-600 truncate">Project Progress</span>
+                              <span className="text-gray-800 font-bold">--%</span>
                             </div>
                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                               <div className="h-full bg-gradient-to-r from-sky-400 to-sky-600 rounded-full transition-all duration-1000" style={{ width: '0%' }} />
@@ -4661,7 +4690,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {hasWELL && (() => {
                       const isExpanded = expandedCert === 'well';
                       const isCollapsed = expandedCert !== null && expandedCert !== 'well';
-                      const pct = Math.min(((wellCert?.score || 0) / (wellCert?.target_score || 100)) * 100, 100);
                       
                       return (
                         <div 
@@ -4680,11 +4708,11 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           
                           <div className="mt-auto space-y-2">
                             <div className="flex justify-between text-sm font-medium">
-                              <span className="text-gray-600 truncate">{isCollapsed ? 'Pts' : 'Points'}</span>
-                              <span className="text-gray-800">{wellCert?.score || 0} <span className="text-gray-400">/ {wellCert?.target_score || 100}</span></span>
+                              <span className="text-gray-600 truncate">Project Progress</span>
+                              <span className="text-gray-800 font-bold">15%</span>
                             </div>
                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }} />
+                              <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all duration-1000" style={{ width: `15%` }} />
                             </div>
                           </div>
 
@@ -4692,15 +4720,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <p className="text-sm text-gray-600 mb-4 leading-relaxed">
                               WELL focuses exclusively on human health and well-being, monitoring air quality, thermal comfort, water quality, and organizational policies.
                             </p>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
-                                <div className="font-semibold text-gray-800 capitalize">{wellCert?.status?.replace('_', ' ') || 'Pending'}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Next Audit</div>
-                                <div className="font-semibold text-gray-800">{wellCert?.expiry_date ? new Date(wellCert.expiry_date).toLocaleDateString() : 'TBD'}</div>
-                              </div>
+                            <div>
+                              <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
+                              <div className="font-semibold text-gray-800 capitalize">{wellCert?.status?.replace('_', ' ') || 'Pending'}</div>
                             </div>
                           </div>
                         </div>
@@ -4722,15 +4744,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       onClick={() => setActiveWidget(activeWidget === 'achieved' ? null : 'achieved')}
                       className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'achieved' ? 'ring-2 ring-amber-500 ring-offset-2' : 'hover:shadow-xl'}`}
                     >
-                      <div className="text-4xl font-black text-amber-500 mb-2">{achievedMilestonesList.length}</div>
-                      <div className="text-sm font-semibold text-gray-700">Milestones Reached</div>
+                      <div className="text-4xl font-black text-amber-500 mb-2">{completedTimelineCount}</div>
+                      <div className="text-sm font-semibold text-gray-700">Project Timeline</div>
                     </div>
 
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'progress' ? null : 'progress')}
                       className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'progress' ? 'ring-2 ring-sky-500 ring-offset-2' : 'hover:shadow-xl'}`}
                     >
-                      <div className="text-4xl font-black text-sky-500 mb-2">{progressMilestonesList.length}</div>
+                      <div className="text-4xl font-black text-sky-500 mb-2">{inProgressTimelineList.length}</div>
                       <div className="text-sm font-semibold text-gray-700">In Progress</div>
                     </div>
 
@@ -4779,53 +4801,60 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                     )}
 
-                    {/* 2. Milestones Reached */}
+                    {/* 2. Timeline Completa del Progetto (Colorata) */}
                     {activeWidget === 'achieved' && (
                       <div className="animate-fade-in">
                         <h4 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                          <Award className="text-amber-500 w-5 h-5"/> Completed Project Milestones
+                          <Award className="text-amber-500 w-5 h-5"/> Full Project Timeline
                         </h4>
-                        {achievedMilestonesList.length === 0 ? (
-                           <p className="text-gray-500 italic text-sm">No milestones reached yet.</p>
-                        ) : (
-                          <div className="relative pl-6 border-l-2 border-amber-200 space-y-6">
-                            {achievedMilestonesList.map((m, idx) => (
+                        <div className="relative pl-6 border-l-2 border-gray-200 space-y-6 max-h-[450px] overflow-y-auto custom-scrollbar pr-4">
+                          {projectTimeline.map((m, idx) => {
+                            const colors = getTimelineColor(m.status);
+                            return (
                               <div key={idx} className="relative">
-                                <div className="absolute -left-[31px] top-1 w-4 h-4 bg-amber-500 border-4 border-white rounded-full shadow-sm" />
-                                <div className="text-sm font-bold text-gray-800">{m.category} {m.requirement ? `- ${m.requirement}` : ''}</div>
+                                <div className={`absolute -left-[31px] top-1 w-4 h-4 ${colors.dot} border-4 border-white rounded-full shadow-sm z-10`} />
+                                <div className={`text-sm font-bold ${m.status === 'not_started' ? 'text-gray-400' : 'text-gray-800'}`}>
+                                  {m.title}
+                                </div>
                                 <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                  <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase font-semibold text-[10px]">Completed</span>
-                                  {m.completed_date && <span>{new Date(m.completed_date).toLocaleDateString()}</span>}
+                                  <span className={`${colors.badge} px-2 py-0.5 rounded uppercase font-semibold text-[10px]`}>
+                                    {m.status.replace('_', ' ')}
+                                  </span>
+                                  {m.date !== 'TBD' && <span>{m.date}</span>}
+                                  {m.date === 'TBD' && <span className="text-gray-300">TBD</span>}
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
-                    {/* 3. In Progress Timeline */}
+                    {/* 3. In Progress (Solo Pending e In Progress) */}
                     {activeWidget === 'progress' && (
                       <div className="animate-fade-in">
                         <h4 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                          <Activity className="text-sky-500 w-5 h-5"/> Project Timeline (In Progress & Future)
+                          <Activity className="text-sky-500 w-5 h-5"/> Current Actions (In Progress & Pending)
                         </h4>
-                        {progressMilestonesList.length === 0 ? (
-                           <p className="text-gray-500 italic text-sm">No pending milestones. Project might be complete.</p>
+                        {inProgressTimelineList.length === 0 ? (
+                           <p className="text-gray-500 italic text-sm">No pending actions at the moment.</p>
                         ) : (
                           <div className="relative pl-6 border-l-2 border-sky-100 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar pr-4">
-                            {progressMilestonesList.map((m, idx) => (
-                              <div key={idx} className="relative">
-                                <div className={`absolute -left-[31px] top-1 w-4 h-4 border-4 border-white rounded-full shadow-sm ${m.status === 'in_progress' ? 'bg-sky-500' : 'bg-gray-300'}`} />
-                                <div className="text-sm font-bold text-gray-800">{m.category} {m.requirement ? `- ${m.requirement}` : ''}</div>
-                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                  <span className={`px-2 py-0.5 rounded uppercase font-semibold text-[10px] ${m.status === 'in_progress' ? 'bg-sky-100 text-sky-800' : 'bg-gray-100 text-gray-600'}`}>
-                                    {m.status?.replace('_', ' ') || 'Pending'}
-                                  </span>
-                                  {m.due_date && <span>Due: {new Date(m.due_date).toLocaleDateString()}</span>}
+                            {inProgressTimelineList.map((m, idx) => {
+                              const colors = getTimelineColor(m.status);
+                              return (
+                                <div key={idx} className="relative">
+                                  <div className={`absolute -left-[31px] top-1 w-4 h-4 ${colors.dot} border-4 border-white rounded-full shadow-sm`} />
+                                  <div className="text-sm font-bold text-gray-800">{m.title}</div>
+                                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded uppercase font-semibold text-[10px] ${colors.badge}`}>
+                                      {m.status.replace('_', ' ')}
+                                    </span>
+                                    {m.date !== 'TBD' && <span>Target: {m.date}</span>}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -4862,12 +4891,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                   </div>
 
-                  {/* --- LEED DETAIL SCORECARD --- */}
-                  {/* Se ci sono punteggi LEED dettagliati e crediti (il vecchio widget LEED), lo manteniamo in basso a scopo consultativo */}
+                  {/* --- LEED DETAIL SCORECARD (Tabella Crediti Originale) --- */}
                   {hasLEED && leedCert && (
                     <div className="mt-8 border-t border-gray-200 pt-8">
-                      <h3 className="text-xl font-bold text-gray-800 mb-4">LEED Credit Scorecard</h3>
-                      <LEEDCertificationWidget leedCert={leedCert} milestones={[]} />
+                      <h3 className="text-xl font-bold text-gray-800 mb-1">LEED Credit Scorecard</h3>
+                      <p className="text-sm text-gray-500 mb-6">Detailed breakdown of certification credits and points achieved.</p>
+                      <LEEDCertificationWidget leedCert={leedCert} milestones={leedMilestones || []} />
                     </div>
                   )}
 
