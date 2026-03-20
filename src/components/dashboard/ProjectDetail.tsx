@@ -272,7 +272,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // WELL certification data
   const { wellCert, milestones: wellMilestones } = useWellCertification(project?.siteId);
   // LEED certification data
-  const { leedCert, milestones: leedMilestones } = useLeedCertification(project?.siteId);
+  const { leedCert, milestones: leedMilestones, timeline: leedTimeline } = useLeedCertification(project?.siteId);
   
   // Certifications configured in admin panel for this project
   const projectCertifications = useProjectCertifications(project);
@@ -4536,36 +4536,42 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               </ModuleGate>
             )}
             
-            {/* CERTIFICATION DASHBOARDS (Refactored: Separazione Timeline vs Scorecard) */}
+            {/* CERTIFICATION DASHBOARDS (Fully Dynamic and High Contrast) */}
             {activeDashboard === "certification" && hasCertifications && (() => {
               const activeCertsCount = [leedCert, wellCert].filter(c => c && c.status === 'active').length;
               
-              // --- 1. LA TIMELINE DI PROGETTO REALE ---
-              // Sostituiamo i crediti della scorecard con le vere Milestone di PM.
-              // In futuro, questo array arriverà da Supabase filtrando la tabella milestones per type='timeline'
-              const projectTimeline = [
-                { id: 1, title: 'Provide design project documentation', progressPct: 10, status: 'completed', date: 'June 2025' },
-                { id: 2, title: 'Pre-assessment', progressPct: 20, status: 'completed', date: 'June 2025' },
-                { id: 3, title: 'LEED design project review and tendering requirements for the GC', progressPct: 30, status: 'completed', date: 'TBD' },
-                { id: 4, title: 'Provide tender project documentation', progressPct: 40, status: 'completed', date: 'TBD' },
-                { id: 5, title: 'Start construction phase', progressPct: 45, status: 'in_progress', date: 'TBD' },
-                { id: 6, title: 'GC LEED training', progressPct: 50, status: 'pending', date: 'TBD' },
-                { id: 7, title: 'Provide construction photo or documentations every week', progressPct: 65, status: 'not_started', date: 'TBD' },
-                { id: 8, title: 'LEED construction and documentation review and approvation', progressPct: 80, status: 'not_started', date: 'TBD' },
-                { id: 9, title: 'Construction phase end', progressPct: 90, status: 'not_started', date: 'TBD' },
-                { id: 10, title: 'FGB monitoring delivery', progressPct: 92, status: 'not_started', date: 'TBD' },
-                { id: 11, title: 'Provide full LEED construction package', progressPct: 94, status: 'not_started', date: 'TBD' },
-                { id: 12, title: 'Starting LEED certification process', progressPct: 95, status: 'not_started', date: 'TBD' },
-                { id: 13, title: 'Submission for preliminary review', progressPct: 96, status: 'not_started', date: 'TBD' },
-                { id: 14, title: 'Preliminary review report', progressPct: 97, status: 'not_started', date: 'TBD' },
-                { id: 15, title: 'Submission for final review', progressPct: 98, status: 'not_started', date: 'TBD' },
-                { id: 16, title: 'Final review report', progressPct: 99, status: 'not_started', date: 'TBD' },
-                { id: 17, title: 'CERTIFIED', progressPct: 100, status: 'not_started', date: 'TBD' }
-              ];
+              // --- 1. TIMELINE DI PROGETTO REALE (Dal Database) ---
+              // Leggiamo da leedTimeline che arriva dal nuovo hook (useLeedCertification)
+              const projectTimeline = (leedTimeline || []).map((m: any, index: number) => {
+                const totalSteps = leedTimeline?.length || 1;
+                const pct = Math.round(((index + 1) / totalSteps) * 100);
+                
+                // Formattazione data
+                let dateStr = 'TBD';
+                if (m.status === 'achieved' || m.status === 'completed') {
+                  dateStr = m.completed_date ? new Date(m.completed_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Done';
+                } else if (m.due_date) {
+                  dateStr = new Date(m.due_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                } else if (m.start_date) {
+                  dateStr = `From ${new Date(m.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+                }
 
-              // Calcolo del progresso globale basato sull'ultima milestone completata o in corso
+                let uiStatus = m.status;
+                if (uiStatus === 'achieved') uiStatus = 'completed';
+
+                return {
+                  id: m.id,
+                  title: m.category,
+                  progressPct: pct,
+                  status: uiStatus,
+                  date: dateStr
+                };
+              });
+
+              // Calcolo del progresso globale
               const currentProjectProgress = projectTimeline.reduce((max, m) => {
-                if (m.status === 'completed' || m.status === 'in_progress') return Math.max(max, m.progressPct);
+                if (m.status === 'completed') return Math.max(max, m.progressPct);
+                if (m.status === 'in_progress') return Math.max(max, m.progressPct - 2); 
                 return max;
               }, 0);
 
@@ -4745,7 +4751,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'achieved' ? 'ring-2 ring-amber-500 ring-offset-2' : 'hover:shadow-xl'}`}
                     >
                       <div className="text-4xl font-black text-amber-500 mb-2">{completedTimelineCount}</div>
-                      <div className="text-sm font-semibold text-gray-700">Project Timeline</div>
+                      <div className="text-sm font-semibold text-gray-700">Milestones Reached</div>
                     </div>
 
                     <div 
@@ -4801,56 +4807,52 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                     )}
 
-                    {/* 2. Timeline Completa del Progetto (Colorata) */}
+                    {/* 2. Milestones Reached */}
                     {activeWidget === 'achieved' && (
                       <div className="animate-fade-in">
                         <h4 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                          <Award className="text-amber-500 w-5 h-5"/> Full Project Timeline
+                          <Award className="text-amber-500 w-5 h-5"/> Completed Project Milestones
                         </h4>
-                        <div className="relative pl-6 border-l-2 border-gray-200 space-y-6 max-h-[450px] overflow-y-auto custom-scrollbar pr-4">
-                          {projectTimeline.map((m, idx) => {
-                            const colors = getTimelineColor(m.status);
-                            return (
+                        {achievedMilestonesList.length === 0 ? (
+                           <p className="text-gray-500 italic text-sm">No milestones reached yet.</p>
+                        ) : (
+                          <div className="relative pl-6 border-l-2 border-amber-200 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar pr-4">
+                            {achievedMilestonesList.map((m, idx) => (
                               <div key={idx} className="relative">
-                                <div className={`absolute -left-[31px] top-1 w-4 h-4 ${colors.dot} border-4 border-white rounded-full shadow-sm z-10`} />
-                                <div className={`text-sm font-bold ${m.status === 'not_started' ? 'text-gray-400' : 'text-gray-800'}`}>
-                                  {m.title}
-                                </div>
+                                <div className="absolute -left-[31px] top-1 w-4 h-4 bg-amber-500 border-4 border-white rounded-full shadow-sm" />
+                                <div className="text-sm font-bold text-gray-800">{m.title}</div>
                                 <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                  <span className={`${colors.badge} px-2 py-0.5 rounded uppercase font-semibold text-[10px]`}>
-                                    {m.status.replace('_', ' ')}
-                                  </span>
+                                  <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase font-semibold text-[10px]">Completed</span>
                                   {m.date !== 'TBD' && <span>{m.date}</span>}
-                                  {m.date === 'TBD' && <span className="text-gray-300">TBD</span>}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* 3. In Progress (Solo Pending e In Progress) */}
+                    {/* 3. In Progress Timeline */}
                     {activeWidget === 'progress' && (
                       <div className="animate-fade-in">
                         <h4 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                          <Activity className="text-sky-500 w-5 h-5"/> Current Actions (In Progress & Pending)
+                          <Activity className="text-sky-500 w-5 h-5"/> Project Timeline (In Progress & Future)
                         </h4>
-                        {inProgressTimelineList.length === 0 ? (
-                           <p className="text-gray-500 italic text-sm">No pending actions at the moment.</p>
+                        {progressMilestonesList.length === 0 ? (
+                           <p className="text-gray-500 italic text-sm">No pending milestones. Project might be complete.</p>
                         ) : (
                           <div className="relative pl-6 border-l-2 border-sky-100 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar pr-4">
-                            {inProgressTimelineList.map((m, idx) => {
+                            {progressMilestonesList.map((m, idx) => {
                               const colors = getTimelineColor(m.status);
                               return (
                                 <div key={idx} className="relative">
-                                  <div className={`absolute -left-[31px] top-1 w-4 h-4 ${colors.dot} border-4 border-white rounded-full shadow-sm`} />
+                                  <div className={`absolute -left-[31px] top-1 w-4 h-4 border-4 border-white rounded-full shadow-sm ${colors.dot}`} />
                                   <div className="text-sm font-bold text-gray-800">{m.title}</div>
                                   <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
                                     <span className={`px-2 py-0.5 rounded uppercase font-semibold text-[10px] ${colors.badge}`}>
-                                      {m.status.replace('_', ' ')}
+                                      {m.status?.replace('_', ' ')}
                                     </span>
-                                    {m.date !== 'TBD' && <span>Target: {m.date}</span>}
+                                    {m.date !== 'TBD' && <span>{m.date}</span>}
                                   </div>
                                 </div>
                               );
