@@ -4582,26 +4582,26 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               const progressMilestonesList = projectTimeline.filter(m => m.status === 'in_progress' || m.status === 'pending');
               const inProgressTimelineList = progressMilestonesList;
 
-              // Helper Colori per Timeline
+              // Helper Colori per Timeline (FGB Palette)
               const getTimelineColor = (status: string) => {
                 switch(status) {
-                  case 'completed': return { dot: 'bg-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-800' };
-                  case 'in_progress': return { dot: 'bg-sky-500', text: 'text-sky-700', badge: 'bg-sky-100 text-sky-800' };
-                  case 'pending': return { dot: 'bg-rose-500', text: 'text-rose-700', badge: 'bg-rose-100 text-rose-800' };
-                  default: return { dot: 'bg-gray-300', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-600' };
+                  case 'completed': return { dot: 'bg-[#009193]', text: 'text-[#006367]', badge: 'bg-[#a0d5d6]/30 text-[#006367] border-[#009193]/20' };
+                  case 'in_progress': return { dot: 'bg-[#e63f26]', text: 'text-[#e63f26]', badge: 'bg-[#f8cbcc]/40 text-[#e63f26] border-[#e63f26]/20' };
+                  case 'pending': return { dot: 'bg-[#f8cbcc]', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-500 border-gray-200' };
+                  default: return { dot: 'bg-gray-300', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-600 border-gray-200' };
                 }
               };
 
-              // Calcolo audit e scadenze
+              // Calcolo audit e scadenze (FGB Palette)
               const dates = [leedCert?.expiry_date, wellCert?.expiry_date].filter(Boolean).map(d => new Date(d!).getFullYear());
               const nextAudit = dates.length > 0 ? Math.min(...dates).toString() : '—';
 
               const getExpiryStatus = (dateStr?: string | null) => {
                 if (!dateStr) return { color: 'bg-gray-400', label: 'No Expiry' };
                 const daysLeft = (new Date(dateStr).getTime() - new Date().getTime()) / (1000 * 3600 * 24);
-                if (daysLeft < 0) return { color: 'bg-red-500', label: 'Expired' };
-                if (daysLeft <= 365) return { color: 'bg-amber-500', label: 'Expiring Soon' };
-                return { color: 'bg-emerald-500', label: 'Valid' };
+                if (daysLeft < 0) return { color: 'bg-[#911140]', label: 'Expired' }; // Burgundy
+                if (daysLeft <= 365) return { color: 'bg-[#e63f26]', label: 'Expiring Soon' }; // Orange-Red
+                return { color: 'bg-[#009193]', label: 'Valid' }; // Teal Primary
               };
 
               return (
@@ -4618,7 +4618,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       return (
                         <div 
                           onClick={() => setExpandedCert(expandedCert === 'leed' ? null : 'leed')}
-                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-emerald-100 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
+                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
                             isExpanded ? 'lg:flex-[2_2_0%]' : isCollapsed ? 'lg:flex-[0.6_0.6_0%] opacity-80 hover:opacity-100' : 'lg:flex-1'
                           }`}
                         >
@@ -4626,7 +4626,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/leed_logo.png" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{leedCert?.cert_type || 'LEED v4 O+M'}</h3>
-                              <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold mt-1">{leedCert?.level || 'In Progress'}</span>
+                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{leedCert?.level || 'In Progress'}</span>
                             </div>
                           </div>
                           
@@ -4636,7 +4636,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               <span className="text-gray-800 font-bold">{currentProjectProgress}%</span>
                             </div>
                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000" style={{ width: `${currentProjectProgress}%` }} />
+                              <div className="h-full bg-gradient-to-r from-[#a0d5d6] to-[#009193] rounded-full transition-all duration-1000" style={{ width: `${currentProjectProgress}%` }} />
                             </div>
                           </div>
 
@@ -4662,17 +4662,17 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       return (
                         <div 
                           onClick={() => setExpandedCert(expandedCert === 'breeam' ? null : 'breeam')}
-                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-sky-100 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
+                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
                             isExpanded ? 'lg:flex-[2_2_0%]' : isCollapsed ? 'lg:flex-[0.6_0.6_0%] opacity-80 hover:opacity-100' : 'lg:flex-1'
                           }`}
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
-                            <div className="w-14 h-14 rounded-xl bg-sky-500 flex items-center justify-center shadow-sm flex-shrink-0">
+                            <div className="w-14 h-14 rounded-xl bg-[#009193] flex items-center justify-center shadow-sm flex-shrink-0">
                               <span className="text-white font-black text-[10px]">BREEAM</span>
                             </div>
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">BREEAM In-Use</h3>
-                              <span className="inline-block px-3 py-1 bg-sky-100 text-sky-800 rounded-full text-xs font-semibold mt-1">Pending</span>
+                              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold mt-1">Pending</span>
                             </div>
                           </div>
                           
@@ -4682,7 +4682,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               <span className="text-gray-800 font-bold">--%</span>
                             </div>
                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-sky-400 to-sky-600 rounded-full transition-all duration-1000" style={{ width: '0%' }} />
+                              <div className="h-full bg-gradient-to-r from-[#a0d5d6] to-[#009193] rounded-full transition-all duration-1000" style={{ width: '0%' }} />
                             </div>
                           </div>
 
@@ -4703,7 +4703,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       return (
                         <div 
                           onClick={() => setExpandedCert(expandedCert === 'well' ? null : 'well')}
-                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-rose-100 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
+                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
                             isExpanded ? 'lg:flex-[2_2_0%]' : isCollapsed ? 'lg:flex-[0.6_0.6_0%] opacity-80 hover:opacity-100' : 'lg:flex-1'
                           }`}
                         >
@@ -4711,7 +4711,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/well_logo.png" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{wellCert?.cert_type || 'WELL v2 Core'}</h3>
-                              <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-semibold mt-1">{wellCert?.level || 'In Progress'}</span>
+                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{wellCert?.level || 'In Progress'}</span>
                             </div>
                           </div>
                           
@@ -4721,7 +4721,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               <span className="text-gray-800 font-bold">15%</span>
                             </div>
                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all duration-1000" style={{ width: `15%` }} />
+                              <div className="h-full bg-gradient-to-r from-[#a0d5d6] to-[#009193] rounded-full transition-all duration-1000" style={{ width: `15%` }} />
                             </div>
                           </div>
 
@@ -4743,33 +4743,33 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-6">
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'active' ? null : 'active')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'active' ? 'ring-2 ring-emerald-500 ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'active' ? 'ring-2 ring-[#009193] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
-                      <div className="text-4xl font-black text-emerald-500 mb-2">{activeCertsCount}</div>
+                      <div className="text-4xl font-black text-[#009193] mb-2">{activeCertsCount}</div>
                       <div className="text-sm font-semibold text-gray-700">Active Certs</div>
                     </div>
 
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'achieved' ? null : 'achieved')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'achieved' ? 'ring-2 ring-amber-500 ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'achieved' ? 'ring-2 ring-[#009193] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
-                      <div className="text-4xl font-black text-amber-500 mb-2">{completedTimelineCount}</div>
+                      <div className="text-4xl font-black text-[#009193] mb-2">{completedTimelineCount}</div>
                       <div className="text-sm font-semibold text-gray-700">Milestones Reached</div>
                     </div>
 
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'progress' ? null : 'progress')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'progress' ? 'ring-2 ring-sky-500 ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'progress' ? 'ring-2 ring-[#e63f26] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
-                      <div className="text-4xl font-black text-sky-500 mb-2">{inProgressTimelineList.length}</div>
+                      <div className="text-4xl font-black text-[#e63f26] mb-2">{inProgressTimelineList.length}</div>
                       <div className="text-sm font-semibold text-gray-700">In Progress</div>
                     </div>
 
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'audit' ? null : 'audit')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'audit' ? 'ring-2 ring-rose-500 ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'audit' ? 'ring-2 ring-[#911140] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
-                      <div className="text-3xl font-black text-rose-500 mb-2 leading-tight flex items-center justify-center min-h-[40px]">{nextAudit}</div>
+                      <div className="text-3xl font-black text-[#911140] mb-2 leading-tight flex items-center justify-center min-h-[40px]">{nextAudit}</div>
                       <div className="text-sm font-semibold text-gray-700">Next Audit</div>
                     </div>
                   </div>
@@ -4780,27 +4780,35 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* 1. Lista Certificazioni Attive */}
                     {activeWidget === 'active' && (
                       <div className="animate-fade-in">
-                        <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                          <Award className="text-emerald-500 w-5 h-5"/> Active Certifications
-                        </h4>
+                        <div className="flex items-center justify-between mb-6">
+                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                            <div className="p-1.5 bg-[#a0d5d6]/30 rounded-lg border border-[#009193]/20">
+                              <Award className="text-[#009193] w-4 h-4"/>
+                            </div>
+                            Active Certifications
+                          </h4>
+                        </div>
                         <div className="space-y-3">
                           {[leedCert, wellCert].filter(c => c && c.status === 'active').length === 0 ? (
-                            <p className="text-gray-500 italic text-sm">No active certifications yet.</p>
+                            <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                              <Award className="w-10 h-10 text-gray-300 mb-3" />
+                              <p className="text-gray-500 font-medium text-sm">No active certifications yet.</p>
+                            </div>
                           ) : (
                             [leedCert, wellCert].filter(c => c && c.status === 'active').map((cert, idx) => {
                               const expStatus = getExpiryStatus(cert?.expiry_date);
                               return (
-                                <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                <div key={idx} className="flex items-center justify-between p-4 bg-white border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 hover:border-[#009193]/30">
                                   <div>
-                                    <div className="font-bold text-gray-800">{cert?.cert_type}</div>
-                                    <div className="text-xs text-gray-500">Issued: {cert?.issued_date ? new Date(cert.issued_date).toLocaleDateString() : 'N/A'}</div>
+                                    <div className="font-bold text-gray-800 text-base">{cert?.cert_type}</div>
+                                    <div className="text-xs text-gray-400 mt-0.5">Issued: {cert?.issued_date ? new Date(cert.issued_date).toLocaleDateString() : 'N/A'}</div>
                                   </div>
                                   <div className="text-right">
                                     <div className="flex items-center justify-end gap-2 mb-1">
-                                      <div className={`w-2.5 h-2.5 rounded-full ${expStatus.color} shadow-sm`} />
-                                      <span className="text-sm font-semibold text-gray-700">{expStatus.label}</span>
+                                      <div className={`w-2.5 h-2.5 rounded-full ${expStatus.color} shadow-sm ring-2 ring-white`} />
+                                      <span className="text-sm font-bold text-gray-700">{expStatus.label}</span>
                                     </div>
-                                    <div className="text-xs text-gray-500">Exp: {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString() : 'N/A'}</div>
+                                    <div className="text-xs text-gray-400">Exp: {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString() : 'N/A'}</div>
                                   </div>
                                 </div>
                               );
@@ -4815,12 +4823,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="animate-fade-in">
                         <div className="flex items-center justify-between mb-6">
                           <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                            <div className="p-1.5 bg-amber-100/50 rounded-lg border border-amber-200/50">
-                              <Award className="text-amber-500 w-4 h-4"/>
+                            <div className="p-1.5 bg-[#a0d5d6]/30 rounded-lg border border-[#009193]/20">
+                              <Award className="text-[#009193] w-4 h-4"/>
                             </div>
                             Completed Milestones
                           </h4>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full ring-1 ring-amber-500/20 shadow-sm">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#006367] bg-[#a0d5d6]/20 px-2.5 py-1 rounded-full ring-1 ring-[#009193]/20 shadow-sm">
                             {achievedMilestonesList.length} Total
                           </span>
                         </div>
@@ -4833,20 +4841,20 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         ) : (
                           <div className="relative pl-6 sm:pl-8 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4 pb-4">
                             {/* Elegant Gradient Line */}
-                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-amber-400 via-amber-200/50 to-transparent rounded-full" />
+                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-[#009193] via-[#a0d5d6]/50 to-transparent rounded-full" />
                             
                             {achievedMilestonesList.map((m, idx) => (
                               <div key={idx} className="relative flex items-center group cursor-default">
                                 {/* Glowing Dot */}
-                                <div className="absolute -left-[29px] sm:-left-[37px] w-3 h-3 bg-amber-500 rounded-full ring-4 ring-white shadow-[0_0_0_1px_rgba(245,158,11,0.15)] group-hover:scale-125 group-hover:bg-amber-400 transition-all duration-300 z-10" />
+                                <div className="absolute -left-[29px] sm:-left-[37px] w-3 h-3 bg-[#009193] rounded-full ring-4 ring-white shadow-[0_0_0_1px_rgba(0,145,147,0.15)] group-hover:scale-125 group-hover:bg-[#006367] transition-all duration-300 z-10" />
                                 
                                 {/* Apple-style Card */}
-                                <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-amber-200/60 group-hover:-translate-y-0.5">
+                                <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-[#009193]/30 group-hover:-translate-y-0.5">
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                                     <div className="text-sm font-bold text-gray-800 tracking-tight">{m.title}</div>
                                     <div className="flex items-center gap-2.5">
                                       {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
-                                      <span className="bg-gradient-to-br from-amber-50 to-amber-100/50 text-amber-700 px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border border-amber-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                      <span className="bg-gradient-to-br from-[#a0d5d6]/10 to-[#a0d5d6]/30 text-[#006367] px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border border-[#009193]/20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                                         Completed
                                       </span>
                                     </div>
@@ -4864,12 +4872,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="animate-fade-in">
                         <div className="flex items-center justify-between mb-6">
                           <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                            <div className="p-1.5 bg-sky-100/50 rounded-lg border border-sky-200/50">
-                              <Activity className="text-sky-500 w-4 h-4"/>
+                            <div className="p-1.5 bg-[#f8cbcc]/40 rounded-lg border border-[#e63f26]/20">
+                              <Activity className="text-[#e63f26] w-4 h-4"/>
                             </div>
                             Project Timeline
                           </h4>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 bg-sky-50 px-2.5 py-1 rounded-full ring-1 ring-sky-500/20 shadow-sm">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#e63f26] bg-[#f8cbcc]/30 px-2.5 py-1 rounded-full ring-1 ring-[#e63f26]/20 shadow-sm">
                             {progressMilestonesList.length} Pending
                           </span>
                         </div>
@@ -4882,7 +4890,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         ) : (
                           <div className="relative pl-6 sm:pl-8 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4 pb-4">
                             {/* Elegant Gradient Line */}
-                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-sky-400 via-sky-200/50 to-transparent rounded-full" />
+                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-[#e63f26] via-[#f8cbcc]/50 to-transparent rounded-full" />
                             
                             {progressMilestonesList.map((m, idx) => {
                               const colors = getTimelineColor(m.status);
@@ -4893,12 +4901,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                   <div className={`absolute -left-[29px] sm:-left-[37px] w-3 h-3 rounded-full ring-4 ring-white shadow-[0_0_0_1px_rgba(0,0,0,0.05)] transition-all duration-300 z-10 ${colors.dot} group-hover:scale-125`} />
                                   
                                   {/* Apple-style Card */}
-                                  <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-sky-200/60 group-hover:-translate-y-0.5">
+                                  <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-[#e63f26]/30 group-hover:-translate-y-0.5">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-                                      <div className="text-sm font-bold text-gray-800 tracking-tight">{m.title}</div>
+                                      <div className={`text-sm font-bold tracking-tight ${m.status === 'pending' ? 'text-gray-500' : 'text-gray-800'}`}>{m.title}</div>
                                       <div className="flex items-center gap-2.5">
                                         {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
-                                        <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${colors.badge} border-opacity-50`}>
+                                        <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${colors.badge}`}>
                                           {String(m.status || '').replace('_', ' ')}
                                         </span>
                                       </div>
@@ -4915,22 +4923,30 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* 4. Audit Schedule */}
                     {activeWidget === 'audit' && (
                       <div className="animate-fade-in">
-                        <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                          <FileText className="text-rose-500 w-5 h-5"/> Next Audit Schedule
-                        </h4>
+                        <div className="flex items-center justify-between mb-6">
+                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                            <div className="p-1.5 bg-[#911140]/10 rounded-lg border border-[#911140]/20">
+                              <FileText className="text-[#911140] w-4 h-4"/>
+                            </div>
+                            Next Audit Schedule
+                          </h4>
+                        </div>
                         <div className="space-y-3">
                           {[leedCert, wellCert].filter(c => c && c.expiry_date).length === 0 ? (
-                            <p className="text-gray-500 italic text-sm">No audits scheduled.</p>
+                             <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                               <FileText className="w-10 h-10 text-gray-300 mb-3" />
+                               <p className="text-gray-500 font-medium text-sm">No audits scheduled.</p>
+                             </div>
                           ) : (
                             [leedCert, wellCert].filter(c => c && c.expiry_date).map((cert, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-4 bg-rose-50/50 rounded-xl border border-rose-100">
+                              <div key={idx} className="flex items-center justify-between p-4 bg-[#911140]/5 rounded-2xl border border-[#911140]/10 transition-all duration-300 hover:shadow-[0_8px_25px_-5px_rgba(145,17,64,0.1)] hover:-translate-y-0.5 hover:border-[#911140]/30">
                                 <div>
-                                  <div className="font-bold text-gray-800">{cert?.cert_type} Recertification</div>
-                                  <div className="text-xs text-gray-500">Current Level: {cert?.level || 'N/A'}</div>
+                                  <div className="font-bold text-gray-800 text-base">{cert?.cert_type} Recertification</div>
+                                  <div className="text-xs text-gray-500 mt-0.5">Current Level: <span className="font-semibold">{cert?.level || 'N/A'}</span></div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-xs uppercase tracking-wider text-rose-500 font-bold mb-1">Due By</div>
-                                  <div className="text-lg font-bold text-gray-800">
+                                  <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
+                                  <div className="text-lg font-black text-gray-900 tracking-tight">
                                     {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'TBD'}
                                   </div>
                                 </div>
@@ -4940,7 +4956,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     )}
-
                   </div>
 
                   {/* --- LEED DETAIL SCORECARD (Tabella Crediti Originale) --- */}
