@@ -404,8 +404,8 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                   {timelineMilestones.map((tm, idx) => (
                     <div key={tm.id} className="p-4 bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow transition-shadow flex flex-col gap-3">
                       <div className="flex flex-col">
-                        <Label className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Nome Fase (Visibile al Cliente)</Label>
-                        <Input className="text-sm font-semibold text-slate-800 border-none px-0 h-auto focus-visible:ring-0 focus-visible:border-b" value={tm.category} onChange={(e) => updateTimelineField(idx, 'category', e.target.value)} />
+                        <Label className="text-[10px] text-slate-600 uppercase tracking-wider mb-1">Nome Fase (Visibile al Cliente)</Label>
+                        <Input className="text-sm font-semibold text-gray-950 border-none px-0 h-auto focus-visible:ring-0 focus-visible:border-b" value={tm.category} onChange={(e) => updateTimelineField(idx, 'category', e.target.value)} />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
