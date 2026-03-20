@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Award, Loader2 } from 'lucide-react';
+import { Award, Loader2, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,12 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingTimeline, setIsGeneratingTimeline] = useState(false);
+  
+  // Stati per gestire l'identità della certificazione
+  const [certId, setCertId] = useState<string | null>(null);
+  const [hasTimeline, setHasTimeline] = useState(false);
+
   const [formData, setFormData] = useState<LEEDFormData>({
     certType: 'LEED v4',
     level: 'Gold',
@@ -78,17 +84,31 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
 
         if (certs && certs.length > 0) {
           const cert = certs[0];
-          const { data: milestones } = await supabase
+          setCertId(cert.id);
+
+          // 1. Carica SOLO i crediti della Scorecard
+          const { data: scorecard } = await supabase
             .from('certification_milestones')
             .select('*')
-            .eq('certification_id', cert.id);
+            .eq('certification_id', cert.id)
+            .eq('milestone_type', 'scorecard');
 
           const mappedMilestones = DEFAULT_LEED_MILESTONES.map(dm => {
-            const existing = milestones?.find(m => m.category === dm.category);
+            const existing = scorecard?.find(m => m.category === dm.category);
             return existing
               ? { category: existing.category, score: existing.score || 0, maxScore: existing.max_score || dm.maxScore }
               : { ...dm };
           });
+
+          // 2. Controlla se la timeline esiste già
+          const { data: timelineData } = await supabase
+            .from('certification_milestones')
+            .select('id')
+            .eq('certification_id', cert.id)
+            .eq('milestone_type', 'timeline')
+            .limit(1);
+            
+          setHasTimeline((timelineData && timelineData.length > 0) ? true : false);
 
           setFormData({
             certType: cert.cert_type || 'LEED v4',
@@ -100,6 +120,8 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
             milestones: mappedMilestones,
           });
         } else {
+          setCertId(null);
+          setHasTimeline(false);
           setFormData({
             certType: 'LEED v4',
             level: 'Gold',
@@ -124,16 +146,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
     if (!supabase) return;
     setIsSaving(true);
     try {
-      const { data: existingCerts } = await supabase
-        .from('certifications')
-        .select('id')
-        .eq('site_id', siteId)
-        .ilike('cert_type', '%LEED%')
-        .limit(1);
-
-      let certId: string;
-
-      // Auto-calculate total score from milestones
+      let currentCertId = certId;
       const totalScore = formData.milestones.reduce((sum, m) => sum + m.score, 0);
 
       const certPayload = {
@@ -146,12 +159,11 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
         expiry_date: formData.expiryDate || null,
       };
 
-      if (existingCerts && existingCerts.length > 0) {
-        certId = existingCerts[0].id;
+      if (currentCertId) {
         await supabase
           .from('certifications')
           .update(certPayload)
-          .eq('id', certId);
+          .eq('id', currentCertId);
       } else {
         const { data: newCert } = await supabase
           .from('certifications')
@@ -163,21 +175,25 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
           .single();
 
         if (!newCert) throw new Error('Failed to create LEED certification');
-        certId = newCert.id;
+        currentCertId = newCert.id;
+        setCertId(currentCertId);
       }
 
-      // Delete existing milestones and re-insert
+      // IMPORTANTE: Cancella SOLO le milestone di tipo scorecard, preservando la timeline
       await supabase
         .from('certification_milestones')
         .delete()
-        .eq('certification_id', certId);
+        .eq('certification_id', currentCertId)
+        .eq('milestone_type', 'scorecard');
 
       const milestonesToInsert = formData.milestones.map(m => ({
-        certification_id: certId,
+        certification_id: currentCertId,
+        site_id: siteId,
         category: m.category,
         requirement: CATEGORY_LABELS[m.category] || m.category,
         score: m.score,
         max_score: m.maxScore,
+        milestone_type: 'scorecard', // Forza il tipo scorecard
         status: m.score >= m.maxScore && m.maxScore > 0 ? 'achieved' : m.score > 0 ? 'in_progress' : 'pending',
       }));
 
@@ -186,13 +202,36 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
         .insert(milestonesToInsert);
 
       queryClient.invalidateQueries({ queryKey: ['certifications'] });
-      queryClient.invalidateQueries({ queryKey: ['certification_milestones'] });
+      queryClient.invalidateQueries({ queryKey: ['leed_scorecard'] });
+      
       onOpenChange(false);
     } catch (err) {
       console.error('Error saving LEED certification:', err);
       alert('Errore durante il salvataggio della certificazione LEED');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleGenerateTimeline = async () => {
+    if (!certId || !supabase) return;
+    setIsGeneratingTimeline(true);
+    try {
+      // Chiama la funzione RPC che abbiamo creato su Supabase
+      const { error } = await supabase.rpc('generate_standard_leed_timeline', { 
+        p_certification_id: certId 
+      });
+      
+      if (error) throw error;
+      
+      setHasTimeline(true);
+      queryClient.invalidateQueries({ queryKey: ['leed_timeline'] });
+      alert('Template Timeline generato con successo!');
+    } catch (err) {
+      console.error('Error generating timeline:', err);
+      alert('Errore durante la generazione della timeline');
+    } finally {
+      setIsGeneratingTimeline(false);
     }
   };
 
@@ -215,7 +254,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
             Certificazione LEED - {siteName}
           </DialogTitle>
           <DialogDescription>
-            Gestisci i dati della certificazione LEED per questo site
+            Gestisci i dati e le tempistiche della certificazione LEED
           </DialogDescription>
         </DialogHeader>
 
@@ -224,7 +263,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
             <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pr-2 space-y-6 my-4">
+          <div className="flex-1 overflow-y-auto pr-2 space-y-6 my-4 custom-scrollbar">
             {/* General Info */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-slate-700 border-b pb-2">Informazioni Generali</h4>
@@ -287,42 +326,77 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
               </div>
             </div>
 
+            {/* SEZIONE TIMELINE (Nuova) */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h4 className="text-sm font-semibold text-slate-700">Timeline di Progetto (Fasi)</h4>
+              </div>
+              
+              {!certId ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs text-amber-700">
+                    Devi <strong>salvare</strong> la certificazione per la prima volta prima di poter generare la Timeline Operativa.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-slate-50 rounded-lg flex flex-col gap-3 border border-slate-100">
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Usa questa funzione per creare automaticamente le 17 fasi standard del Project Management per la certificazione LEED. Le fasi saranno visibili nella dashboard del cliente.
+                  </p>
+                  <Button
+                    onClick={handleGenerateTimeline}
+                    disabled={isGeneratingTimeline || hasTimeline}
+                    variant="outline"
+                    className={`w-full justify-start ${hasTimeline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white hover:bg-slate-100'}`}
+                  >
+                    {isGeneratingTimeline ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Calendar className={`w-4 h-4 mr-2 ${hasTimeline ? 'text-emerald-500' : 'text-slate-500'}`} />
+                    )}
+                    {hasTimeline ? 'Timeline Già Generata' : 'Genera Template Timeline'}
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {/* Category scores */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b pb-2">
-                <h4 className="text-sm font-semibold text-slate-700">Punteggi per Categoria</h4>
+                <h4 className="text-sm font-semibold text-slate-700">Scorecard Crediti (Punti)</h4>
                 <span className="text-sm font-bold text-emerald-600">{totalFromMilestones} / 110 pt</span>
               </div>
 
               {formData.milestones.map((m, i) => (
-                <div key={m.category} className="p-3 bg-slate-50 rounded-lg space-y-2">
+                <div key={m.category} className="p-3 bg-slate-50 rounded-lg space-y-2 border border-slate-100">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-600">
+                    <span className="text-xs font-bold text-slate-700">
                       {m.category} — {CATEGORY_LABELS[m.category] || m.category}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">Punti</Label>
+                      <Label className="text-[10px] uppercase text-slate-500">Punti Ottenuti</Label>
                       <Input
                         type="number"
                         min={0}
                         max={m.maxScore}
+                        className="h-8 text-sm"
                         value={m.score}
                         onChange={e => updateMilestone(i, 'score', Math.min(parseInt(e.target.value) || 0, m.maxScore))}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">Max Punti</Label>
+                      <Label className="text-[10px] uppercase text-slate-500">Max Punti</Label>
                       <Input
                         type="number"
+                        className="h-8 text-sm"
                         value={m.maxScore}
                         onChange={e => updateMilestone(i, 'maxScore', parseInt(e.target.value) || 0)}
                       />
                     </div>
                   </div>
-                  {/* Mini progress */}
-                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
                     <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${m.maxScore > 0 ? (m.score / m.maxScore) * 100 : 0}%` }} />
                   </div>
                 </div>
@@ -338,7 +412,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
           <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isSaving || isLoading}>
             {isSaving ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
-            ) : 'Salva'}
+            ) : 'Salva Certificazione e Punteggi'}
           </Button>
         </DialogFooter>
       </DialogContent>
