@@ -4813,20 +4813,44 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* 2. Milestones Reached */}
                     {activeWidget === 'achieved' && (
                       <div className="animate-fade-in">
-                        <h4 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                          <Award className="text-amber-500 w-5 h-5"/> Completed Project Milestones
-                        </h4>
+                        <div className="flex items-center justify-between mb-6">
+                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                            <div className="p-1.5 bg-amber-100/50 rounded-lg border border-amber-200/50">
+                              <Award className="text-amber-500 w-4 h-4"/>
+                            </div>
+                            Completed Milestones
+                          </h4>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full ring-1 ring-amber-500/20 shadow-sm">
+                            {achievedMilestonesList.length} Total
+                          </span>
+                        </div>
+
                         {achievedMilestonesList.length === 0 ? (
-                           <p className="text-gray-500 italic text-sm">No milestones reached yet.</p>
+                           <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                             <Award className="w-10 h-10 text-gray-300 mb-3" />
+                             <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
+                           </div>
                         ) : (
-                          <div className="relative pl-6 border-l-2 border-amber-200 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar pr-4">
+                          <div className="relative pl-6 sm:pl-8 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4 pb-4">
+                            {/* Elegant Gradient Line */}
+                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-amber-400 via-amber-200/50 to-transparent rounded-full" />
+                            
                             {achievedMilestonesList.map((m, idx) => (
-                              <div key={idx} className="relative">
-                                <div className="absolute -left-[31px] top-1 w-4 h-4 bg-amber-500 border-4 border-white rounded-full shadow-sm" />
-                                <div className="text-sm font-bold text-gray-800">{m.title}</div>
-                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                  <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase font-semibold text-[10px]">Completed</span>
-                                  {m.date !== 'TBD' && <span>{m.date}</span>}
+                              <div key={idx} className="relative flex items-center group cursor-default">
+                                {/* Glowing Dot */}
+                                <div className="absolute -left-[29px] sm:-left-[37px] w-3 h-3 bg-amber-500 rounded-full ring-4 ring-white shadow-[0_0_0_1px_rgba(245,158,11,0.15)] group-hover:scale-125 group-hover:bg-amber-400 transition-all duration-300 z-10" />
+                                
+                                {/* Apple-style Card */}
+                                <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-amber-200/60 group-hover:-translate-y-0.5">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                                    <div className="text-sm font-bold text-gray-800 tracking-tight">{m.title}</div>
+                                    <div className="flex items-center gap-2.5">
+                                      {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
+                                      <span className="bg-gradient-to-br from-amber-50 to-amber-100/50 text-amber-700 px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border border-amber-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                        Completed
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -4838,24 +4862,47 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* 3. In Progress Timeline */}
                     {activeWidget === 'progress' && (
                       <div className="animate-fade-in">
-                        <h4 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                          <Activity className="text-sky-500 w-5 h-5"/> Project Timeline (In Progress & Future)
-                        </h4>
+                        <div className="flex items-center justify-between mb-6">
+                          <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                            <div className="p-1.5 bg-sky-100/50 rounded-lg border border-sky-200/50">
+                              <Activity className="text-sky-500 w-4 h-4"/>
+                            </div>
+                            Project Timeline
+                          </h4>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 bg-sky-50 px-2.5 py-1 rounded-full ring-1 ring-sky-500/20 shadow-sm">
+                            {progressMilestonesList.length} Pending
+                          </span>
+                        </div>
+
                         {progressMilestonesList.length === 0 ? (
-                           <p className="text-gray-500 italic text-sm">No pending milestones. Project might be complete.</p>
+                           <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                             <Activity className="w-10 h-10 text-gray-300 mb-3" />
+                             <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
+                           </div>
                         ) : (
-                          <div className="relative pl-6 border-l-2 border-sky-100 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar pr-4">
+                          <div className="relative pl-6 sm:pl-8 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4 pb-4">
+                            {/* Elegant Gradient Line */}
+                            <div className="absolute top-4 bottom-0 left-[11px] w-[2px] bg-gradient-to-b from-sky-400 via-sky-200/50 to-transparent rounded-full" />
+                            
                             {progressMilestonesList.map((m, idx) => {
                               const colors = getTimelineColor(m.status);
+                              
                               return (
-                                <div key={idx} className="relative">
-                                  <div className={`absolute -left-[31px] top-1 w-4 h-4 border-4 border-white rounded-full shadow-sm ${colors.dot}`} />
-                                  <div className="text-sm font-bold text-gray-800">{m.title}</div>
-                                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                    <span className={`px-2 py-0.5 rounded uppercase font-semibold text-[10px] ${colors.badge}`}>
-                                      {String(m.status || '').replace('_', ' ')}
-                                    </span>
-                                    {m.date !== 'TBD' && <span>{m.date}</span>}
+                                <div key={idx} className="relative flex items-center group cursor-default">
+                                  {/* Glowing Dot */}
+                                  <div className={`absolute -left-[29px] sm:-left-[37px] w-3 h-3 rounded-full ring-4 ring-white shadow-[0_0_0_1px_rgba(0,0,0,0.05)] transition-all duration-300 z-10 ${colors.dot} group-hover:scale-125`} />
+                                  
+                                  {/* Apple-style Card */}
+                                  <div className="w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)] group-hover:border-sky-200/60 group-hover:-translate-y-0.5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                                      <div className="text-sm font-bold text-gray-800 tracking-tight">{m.title}</div>
+                                      <div className="flex items-center gap-2.5">
+                                        {m.date !== 'TBD' && <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">{m.date}</span>}
+                                        <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${colors.badge} border-opacity-50`}>
+                                          {String(m.status || '').replace('_', ' ')}
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               );
