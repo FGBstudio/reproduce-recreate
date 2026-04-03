@@ -62,6 +62,44 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          changed_field: string
+          created_at: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          project_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          changed_field: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          project_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          changed_field?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          project_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bill_data: {
         Row: {
           additional_data: Json | null
@@ -212,6 +250,185 @@ export type Database = {
           },
         ]
       }
+      cert_payment_milestones: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          id: string
+          name: string
+          project_id: string
+          status: string
+          trigger_task_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name: string
+          project_id: string
+          status?: string
+          trigger_task_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          status?: string
+          trigger_task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cert_payment_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cert_payment_milestones_trigger_task_id_fkey"
+            columns: ["trigger_task_id"]
+            isOneToOne: false
+            referencedRelation: "cert_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cert_task_checklists: {
+        Row: {
+          id: string
+          is_completed: boolean
+          requirement_text: string
+          task_id: string
+        }
+        Insert: {
+          id?: string
+          is_completed?: boolean
+          requirement_text: string
+          task_id: string
+        }
+        Update: {
+          id?: string
+          is_completed?: boolean
+          requirement_text?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cert_task_checklists_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "cert_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cert_tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          dependencies: string[] | null
+          description: string | null
+          end_date: string | null
+          id: string
+          phase_id: string | null
+          project_id: string
+          start_date: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          dependencies?: string[] | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          phase_id?: string | null
+          project_id: string
+          start_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          dependencies?: string[] | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          phase_id?: string | null
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cert_tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cert_tasks_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "cert_wbs_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cert_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cert_wbs_phases: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          order_index: number
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          order_index?: number
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cert_wbs_phases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certification_milestones: {
         Row: {
           category: string
@@ -222,9 +439,14 @@ export type Database = {
           evidence_url: string | null
           id: string
           max_score: number | null
+          milestone_type:
+            | Database["public"]["Enums"]["milestone_category"]
+            | null
           notes: string | null
+          order_index: number | null
           requirement: string
           score: number | null
+          start_date: string | null
           status: string | null
         }
         Insert: {
@@ -236,9 +458,14 @@ export type Database = {
           evidence_url?: string | null
           id?: string
           max_score?: number | null
+          milestone_type?:
+            | Database["public"]["Enums"]["milestone_category"]
+            | null
           notes?: string | null
+          order_index?: number | null
           requirement: string
           score?: number | null
+          start_date?: string | null
           status?: string | null
         }
         Update: {
@@ -250,9 +477,14 @@ export type Database = {
           evidence_url?: string | null
           id?: string
           max_score?: number | null
+          milestone_type?:
+            | Database["public"]["Enums"]["milestone_category"]
+            | null
           notes?: string | null
+          order_index?: number | null
           requirement?: string
           score?: number | null
+          start_date?: string | null
           status?: string | null
         }
         Relationships: [
@@ -1149,6 +1381,74 @@ export type Database = {
           },
         ]
       }
+      payment_milestones: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          id: string
+          milestone_name: string
+          project_id: string
+          status: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          milestone_name?: string
+          project_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          milestone_name?: string
+          project_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          certification: string
+          created_at: string
+          id: string
+          name: string
+          quantity_in_stock: number
+          sku: string
+          supplier_lead_time_days: number
+        }
+        Insert: {
+          certification?: string
+          created_at?: string
+          id?: string
+          name: string
+          quantity_in_stock?: number
+          sku: string
+          supplier_lead_time_days?: number
+        }
+        Update: {
+          certification?: string
+          created_at?: string
+          id?: string
+          name?: string
+          quantity_in_stock?: number
+          sku?: string
+          supplier_lead_time_days?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1157,6 +1457,7 @@ export type Database = {
           display_name: string | null
           email: string
           first_name: string | null
+          full_name: string | null
           id: string
           job_title: string | null
           last_name: string | null
@@ -1170,6 +1471,7 @@ export type Database = {
           display_name?: string | null
           email: string
           first_name?: string | null
+          full_name?: string | null
           id: string
           job_title?: string | null
           last_name?: string | null
@@ -1183,6 +1485,7 @@ export type Database = {
           display_name?: string | null
           email?: string
           first_name?: string | null
+          full_name?: string | null
           id?: string
           job_title?: string | null
           last_name?: string | null
@@ -1190,6 +1493,174 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      project_allocations: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          project_id: string
+          quantity: number
+          status: string
+          target_date: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          project_id: string
+          quantity?: number
+          status?: string
+          target_date?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          project_id?: string
+          quantity?: number
+          status?: string
+          target_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_allocations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_allocations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_tasks: {
+        Row: {
+          assigned_to: string | null
+          blocking_payment_id: string | null
+          created_at: string
+          dependency_id: string | null
+          end_date: string | null
+          id: string
+          project_id: string
+          start_date: string | null
+          status: string
+          task_name: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          blocking_payment_id?: string | null
+          created_at?: string
+          dependency_id?: string | null
+          end_date?: string | null
+          id?: string
+          project_id: string
+          start_date?: string | null
+          status?: string
+          task_name?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          blocking_payment_id?: string | null
+          created_at?: string
+          dependency_id?: string | null
+          end_date?: string | null
+          id?: string
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          task_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_blocking_payment_id_fkey"
+            columns: ["blocking_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_dependency_id_fkey"
+            columns: ["dependency_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          cert_level: string | null
+          cert_rating: string | null
+          cert_type: string | null
+          client: string
+          created_at: string
+          handover_date: string
+          id: string
+          is_commissioning: boolean | null
+          name: string
+          pm_id: string | null
+          project_subtype: string | null
+          region: string
+          site_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cert_level?: string | null
+          cert_rating?: string | null
+          cert_type?: string | null
+          client?: string
+          created_at?: string
+          handover_date?: string
+          id?: string
+          is_commissioning?: boolean | null
+          name: string
+          pm_id?: string | null
+          project_subtype?: string | null
+          region?: string
+          site_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cert_level?: string | null
+          cert_rating?: string | null
+          cert_type?: string | null
+          client?: string
+          created_at?: string
+          handover_date?: string
+          id?: string
+          is_commissioning?: boolean | null
+          name?: string
+          pm_id?: string | null
+          project_subtype?: string | null
+          region?: string
+          site_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_config: {
         Row: {
@@ -1501,6 +1972,44 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_orders: {
+        Row: {
+          created_at: string
+          expected_delivery_date: string | null
+          id: string
+          product_id: string
+          quantity_requested: number
+          status: string
+          supplier_name: string
+        }
+        Insert: {
+          created_at?: string
+          expected_delivery_date?: string | null
+          id?: string
+          product_id: string
+          quantity_requested?: number
+          status?: string
+          supplier_name?: string
+        }
+        Update: {
+          created_at?: string
+          expected_delivery_date?: string | null
+          id?: string
+          product_id?: string
+          quantity_requested?: number
+          status?: string
+          supplier_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -2065,6 +2574,14 @@ export type Database = {
           },
         ]
       }
+      view_resource_saturation: {
+        Row: {
+          next_deadline: string | null
+          total_active_tasks: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       aggregate_daily: { Args: { p_date?: string }; Returns: number }
@@ -2185,6 +2702,10 @@ export type Database = {
         Args: { p_fallback: string; p_payload: Json }
         Returns: string
       }
+      generate_standard_leed_timeline: {
+        Args: { p_certification_id: string }
+        Returns: undefined
+      }
       get_panel_config: {
         Args: { p_device_id: string; p_site_id: string }
         Returns: {
@@ -2254,6 +2775,14 @@ export type Database = {
         Returns: Database["public"]["Enums"]["device_type"]
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_cert_pm: {
+        Args: { p_certification_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_project_pm: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_valid_measurement: { Args: { val: number }; Returns: boolean }
       mark_stale_devices_offline: {
         Args: { p_threshold_minutes?: number }
@@ -2318,7 +2847,17 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "viewer" | "editor" | "admin" | "superuser"
+      app_role:
+        | "viewer"
+        | "editor"
+        | "admin"
+        | "superuser"
+        | "ADMIN"
+        | "PM"
+        | "document_manager"
+        | "specialist"
+        | "energy_modeler"
+        | "cxa"
       device_status: "online" | "offline" | "warning" | "error" | "maintenance"
       device_type:
         | "air_quality"
@@ -2330,6 +2869,7 @@ export type Database = {
         | "other"
       event_severity: "info" | "warning" | "critical"
       event_status: "active" | "acknowledged" | "resolved"
+      milestone_category: "scorecard" | "timeline"
       permission_level: "view" | "edit" | "admin"
       scope_type: "project" | "site" | "brand" | "holding" | "region"
       wiring_type: "WYE" | "DELTA"
@@ -2460,7 +3000,18 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["viewer", "editor", "admin", "superuser"],
+      app_role: [
+        "viewer",
+        "editor",
+        "admin",
+        "superuser",
+        "ADMIN",
+        "PM",
+        "document_manager",
+        "specialist",
+        "energy_modeler",
+        "cxa",
+      ],
       device_status: ["online", "offline", "warning", "error", "maintenance"],
       device_type: [
         "air_quality",
@@ -2473,6 +3024,7 @@ export const Constants = {
       ],
       event_severity: ["info", "warning", "critical"],
       event_status: ["active", "acknowledged", "resolved"],
+      milestone_category: ["scorecard", "timeline"],
       permission_level: ["view", "edit", "admin"],
       scope_type: ["project", "site", "brand", "holding", "region"],
       wiring_type: ["WYE", "DELTA"],
