@@ -108,7 +108,6 @@ const Auth = () => {
         setError(t('auth.request_error'));
       } else {
         setSuccessMessage(t('auth.request_sent'));
-        // Reset form
         setFirstName(""); setLastName(""); setEmail(""); setCompany("");
         setJobTitle(""); setRequestMessage(""); setTermsAccepted(false);
       }
@@ -121,7 +120,7 @@ const Auth = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">{t('common.loading')}</p>
@@ -130,18 +129,21 @@ const Auth = () => {
     );
   }
 
+  const inputClass = "pl-11 h-11 md:h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all";
+  const inputClassNoPad = "h-11 md:h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all";
+
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-[100dvh] bg-background flex">
       {/* Left Panel - Auth Form */}
-      <div className="w-full lg:w-[520px] flex flex-col min-h-screen bg-[#006367] text-white">
+      <div className="w-full lg:w-[420px] xl:w-[520px] flex flex-col min-h-[100dvh] bg-[#006367] text-white shrink-0">
         <header className="flex-shrink-0 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 flex items-center justify-center lg:justify-start lg:pl-6">
-          <img src={brandImg} alt="FGB" className="h-16 md:h-20 w-auto" />
+          <img src={brandImg} alt="FGB" className="h-14 md:h-16 xl:h-20 w-auto" />
         </header>
 
-        <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 py-4 lg:py-8 overflow-y-auto">
-          <div className="max-w-sm mx-auto w-full">
+        <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 xl:px-12 py-4 lg:py-8 overflow-y-auto">
+          <div className="max-w-[380px] xl:max-w-sm mx-auto w-full">
             <div className="mb-6">
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
                 {mode === "login" ? t('auth.welcome_back') : t('auth.request_access')}
               </h1>
               <p className="text-white/70 text-sm">
@@ -161,7 +163,6 @@ const Auth = () => {
             )}
 
             {mode === "login" ? (
-              /* ========== LOGIN FORM ========== */
               <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm text-white/80">{t('auth.email')}</Label>
@@ -169,7 +170,7 @@ const Auth = () => {
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Mail className="w-5 h-5" /></div>
                     <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
-                      className="pl-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                      className={inputClass} />
                   </div>
                 </div>
 
@@ -179,16 +180,16 @@ const Auth = () => {
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
                     <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="pl-11 pr-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                      className={`${inputClass} pr-11`} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}
-                  className="w-full h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  className="w-full min-h-[48px] h-11 md:h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-sm md:text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -200,7 +201,6 @@ const Auth = () => {
                 </Button>
               </form>
             ) : (
-              /* ========== ACCESS REQUEST FORM ========== */
               <form onSubmit={handleRequestAccess} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -216,7 +216,7 @@ const Auth = () => {
                     <Label htmlFor="lastName" className="text-sm text-white/80">{t('auth.last_name')} *</Label>
                     <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
                       placeholder="Rossi"
-                      className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                      className={inputClassNoPad} />
                   </div>
                 </div>
 
@@ -272,7 +272,7 @@ const Auth = () => {
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}
-                  className="w-full h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  className="w-full min-h-[48px] h-11 md:h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-sm md:text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -294,7 +294,7 @@ const Auth = () => {
                 </p>
               ) : (
                 <button onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}
-                  className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors mx-auto">
+                  className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors mx-auto min-h-[44px]">
                   <ArrowLeft className="w-4 h-4" />
                   {t('auth.back_to_login')}
                 </button>
@@ -309,13 +309,15 @@ const Auth = () => {
           </div>
         </div>
 
-        <footer className="p-6 text-center">
+        <footer className="p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center">
           <p className="text-xs text-white/30">Powered by FGB Monitoring</p>
         </footer>
       </div>
 
-      {/* Right Panel - Floating Bento */}
-      <FloatingBentoPanel />
+      {/* Right Panel - Floating Bento (hidden on mobile) */}
+      <div className="hidden lg:flex flex-1 min-w-0">
+        <FloatingBentoPanel />
+      </div>
     </div>
   );
 };
