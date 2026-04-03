@@ -90,14 +90,34 @@ const CO2Card = () => (
   </div>
 );
 
-// FIX COLORE BASE E ALTEZZA
-// Uniformato isDark bg a #0a0a0a
 const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) => (
-  <li className={`gallery-item snap-center shrink-0 w-[85vw] max-w-[1080px] h-[80vh] min-h-[600px] rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`}>
-    <div className="w-full h-full flex flex-col relative pt-40 pb-24">
-      <div className="absolute top-12 left-12 right-12 z-30 pointer-events-none flex flex-col gap-2">
-        <h2 className={`text-4xl md:text-[52px] font-semibold tracking-tighter leading-[1.1] max-w-3xl ${isDark ? "text-[#f5f5f7]" : "text-[#1d1d1f]"}`} dangerouslySetInnerHTML={{ __html: headline }} />
-        {subheadline && <p className={`text-xl md:text-xl font-medium tracking-tight ${isDark ? "text-[#a1a1a6]" : "text-[#86868b]"}`}>{subheadline}</p>}
+  <li
+    className={`gallery-item snap-center shrink-0 rounded-[48px] overflow-hidden relative shadow-[0_40px_80px_rgba(0,0,0,0.05)] ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`}
+    style={{
+      width: '85vw',
+      maxWidth: '1080px',
+      height: 'min(80vh, 800px)',
+      minHeight: '400px',
+    }}
+  >
+    <div
+      className="w-full h-full flex flex-col relative"
+      style={{ paddingTop: 'clamp(3rem, 10vh, 10rem)', paddingBottom: 'clamp(2rem, 6vh, 6rem)' }}
+    >
+      <div className="absolute top-8 xl:top-12 left-8 xl:left-12 right-8 xl:right-12 z-30 pointer-events-none flex flex-col gap-2">
+        <h2
+          className={`font-semibold tracking-tighter leading-[1.1] max-w-3xl ${isDark ? "text-[#f5f5f7]" : "text-[#1d1d1f]"}`}
+          style={{ fontSize: 'clamp(1.75rem, 4vw, 52px)' }}
+          dangerouslySetInnerHTML={{ __html: headline }}
+        />
+        {subheadline && (
+          <p
+            className={`font-medium tracking-tight ${isDark ? "text-[#a1a1a6]" : "text-[#86868b]"}`}
+            style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1.25rem)' }}
+          >
+            {subheadline}
+          </p>
+        )}
       </div>
       <figure className="flex-1 w-full relative z-10 flex items-center justify-center overflow-visible mt-8">{children}</figure>
     </div>
@@ -106,9 +126,18 @@ const GalleryItem = ({ headline, subheadline, children, isDark = false }: any) =
 
 const ESGRingsCard = () => {
   return (
-    <div className="w-full max-w-4xl h-[400px] bg-[#111111]/80 backdrop-blur-3xl border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[40px] p-8 flex items-center justify-between gap-12 overflow-hidden relative">
-      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[300px] h-[300px] bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
-      <div className="relative flex items-center justify-center w-[280px] h-[280px] shrink-0 z-10 ml-4">
+    <div
+      className="w-full max-w-4xl bg-[#111111]/80 backdrop-blur-3xl border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[40px] p-6 xl:p-8 flex flex-col md:flex-row items-center justify-between gap-6 xl:gap-12 overflow-hidden relative"
+      style={{ minHeight: 'clamp(280px, 40vh, 400px)' }}
+    >
+      <div
+        className="absolute top-1/2 left-1/4 -translate-y-1/2 bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none"
+        style={{ width: 'clamp(180px, 25vw, 300px)', height: 'clamp(180px, 25vw, 300px)' }}
+      />
+      <div
+        className="relative flex items-center justify-center shrink-0 z-10 md:ml-4"
+        style={{ width: 'clamp(180px, 20vw, 280px)', height: 'clamp(180px, 20vw, 280px)' }}
+      >
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 400 400">
           <circle cx="200" cy="200" r="160" stroke="rgba(20,184,166,0.15)" strokeWidth="26" fill="none" />
           <motion.circle cx="200" cy="200" r="160" stroke="#14b8a6" strokeWidth="26" fill="none" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 15/18 }} transition={{ duration: 2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
@@ -118,30 +147,30 @@ const ESGRingsCard = () => {
           <motion.circle cx="200" cy="200" r="80" stroke="#10b981" strokeWidth="26" fill="none" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 14/15 }} transition={{ duration: 2, delay: 0.3, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} />
         </svg>
         <div className="absolute flex flex-col items-center justify-center text-center mt-2">
-          <span className="text-white font-extrabold text-4xl tracking-tighter">82<span className="text-base text-gray-500 font-medium">/110</span></span>
+          <span className="text-white font-extrabold text-2xl xl:text-4xl tracking-tighter">82<span className="text-sm xl:text-base text-gray-500 font-medium">/110</span></span>
           <span className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">Total Score</span>
         </div>
       </div>
-      <div className="flex-1 flex flex-col justify-center gap-6 z-10 mr-4">
-        <div className="flex items-center gap-5 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
+      <div className="flex-1 flex flex-col justify-center gap-4 xl:gap-6 z-10 min-w-0 md:mr-4">
+        <div className="flex items-center gap-3 xl:gap-5 bg-white/5 p-3 xl:p-4 rounded-2xl border border-white/10 backdrop-blur-md flex-wrap">
           <span className="text-[11px] text-gray-400 uppercase tracking-widest font-semibold mr-2">Tracked:</span>
-          <img src="/leed_logo.png" alt="LEED" className="h-8 object-contain opacity-80 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]" />
+          <img src="/leed_logo.png" alt="LEED" className="h-6 xl:h-8 object-contain opacity-80 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]" />
           <div className="w-px h-6 bg-white/20" />
-          <img src="/breeam_logo.png" alt="BREEAM" className="h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
+          <img src="/breeam_logo.png" alt="BREEAM" className="h-6 xl:h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
           <div className="w-px h-6 bg-white/20" />
-          <img src="/well_logo.png" alt="WELL" className="h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
+          <img src="/well_logo.png" alt="WELL" className="h-6 xl:h-8 object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-all drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" />
         </div>
-        <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-col gap-3 xl:gap-4 mt-1 xl:mt-2">
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.4 }} className="flex items-center justify-between">
-            <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.6)]" /><span className="text-white text-sm font-medium">Energy & Atmosphere</span></div><span className="text-white font-bold font-mono">15/18</span>
+            <div className="flex items-center gap-3 min-w-0"><div className="w-3 h-3 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.6)] shrink-0" /><span className="text-white text-xs xl:text-sm font-medium truncate">Energy & Atmosphere</span></div><span className="text-white font-bold font-mono shrink-0 ml-2">15/18</span>
           </motion.div>
           <div className="w-full h-px bg-white/10" />
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }} className="flex items-center justify-between">
-            <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.6)]" /><span className="text-white text-sm font-medium">Water Efficiency</span></div><span className="text-white font-bold font-mono">8/11</span>
+            <div className="flex items-center gap-3 min-w-0"><div className="w-3 h-3 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.6)] shrink-0" /><span className="text-white text-xs xl:text-sm font-medium truncate">Water Efficiency</span></div><span className="text-white font-bold font-mono shrink-0 ml-2">8/11</span>
           </motion.div>
           <div className="w-full h-px bg-white/10" />
           <motion.div initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.6 }} className="flex items-center justify-between">
-            <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)]" /><span className="text-white text-sm font-medium">Indoor Env. Quality</span></div><span className="text-white font-bold font-mono">14/15</span>
+            <div className="flex items-center gap-3 min-w-0"><div className="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)] shrink-0" /><span className="text-white text-xs xl:text-sm font-medium truncate">Indoor Env. Quality</span></div><span className="text-white font-bold font-mono shrink-0 ml-2">14/15</span>
           </motion.div>
         </div>
       </div>
@@ -151,8 +180,10 @@ const ESGRingsCard = () => {
 
 const OCRScannerFeature = () => {
   return (
-    <div className="w-full flex items-center justify-center gap-6 md:gap-16 z-10 px-4">
-      <motion.div initial={{ x: -50, opacity: 0, rotate: -5 }} whileInView={{ x: 0, opacity: 1, rotate: -2 }} transition={{ duration: 1.2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="relative w-[240px] h-[340px] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden flex flex-col p-5">
+    <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 z-10 px-4">
+      <motion.div initial={{ x: -50, opacity: 0, rotate: -5 }} whileInView={{ x: 0, opacity: 1, rotate: -2 }} transition={{ duration: 1.2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }}
+        className="relative w-full max-w-[240px] md:w-[240px] h-[340px] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden flex flex-col p-5 shrink-0"
+      >
         <div className="flex justify-between items-start mb-6 border-b border-gray-200 pb-3">
           <FileText className="text-gray-300 w-8 h-8" />
           <div className="flex flex-col items-end gap-1"><div className="w-16 h-2 bg-gray-200 rounded" /><div className="w-10 h-2 bg-gray-100 rounded" /></div>
@@ -171,14 +202,16 @@ const OCRScannerFeature = () => {
         <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }} transition={{ duration: 2, repeat: Infinity }}>
           <Sparkles className="w-8 h-8 text-sky-500 drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]" />
         </motion.div>
-        <div className="flex items-center gap-1.5 h-4">
+        <div className="flex md:flex-col items-center gap-1.5 h-4 md:h-auto md:w-4">
           {[0, 1, 2].map((i) => (
             <motion.div key={i} animate={{ x: [0, 20, 0], opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }} className="w-1.5 h-1.5 rounded-full bg-sky-500" />
           ))}
         </div>
       </div>
 
-      <motion.div initial={{ x: 50, opacity: 0, rotate: 5 }} whileInView={{ x: 0, opacity: 1, rotate: 2 }} transition={{ duration: 1.2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="w-[280px] h-[340px] bg-[#111111]/90 backdrop-blur-2xl rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/10 flex flex-col p-5">
+      <motion.div initial={{ x: 50, opacity: 0, rotate: 5 }} whileInView={{ x: 0, opacity: 1, rotate: 2 }} transition={{ duration: 1.2, ease: appleEase }} viewport={{ once: false, amount: 0.5 }}
+        className="w-full max-w-[280px] md:w-[280px] h-[340px] bg-[#111111]/90 backdrop-blur-2xl rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/10 flex flex-col p-5 shrink-0"
+      >
         <div className="flex items-center gap-3 mb-5">
           <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><Zap className="w-4 h-4 text-sky-400" /></div>
           <div><h4 className="text-xs font-bold text-white tracking-tight">Extracted Costs</h4><p className="text-[9px] text-gray-400 font-medium">Historical Data Sync</p></div>
@@ -239,8 +272,8 @@ const FloatingBentoPanel = () => {
     });
   };
 
-  const scrollLeft = () => scrollToSlide(Math.max(0, currentSlide - 1));
-  const scrollRight = () => scrollToSlide(Math.min(totalSlides - 1, currentSlide + 1));
+  const scrollLeftFn = () => scrollToSlide(Math.max(0, currentSlide - 1));
+  const scrollRightFn = () => scrollToSlide(Math.min(totalSlides - 1, currentSlide + 1));
 
   const scrollToGallery = () => {
     if (containerRef.current) {
@@ -264,20 +297,25 @@ const FloatingBentoPanel = () => {
           whileInView={{ scale: 1, opacity: 1 }}
           transition={{ duration: 2.5, delay: 1.0, ease: appleEase }}
           viewport={{ once: false, amount: 0.5 }}
-          className="absolute m-auto w-[600px] h-[600px] bg-gradient-to-tr from-teal-200/40 via-sky-200/30 to-blue-300/30 rounded-full blur-[120px] z-0 pointer-events-none"
+          className="absolute m-auto bg-gradient-to-tr from-teal-200/40 via-sky-200/30 to-blue-300/30 rounded-full blur-[120px] z-0 pointer-events-none"
+          style={{ width: 'max(300px, 40vw)', height: 'max(300px, 40vw)' }}
         />
 
-        <div className="relative w-full max-w-4xl aspect-[21/9] flex items-center justify-center z-10 -mt-32">
-          
+        <div
+          className="relative w-[90%] xl:w-full xl:max-w-4xl flex items-center justify-center z-10 -mt-32"
+          style={{ aspectRatio: '16/9' }}
+        >
+          {/* Card: Energy Heatmap */}
           <motion.div
-            initial={{ x: -300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: -140, y: -70, scale: 1, opacity: 1, filter: "blur(0px)" }}
+            initial={{ x: '-40%', y: '-60%', scale: 0.5, opacity: 0, filter: "blur(20px)" }}
+            whileInView={{ x: '-55%', y: '-30%', scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[200px] h-[160px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(20,184,166,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-20"
+            className="absolute bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(20,184,166,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-20"
+            style={{ width: 'clamp(140px, 18vw, 200px)', height: 'clamp(110px, 14vw, 160px)' }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
+            <div className="flex items-center justify-between mb-2 xl:mb-3">
+              <span className="text-[9px] xl:text-[10px] font-bold text-gray-800 tracking-tight">ENERGY HEATMAP</span>
             </div>
             <div className="flex-1 w-full flex flex-col gap-[2px] opacity-90">
               {Array.from({length: 12}).map((_, h) => (
@@ -292,31 +330,35 @@ const FloatingBentoPanel = () => {
             </div>
           </motion.div>
 
+          {/* Card: Air Quality */}
           <motion.div
-            initial={{ x: 300, y: -200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: 140, y: -50, scale: 1, opacity: 1, filter: "blur(0px)" }}
+            initial={{ x: '40%', y: '-60%', scale: 0.5, opacity: 0, filter: "blur(20px)" }}
+            whileInView={{ x: '45%', y: '-25%', scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, delay: 0.1, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[150px] h-[150px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(14,165,233,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col items-center justify-center p-4 z-30"
+            className="absolute bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(14,165,233,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col items-center justify-center p-4 z-30"
+            style={{ width: 'clamp(110px, 14vw, 150px)', height: 'clamp(110px, 14vw, 150px)' }}
           >
-            <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-widest mb-1 text-center">Indoor Air<br/>Quality</span>
+            <span className="text-[8px] xl:text-[9px] font-semibold text-gray-500 uppercase tracking-widest mb-1 text-center">Indoor Air<br/>Quality</span>
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-5xl font-bold tracking-tighter text-gray-900">412</span>
+              <span className="text-3xl xl:text-5xl font-bold tracking-tighter text-gray-900">412</span>
             </div>
-            <span className="text-[10px] text-gray-400 font-medium mb-3">ppm CO₂</span>
-            <div className="text-[8px] px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-bold tracking-wide border border-emerald-200">
+            <span className="text-[9px] xl:text-[10px] text-gray-400 font-medium mb-2 xl:mb-3">ppm CO₂</span>
+            <div className="text-[7px] xl:text-[8px] px-2 xl:px-3 py-1 xl:py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-bold tracking-wide border border-emerald-200">
               EXCELLENT
             </div>
           </motion.div>
 
+          {/* Card: Water Distribution */}
           <motion.div
-            initial={{ x: -300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: -120, y: 100, scale: 1, opacity: 1, filter: "blur(0px)" }}
+            initial={{ x: '-40%', y: '60%', scale: 0.5, opacity: 0, filter: "blur(20px)" }}
+            whileInView={{ x: '-48%', y: '35%', scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, delay: 0.15, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[160px] h-[160px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
+            className="absolute bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col p-4 z-25"
+            style={{ width: 'clamp(120px, 15vw, 160px)', height: 'clamp(120px, 15vw, 160px)' }}
           >
-            <span className="text-[9px] font-bold text-gray-800 tracking-tight text-center">WATER DIST.</span>
+            <span className="text-[8px] xl:text-[9px] font-bold text-gray-800 tracking-tight text-center">WATER DIST.</span>
             <div className="flex-1 w-full relative mt-1">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -336,20 +378,22 @@ const FloatingBentoPanel = () => {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <Droplet className="w-5 h-5 text-blue-500 fill-blue-500/20" strokeWidth={2} />
+                <Droplet className="w-4 xl:w-5 h-4 xl:h-5 text-blue-500 fill-blue-500/20" strokeWidth={2} />
               </div>
             </div>
           </motion.div>
 
+          {/* Card: LEED Certified */}
           <motion.div
-            initial={{ x: 300, y: 200, scale: 0.5, opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ x: 110, y: 110, scale: 1, opacity: 1, filter: "blur(0px)" }}
+            initial={{ x: '40%', y: '60%', scale: 0.5, opacity: 0, filter: "blur(20px)" }}
+            whileInView={{ x: '42%', y: '40%', scale: 1, opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, delay: 0.25, ease: appleEase }}
             viewport={{ once: false, amount: 0.5 }}
-            className="absolute w-[140px] h-[140px] bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(16,185,129,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col items-center justify-center p-4 z-20"
+            className="absolute bg-white/70 backdrop-blur-2xl rounded-[24px] shadow-[0_30px_60px_rgba(16,185,129,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] border border-white/60 flex flex-col items-center justify-center p-4 z-20"
+            style={{ width: 'clamp(100px, 13vw, 140px)', height: 'clamp(100px, 13vw, 140px)' }}
           >
-            <img src="/leed_logo.png" alt="LEED Certified" className="w-14 h-14 object-contain mb-3 drop-shadow-sm" />
-            <span className="text-[9px] font-extrabold text-gray-800 tracking-wider text-center uppercase">Certified<br/>Building</span>
+            <img src="/leed_logo.png" alt="LEED Certified" className="w-10 xl:w-14 h-10 xl:h-14 object-contain mb-2 xl:mb-3 drop-shadow-sm" />
+            <span className="text-[8px] xl:text-[9px] font-extrabold text-gray-800 tracking-wider text-center uppercase">Certified<br/>Building</span>
           </motion.div>
 
         </div>
@@ -361,7 +405,10 @@ const FloatingBentoPanel = () => {
           viewport={{ once: false, amount: 0.5 }}
           className="absolute bottom-[18%] text-center z-40 flex flex-col items-center px-4"
         >
-          <h1 className="text-5xl md:text-7xl lg:text-[84px] font-semibold tracking-tighter text-[#1d1d1f] leading-[1.05]">
+          <h1
+            className="font-semibold tracking-tighter text-[#1d1d1f] leading-[1.05]"
+            style={{ fontSize: 'clamp(2.5rem, 5vw, 84px)' }}
+          >
             Air. Water. Energy. Awards. <br />
             <span className="text-[#86868b]">The sustainability fusion of your data.</span>
           </h1>
@@ -390,27 +437,25 @@ const FloatingBentoPanel = () => {
           className="item-container flex overflow-x-auto snap-x snap-mandatory gap-8 px-[7.5vw] w-full items-center h-full" 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {/* SLIDE 1: FIXATO IL NERO DI SFONDO E SPOSTATO IL MAC IN BASSO */}
+          {/* SLIDE 1 */}
           <GalleryItem 
             isDark={true} 
             headline="Your entire energy ecosystem.<br/>Instantly synchronized." 
             subheadline="Everywhere you are."
           >
-            {/* Sfondo nero uniforme e pulito senza sfumature sporche */}
             <div className="absolute inset-0 bg-[#0a0a0a]" />
-            <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[min(600px,80%)] h-[min(600px,80%)] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
 
             <div className="w-full max-w-6xl h-full flex items-center justify-center relative mt-16">
-              {/* Il Mac parte da y: 120 e arriva a y: 40 (non a 0), allontanandosi dal testo in alto */}
               <motion.div initial={{ y: 120, opacity: 0 }} whileInView={{ y: 35, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-10 w-[65%] drop-shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
                 <img src="/FGB_Mac.png" alt="Mac" className="w-full h-auto object-contain" />
               </motion.div>
-              <motion.div initial={{ x: -60, y: 100, opacity: 0 }} whileInView={{ x: -280, y: 80, opacity: 1 }} transition={{ duration: 1.4, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-20 w-[25%] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]">
+              <motion.div initial={{ x: -60, y: 100, opacity: 0 }} whileInView={{ x: '-40%', y: 80, opacity: 1 }} transition={{ duration: 1.4, delay: 0.15, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="absolute z-20 w-[25%] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]">
                 <img src="/FGB_Pad.png" alt="iPad" className="w-full h-auto object-contain" />
               </motion.div>
               <motion.div 
                 initial={{ x: 50, y: 120, opacity: 0 }} 
-                whileInView={{ x: 300, y: 20, opacity: 1 }} 
+                whileInView={{ x: '50%', y: 20, opacity: 1 }} 
                 transition={{ duration: 1.4, delay: 0.25, ease: appleEase }} 
                 viewport={{ once: false, amount: 0.5 }} 
                 className="absolute z-30 w-[14%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]"
@@ -420,7 +465,7 @@ const FloatingBentoPanel = () => {
             </div>
           </GalleryItem>
 
-          {/* SLIDE 2: THE REVEAL */}
+          {/* SLIDE 2 */}
           <GalleryItem headline="A single platform.<br/>All your KPIs in one place." subheadline="Predictive real-time monitoring.">
             <div className="relative w-full h-full flex items-center justify-center perspective-1000">
               <motion.div className="absolute w-[28%] h-[300px] z-10 hidden md:block" initial={{ x: "0%", scale: 0.85, opacity: 0, filter: "blur(10px)" }} whileInView={{ x: "-110%", scale: 0.9, opacity: 0.85, filter: "blur(0px)" }} transition={{ duration: 1.6, ease: appleEase, delay: 0.1 }} viewport={{ once: false, amount: 0.6 }}><CarbonCard /></motion.div>
@@ -429,7 +474,7 @@ const FloatingBentoPanel = () => {
             </div>
           </GalleryItem>
 
-          {/* SLIDE 3: ESG GAMIFICATION - FIXATO NERO DI SFONDO */}
+          {/* SLIDE 3 */}
           <GalleryItem 
             isDark={true} 
             headline="Your path to ESG excellence.<br/>Precisely measured." 
@@ -437,28 +482,28 @@ const FloatingBentoPanel = () => {
           >
             <div className="absolute inset-0 bg-[#0a0a0a]" />
             <div className="relative w-full h-full flex items-center justify-center z-10">
-              <motion.div initial={{ y: 60, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="w-full flex justify-center">
+              <motion.div initial={{ y: 60, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 1.4, ease: appleEase }} viewport={{ once: false, amount: 0.5 }} className="w-full flex justify-center px-4">
                 <ESGRingsCard />
               </motion.div>
             </div>
           </GalleryItem>
 
-          {/* SLIDE 4: OPTIMIZE WASTE */}
+          {/* SLIDE 4 */}
           <GalleryItem headline="Optimize waste.<br/>Your building's lifecycle." subheadline="24h distributive analysis.">
             <div className="w-full h-full flex items-center justify-center">
-              <div className="relative w-80 h-80">
+              <div className="relative" style={{ width: 'clamp(200px, 30vw, 320px)', height: 'clamp(200px, 30vw, 320px)' }}>
                 <div className="absolute inset-0 bg-blue-400/20 blur-[80px] rounded-full pointer-events-none" />
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart><Pie data={dayNightData} cx="50%" cy="50%" innerRadius="80%" outerRadius="100%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>{dayNightData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}</Pie><Tooltip contentStyle={tooltipStyle} /></PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                  <span className="text-6xl font-semibold tracking-tighter text-[#1d1d1f]">1,240</span><span className="text-xs text-[#86868b] font-medium uppercase tracking-[0.2em] mt-2">kWh Total</span>
+                  <span className="text-4xl xl:text-6xl font-semibold tracking-tighter text-[#1d1d1f]">1,240</span><span className="text-[10px] xl:text-xs text-[#86868b] font-medium uppercase tracking-[0.2em] mt-2">kWh Total</span>
                 </div>
               </div>
             </div>
           </GalleryItem>
 
-          {/* ── SLIDE 5: OCR BILLING RECOVERY ── */}
+          {/* SLIDE 5 */}
           <GalleryItem 
             headline="From paper chaos to absolute clarity.<br/>Upload your historical bills." 
             subheadline="Instant AI-powered OCR data extraction."
@@ -471,14 +516,17 @@ const FloatingBentoPanel = () => {
         </ul>
 
         {/* Dynamic Glass Pill */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-6 px-6 py-3 rounded-full bg-[#1d1d1f]/5 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]">
-          <button onClick={scrollLeft} disabled={currentSlide === 0} className="text-[#1d1d1f]/50 hover:text-[#1d1d1f] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronLeft className="w-5 h-5" strokeWidth={2.5} /></button>
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-50 flex items-center gap-6 px-6 py-3 rounded-full bg-[#1d1d1f]/5 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+          style={{ bottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+        >
+          <button onClick={scrollLeftFn} disabled={currentSlide === 0} className="text-[#1d1d1f]/50 hover:text-[#1d1d1f] transition-colors disabled:opacity-30 disabled:cursor-not-allowed min-h-[44px] min-w-[44px] flex items-center justify-center"><ChevronLeft className="w-5 h-5" strokeWidth={2.5} /></button>
           <div className="flex gap-2.5">
             {Array.from({ length: totalSlides }).map((_, i) => (
               <button key={i} onClick={() => scrollToSlide(i)} className={`w-2 h-2 rounded-full transition-all duration-300 ${currentSlide === i ? 'bg-[#1d1d1f] scale-110' : 'bg-[#1d1d1f]/20 hover:bg-[#1d1d1f]/40'}`} />
             ))}
           </div>
-          <button onClick={scrollRight} disabled={currentSlide === totalSlides - 1} className="text-[#1d1d1f]/50 hover:text-[#1d1d1f] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronRight className="w-5 h-5" strokeWidth={2.5} /></button>
+          <button onClick={scrollRightFn} disabled={currentSlide === totalSlides - 1} className="text-[#1d1d1f]/50 hover:text-[#1d1d1f] transition-colors disabled:opacity-30 disabled:cursor-not-allowed min-h-[44px] min-w-[44px] flex items-center justify-center"><ChevronRight className="w-5 h-5" strokeWidth={2.5} /></button>
         </div>
 
       </section>
