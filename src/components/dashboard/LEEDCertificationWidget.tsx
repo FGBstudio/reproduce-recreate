@@ -239,7 +239,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
                       <span className="text-xs font-bold text-gray-500 w-6">{cat.key}</span>
                       <span className="text-sm font-medium text-gray-700">{cat.label}</span>
                     </div>
-                    <span className="text-sm font-bold text-gray-800">{cat.score}/{cat.maxScore}</span>
+                    <span className="text-sm font-bold text-gray-800">{pct}%</span>
                   </div>
                   <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
