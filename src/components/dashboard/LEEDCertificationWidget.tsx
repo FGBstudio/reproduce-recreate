@@ -32,7 +32,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
 
   // === Real data from DB, fallback to 0/empty ===
   const score = leedCert?.score ?? 0;
-  const level = leedCert?.level ?? null;
+  const level = leedCert?.cert_level ?? null;
   const certType = leedCert?.cert_type ?? 'LEED';
   const status = leedCert?.status ?? null;
   const issuedDate = leedCert?.issued_date ?? null;
