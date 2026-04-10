@@ -77,7 +77,7 @@ export const CertificationsDialog = ({ siteId, siteName, open, onOpenChange }: C
 
           setFormData({
             certType: cert.cert_type || 'WELL v2',
-            level: cert.level || 'Silver',
+            level: cert.cert_level || 'Silver',
             score: cert.score || 0,
             targetScore: cert.target_score || 80,
             expiryDate: cert.expiry_date || '',
@@ -114,7 +114,7 @@ export const CertificationsDialog = ({ siteId, siteName, open, onOpenChange }: C
           .from('certifications')
           .update({
             cert_type: formData.certType,
-            level: formData.level,
+            cert_level: formData.level,
             score: formData.score,
             target_score: formData.targetScore,
             expiry_date: formData.expiryDate || null,
@@ -127,7 +127,7 @@ export const CertificationsDialog = ({ siteId, siteName, open, onOpenChange }: C
           .insert({
             site_id: siteId,
             cert_type: formData.certType,
-            level: formData.level,
+            cert_level: formData.level,
             score: formData.score,
             target_score: formData.targetScore,
             expiry_date: formData.expiryDate || null,

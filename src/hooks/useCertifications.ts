@@ -5,7 +5,7 @@ export interface Certification {
   id: string;
   site_id: string;
   cert_type: string;
-  level: string | null;
+  cert_level: string | null;
   score: number | null;
   target_score: number | null;
   status: string | null;

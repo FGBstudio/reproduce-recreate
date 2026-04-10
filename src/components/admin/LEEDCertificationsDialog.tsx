@@ -128,7 +128,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
 
           setFormData({
             certType: cert.cert_type || 'LEED v4',
-            level: cert.level || 'Gold',
+            level: cert.cert_level || 'Gold',
             status: cert.status || 'in_progress',
             targetScore: cert.target_score || 110,
             issuedDate: cert.issued_date || '',
@@ -169,7 +169,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
       // 1. Salva i dati base della certificazione
       const certPayload = {
         cert_type: formData.certType,
-        level: formData.level,
+        cert_level: formData.level,
         score: totalScore,
         target_score: formData.targetScore,
         status: formData.status,
