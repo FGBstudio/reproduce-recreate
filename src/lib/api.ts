@@ -171,6 +171,7 @@ export interface ApiLatestTelemetry {
   unit?: string;
   ts: string;
   quality?: string;
+  site_id?: string;
 }
 
 export interface ApiLatestResponse {

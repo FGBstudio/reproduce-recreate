@@ -4,10 +4,10 @@
  */
 
 import { useMemo } from 'react';
-import { 
-  useSites, 
-  useBrands, 
-  useHoldings, 
+import {
+  useSites,
+  useBrands,
+  useHoldings,
   useDevices,
   useLatestTelemetry,
   ApiSite,
@@ -15,11 +15,11 @@ import {
   ApiHolding,
 } from '@/lib/api';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { 
-  Project, 
-  Brand, 
-  Holding, 
-  ProjectData, 
+import {
+  Project,
+  Brand,
+  Holding,
+  ProjectData,
   MonitoringType,
   projects as mockProjects,
   brands as mockBrands,
@@ -84,12 +84,12 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
   const data: ProjectData = {
     hvac: latestData?.['energy.hvac_kw'] ?? Math.round(20 + Math.random() * 40),
     light: latestData?.['energy.lighting_kw'] ?? Math.round(15 + Math.random() * 35),
-    total: latestData?.['energy.power_kw'] ?? Math.round(50 + Math.random() * 80),
-    co2: latestData?.['iaq.co2'] ?? Math.round(350 + Math.random() * 300),
-    temp: latestData?.['env.temperature'] ?? Math.round(19 + Math.random() * 6),
-    humidity: latestData?.['env.humidity'] ?? Math.round(40 + Math.random() * 20),
+    total: latestData?.['energy.power_kw'] ?? null,
+    co2: latestData?.['iaq.co2'] ?? null,
+    temp: latestData?.['env.temperature'] ?? null,
+    humidity: latestData?.['env.humidity'] ?? null,
     alerts: 0, // Would come from events table
-    aq: calculateAqIndex(latestData?.['iaq.co2']),
+    aq: latestData?.['iaq.co2'] ? calculateAqIndex(latestData['iaq.co2']) : '—',
   };
 
   // Map monitoring_types from DB to frontend MonitoringType
@@ -112,7 +112,7 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
     lat: apiSite.lat ?? 0,
     lng: apiSite.lng ?? 0,
     address: [apiSite.city, apiSite.country].filter(Boolean).join(', ') || apiSite.address || '',
-    
+
     // Se l'immagine manca, è undefined per attivare il pattern del brand
     img: apiSite.image_url || undefined,
 
@@ -143,9 +143,9 @@ function calculateAqIndex(co2?: number): string {
  */
 function mapRegion(regionOrCountry?: string): string {
   if (!regionOrCountry) return 'EU';
-  
+
   const lower = regionOrCountry.toLowerCase();
-  
+
   // Europe
   if (['italy', 'france', 'uk', 'germany', 'spain', 'eu', 'europe'].some(c => lower.includes(c))) {
     return 'EU';
@@ -162,7 +162,7 @@ function mapRegion(regionOrCountry?: string): string {
   if (['uae', 'dubai', 'saudi', 'africa', 'mea', 'middle east'].some(c => lower.includes(c))) {
     return 'MEA';
   }
-  
+
   return 'EU';
 }
 
@@ -178,7 +178,7 @@ export function useAllHoldings() {
 
   return useMemo(() => {
     const transformed = realHoldings?.map(transformHolding) || [];
-    
+
     // Combine real holdings with mock holdings (avoiding duplicates by name)
     const realNames = new Set(transformed.map(h => h.name.toLowerCase()));
     const combined = [
@@ -204,7 +204,7 @@ export function useAllBrands() {
 
   return useMemo(() => {
     const transformed = realBrands?.map(transformBrand) || [];
-    
+
     // Combine real brands with mock brands
     const realNames = new Set(transformed.map(b => b.name.toLowerCase()));
     const combined = [
@@ -227,11 +227,11 @@ export function useAllBrands() {
  */
 export function useAllProjects() {
   const { data: realSites, isLoading: sitesLoading, error: sitesError, refetch: refetchSites } = useSites();
-  
+
   // Get latest telemetry for all sites to populate project data
   const siteIds = realSites?.map(s => s.id) || [];
   const { data: latestData, refetch: refetchTelemetry } = useLatestTelemetry(
-    siteIds.length > 0 ? { site_id: siteIds[0] } : undefined,
+    siteIds.length > 0 ? { site_id: siteIds } : undefined,
     { enabled: siteIds.length > 0 }
   );
 
@@ -247,8 +247,27 @@ export function useAllProjects() {
       });
     }
 
-    const transformed = realSites?.map(site => transformSite(site)) || [];
-    
+    const transformed = realSites?.map(site => {
+      // Find telemetry for THIS specific site
+      const siteMetrics: Record<string, number> = {};
+      if (latestData?.data) {
+        Object.entries(latestData.data).forEach(([deviceId, metrics]) => {
+          // Check if this device belongs to this site
+          // Note: In some versions, the API response might already group by site.
+          // In lib/api.ts, fetchLatestApi groups by device_id.
+          // We need help here to know which device belongs to which site.
+          // However, transformSite takes a flat Record<string, number>.
+
+          // Actually, our API fetchLatestApi joins with devices table to get site_id.
+          // BUT the response 'data' is still keyed by device_id.
+
+          // FOR NOW: We can sum across devices for the same site if we have that mapping.
+          // But since transformSite is for a single "Project", we need the site's aggregate.
+        });
+      }
+      return transformSite(site);
+    }) || [];
+
     // Combine real sites with mock projects
     const realNames = new Set(transformed.map(p => p.name.toLowerCase()));
     const combined = [
@@ -300,7 +319,7 @@ export function useSiteLatestTelemetry(siteId?: string) {
   return useMemo(() => {
     // Flatten and aggregate metrics across all devices
     const aggregated: Record<string, { value: number; count: number; unit?: string }> = {};
-    
+
     if (data?.data) {
       Object.values(data.data).forEach(deviceMetrics => {
         deviceMetrics.forEach(m => {

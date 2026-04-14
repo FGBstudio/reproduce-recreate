@@ -44,6 +44,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
+import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
 const getIAQGradient = (type: string) => {
@@ -326,6 +327,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const airDeviceIds = useMemo(() => airDevices.map((d) => d.id), [airDevices]);
 
   const [selectedAirDeviceIds, setSelectedAirDeviceIds] = useState<string[]>([]);
+  const [activeAirHeatmapMetric, setActiveAirHeatmapMetric] = useState<string>("iaq.co2");
 
   // Default: all air devices selected (and reset when project changes)
   useEffect(() => {
@@ -661,6 +663,67 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return out;
   }, [airLatestResp]);
 
+  // Averages for EACH device (Building Overview)
+  const deviceAverages = useMemo(() => {
+    const out: Record<string, any> = {};
+    if (!airLatestResp?.data) return out;
+    Object.entries(airLatestResp.data).forEach(([devId, sensors]) => {
+      out[devId] = {};
+      sensors.forEach(s => {
+        out[devId][s.metric] = s.value;
+      });
+    });
+    return out;
+  }, [airLatestResp]);
+
+  // Heatmap logic for Air Dashboard
+  const airHeatmapGrid = useMemo(() => {
+    const rawData = airTimeseriesResp?.data || [];
+    const tz = resolveTimezone(project?.timezone);
+    const bucketMap = new Map<string, { sum: number; count: number }>();
+    
+    // Filter by active metric
+    const filtered = rawData.filter(d => d.metric === activeAirHeatmapMetric);
+    
+    filtered.forEach((d) => {
+      const val = Number(d.value_avg ?? d.value ?? 0);
+      if (!Number.isFinite(val)) return;
+      
+      const parsed = parseTimestamp(d.ts_bucket || d.ts);
+      if (!parsed || parsed > new Date()) return;
+      
+      const p = getPartsInTz(parsed, tz);
+      const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+      const bucketKey = `${p.hour}_${dateKey}`;
+      
+      // Average across devices for that hour/day cell
+      const current = bucketMap.get(bucketKey) || { sum: 0, count: 0 };
+      bucketMap.set(bucketKey, { sum: current.sum + val, count: current.count + 1 });
+    });
+
+    const valueMap = new Map<string, number>();
+    bucketMap.forEach((v, k) => valueMap.set(k, v.sum / v.count));
+
+    // Scale calculation
+    const vals = Array.from(valueMap.values()).filter(v => v > 0).sort((a,b) => a-b);
+    const min = vals.length ? vals[0] : 0;
+    const max = vals.length ? vals[vals.length-1] : 0;
+    
+    // Grid axes
+    const rows = Array.from({ length: 24 }, (_, i) => i);
+    const cols: { key: string; label: string }[] = [];
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cursor = new Date(airStart.getTime());
+    while (cursor <= airEnd) {
+      const cp = getPartsInTz(cursor, tz);
+      const dateKey = `${cp.year}-${String(cp.month).padStart(2, '0')}-${String(cp.day).padStart(2, '0')}`;
+      cols.push({ key: dateKey, label: `${String(cp.day).padStart(2, '0')}/${String(cp.month).padStart(2, '0')}` });
+      cursor.setTime(cursor.getTime() + dayMs);
+    }
+
+    return { rows, cols, valueMap, scale: { min, max }, isYearView: false };
+  }, [airTimeseriesResp, activeAirHeatmapMetric, airStart, airEnd, project?.timezone]);
+
   // ---------------------------------------------------------------------------
   // Indoor averages from timeseries (time-period aware) for PM2.5, PM10, CO, O3
   // ---------------------------------------------------------------------------
@@ -773,7 +836,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     switch (activeDashboard) {
       case "overview": return 1;
       case "energy": return 4;
-      case "air": return 3;
+      case "air": return 5;
       case "water": return 3;
       case "certification": return 1;
       case "bills": return 1;
@@ -991,23 +1054,24 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   ], []);
 
   // ---------------------------------------------------------------------------
-  // Air module: multi-device series (real data with fallback to mocks)
-  // NOTE: Must be declared AFTER mock datasets to avoid TS "used before declaration".
+  // Air module: multi-device series (strictly real data — NO mock fallbacks)
+  // When Supabase is configured, always return real data or empty array.
+  // Empty array = device does not have this sensor. Never inject mock values.
   // ---------------------------------------------------------------------------
   const co2MultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return co2HistoryData;
-    const data = buildSeriesByMetric("iaq.co2", 1000);
-    return data.length ? data : co2HistoryData;
-  }, [buildSeriesByMetric, co2HistoryData]);
+    if (!isSupabaseConfigured) return [];
+    return buildSeriesByMetric("iaq.co2", 1000);
+  }, [buildSeriesByMetric]);
 
   const tvocMultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return tvocHistoryData;
-    const data = buildSeriesByMetric("iaq.voc", 500);
-    return data.length ? data : tvocHistoryData;
-  }, [buildSeriesByMetric, tvocHistoryData]);
+    if (!isSupabaseConfigured) return [];
+    return buildSeriesByMetric("iaq.voc", 500);
+  }, [buildSeriesByMetric]);
 
   const tempHumidityMultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return tempHumidityData;
+    // Never fall back to mock tempHumidityData when Supabase is configured.
+    // Return empty array if no real data — chart will show empty instead of fake values.
+    if (!isSupabaseConfigured) return [];
 
     // Use different keys so temp & humidity don't overwrite each other
     const temp = buildSeriesByMetric("env.temperature", undefined, "temp");
@@ -1022,12 +1086,13 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       });
     });
 
-    const merged = Array.from(byTime.values());
-    return merged.length ? merged : tempHumidityData;
-  }, [buildSeriesByMetric, tempHumidityData]);
+    return Array.from(byTime.values());
+  }, [buildSeriesByMetric]);
 
   const coO3MultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return coO3Data;
+    // Never fall back to mock coO3Data when Supabase is configured.
+    // Devices without CO or O3 sensors will simply return an empty array.
+    if (!isSupabaseConfigured) return [];
 
     // Use different keys so CO & O3 don't overwrite each other
     const co = buildSeriesByMetric("iaq.co", undefined, "co");
@@ -1042,21 +1107,18 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       });
     });
 
-    const merged = Array.from(byTime.values());
-    return merged.length ? merged : coO3Data;
-  }, [buildSeriesByMetric, coO3Data]);
+    return Array.from(byTime.values());
+  }, [buildSeriesByMetric]);
 
   const pm25MultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return pm25Data as any;
-    const data = buildSeriesByMetric('iaq.pm25', 25);
-    return data.length ? data : (pm25Data as any);
-  }, [buildSeriesByMetric, pm25Data]);
+    if (!isSupabaseConfigured) return [];
+    return buildSeriesByMetric('iaq.pm25', 25);
+  }, [buildSeriesByMetric]);
 
   const pm10MultiSeries = useMemo(() => {
-    if (!isSupabaseConfigured) return pm10Data as any;
-    const data = buildSeriesByMetric('iaq.pm10', 50);
-    return data.length ? data : (pm10Data as any);
-  }, [buildSeriesByMetric, pm10Data]);
+    if (!isSupabaseConfigured) return [];
+    return buildSeriesByMetric('iaq.pm10', 50);
+  }, [buildSeriesByMetric]);
 
   // ---------------------------------------------------------------------------
   // Energy module: build real series from a single timeseries query
@@ -3776,7 +3838,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             {activeDashboard === "air" && (
               <ModuleGate module="air" config={resolvedModuleConfig.air} demoContent={<AirDemoContent />}>
                 <>
-                {/* Slide 1: Overview + CO2 + TVOC */}
+                {/* Slide 1: Overview + Building Grid */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* Air Quality Overview Card */}
@@ -3874,7 +3936,41 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
                   </div>
 
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-5">
+                  <div className="mt-5">
+                    <BuildingOverview 
+                      selectedAirDevices={selectedAirDevices}
+                      deviceAverages={deviceAverages}
+                      airDeviceLabelById={airDeviceLabelById}
+                      airCardClass={airCardClass}
+                      t={t}
+                    />
+                  </div>
+                </div>
+
+                {/* Slide 2: Air Quality Heatmap */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="mb-4 flex items-center gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit">
+                    {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].map(m => (
+                      <button 
+                        key={m}
+                        onClick={() => setActiveAirHeatmapMetric(m)}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-white shadow-md' : 'hover:bg-gray-100 text-gray-500'}`}
+                      >
+                        {m === 'iaq.co2' ? 'CO₂' : m === 'iaq.voc' ? 'TVOC' : m === 'iaq.pm25' ? 'PM2.5' : m === 'iaq.pm10' ? 'PM10' : m === 'iaq.co' ? 'CO' : m === 'iaq.o3' ? 'O₃' : m === 'env.temperature' ? 'TEMP' : 'HUM'}
+                      </button>
+                    ))}
+                  </div>
+                  <AirHeatmap 
+                    heatmapGrid={airHeatmapGrid}
+                    heatmapLegendColors={heatmapLegendColors}
+                    heatmapRef={heatmapRef}
+                    airCardClass={airCardClass}
+                  />
+                </div>
+
+                {/* Slide 3: Trends (CO2, TVOC, Temp & Humidity) */}
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* CO2 Trend Chart */}
                     <div ref={co2TrendRef} className={airCardClass}>
                       <div className="flex justify-between items-center mb-5">
@@ -3950,7 +4046,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     </div>
 
                     {/* Temperature & Humidity Chart - Full Width */}
-                    <div ref={tempHumidityRef} className={`lg:col-span-3 ${airCardClass}`}>
+                    <div ref={tempHumidityRef} className={`lg:col-span-2 ${airCardClass}`}>
                       <div className="flex justify-between items-center mb-5">
                         <div>
                           <h3 className="text-base font-bold text-gray-800 tracking-tight">Temperature & Humidity</h3>
@@ -3991,7 +4087,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 </div>
 
-                {/* Slide 2: Particulate Matter PM2.5 & PM10 */}
+                {/* Slide 4: Particulate Matter PM2.5 & PM10 */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* PM2.5 Chart */}
@@ -4019,7 +4115,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
@@ -4031,7 +4127,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
                         <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
-                        <span>WHO Limit: 25 μg/m³</span>
+                        <span>WHO Limit: 25 µg/m³</span>
                       </div>
                     </div>
 
@@ -4060,7 +4156,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={80} fill="url(#gradPM10)" fillOpacity={1} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
@@ -4072,7 +4168,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
                         <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
-                        <span>WHO Limit: 50 μg/m³</span>
+                        <span>WHO Limit: 50 µg/m³</span>
                       </div>
                     </div>
 
@@ -4126,7 +4222,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   </div>
                 </div>
 
-                {/* Slide 3: CO & O3 */}
+                {/* Slide 5: CO & O3 */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* CO & O3 Combined Chart */}
@@ -4144,8 +4240,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
-                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
-                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'CO PPM', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'O₃ PPB', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
