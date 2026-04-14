@@ -4722,7 +4722,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/leed_logo.png" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{leedCert?.cert_type || 'LEED v4 O+M'}</h3>
-                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1"><span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{leedCert?.cert_level || 'In Progress'}</span></span>
+                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{leedCert?.cert_level || 'In Progress'}</span>
                             </div>
                           </div>
                           
@@ -4807,7 +4807,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/well_logo.png" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{wellCert?.cert_type || 'WELL v2 Core'}</h3>
-                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1"><span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{wellCert?.cert_level || 'In Progress'}</span></span>
+                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{wellCert?.cert_level || 'In Progress'}</span>
                             </div>
                           </div>
                           
@@ -5111,7 +5111,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                     <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-gradient-to-br from-[#911140]/5 to-transparent rounded-2xl border border-[#911140]/10 transition-all duration-300 hover:shadow-[0_10px_40px_-10px_rgba(145,17,64,0.15)] hover:-translate-y-1 hover:border-[#911140]/30 cursor-default">
                                       <div>
                                         <div className="font-bold text-gray-900 text-lg tracking-tight mb-1">{cert?.cert_type} Recertification</div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]"><div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]">{cert?.cert_level || 'N/A'}</span></div></span></div>
+                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]">{cert?.cert_level || 'N/A'}</span></div>
                                       </div>
                                       <div className="sm:text-right bg-white/50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-none border-[#911140]/10">
                                         <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
