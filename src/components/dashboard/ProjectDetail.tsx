@@ -5028,53 +5028,56 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 3. In Progress Timeline */}
                           {activeWidget === 'progress' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-8">
-                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
-                                  <div className="p-2 bg-[#f8cbcc]/40 rounded-xl border border-[#e63f26]/20 shadow-sm">
-                                    <Activity className="text-[#e63f26] w-5 h-5"/>
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
+                                    <Activity className="text-orange-500 w-4 h-4"/>
                                   </div>
                                   Project Timeline
                                 </h4>
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#e63f26] bg-[#f8cbcc]/30 px-3 py-1.5 rounded-full ring-1 ring-[#e63f26]/20 shadow-sm">
-                                  {progressMilestonesList.length} Pending
+                                <span className="text-xs font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                                  {progressMilestonesList.length} pending
                                 </span>
                               </div>
 
                               {progressMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Activity className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
+                                <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-gray-200">
+                                  <Activity className="w-10 h-10 text-gray-200 mb-3" />
+                                  <p className="text-gray-400 text-sm">No pending milestones.</p>
                                 </div>
                               ) : (
-                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
+                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
                                   {progressMilestonesList.map((m, idx) => {
                                     const isLast = idx === progressMilestonesList.length - 1;
                                     const nextItem = isLast ? null : progressMilestonesList[idx + 1];
-                                    
                                     const style = getTimelineItemStyle(m.status);
                                     const lineStyle = getTimelineLineStyle(m.status, nextItem?.status);
-                                    
-                                    return (
-                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
-                                        {/* Seamless Line Connector with Smart Gradients */}
-                                        {!isLast && (
-                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] z-0 rounded-full ${lineStyle}`} />
-                                        )}
-                                        
-                                        {/* High-End Bullet */}
-                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
-                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
-                                        </div>
 
-                                        {/* Card Content */}
-                                        <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                              <div className={`text-[15px] sm:text-base font-bold tracking-tight ${style.text}`}>{m.title}</div>
-                                              <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
-                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
-                                                  {String(m.status || '').replace('_', ' ')}
+                                    const statusLabel = (() => {
+                                      const s = String(m.status || '').toLowerCase();
+                                      if (s === 'completed' || s === 'achieved') return 'Done';
+                                      if (s === 'in_progress') return 'Active';
+                                      return 'Upcoming';
+                                    })();
+
+                                    return (
+                                      <div key={idx} className="relative flex items-stretch">
+                                        {/* Vertical line + dot */}
+                                        <div className="flex flex-col items-center mr-4 sm:mr-5">
+                                          <div className={`w-7 h-7 rounded-full ${style.bulletBg} border-2 ${style.bulletBorder} flex items-center justify-center shrink-0`}>
+                                            <div className={`w-2 h-2 rounded-full ${style.dot}`} />
+                                          </div>
+                                          {!isLast && <div className={`w-px flex-1 ${lineStyle} my-1`} />}
+                                        </div>
+                                        {/* Card */}
+                                        <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
+                                          <div className={`bg-white border border-gray-100/80 rounded-xl px-4 py-3.5 transition-colors duration-200 ${style.cardHover}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                              <span className={`text-sm font-medium ${style.text}`}>{m.title}</span>
+                                              <div className="flex items-center gap-2.5">
+                                                {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
+                                                <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border ${style.badge}`}>
+                                                  {statusLabel}
                                                 </span>
                                               </div>
                                             </div>
