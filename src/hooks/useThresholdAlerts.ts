@@ -171,7 +171,7 @@ export function useThresholdAlerts(
   // 3. Compute Final Status (Backend-Only)
   return useMemo(() => {
     // 1. Map Device Names to DB alerts
-    const mappedDbAlerts = dbAlerts.map(a => {
+    let mappedDbAlerts: ThresholdAlert[] = dbAlerts.map(a => {
       const dev = options?.devices?.find(d => d.device_id === a.deviceId || d.id === a.deviceId);
       return {
         ...a,
@@ -179,6 +179,24 @@ export function useThresholdAlerts(
         deviceType: dev?.device_type || a.deviceType || undefined
       };
     });
+
+    // 2. Inject synthetic "Offline" alert if site is stale
+    if (options?.isStale) {
+      const staleAlert: ThresholdAlert = {
+        id: 'system-stale-offline',
+        severity: 'critical',
+        metric: 'system.device_offline',
+        message: options.staleMessage || (language === 'it' ? 'Sito offline' : 'Site offline'),
+        currentValue: 0,
+        threshold: 0,
+        status: 'active',
+        timestamp: options.lastUpdate || new Date().toISOString(),
+        deviceName: undefined,
+        deviceType: undefined
+      };
+      // Put it at the top
+      mappedDbAlerts = [staleAlert, ...mappedDbAlerts];
+    }
 
     const criticalCount = mappedDbAlerts.filter(a => a.severity === 'critical').length;
     const warningCount = mappedDbAlerts.filter(a => a.severity === 'warning').length;
