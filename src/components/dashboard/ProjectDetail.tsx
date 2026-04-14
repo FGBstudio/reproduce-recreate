@@ -4657,7 +4657,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                 return {
                   id: m.id,
-                  title: m.category,
+                  title: m.requirement || m.category,
                   progressPct: pct,
                   status: uiStatus,
                   date: dateStr
