@@ -4879,49 +4879,50 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         const s = String(status || '').toLowerCase();
                         if (s === 'completed' || s === 'achieved') {
                           return {
-                            bulletBorder: 'border-[#009193]/30',
-                            bulletBg: 'bg-[#a0d5d6]/20',
-                            dot: 'bg-[#009193] shadow-[0_0_12px_rgba(0,145,147,0.7)]',
-                            cardHover: 'hover:border-[#009193]/40 hover:shadow-[0_10px_40px_-10px_rgba(0,145,147,0.2)] hover:-translate-y-1.5',
-                            badge: 'bg-[#a0d5d6]/30 text-[#006367] border-[#009193]/20',
+                            bulletBorder: 'border-emerald-400/60',
+                            bulletBg: 'bg-emerald-50',
+                            dot: 'bg-emerald-500',
+                            cardHover: 'hover:bg-gray-50/80',
+                            badge: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
                             text: 'text-gray-900',
+                            icon: '✓',
                           };
                         }
                         if (s === 'in_progress') {
                           return {
-                            bulletBorder: 'border-[#e63f26]/30',
-                            bulletBg: 'bg-[#f8cbcc]/30',
-                            dot: 'bg-[#e63f26] shadow-[0_0_14px_rgba(230,63,38,0.8)] animate-pulse',
-                            cardHover: 'hover:border-[#e63f26]/40 hover:shadow-[0_10px_40px_-10px_rgba(230,63,38,0.2)] hover:-translate-y-1.5',
-                            badge: 'bg-[#f8cbcc]/40 text-[#e63f26] border-[#e63f26]/20',
+                            bulletBorder: 'border-blue-400/60',
+                            bulletBg: 'bg-blue-50',
+                            dot: 'bg-blue-500 animate-pulse',
+                            cardHover: 'hover:bg-gray-50/80',
+                            badge: 'bg-blue-50 text-blue-600 border-blue-200/60',
                             text: 'text-gray-900',
+                            icon: '→',
                           };
                         }
-                        return { // pending o default
+                        return {
                           bulletBorder: 'border-gray-200',
-                          bulletBg: 'bg-gray-50',
+                          bulletBg: 'bg-white',
                           dot: 'bg-gray-300',
-                          cardHover: 'hover:border-gray-300 hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.06)] hover:-translate-y-1.5',
-                          badge: 'bg-gray-100 text-gray-500 border-gray-200',
-                          text: 'text-gray-500',
+                          cardHover: 'hover:bg-gray-50/80',
+                          badge: 'bg-gray-50 text-gray-400 border-gray-200',
+                          text: 'text-gray-400',
+                          icon: '○',
                         };
                       };
 
-                      // 2. Logica Intelligente per le Linee di Connessione (Sfumature perfette)
                       const getTimelineLineStyle = (currentStatus: string, nextStatus?: string) => {
                         const c = String(currentStatus || '').toLowerCase();
                         const n = String(nextStatus || '').toLowerCase();
-
                         if (c === 'completed' || c === 'achieved') {
-                          if (n === 'completed' || n === 'achieved') return 'bg-[#009193]'; 
-                          if (n === 'in_progress') return 'bg-gradient-to-b from-[#009193] to-[#e63f26]'; 
-                          return 'bg-gradient-to-b from-[#009193] to-gray-200';
+                          if (n === 'completed' || n === 'achieved') return 'bg-emerald-300';
+                          if (n === 'in_progress') return 'bg-gradient-to-b from-emerald-300 to-blue-300';
+                          return 'bg-gradient-to-b from-emerald-300 to-gray-200';
                         }
                         if (c === 'in_progress') {
-                          if (n === 'in_progress') return 'bg-[#e63f26]';
-                          return 'bg-gradient-to-b from-[#e63f26] to-gray-200';
+                          if (n === 'in_progress') return 'bg-blue-300';
+                          return 'bg-gradient-to-b from-blue-300 to-gray-200';
                         }
-                        return 'bg-gray-200';
+                        return 'bg-gray-100';
                       };
 
                       return (
