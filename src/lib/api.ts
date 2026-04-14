@@ -171,6 +171,7 @@ export interface ApiLatestTelemetry {
   unit?: string;
   ts: string;
   quality?: string;
+  site_id?: string;
 }
 
 export interface ApiLatestResponse {
@@ -319,7 +320,7 @@ export async function fetchDevicesApi(params?: {
  * Fetch latest telemetry directly from 'telemetry_latest' table
  */
 export async function fetchLatestApi(params?: {
-  site_id?: string;
+  site_id?: string | string[];
   device_ids?: string[];
   metrics?: string[];
 }): Promise<ApiLatestResponse | null> {
@@ -343,7 +344,11 @@ export async function fetchLatestApi(params?: {
 
   // Filters
   if (params?.site_id) {
-    query = query.eq('devices.site_id', params.site_id);
+    if (Array.isArray(params.site_id)) {
+      query = query.in('devices.site_id', params.site_id);
+    } else {
+      query = query.eq('devices.site_id', params.site_id);
+    }
   }
   if (params?.device_ids && params.device_ids.length > 0) {
     query = query.in('device_id', params.device_ids);
