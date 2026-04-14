@@ -4971,50 +4971,45 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 2. Milestones Reached */}
                           {activeWidget === 'achieved' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-8">
-                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
-                                  <div className="p-2 bg-[#a0d5d6]/30 rounded-xl border border-[#009193]/20 shadow-sm">
-                                    <Award className="text-[#009193] w-5 h-5"/>
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                                    <Award className="text-emerald-500 w-4 h-4"/>
                                   </div>
                                   Completed Milestones
                                 </h4>
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#006367] bg-[#a0d5d6]/20 px-3 py-1.5 rounded-full ring-1 ring-[#009193]/20 shadow-sm">
-                                  {achievedMilestonesList.length} Total
+                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                                  {achievedMilestonesList.length}
                                 </span>
                               </div>
 
                               {achievedMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Award className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
+                                <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-gray-200">
+                                  <Award className="w-10 h-10 text-gray-200 mb-3" />
+                                  <p className="text-gray-400 text-sm">No milestones reached yet.</p>
                                 </div>
                               ) : (
-                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
+                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
                                   {achievedMilestonesList.map((m, idx) => {
                                     const isLast = idx === achievedMilestonesList.length - 1;
-                                    const style = getTimelineItemStyle('completed');
-
                                     return (
-                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
-                                        {/* Seamless Line Connector */}
-                                        {!isLast && (
-                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] bg-[#009193] z-0 rounded-full`} />
-                                        )}
-                                        
-                                        {/* High-End Bullet */}
-                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
-                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
+                                      <div key={idx} className="relative flex items-stretch">
+                                        {/* Vertical line + dot */}
+                                        <div className="flex flex-col items-center mr-4 sm:mr-5">
+                                          <div className="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-400/50 flex items-center justify-center shrink-0">
+                                            <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                          </div>
+                                          {!isLast && <div className="w-px flex-1 bg-emerald-200/60 my-1" />}
                                         </div>
-
-                                        {/* Card Content */}
-                                        <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                              <div className="text-[15px] sm:text-base font-bold text-gray-800 tracking-tight">{m.title}</div>
-                                              <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
-                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
-                                                  Completed
+                                        {/* Card */}
+                                        <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
+                                          <div className="bg-white border border-gray-100/80 rounded-xl px-4 py-3.5 transition-colors duration-200 hover:bg-gray-50/60">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                              <span className="text-sm font-medium text-gray-800">{m.title}</span>
+                                              <div className="flex items-center gap-2.5">
+                                                {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                                                  Done
                                                 </span>
                                               </div>
                                             </div>
@@ -5025,6 +5020,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                   })}
                                 </div>
                               )}
+                            </div>
+                          )}
                             </div>
                           )}
 
