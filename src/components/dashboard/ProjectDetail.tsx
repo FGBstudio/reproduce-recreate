@@ -4879,49 +4879,50 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         const s = String(status || '').toLowerCase();
                         if (s === 'completed' || s === 'achieved') {
                           return {
-                            bulletBorder: 'border-[#009193]/30',
-                            bulletBg: 'bg-[#a0d5d6]/20',
-                            dot: 'bg-[#009193] shadow-[0_0_12px_rgba(0,145,147,0.7)]',
-                            cardHover: 'hover:border-[#009193]/40 hover:shadow-[0_10px_40px_-10px_rgba(0,145,147,0.2)] hover:-translate-y-1.5',
-                            badge: 'bg-[#a0d5d6]/30 text-[#006367] border-[#009193]/20',
+                            bulletBorder: 'border-emerald-400/60',
+                            bulletBg: 'bg-emerald-50',
+                            dot: 'bg-emerald-500',
+                            cardHover: 'hover:bg-gray-50/80',
+                            badge: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
                             text: 'text-gray-900',
+                            icon: '✓',
                           };
                         }
                         if (s === 'in_progress') {
                           return {
-                            bulletBorder: 'border-[#e63f26]/30',
-                            bulletBg: 'bg-[#f8cbcc]/30',
-                            dot: 'bg-[#e63f26] shadow-[0_0_14px_rgba(230,63,38,0.8)] animate-pulse',
-                            cardHover: 'hover:border-[#e63f26]/40 hover:shadow-[0_10px_40px_-10px_rgba(230,63,38,0.2)] hover:-translate-y-1.5',
-                            badge: 'bg-[#f8cbcc]/40 text-[#e63f26] border-[#e63f26]/20',
+                            bulletBorder: 'border-blue-400/60',
+                            bulletBg: 'bg-blue-50',
+                            dot: 'bg-blue-500 animate-pulse',
+                            cardHover: 'hover:bg-gray-50/80',
+                            badge: 'bg-blue-50 text-blue-600 border-blue-200/60',
                             text: 'text-gray-900',
+                            icon: '→',
                           };
                         }
-                        return { // pending o default
+                        return {
                           bulletBorder: 'border-gray-200',
-                          bulletBg: 'bg-gray-50',
+                          bulletBg: 'bg-white',
                           dot: 'bg-gray-300',
-                          cardHover: 'hover:border-gray-300 hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.06)] hover:-translate-y-1.5',
-                          badge: 'bg-gray-100 text-gray-500 border-gray-200',
-                          text: 'text-gray-500',
+                          cardHover: 'hover:bg-gray-50/80',
+                          badge: 'bg-gray-50 text-gray-400 border-gray-200',
+                          text: 'text-gray-400',
+                          icon: '○',
                         };
                       };
 
-                      // 2. Logica Intelligente per le Linee di Connessione (Sfumature perfette)
                       const getTimelineLineStyle = (currentStatus: string, nextStatus?: string) => {
                         const c = String(currentStatus || '').toLowerCase();
                         const n = String(nextStatus || '').toLowerCase();
-
                         if (c === 'completed' || c === 'achieved') {
-                          if (n === 'completed' || n === 'achieved') return 'bg-[#009193]'; 
-                          if (n === 'in_progress') return 'bg-gradient-to-b from-[#009193] to-[#e63f26]'; 
-                          return 'bg-gradient-to-b from-[#009193] to-gray-200';
+                          if (n === 'completed' || n === 'achieved') return 'bg-emerald-300';
+                          if (n === 'in_progress') return 'bg-gradient-to-b from-emerald-300 to-blue-300';
+                          return 'bg-gradient-to-b from-emerald-300 to-gray-200';
                         }
                         if (c === 'in_progress') {
-                          if (n === 'in_progress') return 'bg-[#e63f26]';
-                          return 'bg-gradient-to-b from-[#e63f26] to-gray-200';
+                          if (n === 'in_progress') return 'bg-blue-300';
+                          return 'bg-gradient-to-b from-blue-300 to-gray-200';
                         }
-                        return 'bg-gray-200';
+                        return 'bg-gray-100';
                       };
 
                       return (
@@ -4970,50 +4971,45 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 2. Milestones Reached */}
                           {activeWidget === 'achieved' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-8">
-                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
-                                  <div className="p-2 bg-[#a0d5d6]/30 rounded-xl border border-[#009193]/20 shadow-sm">
-                                    <Award className="text-[#009193] w-5 h-5"/>
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                                    <Award className="text-emerald-500 w-4 h-4"/>
                                   </div>
                                   Completed Milestones
                                 </h4>
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#006367] bg-[#a0d5d6]/20 px-3 py-1.5 rounded-full ring-1 ring-[#009193]/20 shadow-sm">
-                                  {achievedMilestonesList.length} Total
+                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                                  {achievedMilestonesList.length}
                                 </span>
                               </div>
 
                               {achievedMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Award className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
+                                <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-gray-200">
+                                  <Award className="w-10 h-10 text-gray-200 mb-3" />
+                                  <p className="text-gray-400 text-sm">No milestones reached yet.</p>
                                 </div>
                               ) : (
-                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
+                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
                                   {achievedMilestonesList.map((m, idx) => {
                                     const isLast = idx === achievedMilestonesList.length - 1;
-                                    const style = getTimelineItemStyle('completed');
-
                                     return (
-                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
-                                        {/* Seamless Line Connector */}
-                                        {!isLast && (
-                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] bg-[#009193] z-0 rounded-full`} />
-                                        )}
-                                        
-                                        {/* High-End Bullet */}
-                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
-                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
+                                      <div key={idx} className="relative flex items-stretch">
+                                        {/* Vertical line + dot */}
+                                        <div className="flex flex-col items-center mr-4 sm:mr-5">
+                                          <div className="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-400/50 flex items-center justify-center shrink-0">
+                                            <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                          </div>
+                                          {!isLast && <div className="w-px flex-1 bg-emerald-200/60 my-1" />}
                                         </div>
-
-                                        {/* Card Content */}
-                                        <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                              <div className="text-[15px] sm:text-base font-bold text-gray-800 tracking-tight">{m.title}</div>
-                                              <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
-                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
-                                                  Completed
+                                        {/* Card */}
+                                        <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
+                                          <div className="bg-white border border-gray-100/80 rounded-xl px-4 py-3.5 transition-colors duration-200 hover:bg-gray-50/60">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                              <span className="text-sm font-medium text-gray-800">{m.title}</span>
+                                              <div className="flex items-center gap-2.5">
+                                                {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                                                  Done
                                                 </span>
                                               </div>
                                             </div>
@@ -5030,53 +5026,56 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 3. In Progress Timeline */}
                           {activeWidget === 'progress' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-8">
-                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
-                                  <div className="p-2 bg-[#f8cbcc]/40 rounded-xl border border-[#e63f26]/20 shadow-sm">
-                                    <Activity className="text-[#e63f26] w-5 h-5"/>
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
+                                    <Activity className="text-orange-500 w-4 h-4"/>
                                   </div>
                                   Project Timeline
                                 </h4>
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#e63f26] bg-[#f8cbcc]/30 px-3 py-1.5 rounded-full ring-1 ring-[#e63f26]/20 shadow-sm">
-                                  {progressMilestonesList.length} Pending
+                                <span className="text-xs font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                                  {progressMilestonesList.length} pending
                                 </span>
                               </div>
 
                               {progressMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Activity className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
+                                <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-gray-200">
+                                  <Activity className="w-10 h-10 text-gray-200 mb-3" />
+                                  <p className="text-gray-400 text-sm">No pending milestones.</p>
                                 </div>
                               ) : (
-                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
+                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
                                   {progressMilestonesList.map((m, idx) => {
                                     const isLast = idx === progressMilestonesList.length - 1;
                                     const nextItem = isLast ? null : progressMilestonesList[idx + 1];
-                                    
                                     const style = getTimelineItemStyle(m.status);
                                     const lineStyle = getTimelineLineStyle(m.status, nextItem?.status);
-                                    
-                                    return (
-                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
-                                        {/* Seamless Line Connector with Smart Gradients */}
-                                        {!isLast && (
-                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] z-0 rounded-full ${lineStyle}`} />
-                                        )}
-                                        
-                                        {/* High-End Bullet */}
-                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
-                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
-                                        </div>
 
-                                        {/* Card Content */}
-                                        <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                              <div className={`text-[15px] sm:text-base font-bold tracking-tight ${style.text}`}>{m.title}</div>
-                                              <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
-                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
-                                                  {String(m.status || '').replace('_', ' ')}
+                                    const statusLabel = (() => {
+                                      const s = String(m.status || '').toLowerCase();
+                                      if (s === 'completed' || s === 'achieved') return 'Done';
+                                      if (s === 'in_progress') return 'Active';
+                                      return 'Upcoming';
+                                    })();
+
+                                    return (
+                                      <div key={idx} className="relative flex items-stretch">
+                                        {/* Vertical line + dot */}
+                                        <div className="flex flex-col items-center mr-4 sm:mr-5">
+                                          <div className={`w-7 h-7 rounded-full ${style.bulletBg} border-2 ${style.bulletBorder} flex items-center justify-center shrink-0`}>
+                                            <div className={`w-2 h-2 rounded-full ${style.dot}`} />
+                                          </div>
+                                          {!isLast && <div className={`w-px flex-1 ${lineStyle} my-1`} />}
+                                        </div>
+                                        {/* Card */}
+                                        <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
+                                          <div className={`bg-white border border-gray-100/80 rounded-xl px-4 py-3.5 transition-colors duration-200 ${style.cardHover}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                              <span className={`text-sm font-medium ${style.text}`}>{m.title}</span>
+                                              <div className="flex items-center gap-2.5">
+                                                {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
+                                                <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border ${style.badge}`}>
+                                                  {statusLabel}
                                                 </span>
                                               </div>
                                             </div>
