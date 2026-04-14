@@ -5022,8 +5022,6 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               )}
                             </div>
                           )}
-                            </div>
-                          )}
 
                           {/* 3. In Progress Timeline */}
                           {activeWidget === 'progress' && (
