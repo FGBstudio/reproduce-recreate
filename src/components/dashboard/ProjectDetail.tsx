@@ -3842,88 +3842,97 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* Air Quality Overview Card */}
-                    <div ref={airQualityRef} className={`col-span-1 ${airCardClass} flex flex-col`}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-                        <div className="flex items-center gap-4">
-                          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(project.data.aq)} ${getAqColor(project.data.aq)} text-[10px] font-semibold tracking-wider uppercase`}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                            LIVE
+                    {(() => {
+                      let dynamicAq = 'GOOD';
+                      if (pdAlertStatus.worstSeverity === 'critical') dynamicAq = 'CRITICAL';
+                      else if (pdAlertStatus.worstSeverity === 'warning') dynamicAq = 'MEDIUM';
+
+                      return (
+                        <div ref={airQualityRef} className={`col-span-1 ${airCardClass} flex flex-col`}>
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                            <div className="flex items-center gap-4">
+                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(dynamicAq)} ${getAqColor(dynamicAq)} text-[10px] font-semibold tracking-wider uppercase`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                                LIVE
+                              </div>
+                              <div>
+                                <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(dynamicAq)}`}>
+                                  {dynamicAq}
+                                </h3>
+                                <p className="text-gray-400 uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <AirDeviceSelector
+                                devices={airDevices}
+                                selectedIds={selectedAirDeviceIds}
+                                onChange={setSelectedAirDeviceIds}
+                              />
+                              <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
+                            </div>
                           </div>
-                          <div>
-                            <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(project.data.aq)}`}>
-                              {project.data.aq}
-                            </h3>
-                            <p className="text-gray-400 uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center mb-2">
+                                <Wind className="w-3.5 h-3.5 text-sky-500" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{Math.round(airLatestByMetric["iaq.co2"] ?? project.data.co2)}</div>
+                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO₂</div>
+                            </div>
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
+                                <Activity className="w-3.5 h-3.5 text-purple-500" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.voc"] == null ? "—" : Math.round(airLatestByMetric["iaq.voc"])}</div>
+                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb TVOC</div>
+                            </div>
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center mb-2">
+                                <Thermometer className="w-3.5 h-3.5 text-orange-500" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.temperature"] == null ? "—" : `${Math.round(airLatestByMetric["env.temperature"])}` }°</div>
+                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">°C Temp</div>
+                            </div>
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center mb-2">
+                                <Droplets className="w-3.5 h-3.5 text-cyan-500" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.humidity"] == null ? "—" : Math.round(airLatestByMetric["env.humidity"])}</div>
+                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">% Humidity</div>
+                            </div>
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                                <Cloud className="w-3.5 h-3.5 text-amber-600" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm25"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm25"])}</div>
+                              <div className="text-[9px] text-gray-400 tracking-wider mt-0.5">µg/m³ PM2.5</div>
+                            </div>
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                                <Cloud className="w-3.5 h-3.5 text-amber-800" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm10"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm10"])}</div>
+                              <div className="text-[9px] text-gray-400 tracking-wider mt-0.5">µg/m³ PM10</div>
+                            </div>
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center mb-2">
+                                <Gauge className="w-4 h-4 text-red-500" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.co"] == null ? "—" : airLatestByMetric["iaq.co"].toFixed(2)}</div>
+                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO</div>
+                            </div>
+                            <div className={airKpiCardClass}>
+                              <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center mb-2">
+                                <Sparkles className="w-4 h-4 text-indigo-500" />
+                              </div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.o3"] == null ? "—" : Math.round(airLatestByMetric["iaq.o3"])}</div>
+                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb O₃</div>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <AirDeviceSelector
-                            devices={airDevices}
-                            selectedIds={selectedAirDeviceIds}
-                            onChange={setSelectedAirDeviceIds}
-                          />
-                          <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center mb-2">
-                            <Wind className="w-3.5 h-3.5 text-sky-500" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{Math.round(airLatestByMetric["iaq.co2"] ?? project.data.co2)}</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO₂</div>
-                        </div>
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
-                            <Activity className="w-3.5 h-3.5 text-purple-500" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.voc"] == null ? "—" : Math.round(airLatestByMetric["iaq.voc"])}</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb TVOC</div>
-                        </div>
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center mb-2">
-                            <Thermometer className="w-3.5 h-3.5 text-orange-500" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.temperature"] == null ? "—" : `${Math.round(airLatestByMetric["env.temperature"])}` }°</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">°C Temp</div>
-                        </div>
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center mb-2">
-                            <Droplets className="w-3.5 h-3.5 text-cyan-500" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.humidity"] == null ? "—" : Math.round(airLatestByMetric["env.humidity"])}</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">% Humidity</div>
-                        </div>
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-                            <Cloud className="w-3.5 h-3.5 text-amber-600" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm25"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm25"])}</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">µg/m³ PM2.5</div>
-                        </div>
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-                            <Cloud className="w-3.5 h-3.5 text-amber-800" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm10"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm10"])}</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">µg/m³ PM10</div>
-                        </div>
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center mb-2">
-                            <Gauge className="w-3.5 h-3.5 text-red-500" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.co"] == null ? "—" : airLatestByMetric["iaq.co"].toFixed(2)}</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO</div>
-                        </div>
-                        <div className={airKpiCardClass}>
-                          <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center mb-2">
-                            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                          </div>
-                          <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.o3"] == null ? "—" : Math.round(airLatestByMetric["iaq.o3"])}</div>
-                          <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb O₃</div>
-                        </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {/* Site Alerts Widget */}
                     <div className="col-span-1">
@@ -4657,7 +4666,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                 return {
                   id: m.id,
-                  title: m.requirement || m.category,
+                  title: m.category,
                   progressPct: pct,
                   status: uiStatus,
                   date: dateStr
@@ -4722,7 +4731,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/leed_logo.png" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{leedCert?.cert_type || 'LEED v4 O+M'}</h3>
-                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{leedCert?.cert_level || 'In Progress'}</span>
+                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1"><span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{leedCert?.cert_level || 'In Progress'}</span></span>
                             </div>
                           </div>
                           
@@ -4807,7 +4816,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/well_logo.png" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{wellCert?.cert_type || 'WELL v2 Core'}</h3>
-                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{wellCert?.cert_level || 'In Progress'}</span>
+                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1"><span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{wellCert?.cert_level || 'In Progress'}</span></span>
                             </div>
                           </div>
                           
@@ -4879,50 +4888,49 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         const s = String(status || '').toLowerCase();
                         if (s === 'completed' || s === 'achieved') {
                           return {
-                            bulletBorder: 'border-emerald-400/60',
-                            bulletBg: 'bg-emerald-50',
-                            dot: 'bg-emerald-500',
-                            cardHover: 'hover:bg-gray-50/80',
-                            badge: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
+                            bulletBorder: 'border-[#009193]/30',
+                            bulletBg: 'bg-[#a0d5d6]/20',
+                            dot: 'bg-[#009193] shadow-[0_0_12px_rgba(0,145,147,0.7)]',
+                            cardHover: 'hover:border-[#009193]/40 hover:shadow-[0_10px_40px_-10px_rgba(0,145,147,0.2)] hover:-translate-y-1.5',
+                            badge: 'bg-[#a0d5d6]/30 text-[#006367] border-[#009193]/20',
                             text: 'text-gray-900',
-                            icon: '✓',
                           };
                         }
                         if (s === 'in_progress') {
                           return {
-                            bulletBorder: 'border-blue-400/60',
-                            bulletBg: 'bg-blue-50',
-                            dot: 'bg-blue-500 animate-pulse',
-                            cardHover: 'hover:bg-gray-50/80',
-                            badge: 'bg-blue-50 text-blue-600 border-blue-200/60',
+                            bulletBorder: 'border-[#e63f26]/30',
+                            bulletBg: 'bg-[#f8cbcc]/30',
+                            dot: 'bg-[#e63f26] shadow-[0_0_14px_rgba(230,63,38,0.8)] animate-pulse',
+                            cardHover: 'hover:border-[#e63f26]/40 hover:shadow-[0_10px_40px_-10px_rgba(230,63,38,0.2)] hover:-translate-y-1.5',
+                            badge: 'bg-[#f8cbcc]/40 text-[#e63f26] border-[#e63f26]/20',
                             text: 'text-gray-900',
-                            icon: '→',
                           };
                         }
-                        return {
+                        return { // pending o default
                           bulletBorder: 'border-gray-200',
-                          bulletBg: 'bg-white',
+                          bulletBg: 'bg-gray-50',
                           dot: 'bg-gray-300',
-                          cardHover: 'hover:bg-gray-50/80',
-                          badge: 'bg-gray-50 text-gray-400 border-gray-200',
-                          text: 'text-gray-400',
-                          icon: '○',
+                          cardHover: 'hover:border-gray-300 hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.06)] hover:-translate-y-1.5',
+                          badge: 'bg-gray-100 text-gray-500 border-gray-200',
+                          text: 'text-gray-500',
                         };
                       };
 
+                      // 2. Logica Intelligente per le Linee di Connessione (Sfumature perfette)
                       const getTimelineLineStyle = (currentStatus: string, nextStatus?: string) => {
                         const c = String(currentStatus || '').toLowerCase();
                         const n = String(nextStatus || '').toLowerCase();
+
                         if (c === 'completed' || c === 'achieved') {
-                          if (n === 'completed' || n === 'achieved') return 'bg-emerald-300';
-                          if (n === 'in_progress') return 'bg-gradient-to-b from-emerald-300 to-blue-300';
-                          return 'bg-gradient-to-b from-emerald-300 to-gray-200';
+                          if (n === 'completed' || n === 'achieved') return 'bg-[#009193]'; 
+                          if (n === 'in_progress') return 'bg-gradient-to-b from-[#009193] to-[#e63f26]'; 
+                          return 'bg-gradient-to-b from-[#009193] to-gray-200';
                         }
                         if (c === 'in_progress') {
-                          if (n === 'in_progress') return 'bg-blue-300';
-                          return 'bg-gradient-to-b from-blue-300 to-gray-200';
+                          if (n === 'in_progress') return 'bg-[#e63f26]';
+                          return 'bg-gradient-to-b from-[#e63f26] to-gray-200';
                         }
-                        return 'bg-gray-100';
+                        return 'bg-gray-200';
                       };
 
                       return (
@@ -4971,45 +4979,50 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 2. Milestones Reached */}
                           {activeWidget === 'achieved' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-6">
-                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
-                                    <Award className="text-emerald-500 w-4 h-4"/>
+                              <div className="flex items-center justify-between mb-8">
+                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
+                                  <div className="p-2 bg-[#a0d5d6]/30 rounded-xl border border-[#009193]/20 shadow-sm">
+                                    <Award className="text-[#009193] w-5 h-5"/>
                                   </div>
                                   Completed Milestones
                                 </h4>
-                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                                  {achievedMilestonesList.length}
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#006367] bg-[#a0d5d6]/20 px-3 py-1.5 rounded-full ring-1 ring-[#009193]/20 shadow-sm">
+                                  {achievedMilestonesList.length} Total
                                 </span>
                               </div>
 
                               {achievedMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-gray-200">
-                                  <Award className="w-10 h-10 text-gray-200 mb-3" />
-                                  <p className="text-gray-400 text-sm">No milestones reached yet.</p>
+                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                  <Award className="w-12 h-12 text-gray-300 mb-3" />
+                                  <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
                                 </div>
                               ) : (
-                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
+                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
                                   {achievedMilestonesList.map((m, idx) => {
                                     const isLast = idx === achievedMilestonesList.length - 1;
+                                    const style = getTimelineItemStyle('completed');
+
                                     return (
-                                      <div key={idx} className="relative flex items-stretch">
-                                        {/* Vertical line + dot */}
-                                        <div className="flex flex-col items-center mr-4 sm:mr-5">
-                                          <div className="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-400/50 flex items-center justify-center shrink-0">
-                                            <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                          </div>
-                                          {!isLast && <div className="w-px flex-1 bg-emerald-200/60 my-1" />}
+                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
+                                        {/* Seamless Line Connector */}
+                                        {!isLast && (
+                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] bg-[#009193] z-0 rounded-full`} />
+                                        )}
+                                        
+                                        {/* High-End Bullet */}
+                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
+                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
                                         </div>
-                                        {/* Card */}
-                                        <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
-                                          <div className="bg-white border border-gray-100/80 rounded-xl px-4 py-3.5 transition-colors duration-200 hover:bg-gray-50/60">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                              <span className="text-sm font-medium text-gray-800">{m.title}</span>
-                                              <div className="flex items-center gap-2.5">
-                                                {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
-                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                                                  Done
+
+                                        {/* Card Content */}
+                                        <div className="flex-1">
+                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                              <div className="text-[15px] sm:text-base font-bold text-gray-800 tracking-tight">{m.title}</div>
+                                              <div className="flex items-center gap-3">
+                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
+                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
+                                                  Completed
                                                 </span>
                                               </div>
                                             </div>
@@ -5026,56 +5039,53 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 3. In Progress Timeline */}
                           {activeWidget === 'progress' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-6">
-                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
-                                  <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
-                                    <Activity className="text-orange-500 w-4 h-4"/>
+                              <div className="flex items-center justify-between mb-8">
+                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
+                                  <div className="p-2 bg-[#f8cbcc]/40 rounded-xl border border-[#e63f26]/20 shadow-sm">
+                                    <Activity className="text-[#e63f26] w-5 h-5"/>
                                   </div>
                                   Project Timeline
                                 </h4>
-                                <span className="text-xs font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
-                                  {progressMilestonesList.length} pending
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#e63f26] bg-[#f8cbcc]/30 px-3 py-1.5 rounded-full ring-1 ring-[#e63f26]/20 shadow-sm">
+                                  {progressMilestonesList.length} Pending
                                 </span>
                               </div>
 
                               {progressMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-gray-200">
-                                  <Activity className="w-10 h-10 text-gray-200 mb-3" />
-                                  <p className="text-gray-400 text-sm">No pending milestones.</p>
+                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                  <Activity className="w-12 h-12 text-gray-300 mb-3" />
+                                  <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
                                 </div>
                               ) : (
-                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
+                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
                                   {progressMilestonesList.map((m, idx) => {
                                     const isLast = idx === progressMilestonesList.length - 1;
                                     const nextItem = isLast ? null : progressMilestonesList[idx + 1];
+                                    
                                     const style = getTimelineItemStyle(m.status);
                                     const lineStyle = getTimelineLineStyle(m.status, nextItem?.status);
-
-                                    const statusLabel = (() => {
-                                      const s = String(m.status || '').toLowerCase();
-                                      if (s === 'completed' || s === 'achieved') return 'Done';
-                                      if (s === 'in_progress') return 'Active';
-                                      return 'Upcoming';
-                                    })();
-
+                                    
                                     return (
-                                      <div key={idx} className="relative flex items-stretch">
-                                        {/* Vertical line + dot */}
-                                        <div className="flex flex-col items-center mr-4 sm:mr-5">
-                                          <div className={`w-7 h-7 rounded-full ${style.bulletBg} border-2 ${style.bulletBorder} flex items-center justify-center shrink-0`}>
-                                            <div className={`w-2 h-2 rounded-full ${style.dot}`} />
-                                          </div>
-                                          {!isLast && <div className={`w-px flex-1 ${lineStyle} my-1`} />}
+                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
+                                        {/* Seamless Line Connector with Smart Gradients */}
+                                        {!isLast && (
+                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] z-0 rounded-full ${lineStyle}`} />
+                                        )}
+                                        
+                                        {/* High-End Bullet */}
+                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
+                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
                                         </div>
-                                        {/* Card */}
-                                        <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
-                                          <div className={`bg-white border border-gray-100/80 rounded-xl px-4 py-3.5 transition-colors duration-200 ${style.cardHover}`}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                              <span className={`text-sm font-medium ${style.text}`}>{m.title}</span>
-                                              <div className="flex items-center gap-2.5">
-                                                {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
-                                                <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border ${style.badge}`}>
-                                                  {statusLabel}
+
+                                        {/* Card Content */}
+                                        <div className="flex-1">
+                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                              <div className={`text-[15px] sm:text-base font-bold tracking-tight ${style.text}`}>{m.title}</div>
+                                              <div className="flex items-center gap-3">
+                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
+                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
+                                                  {String(m.status || '').replace('_', ' ')}
                                                 </span>
                                               </div>
                                             </div>
@@ -5111,7 +5121,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                     <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-gradient-to-br from-[#911140]/5 to-transparent rounded-2xl border border-[#911140]/10 transition-all duration-300 hover:shadow-[0_10px_40px_-10px_rgba(145,17,64,0.15)] hover:-translate-y-1 hover:border-[#911140]/30 cursor-default">
                                       <div>
                                         <div className="font-bold text-gray-900 text-lg tracking-tight mb-1">{cert?.cert_type} Recertification</div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]">{cert?.cert_level || 'N/A'}</span></div>
+                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]"><div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]">{cert?.cert_level || 'N/A'}</span></div></span></div>
                                       </div>
                                       <div className="sm:text-right bg-white/50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-none border-[#911140]/10">
                                         <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
