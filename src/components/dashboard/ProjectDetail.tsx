@@ -2473,6 +2473,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       case "GOOD": return "text-emerald-600";
       case "MODERATE": return "text-yellow-500";
       case "POOR": return "text-red-500";
+      case "CRITICAL": return "text-red-600 font-black";
+      case "MEDIUM": return "text-amber-500";
       default: return "text-gray-600";
     }
   };
@@ -2483,6 +2485,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       case "GOOD": return "bg-emerald-500/20 border-emerald-500/30";
       case "MODERATE": return "bg-yellow-500/20 border-yellow-500/30";
       case "POOR": return "bg-red-500/20 border-red-500/30";
+      case "CRITICAL": return "bg-red-600/20 border-red-600/30";
+      case "MEDIUM": return "bg-amber-500/20 border-amber-500/30";
       default: return "bg-gray-500/20 border-gray-500/30";
     }
   };
@@ -3843,9 +3847,32 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* Air Quality Overview Card */}
                     {(() => {
-                      let dynamicAq = 'GOOD';
-                      if (pdAlertStatus.worstSeverity === 'critical') dynamicAq = 'CRITICAL';
-                      else if (pdAlertStatus.worstSeverity === 'warning') dynamicAq = 'MEDIUM';
+                      // 1. Calculate base quality from metrics if available
+                      const co2 = airLatestByMetric['iaq.co2'] ?? project.data.co2 ?? 0;
+                      const voc = airLatestByMetric['iaq.voc'] ?? 0;
+                      const pm25 = airLatestByMetric['iaq.pm25'] ?? 0;
+                      
+                      let dynamicAq = 'EXCELLENT';
+                      if (co2 > 1000 || voc > 500 || pm25 > 25) {
+                        dynamicAq = 'POOR';
+                      } else if (co2 > 800 || voc > 300 || pm25 > 15) {
+                        dynamicAq = 'MODERATE';
+                      } else if (co2 > 600 || voc > 100) {
+                        dynamicAq = 'GOOD';
+                      }
+
+                      // 2. Overlay with ACTIVE air-specific alerts from DB
+                      // Filter for air metrics and ignore the system-level 'stale' alert
+                      const airAlerts = pdAlertStatus.alerts.filter(a => 
+                        (a.metric.startsWith('iaq.') || a.metric.startsWith('env.')) && 
+                        a.id !== 'system-stale-offline'
+                      );
+
+                      if (airAlerts.some(a => a.severity === 'critical')) {
+                        dynamicAq = 'CRITICAL';
+                      } else if (airAlerts.some(a => a.severity === 'warning')) {
+                        dynamicAq = 'MEDIUM';
+                      }
 
                       return (
                         <div ref={airQualityRef} className={`col-span-1 ${airCardClass} flex flex-col`}>
