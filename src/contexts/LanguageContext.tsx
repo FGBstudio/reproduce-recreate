@@ -214,7 +214,8 @@ const translations: Record<string, Record<Language, string>> = {
   'pd.back_to_region': { en: 'Back to Region', it: 'Torna alla Regione', fr: 'Retour à la région', es: 'Volver a la región', zh: '返回区域' },
   'pd.change_bg': { en: 'Change Background', it: 'Cambia Sfondo', fr: "Changer l'arrière-plan", es: 'Cambiar fondo', zh: '更换背景' },
   'pd.export_pdf': { en: 'Export PDF', it: 'Esporta PDF', fr: 'Exporter PDF', es: 'Exportar PDF', zh: '导出 PDF' },
-  'pd.project_settings': { en: 'Project Settings', it: 'Impostazioni Progetto', fr: 'Paramètres du projet', es: 'Configuración del proyecto', zh: '项目设置' },
+  'pd.project_settings': { en: 'Project Settings', it: 'Impostazioni Progetto', fr: 'Paramètres du projet', es: 'Configurazione del progetto', zh: '项目设置' },
+  'pd.back': { en: 'Back', it: 'Indietro', fr: 'Retour', es: 'Volver', zh: '返回' },
   'pd.energy_over_time': { en: 'Energy consumption over time', it: 'Consumo energetico nel tempo', fr: "Consommation d'énergie dans le temps", es: 'Consumo energético en el tiempo', zh: '能耗趋势' },
   'pd.daily_energy_kwh': { en: 'Daily Energy (kWh)', it: 'Energia Giornaliera (kWh)', fr: 'Énergie journalière (kWh)', es: 'Energía diaria (kWh)', zh: '每日能耗 (kWh)' },
   'pd.avg_power_kw': { en: 'Average Power (kW)', it: 'Potenza Media (kW)', fr: 'Puissance moyenne (kW)', es: 'Potencia media (kW)', zh: '平均功率 (kW)' },
@@ -328,6 +329,10 @@ const translations: Record<string, Record<Language, string>> = {
   'pd.site_alerts.device': { en: 'Device', it: 'Dispositivo', fr: 'Appareil', es: 'Dispositivo', zh: '设备' },
   'pd.site_alerts.description': { en: 'Description', it: 'Descrizione', fr: 'Description', es: 'Descripción', zh: '描述' },
   'pd.site_alerts.last_seen': { en: 'Last seen', it: 'Ultimo dato', fr: 'Dernière activité', es: 'Última actividad', zh: '最后在线' },
+  'pd.site_alerts.recommendation': { en: 'Recommendation', it: 'Suggerimento', fr: 'Recommandation', es: 'Recomendación', zh: '建议' },
+  'pd.site_alerts.reading': { en: 'Reading', it: 'Rilevamento', fr: 'Lecture', es: 'Lectura', zh: '读数' },
+  'pd.site_alerts.threshold': { en: 'Threshold', it: 'Soglia', fr: 'Seuil', es: 'Umbral', zh: '阈值' },
+  'pd.site_alerts.acknowledge': { en: 'Acknowledge', it: 'Presa in Carico', fr: 'Prendre en compte', es: 'Reconocer', zh: '确认' },
 
   // Certification
   'pd.points_obtained': { en: 'Points obtained', it: 'Punti ottenuti', fr: 'Points obtenus', es: 'Puntos obtenidos', zh: '获得分数' },
