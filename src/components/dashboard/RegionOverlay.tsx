@@ -140,12 +140,6 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     not_installed: "text-rose-400",
   }[s] || "text-muted-foreground");
 
-  const intensityColorClass = useMemo(() => {
-    if (displayIntensity < 250) return "bg-emerald-400";
-    if (displayIntensity < 600) return "bg-yellow-400";
-    return "bg-rose-400";
-  }, [displayIntensity]);
-
   const statusLabel = (s: string) => {
     const map: Record<string, string> = {
       online: t('region.status_online'),
@@ -204,13 +198,13 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                       </Tooltip>
                     </div>
                     <span className="text-xl font-bold text-foreground whitespace-nowrap ml-3">
-                      {activeFilters.includes('energy') && displayIntensity > 0 ? displayIntensity.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'} <span className="text-xs font-normal opacity-70">kWh/m²</span>
+                      {activeFilters.includes('energy') && displayIntensity > 0 ? (displayIntensity / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'} <span className="text-xs font-normal opacity-70">MWh/m²</span>
                     </span>
                   </div>
                   <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
                     <div 
-                      className={`${intensityColorClass} h-full transition-all duration-700`}
-                      style={{ width: `${activeFilters.includes('energy') && displayIntensity > 0 ? Math.min((displayIntensity / 500) * 100, 100) : 0}%` }}
+                      className="bg-emerald-400 h-full transition-all duration-700"
+                      style={{ width: `${activeFilters.includes('energy') && displayIntensity > 0 ? Math.min((displayIntensity / 1000) * 100, 100) : 0}%` }}
                     />
                   </div>
                 </div>
@@ -459,8 +453,8 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             onClick={() => activeFilters.includes('energy') && setMobileDrawerContent('energy')}
             className={`text-center p-2 rounded-lg bg-white/5 border border-white/10 ${activeFilters.includes('energy') ? 'active:bg-white/10' : 'opacity-30 grayscale'}`}
           >
-            <div className={`text-sm font-bold text-foreground`}>{activeFilters.includes('energy') && displayIntensity > 0 ? displayIntensity.toFixed(0) : '—'}</div>
-            <div className="text-[8px] uppercase text-muted-foreground">kWh/m²</div>
+            <div className="text-sm font-bold text-foreground">{activeFilters.includes('energy') && displayIntensity > 0 ? (displayIntensity / 1000).toFixed(1) : '—'}</div>
+            <div className="text-[8px] uppercase text-muted-foreground">MWh/m²</div>
           </button>
           {/* Air Quality */}
           <button 
