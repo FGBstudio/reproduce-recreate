@@ -142,7 +142,7 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
         .select('device_id, value_sum')
         .in('device_id', batch)
         .gte('ts_day', days)
-        .eq('metric', 'energy.active_energy');
+        .in('metric', ['energy.active_import_kwh', 'energy.active_energy']);
       if (!error && data) rows = rows.concat(data);
     }
 
