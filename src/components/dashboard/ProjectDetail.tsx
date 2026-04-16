@@ -473,7 +473,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       energy: { ...moduleConfig.energy, enabled: moduleConfig.energy.enabled || inferredHasEnergy },
       air: { ...moduleConfig.air, enabled: moduleConfig.air.enabled || inferredHasAir },
       water: { ...moduleConfig.water, enabled: moduleConfig.water.enabled || inferredHasWater },
-      certification: { enabled: true, ...(moduleConfig?.certification || {}) },
+      certification: { enabled: true },
     }),
     [moduleConfig, inferredHasEnergy, inferredHasAir, inferredHasWater]
   );
@@ -4915,54 +4915,37 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   <div className={`w-full bg-white/90 backdrop-blur-md rounded-3xl shadow-inner border border-gray-100 overflow-hidden transition-all duration-500 ease-in-out ${activeWidget ? 'max-h-[1000px] p-4 sm:p-8 opacity-100 mb-8' : 'max-h-0 p-0 border-none opacity-0 m-0'}`}>
                     
                     {(() => {
-                      // 1. Stili avanzati per i Pallini (Bullets) e le Card
+                      // Style helpers
                       const getTimelineItemStyle = (status: string) => {
                         const s = String(status || '').toLowerCase();
                         if (s === 'completed' || s === 'achieved') {
                           return {
-                            bulletBorder: 'border-[#009193]/30',
-                            bulletBg: 'bg-[#a0d5d6]/20',
-                            dot: 'bg-[#009193] shadow-[0_0_12px_rgba(0,145,147,0.7)]',
-                            cardHover: 'hover:border-[#009193]/40 hover:shadow-[0_10px_40px_-10px_rgba(0,145,147,0.2)] hover:-translate-y-1.5',
-                            badge: 'bg-[#a0d5d6]/30 text-[#006367] border-[#009193]/20',
+                            bullet: 'bg-[#009193] ring-4 ring-[#009193]/10',
+                            icon: '✓',
+                            card: 'bg-white/60 border-[#009193]/10 hover:border-[#009193]/25',
+                            badge: 'bg-[#009193]/8 text-[#006367]',
                             text: 'text-gray-900',
+                            line: 'bg-[#009193]/25',
                           };
                         }
                         if (s === 'in_progress') {
                           return {
-                            bulletBorder: 'border-[#e63f26]/30',
-                            bulletBg: 'bg-[#f8cbcc]/30',
-                            dot: 'bg-[#e63f26] shadow-[0_0_14px_rgba(230,63,38,0.8)] animate-pulse',
-                            cardHover: 'hover:border-[#e63f26]/40 hover:shadow-[0_10px_40px_-10px_rgba(230,63,38,0.2)] hover:-translate-y-1.5',
-                            badge: 'bg-[#f8cbcc]/40 text-[#e63f26] border-[#e63f26]/20',
+                            bullet: 'bg-blue-500 ring-4 ring-blue-500/10 animate-pulse',
+                            icon: '',
+                            card: 'bg-white/60 border-blue-100 hover:border-blue-200',
+                            badge: 'bg-blue-50 text-blue-600',
                             text: 'text-gray-900',
+                            line: 'bg-blue-200',
                           };
                         }
-                        return { // pending o default
-                          bulletBorder: 'border-gray-200',
-                          bulletBg: 'bg-gray-50',
-                          dot: 'bg-gray-300',
-                          cardHover: 'hover:border-gray-300 hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.06)] hover:-translate-y-1.5',
-                          badge: 'bg-gray-100 text-gray-500 border-gray-200',
+                        return {
+                          bullet: 'bg-gray-200 ring-4 ring-gray-100',
+                          icon: '',
+                          card: 'bg-white/40 border-gray-100/80 hover:border-gray-200',
+                          badge: 'bg-gray-50 text-gray-400',
                           text: 'text-gray-500',
+                          line: 'bg-gray-100',
                         };
-                      };
-
-                      // 2. Logica Intelligente per le Linee di Connessione (Sfumature perfette)
-                      const getTimelineLineStyle = (currentStatus: string, nextStatus?: string) => {
-                        const c = String(currentStatus || '').toLowerCase();
-                        const n = String(nextStatus || '').toLowerCase();
-
-                        if (c === 'completed' || c === 'achieved') {
-                          if (n === 'completed' || n === 'achieved') return 'bg-[#009193]'; 
-                          if (n === 'in_progress') return 'bg-gradient-to-b from-[#009193] to-[#e63f26]'; 
-                          return 'bg-gradient-to-b from-[#009193] to-gray-200';
-                        }
-                        if (c === 'in_progress') {
-                          if (n === 'in_progress') return 'bg-[#e63f26]';
-                          return 'bg-gradient-to-b from-[#e63f26] to-gray-200';
-                        }
-                        return 'bg-gray-200';
                       };
 
                       return (

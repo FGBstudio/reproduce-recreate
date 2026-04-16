@@ -405,13 +405,33 @@ const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: {
     const o3Val = isReal ? m['iaq.o3'] : undefined;
     
     // Use configured thresholds for status evaluation
+    // Helper: evaluate metric status from value + thresholds (inline, no dependency on alerts array)
+    const evalStatus = (metric: string, val: number | undefined): 'good' | 'warning' | 'critical' => {
+      if (typeof val !== 'number') return 'good';
+      if (metric === 'iaq.co2') {
+        const warn = thresholds?.air_co2_warning_ppm ?? 800;
+        const crit = thresholds?.air_co2_critical_ppm ?? 1200;
+        return val >= crit ? 'critical' : val >= warn ? 'warning' : 'good';
+      }
+      if (metric === 'env.temperature') {
+        const min = thresholds?.air_temp_min_c ?? 18;
+        const max = thresholds?.air_temp_max_c ?? 26;
+        return (val < min - 2 || val > max + 2) ? 'critical' : (val < min || val > max) ? 'warning' : 'good';
+      }
+      if (metric === 'env.humidity') {
+        const min = thresholds?.air_humidity_min_pct ?? 30;
+        const max = thresholds?.air_humidity_max_pct ?? 60;
+        return (val < min - 5 || val > max + 5) ? 'critical' : (val < min || val > max) ? 'warning' : 'good';
+      }
+      return 'good';
+    };
     return {
-      co2: { value: co2Val, unit: "ppm", status: getMetricStatus('iaq.co2', co2Val, thresholds) },
+      co2: { value: co2Val, unit: "ppm", status: evalStatus('iaq.co2', co2Val) },
       tvoc: { value: tvocVal, unit: "ppb", status: typeof tvocVal === 'number' ? (tvocVal < 200 ? "good" as const : tvocVal < 400 ? "warning" as const : "critical" as const) : "good" as const },
       pm25: { value: pm25Val, unit: "µg/m³", status: typeof pm25Val === 'number' ? (pm25Val < 15 ? "good" as const : pm25Val < 25 ? "warning" as const : "critical" as const) : "good" as const },
       pm10: { value: pm10Val, unit: "µg/m³", status: typeof pm10Val === 'number' ? (pm10Val < 25 ? "good" as const : pm10Val < 50 ? "warning" as const : "critical" as const) : "good" as const },
-      temp: { value: tempVal, unit: "°C", status: getMetricStatus('env.temperature', tempVal, thresholds) },
-      humidity: { value: humidityVal, unit: "%", status: getMetricStatus('env.humidity', humidityVal, thresholds) },
+      temp: { value: tempVal, unit: "°C", status: evalStatus('env.temperature', tempVal) },
+      humidity: { value: humidityVal, unit: "%", status: evalStatus('env.humidity', humidityVal) },
       co: { value: coVal, unit: "ppm", status: "good" as const },
       o3: { value: o3Val, unit: "ppb", status: "good" as const },
     };
