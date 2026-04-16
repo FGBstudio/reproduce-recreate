@@ -4994,22 +4994,22 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 2. Milestones Reached */}
                           {activeWidget === 'achieved' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-8">
-                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
-                                  <div className="p-2 bg-[#a0d5d6]/30 rounded-xl border border-[#009193]/20 shadow-sm">
-                                    <Award className="text-[#009193] w-5 h-5"/>
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="p-1.5 bg-[#009193]/8 rounded-lg">
+                                    <Award className="text-[#009193] w-4 h-4"/>
                                   </div>
                                   Completed Milestones
                                 </h4>
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#006367] bg-[#a0d5d6]/20 px-3 py-1.5 rounded-full ring-1 ring-[#009193]/20 shadow-sm">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#006367] bg-[#009193]/8 px-2.5 py-1 rounded-full">
                                   {achievedMilestonesList.length} Total
                                 </span>
                               </div>
 
                               {achievedMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Award className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
+                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/30 rounded-2xl border border-dashed border-gray-200/60">
+                                  <Award className="w-10 h-10 text-gray-200 mb-2" />
+                                  <p className="text-gray-400 font-medium text-sm">No milestones reached yet.</p>
                                 </div>
                               ) : (
                                 <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1 pb-2">
