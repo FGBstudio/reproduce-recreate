@@ -473,6 +473,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       energy: { ...moduleConfig.energy, enabled: moduleConfig.energy.enabled || inferredHasEnergy },
       air: { ...moduleConfig.air, enabled: moduleConfig.air.enabled || inferredHasAir },
       water: { ...moduleConfig.water, enabled: moduleConfig.water.enabled || inferredHasWater },
+      certification: { enabled: true, ...(moduleConfig?.certification || {}) },
     }),
     [moduleConfig, inferredHasEnergy, inferredHasAir, inferredHasWater]
   );
@@ -4693,7 +4694,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                 return {
                   id: m.id,
-                  title: m.category,
+                  title: m.requirement || m.category,
                   progressPct: pct,
                   status: uiStatus,
                   date: dateStr
@@ -4758,7 +4759,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/leed_logo.png" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{leedCert?.cert_type || 'LEED v4 O+M'}</h3>
-                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1"><span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{leedCert?.cert_level || 'In Progress'}</span></span>
+                                                             <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">
+                                {leedCert?.cert_level || 'In Progress'}
+                              </span>
                             </div>
                           </div>
                           
@@ -4843,7 +4846,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             <img src="/well_logo.png" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{wellCert?.cert_type || 'WELL v2 Core'}</h3>
-                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1"><span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">{wellCert?.cert_level || 'In Progress'}</span></span>
+                                                             <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">
+                                {wellCert?.cert_level || 'In Progress'}
+                              </span>
                             </div>
                           </div>
                           
@@ -5148,7 +5153,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                     <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-gradient-to-br from-[#911140]/5 to-transparent rounded-2xl border border-[#911140]/10 transition-all duration-300 hover:shadow-[0_10px_40px_-10px_rgba(145,17,64,0.15)] hover:-translate-y-1 hover:border-[#911140]/30 cursor-default">
                                       <div>
                                         <div className="font-bold text-gray-900 text-lg tracking-tight mb-1">{cert?.cert_type} Recertification</div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]"><div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Level: <span className="font-bold text-[#911140]">{cert?.cert_level || 'N/A'}</span></div></span></div>
+                                                                                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Current Level: <span className="font-bold text-[#911140]">{cert?.cert_level || 'N/A'}</span>
+                                          </div>
                                       </div>
                                       <div className="sm:text-right bg-white/50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-none border-[#911140]/10">
                                         <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
@@ -5811,6 +5818,65 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={false} name="Chlorine" />
           </LineChart>
         </ResponsiveContainer>
+      </ChartFullscreenModal>
+      {/* ENERGY: Outdoor Condition */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'outdoor'}
+        onClose={() => setFullscreenChart(null)}
+        title="Energy vs Outdoor Condition"
+      >
+        <div className="relative w-full h-[500px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
+              <CartesianGrid {...gridStyle} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+              <YAxis yAxisId="energy" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft' }} />
+              <YAxis yAxisId="temp" orientation="right" tick={{ fontSize: 9, fill: '#F59E0B' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} width={28} />
+              <YAxis yAxisId="humidity" orientation="right" tick={{ fontSize: 9, fill: '#3b82f6' }} axisLine={false} tickLine={false} domain={[0, 100]} width={32} />
+              <Tooltip {...tooltipStyle} />
+              <Legend />
+              <Line yAxisId="energy" type="monotone" dataKey="energy" stroke="#006367" strokeWidth={3} dot={false} name="Energy (kWh)" connectNulls />
+              <Line yAxisId="temp" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} dot={false} name="Temp (°C)" connectNulls />
+              <Line yAxisId="humidity" type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Humidity (%)" connectNulls strokeDasharray="4 2" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartFullscreenModal>
+
+      {/* ENERGY: Day/Night Cycle */}
+      <ChartFullscreenModal
+        isOpen={fullscreenChart === 'trend'}
+        onClose={() => setFullscreenChart(null)}
+        title="24-Hour Energy Cycle"
+      >
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="relative w-64 h-64 md:w-80 md:h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={dayNightSummary.chartData} cx="50%" cy="50%" innerRadius="70%" outerRadius="100%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>
+                  {dayNightSummary.chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => [`${value.toLocaleString()} kWh`, 'Total']} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="text-4xl font-black text-gray-800 tracking-tight">{dayNightSummary.total.toLocaleString()}</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">kWh Total</span>
+            </div>
+          </div>
+          <div className="flex gap-12 mt-12">
+            <div className="flex flex-col items-center">
+              <div className="text-lg font-bold text-gray-800">Daytime</div>
+              <div className="text-3xl font-black text-sky-500">{dayNightSummary.dayPct}%</div>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-lg font-bold text-gray-800">Nighttime</div>
+              <div className="text-3xl font-black text-slate-700">{dayNightSummary.nightPct}%</div>
+            </div>
+          </div>
+        </div>
       </ChartFullscreenModal>
     </div>
   );
