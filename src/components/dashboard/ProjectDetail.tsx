@@ -5012,34 +5012,28 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                   <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
                                 </div>
                               ) : (
-                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
+                                <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1 pb-2">
                                   {achievedMilestonesList.map((m, idx) => {
                                     const isLast = idx === achievedMilestonesList.length - 1;
                                     const style = getTimelineItemStyle('completed');
 
                                     return (
-                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
-                                        {/* Seamless Line Connector */}
-                                        {!isLast && (
-                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] bg-[#009193] z-0 rounded-full`} />
-                                        )}
-                                        
-                                        {/* High-End Bullet */}
-                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
-                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
+                                      <div key={idx} className="relative flex items-stretch group">
+                                        {/* Vertical line */}
+                                        <div className="relative flex flex-col items-center w-8 shrink-0">
+                                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${style.bullet} transition-transform duration-200 group-hover:scale-110`}>
+                                            {style.icon && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                                          </div>
+                                          {!isLast && <div className={`flex-1 w-[1.5px] ${style.line} my-1`} />}
                                         </div>
 
-                                        {/* Card Content */}
-                                        <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                              <div className="text-[15px] sm:text-base font-bold text-gray-800 tracking-tight">{m.title}</div>
-                                              <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
-                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
-                                                  Completed
-                                                </span>
-                                              </div>
+                                        {/* Card */}
+                                        <div className={`flex-1 ml-3 mb-2 rounded-xl border backdrop-blur-sm px-4 py-3 transition-all duration-200 ${style.card}`}>
+                                          <div className="flex items-center justify-between gap-3">
+                                            <span className="text-sm font-semibold text-gray-800 tracking-tight">{m.title}</span>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
+                                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide ${style.badge}`}>Done</span>
                                             </div>
                                           </div>
                                         </div>
@@ -5054,55 +5048,48 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           {/* 3. In Progress Timeline */}
                           {activeWidget === 'progress' && (
                             <div className="animate-fade-in">
-                              <div className="flex items-center justify-between mb-8">
-                                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
-                                  <div className="p-2 bg-[#f8cbcc]/40 rounded-xl border border-[#e63f26]/20 shadow-sm">
-                                    <Activity className="text-[#e63f26] w-5 h-5"/>
+                              <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5 tracking-tight">
+                                  <div className="p-1.5 bg-blue-50 rounded-lg">
+                                    <Activity className="text-blue-500 w-4 h-4"/>
                                   </div>
                                   Project Timeline
                                 </h4>
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#e63f26] bg-[#f8cbcc]/30 px-3 py-1.5 rounded-full ring-1 ring-[#e63f26]/20 shadow-sm">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-500 bg-blue-50 px-2.5 py-1 rounded-full">
                                   {progressMilestonesList.length} Pending
                                 </span>
                               </div>
 
                               {progressMilestonesList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Activity className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
+                                <div className="flex flex-col items-center justify-center py-12 bg-gray-50/30 rounded-2xl border border-dashed border-gray-200/60">
+                                  <Activity className="w-10 h-10 text-gray-200 mb-2" />
+                                  <p className="text-gray-400 font-medium text-sm">No pending milestones.</p>
                                 </div>
                               ) : (
-                                <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
+                                <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1 pb-2">
                                   {progressMilestonesList.map((m, idx) => {
                                     const isLast = idx === progressMilestonesList.length - 1;
-                                    const nextItem = isLast ? null : progressMilestonesList[idx + 1];
-                                    
                                     const style = getTimelineItemStyle(m.status);
-                                    const lineStyle = getTimelineLineStyle(m.status, nextItem?.status);
                                     
                                     return (
-                                      <div key={idx} className="relative flex items-start group pb-6 sm:pb-8">
-                                        {/* Seamless Line Connector with Smart Gradients */}
-                                        {!isLast && (
-                                          <div className={`absolute left-[15px] top-[32px] bottom-0 w-[2px] z-0 rounded-full ${lineStyle}`} />
-                                        )}
-                                        
-                                        {/* High-End Bullet */}
-                                        <div className={`relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-[3px] mt-0 mr-4 sm:mr-6 transition-all duration-300 group-hover:scale-110 ${style.bulletBorder} ${style.bulletBg}`}>
-                                          <div className={`w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${style.dot}`} />
+                                      <div key={idx} className="relative flex items-stretch group">
+                                        {/* Vertical line */}
+                                        <div className="relative flex flex-col items-center w-8 shrink-0">
+                                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${style.bullet} transition-transform duration-200 group-hover:scale-110`}>
+                                            {style.icon && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                                          </div>
+                                          {!isLast && <div className={`flex-1 w-[1.5px] ${style.line} my-1`} />}
                                         </div>
 
-                                        {/* Card Content */}
-                                        <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                              <div className={`text-[15px] sm:text-base font-bold tracking-tight ${style.text}`}>{m.title}</div>
-                                              <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
-                                                <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
-                                                  {String(m.status || '').replace('_', ' ')}
-                                                </span>
-                                              </div>
+                                        {/* Card */}
+                                        <div className={`flex-1 ml-3 mb-2 rounded-xl border backdrop-blur-sm px-4 py-3 transition-all duration-200 ${style.card}`}>
+                                          <div className="flex items-center justify-between gap-3">
+                                            <span className={`text-sm font-semibold tracking-tight ${style.text}`}>{m.title}</span>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              {m.date !== 'TBD' && <span className="text-[11px] text-gray-400 font-medium tabular-nums">{m.date}</span>}
+                                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide ${style.badge}`}>
+                                                {String(m.status || '').replace('_', ' ')}
+                                              </span>
                                             </div>
                                           </div>
                                         </div>
