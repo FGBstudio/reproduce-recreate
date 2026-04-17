@@ -112,9 +112,10 @@ async function fetchRegionIntensities(): Promise<{
       const batch = deviceIds.slice(i, i + batchSize);
       const { data: rows, error } = await supabase
         .from('energy_daily')
-        .select('device_id, value_sum')
+        .select('device_id, metric, value_sum')
         .in('device_id', batch)
-        .gte('ts_day', thirtyDaysAgoStr);
+        .gte('ts_day', thirtyDaysAgoStr)
+        .in('metric', ['energy.active_import_kwh', 'energy.active_energy']);
       if (!error && rows) allRows = allRows.concat(rows);
     }
 

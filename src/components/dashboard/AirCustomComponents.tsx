@@ -13,30 +13,28 @@ import { Wind, Activity, Thermometer, Droplets, Cloud, Gauge, Sparkles, ChevronU
 const getAqColor = (aq: string | number) => {
   if (typeof aq === 'string') {
     const upper = aq.toUpperCase();
-    if (upper === "EXCELLENT") return "text-emerald-500 dark:text-emerald-400";
-    if (upper === "GOOD") return "text-emerald-600 dark:text-emerald-400";
-    if (upper === "MODERATE") return "text-yellow-500 dark:text-yellow-400";
-    if (upper === "POOR") return "text-red-500 dark:text-red-400";
+    if (upper === "EXCELLENT" || upper === "GOOD") return "text-emerald-600 dark:text-emerald-400";
+    if (upper === "MODERATE" || upper === "MEDIUM") return "text-amber-500 dark:text-amber-400";
+    if (upper === "POOR" || upper === "CRITICAL") return "text-red-600 dark:text-red-400";
   }
   const val = typeof aq === 'string' ? parseInt(aq) : (aq || 0);
   if (isNaN(val)) return "text-gray-400";
-  if (val <= 50) return "text-emerald-500 dark:text-emerald-400";
-  if (val <= 100) return "text-yellow-500 dark:text-yellow-400";
-  return "text-red-500 dark:text-red-400";
+  if (val <= 50) return "text-emerald-600 dark:text-emerald-400";
+  if (val <= 100) return "text-amber-500 dark:text-amber-400";
+  return "text-red-600 dark:text-red-400";
 };
 
 const getAqBgColor = (aq: string | number) => {
   if (typeof aq === 'string') {
     const upper = aq.toUpperCase();
-    if (upper === "EXCELLENT") return "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20";
-    if (upper === "GOOD") return "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20";
-    if (upper === "MODERATE") return "bg-yellow-50 dark:bg-yellow-500/10 border-yellow-100 dark:border-yellow-500/20";
-    if (upper === "POOR") return "bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20";
+    if (upper === "EXCELLENT" || upper === "GOOD") return "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20";
+    if (upper === "MODERATE" || upper === "MEDIUM") return "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20";
+    if (upper === "POOR" || upper === "CRITICAL") return "bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20";
   }
   const val = typeof aq === 'string' ? parseInt(aq) : (aq || 0);
   if (isNaN(val)) return "bg-gray-50 dark:bg-gray-500/10 border-gray-100 dark:border-gray-500/20";
   if (val <= 50) return "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20";
-  if (val <= 100) return "bg-yellow-50 dark:bg-yellow-500/10 border-yellow-100 dark:border-yellow-500/20";
+  if (val <= 100) return "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20";
   return "bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20";
 };
 
@@ -109,8 +107,8 @@ const METRICS_CONFIG: Record<string, any> = {
     unit: '%',
     min: 20,
     max: 80, 
-    getColor: (v: number) => (v >= 40 && v <= 60) ? 'bg-emerald-500' : ((v >= 30 && v < 40) || (v > 60 && v <= 70)) ? 'bg-yellow-400' : 'bg-red-500',
-    legend: { green: '40 - 60', yellow: '30-39, 61-70', red: '< 30 or > 70' }
+    getColor: (v: number) => (v >= 40 && v <= 60) ? 'bg-emerald-500' : ((v >= 35 && v < 40) || (v > 60 && v <= 65)) ? 'bg-yellow-400' : 'bg-red-500',
+    legend: { green: '40 - 60', yellow: '35-39, 61-65', red: '< 35 or > 65' }
   },
 };
 
@@ -190,7 +188,7 @@ export const BuildingOverview = ({
                     <div className="flex flex-col gap-1.5 w-full pr-5 opacity-40">
                       <div className="flex justify-between items-end">
                         <span className="text-[13px] font-medium text-gray-400">—</span>
-                        <span className="text-[9px] font-semibold text-gray-300 tracking-widest uppercase">{config.unit}</span>
+                        <span className="text-[9px] font-semibold text-gray-300 tracking-widest">{config.unit}</span>
                       </div>
                       <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden"></div>
                     </div>
@@ -206,7 +204,7 @@ export const BuildingOverview = ({
                   <div className="flex flex-col gap-1.5 w-full pr-5">
                     <div className="flex justify-between items-end">
                       <span className="text-[13px] font-bold text-gray-700">{val.toFixed(1)}</span>
-                      <span className="text-[9px] font-semibold text-gray-400 tracking-widest uppercase">{config.unit}</span>
+                      <span className="text-[9px] font-semibold text-gray-400 tracking-widest">{config.unit}</span>
                     </div>
                     <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all duration-1000 ${colorClass}`} style={{ width: `${percent}%`, minWidth: percent > 0 ? '4px' : '0' }}></div>

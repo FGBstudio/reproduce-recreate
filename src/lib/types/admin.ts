@@ -29,7 +29,7 @@ export interface User {
 }
 
 // Module configuration
-export type ModuleType = 'energy' | 'air' | 'water';
+export type ModuleType = 'energy' | 'air' | 'water' | 'certification';
 
 export interface ModuleConfig {
   enabled: boolean;
@@ -47,6 +47,7 @@ export interface ProjectModules {
   energy: ModuleConfig;
   air: ModuleConfig;
   water: ModuleConfig;
+  certification: ModuleConfig;
 }
 
 // Certification types
@@ -142,6 +143,7 @@ export const defaultProjectModules: ProjectModules = {
   energy: { ...defaultModuleConfig },
   air: { ...defaultModuleConfig },
   water: { ...defaultModuleConfig },
+  certification: { ...defaultModuleConfig },
 };
 
 // Auth state for context

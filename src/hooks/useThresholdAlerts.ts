@@ -1,10 +1,11 @@
 /**
- * Hook for evaluating live telemetry data against site thresholds
- * Returns computed alerts based on configured limits
+ * Hook for fetching persistent alerts from Supabase site_alerts table.
+ * Integrates with the backend-first rules engine and provides realtime updates.
  */
 
-import { useMemo } from 'react';
-import { useSiteThresholds, SiteThresholds } from './useSiteThresholds';
+import { useState, useEffect, useMemo } from 'react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // =============================================================================
 // Types
@@ -19,11 +20,16 @@ export interface ThresholdAlert {
   message: string;
   currentValue: number;
   threshold: number;
-  unit: string;
+  unit?: string;
   deviceName?: string;
   deviceId?: string;
   timestamp?: string;
   description?: string;
+  recommendation?: string;
+  duration_minutes?: number;
+  hysteresis_pct?: number;
+  status: 'active' | 'resolved';
+  deviceType?: string;
 }
 
 export interface ThresholdAlertStatus {
@@ -34,25 +40,7 @@ export interface ThresholdAlertStatus {
   totalCount: number;
   hasAlerts: boolean;
   worstSeverity: AlertSeverity | null;
-}
-
-export interface LiveMetrics {
-  // Energy
-  'energy.power_kw'?: number;
-  'energy.hvac_kw'?: number;
-  'energy.lighting_kw'?: number;
-  'energy.plugs_kw'?: number;
-  // Air
-  'iaq.co2'?: number;
-  'env.temperature'?: number;
-  'env.humidity'?: number;
-  'iaq.voc'?: number;
-  'iaq.pm25'?: number;
-  'iaq.pm10'?: number;
-  // Water
-  'water.flow_lh'?: number;
-  'water.daily_liters'?: number;
-  [key: string]: number | undefined;
+  isLoading: boolean;
 }
 
 /** Minimal device info used for offline detection */
@@ -66,178 +54,17 @@ export interface DeviceInfo {
 }
 
 // =============================================================================
-// Alert Evaluation Logic
-// =============================================================================
-
-function evaluateAlerts(
-  metrics: LiveMetrics,
-  thresholds: SiteThresholds | undefined
-): ThresholdAlert[] {
-  if (!thresholds) return [];
-  
-  const alerts: ThresholdAlert[] = [];
-
-  // ---------------------------------------------------------------------------
-  // ENERGY ALERTS
-  // ---------------------------------------------------------------------------
-  
-  // Power limit exceeded
-  if (thresholds.energy_power_limit_kw !== null && metrics['energy.power_kw'] !== undefined) {
-    const currentPower = metrics['energy.power_kw'];
-    const limit = thresholds.energy_power_limit_kw;
-    
-    if (currentPower > limit) {
-      alerts.push({
-        id: 'energy_power_exceeded',
-        severity: 'critical',
-        metric: 'energy.power_kw',
-        message: `Potenza (${currentPower.toFixed(1)} kW) supera il limite contrattuale (${limit} kW)`,
-        currentValue: currentPower,
-        threshold: limit,
-        unit: 'kW',
-      });
-    } else if (currentPower > limit * 0.9) {
-      alerts.push({
-        id: 'energy_power_warning',
-        severity: 'warning',
-        metric: 'energy.power_kw',
-        message: `Potenza (${currentPower.toFixed(1)} kW) vicina al limite (${limit} kW)`,
-        currentValue: currentPower,
-        threshold: limit,
-        unit: 'kW',
-      });
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // AIR QUALITY ALERTS
-  // ---------------------------------------------------------------------------
-
-  // CO2 levels
-  if (metrics['iaq.co2'] !== undefined) {
-    const co2 = metrics['iaq.co2'];
-    const criticalLimit = thresholds.air_co2_critical_ppm ?? 1500;
-    const warningLimit = thresholds.air_co2_warning_ppm ?? 1000;
-    
-    if (co2 > criticalLimit) {
-      alerts.push({
-        id: 'air_co2_critical',
-        severity: 'critical',
-        metric: 'iaq.co2',
-        message: `CO₂ (${Math.round(co2)} ppm) supera la soglia critica (${criticalLimit} ppm)`,
-        currentValue: co2,
-        threshold: criticalLimit,
-        unit: 'ppm',
-      });
-    } else if (co2 > warningLimit) {
-      alerts.push({
-        id: 'air_co2_warning',
-        severity: 'warning',
-        metric: 'iaq.co2',
-        message: `CO₂ (${Math.round(co2)} ppm) sopra la soglia warning (${warningLimit} ppm)`,
-        currentValue: co2,
-        threshold: warningLimit,
-        unit: 'ppm',
-      });
-    }
-  }
-
-  // Temperature out of range
-  if (metrics['env.temperature'] !== undefined) {
-    const temp = metrics['env.temperature'];
-    const minTemp = thresholds.air_temp_min_c ?? 18;
-    const maxTemp = thresholds.air_temp_max_c ?? 26;
-    
-    if (temp < minTemp) {
-      alerts.push({
-        id: 'air_temp_low',
-        severity: 'warning',
-        metric: 'env.temperature',
-        message: `Temperatura (${temp.toFixed(1)}°C) sotto il minimo (${minTemp}°C)`,
-        currentValue: temp,
-        threshold: minTemp,
-        unit: '°C',
-      });
-    } else if (temp > maxTemp) {
-      alerts.push({
-        id: 'air_temp_high',
-        severity: 'warning',
-        metric: 'env.temperature',
-        message: `Temperatura (${temp.toFixed(1)}°C) sopra il massimo (${maxTemp}°C)`,
-        currentValue: temp,
-        threshold: maxTemp,
-        unit: '°C',
-      });
-    }
-  }
-
-  // Humidity out of range
-  if (metrics['env.humidity'] !== undefined) {
-    const humidity = metrics['env.humidity'];
-    const minHum = thresholds.air_humidity_min_pct ?? 30;
-    const maxHum = thresholds.air_humidity_max_pct ?? 60;
-    
-    if (humidity < minHum) {
-      alerts.push({
-        id: 'air_humidity_low',
-        severity: 'info',
-        metric: 'env.humidity',
-        message: `Umidità (${humidity.toFixed(0)}%) sotto il minimo (${minHum}%)`,
-        currentValue: humidity,
-        threshold: minHum,
-        unit: '%',
-      });
-    } else if (humidity > maxHum) {
-      alerts.push({
-        id: 'air_humidity_high',
-        severity: 'info',
-        metric: 'env.humidity',
-        message: `Umidità (${humidity.toFixed(0)}%) sopra il massimo (${maxHum}%)`,
-        currentValue: humidity,
-        threshold: maxHum,
-        unit: '%',
-      });
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // WATER ALERTS
-  // ---------------------------------------------------------------------------
-
-  // Water leak detection
-  if (thresholds.water_leak_threshold_lh !== null && metrics['water.flow_lh'] !== undefined) {
-    const flow = metrics['water.flow_lh'];
-    const leakThreshold = thresholds.water_leak_threshold_lh;
-    
-    if (flow > leakThreshold) {
-      alerts.push({
-        id: 'water_leak_detected',
-        severity: 'critical',
-        metric: 'water.flow_lh',
-        message: `Possibile perdita: flusso (${flow.toFixed(1)} L/h) supera soglia (${leakThreshold} L/h)`,
-        currentValue: flow,
-        threshold: leakThreshold,
-        unit: 'L/h',
-      });
-    }
-  }
-
-  return alerts;
-}
-
-// =============================================================================
 // Main Hook
 // =============================================================================
 
 /**
- * Hook to evaluate live metrics against site thresholds and return computed alerts
+ * Hook to retrieve active alerts from the database.
  * 
- * @param siteId - The site ID to fetch thresholds for
- * @param liveMetrics - Current live telemetry values
+ * @param siteId - The site ID to fetch alerts for
  */
 export function useThresholdAlerts(
   siteId: string | undefined,
-  liveMetrics: LiveMetrics,
+  _liveMetrics?: any, // No longer strictly needed for thresholds, but kept for signature compatibility
   options?: {
     isStale?: boolean;
     lastUpdate?: string;
@@ -245,73 +72,149 @@ export function useThresholdAlerts(
     devices?: DeviceInfo[];
   }
 ): ThresholdAlertStatus {
-  const { thresholds, isLoading } = useSiteThresholds(siteId);
+  const [dbAlerts, setDbAlerts] = useState<ThresholdAlert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { language } = useLanguage();
 
-  return useMemo(() => {
-    if (isLoading || !thresholds) {
-      return {
-        alerts: [],
-        criticalCount: 0,
-        warningCount: 0,
-        infoCount: 0,
-        totalCount: 0,
-        hasAlerts: false,
-        worstSeverity: null,
-      };
+  // 1. Initial Fetch of Active Alerts
+  useEffect(() => {
+    if (!siteId || !isSupabaseConfigured) {
+      setIsLoading(false);
+      return;
     }
 
-    const alerts = evaluateAlerts(liveMetrics, thresholds);
-    const isSiteStale = !!options?.isStale;
+    async function fetchAlerts() {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('site_alerts')
+        .select(`
+          *,
+          alert_rules!inner (
+            threshold,
+            duration_minutes,
+            hysteresis_pct
+          )
+        `)
+        .eq('site_id', siteId)
+        .eq('status', 'active');
 
-    // Add stale data critical alert (site-level, 24h+)
-    if (isSiteStale) {
-      alerts.push({
-        id: 'data_stale',
-        severity: 'critical',
-        metric: 'system.staleness',
-        message: options?.staleMessage ?? 'No data received for more than 24 hours',
-        currentValue: 0,
-        threshold: 1,
-        unit: 'days',
-        description: options?.staleMessage ?? 'No telemetry received from any device for over 24 hours',
-        timestamp: new Date().toISOString(),
-      });
+      if (error) {
+        console.error('[useThresholdAlerts] Fetch error:', error);
+      } else if (data) {
+        const mapped: ThresholdAlert[] = data.map(d => ({
+          id: d.id,
+          severity: d.severity,
+          metric: d.metric,
+          message: d.message,
+          currentValue: d.value_at_trigger || d.current_value,
+          threshold: d.alert_rules?.threshold || d.threshold_value || 0,
+          duration_minutes: d.alert_rules?.duration_minutes,
+          hysteresis_pct: d.alert_rules?.hysteresis_pct,
+          recommendation: d.recommendation,
+          timestamp: d.triggered_at,
+          status: d.status,
+          deviceId: d.device_id,
+        }));
+        setDbAlerts(mapped);
+      }
+      setIsLoading(false);
     }
 
-    // Device-level offline detection (24h timeout)
-    // SUPPRESSION RULE: If the entire site is stale, suppress individual device_offline alerts
-    if (!isSiteStale && options?.devices && options.devices.length > 0) {
-      const now = Date.now();
-      const OFFLINE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+    fetchAlerts();
 
-      for (const device of options.devices) {
-        if (!device.last_seen) continue;
-        const lastSeenDate = new Date(device.last_seen);
-        if (isNaN(lastSeenDate.getTime())) continue;
-        const elapsed = now - lastSeenDate.getTime();
+    // 2. Realtime Subscription
+    const channel = supabase
+      .channel(`site_alerts_${siteId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'site_alerts',
+          filter: `site_id=eq.${siteId}`,
+        },
+        (payload) => {
+          // Optimization: Single logic to handle inserts, updates, and deletes
+          setDbAlerts(current => {
+            const newItem = payload.new as any;
+            const oldItem = payload.old as any;
 
-        if (elapsed > OFFLINE_THRESHOLD_MS) {
-          const deviceLabel = device.circuit_name || device.name || device.device_id;
-          alerts.push({
-            id: `device_offline_${device.id}`,
-            severity: 'warning',
-            metric: 'system.device_offline',
-            message: `${deviceLabel}: Offline`,
-            currentValue: Math.round(elapsed / (60 * 60 * 1000)),
-            threshold: 24,
-            unit: 'hours',
-            deviceName: deviceLabel,
-            deviceId: device.id,
-            timestamp: device.last_seen,
-            description: `Device "${deviceLabel}" has not sent data for ${Math.round(elapsed / (60 * 60 * 1000))} hours (last seen: ${lastSeenDate.toLocaleString()})`,
+            if (payload.eventType === 'INSERT' && newItem.status === 'active') {
+              // Add new active alert
+              return [...current, {
+                id: newItem.id,
+                severity: newItem.severity,
+                metric: newItem.metric,
+                message: newItem.message,
+                currentValue: newItem.value_at_trigger || newItem.current_value,
+                // Threshold and duration are joined in frontend, for realtime insert we rely on a refetch or default
+                threshold: newItem.threshold_value || 0,
+                duration_minutes: 0,
+                hysteresis_pct: 5,
+                recommendation: newItem.recommendation,
+                timestamp: newItem.triggered_at,
+                status: newItem.status,
+                deviceId: newItem.device_id
+              }];
+            } else if (payload.eventType === 'UPDATE') {
+              if (newItem.status === 'resolved') {
+                // Remove resolved alert
+                return current.filter(a => a.id !== newItem.id);
+              } else {
+                // Update existing alert value
+                return current.map(a => a.id === newItem.id ? {
+                  ...a,
+                  currentValue: newItem.value_at_trigger || newItem.current_value,
+                  timestamp: newItem.triggered_at
+                } : a);
+              }
+            } else if (payload.eventType === 'DELETE') {
+              return current.filter(a => a.id !== oldItem.id);
+            }
+            return current;
           });
         }
-      }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [siteId]);
+
+  // 3. Compute Final Status (Backend-Only)
+  return useMemo(() => {
+    // 1. Map Device Names to DB alerts
+    let mappedDbAlerts: ThresholdAlert[] = dbAlerts.map(a => {
+      const dev = options?.devices?.find(d => d.device_id === a.deviceId || d.id === a.deviceId);
+      return {
+        ...a,
+        deviceName: dev?.name || dev?.circuit_name || a.deviceName || undefined,
+        deviceType: dev?.device_type || a.deviceType || undefined
+      };
+    });
+
+    // 2. Inject synthetic "Offline" alert if site is stale
+    if (options?.isStale) {
+      const staleAlert: ThresholdAlert = {
+        id: 'system-stale-offline',
+        severity: 'critical',
+        metric: 'system.device_offline',
+        message: options.staleMessage || (language === 'it' ? 'Sito offline' : 'Site offline'),
+        currentValue: 0,
+        threshold: 0,
+        status: 'active',
+        timestamp: options.lastUpdate || new Date().toISOString(),
+        deviceName: undefined,
+        deviceType: undefined
+      };
+      // Put it at the top
+      mappedDbAlerts = [staleAlert, ...mappedDbAlerts];
     }
 
-    const criticalCount = alerts.filter(a => a.severity === 'critical').length;
-    const warningCount = alerts.filter(a => a.severity === 'warning').length;
-    const infoCount = alerts.filter(a => a.severity === 'info').length;
+    const criticalCount = mappedDbAlerts.filter(a => a.severity === 'critical').length;
+    const warningCount = mappedDbAlerts.filter(a => a.severity === 'warning').length;
+    const infoCount = mappedDbAlerts.filter(a => a.severity === 'info').length;
 
     let worstSeverity: AlertSeverity | null = null;
     if (criticalCount > 0) worstSeverity = 'critical';
@@ -319,81 +222,28 @@ export function useThresholdAlerts(
     else if (infoCount > 0) worstSeverity = 'info';
 
     return {
-      alerts,
+      alerts: mappedDbAlerts,
       criticalCount,
       warningCount,
       infoCount,
-      totalCount: alerts.length,
-      hasAlerts: alerts.length > 0,
+      totalCount: mappedDbAlerts.length,
+      hasAlerts: mappedDbAlerts.length > 0,
       worstSeverity,
+      isLoading,
     };
-  }, [liveMetrics, thresholds, isLoading, options?.isStale, options?.staleMessage, options?.devices]);
+  }, [dbAlerts, options?.devices, language, isLoading]);
 }
 
-/**
- * Get status color for ReadingItem based on thresholds
- */
 export function getMetricStatus(
   metric: string,
-  value: number | undefined,
-  thresholds: SiteThresholds | undefined
+  alerts: ThresholdAlert[]
 ): 'good' | 'warning' | 'critical' {
-  if (value === undefined || !thresholds) return 'good';
-
-  switch (metric) {
-    case 'iaq.co2': {
-      const critical = thresholds.air_co2_critical_ppm ?? 1500;
-      const warning = thresholds.air_co2_warning_ppm ?? 1000;
-      if (value > critical) return 'critical';
-      if (value > warning) return 'warning';
-      return 'good';
-    }
-    case 'env.temperature': {
-      const min = thresholds.air_temp_min_c ?? 18;
-      const max = thresholds.air_temp_max_c ?? 26;
-      if (value < min || value > max) return 'warning';
-      return 'good';
-    }
-    case 'env.humidity': {
-      const min = thresholds.air_humidity_min_pct ?? 30;
-      const max = thresholds.air_humidity_max_pct ?? 60;
-      if (value < min || value > max) return 'warning';
-      return 'good';
-    }
-    case 'energy.power_kw': {
-      if (thresholds.energy_power_limit_kw !== null) {
-        const limit = thresholds.energy_power_limit_kw;
-        if (value > limit) return 'critical';
-        if (value > limit * 0.9) return 'warning';
-      }
-      return 'good';
-    }
-    default:
-      return 'good';
-  }
-}
-
-/**
- * Evaluate alerts for multiple sites and aggregate counts
- * Used by BrandOverlay and HoldingOverlay
- */
-export function evaluateAlertsForSites(
-  sitesData: Array<{
-    siteId: string;
-    metrics: LiveMetrics;
-    thresholds: SiteThresholds | undefined;
-  }>
-): { criticalCount: number; warningCount: number; infoCount: number } {
-  let criticalCount = 0;
-  let warningCount = 0;
-  let infoCount = 0;
-
-  sitesData.forEach(({ metrics, thresholds }) => {
-    const alerts = evaluateAlerts(metrics, thresholds);
-    criticalCount += alerts.filter(a => a.severity === 'critical').length;
-    warningCount += alerts.filter(a => a.severity === 'warning').length;
-    infoCount += alerts.filter(a => a.severity === 'info').length;
-  });
-
-  return { criticalCount, warningCount, infoCount };
+  if (!Array.isArray(alerts)) return 'good';
+  const relevant = alerts.find(a => a.metric === metric);
+  if (!relevant) return 'good';
+  
+  // Safe cast: 'info' severity maps to 'good' in this UI status context
+  const sev = relevant.severity;
+  if (sev === 'info') return 'good';
+  return sev as 'warning' | 'critical';
 }

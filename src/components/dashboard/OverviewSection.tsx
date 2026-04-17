@@ -382,13 +382,13 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
 };
 
 // Air Quality Card with all monitored parameters - connected to real-time data
-const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: { 
+const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: { 
   status: ModuleStatus; 
   enabled: boolean; 
   project: Project; 
   onClick?: () => void;
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
-  thresholds?: ReturnType<typeof useSiteThresholds>['thresholds'];
+  alerts?: ThresholdAlert[];
 }) => {
   const { t } = useLanguage();
   // Use real-time data if available with threshold-based status
@@ -406,16 +406,16 @@ const AirCard = ({ status, enabled, project, onClick, liveData, thresholds }: {
     
     // Use configured thresholds for status evaluation
     return {
-      co2: { value: co2Val, unit: "ppm", status: getMetricStatus('iaq.co2', co2Val, thresholds) },
-      tvoc: { value: tvocVal, unit: "ppb", status: typeof tvocVal === 'number' ? (tvocVal < 200 ? "good" as const : tvocVal < 400 ? "warning" as const : "critical" as const) : "good" as const },
-      pm25: { value: pm25Val, unit: "µg/m³", status: typeof pm25Val === 'number' ? (pm25Val < 15 ? "good" as const : pm25Val < 25 ? "warning" as const : "critical" as const) : "good" as const },
-      pm10: { value: pm10Val, unit: "µg/m³", status: typeof pm10Val === 'number' ? (pm10Val < 25 ? "good" as const : pm10Val < 50 ? "warning" as const : "critical" as const) : "good" as const },
-      temp: { value: tempVal, unit: "°C", status: getMetricStatus('env.temperature', tempVal, thresholds) },
-      humidity: { value: humidityVal, unit: "%", status: getMetricStatus('env.humidity', humidityVal, thresholds) },
+      co2: { value: co2Val, unit: "ppm", status: getMetricStatus('iaq.co2', alerts || []) },
+      tvoc: { value: tvocVal, unit: "ppb", status: getMetricStatus('iaq.voc', alerts || []) },
+      pm25: { value: pm25Val, unit: "µg/m³", status: getMetricStatus('iaq.pm25', alerts || []) },
+      pm10: { value: pm10Val, unit: "µg/m³", status: getMetricStatus('iaq.pm10', alerts || []) },
+      temp: { value: tempVal, unit: "°C", status: getMetricStatus('env.temperature', alerts || []) },
+      humidity: { value: humidityVal, unit: "%", status: getMetricStatus('env.humidity', alerts || []) },
       co: { value: coVal, unit: "ppm", status: "good" as const },
       o3: { value: o3Val, unit: "ppb", status: "good" as const },
     };
-  }, [liveData, thresholds]);
+  }, [liveData, alerts]);
 
   if (!enabled) {
     return (
@@ -735,7 +735,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           project={project}
           onClick={moduleConfig.air.enabled ? () => handleCardClick("air") : undefined}
           liveData={liveData}
-          thresholds={thresholds}
+          alerts={alertStatus.alerts}
         />
         <WaterCard 
           status={waterStatus} 

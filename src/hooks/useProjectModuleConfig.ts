@@ -16,6 +16,7 @@ export const useProjectModuleConfig = (project: Project | null) => {
         energy: defaultProjectModules.energy,
         air: defaultProjectModules.air,
         water: defaultProjectModules.water,
+        certification: defaultProjectModules.certification,
       };
     }
 
@@ -55,6 +56,7 @@ export const useProjectModuleConfig = (project: Project | null) => {
       energy: { ...defaultProjectModules.energy, enabled: true },
       air: { ...defaultProjectModules.air, enabled: true },
       water: { ...defaultProjectModules.water, enabled: true },
+      certification: { ...defaultProjectModules.certification, enabled: true },
     };
   }, [project, adminProjects]);
 };
