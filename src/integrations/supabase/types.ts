@@ -62,6 +62,103 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_audit_log: {
+        Row: {
+          action: string
+          changed_at: string | null
+          changed_by: string | null
+          details: Json | null
+          id: string
+          new_status: string | null
+          prev_status: string | null
+          site_alert_id: string | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string | null
+          changed_by?: string | null
+          details?: Json | null
+          id?: string
+          new_status?: string | null
+          prev_status?: string | null
+          site_alert_id?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string | null
+          changed_by?: string | null
+          details?: Json | null
+          id?: string
+          new_status?: string | null
+          prev_status?: string | null
+          site_alert_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_audit_log_site_alert_id_fkey"
+            columns: ["site_alert_id"]
+            isOneToOne: false
+            referencedRelation: "site_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_rules: {
+        Row: {
+          condition: string
+          created_at: string | null
+          device_type: string | null
+          duration_minutes: number | null
+          enabled: boolean | null
+          hysteresis: number | null
+          id: string
+          message_template: string
+          metric: string
+          recommendation_template: string | null
+          severity: string | null
+          site_id: string | null
+          threshold: number
+        }
+        Insert: {
+          condition?: string
+          created_at?: string | null
+          device_type?: string | null
+          duration_minutes?: number | null
+          enabled?: boolean | null
+          hysteresis?: number | null
+          id?: string
+          message_template: string
+          metric: string
+          recommendation_template?: string | null
+          severity?: string | null
+          site_id?: string | null
+          threshold: number
+        }
+        Update: {
+          condition?: string
+          created_at?: string | null
+          device_type?: string | null
+          duration_minutes?: number | null
+          enabled?: boolean | null
+          hysteresis?: number | null
+          id?: string
+          message_template?: string
+          metric?: string
+          recommendation_template?: string | null
+          severity?: string | null
+          site_id?: string | null
+          threshold?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_rules_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           certification_id: string | null
@@ -431,11 +528,13 @@ export type Database = {
       }
       certification_milestones: {
         Row: {
+          actual_date: string | null
           category: string
           certification_id: string
           completed_date: string | null
           created_at: string | null
           due_date: string | null
+          edit_locked_for_pm: boolean
           evidence_url: string | null
           id: string
           max_score: number | null
@@ -450,11 +549,13 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          actual_date?: string | null
           category: string
           certification_id: string
           completed_date?: string | null
           created_at?: string | null
           due_date?: string | null
+          edit_locked_for_pm?: boolean
           evidence_url?: string | null
           id?: string
           max_score?: number | null
@@ -469,11 +570,13 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          actual_date?: string | null
           category?: string
           certification_id?: string
           completed_date?: string | null
           created_at?: string | null
           due_date?: string | null
+          edit_locked_for_pm?: boolean
           evidence_url?: string | null
           id?: string
           max_score?: number | null
@@ -499,6 +602,7 @@ export type Database = {
       }
       certifications: {
         Row: {
+          actual_handover_date: string | null
           categories: Json | null
           cert_level: string | null
           cert_rating: string | null
@@ -506,22 +610,32 @@ export type Database = {
           client: string
           created_at: string | null
           expiry_date: string | null
+          fgb_monitor: boolean
+          gbci_fees: number | null
           handover_date: string
           id: string
           is_commissioning: boolean | null
           issued_date: string | null
           level: string | null
           name: string | null
+          planned_handover_date: string | null
           pm_id: string | null
+          po_sign_date: string | null
           project_subtype: string | null
+          quotation_notes: string | null
+          quotation_sent_date: string | null
           region: string
           score: number | null
+          services_fees: number | null
           site_id: string
+          sqm: number | null
           status: string | null
           target_score: number | null
+          total_fees: number | null
           updated_at: string | null
         }
         Insert: {
+          actual_handover_date?: string | null
           categories?: Json | null
           cert_level?: string | null
           cert_rating?: string | null
@@ -529,22 +643,32 @@ export type Database = {
           client?: string
           created_at?: string | null
           expiry_date?: string | null
+          fgb_monitor?: boolean
+          gbci_fees?: number | null
           handover_date?: string
           id?: string
           is_commissioning?: boolean | null
           issued_date?: string | null
           level?: string | null
           name?: string | null
+          planned_handover_date?: string | null
           pm_id?: string | null
+          po_sign_date?: string | null
           project_subtype?: string | null
+          quotation_notes?: string | null
+          quotation_sent_date?: string | null
           region?: string
           score?: number | null
+          services_fees?: number | null
           site_id: string
+          sqm?: number | null
           status?: string | null
           target_score?: number | null
+          total_fees?: number | null
           updated_at?: string | null
         }
         Update: {
+          actual_handover_date?: string | null
           categories?: Json | null
           cert_level?: string | null
           cert_rating?: string | null
@@ -552,19 +676,28 @@ export type Database = {
           client?: string
           created_at?: string | null
           expiry_date?: string | null
+          fgb_monitor?: boolean
+          gbci_fees?: number | null
           handover_date?: string
           id?: string
           is_commissioning?: boolean | null
           issued_date?: string | null
           level?: string | null
           name?: string | null
+          planned_handover_date?: string | null
           pm_id?: string | null
+          po_sign_date?: string | null
           project_subtype?: string | null
+          quotation_notes?: string | null
+          quotation_sent_date?: string | null
           region?: string
           score?: number | null
+          services_fees?: number | null
           site_id?: string
+          sqm?: number | null
           status?: string | null
           target_score?: number | null
+          total_fees?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1573,6 +1706,51 @@ export type Database = {
           },
         ]
       }
+      project_canvas_entries: {
+        Row: {
+          author_id: string
+          certification_id: string
+          content: string
+          created_at: string
+          entry_type: string
+          id: string
+          source_alert_id: string | null
+        }
+        Insert: {
+          author_id: string
+          certification_id: string
+          content: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          source_alert_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          certification_id?: string
+          content?: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          source_alert_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_canvas_entries_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_canvas_entries_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_tasks: {
         Row: {
           assigned_to: string | null
@@ -1699,6 +1877,91 @@ export type Database = {
           },
           {
             foreignKeyName: "projects_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_key: string
+          current_value: number | null
+          device_id: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          metric: string
+          recommendation: string | null
+          resolved_at: string | null
+          rule_id: string | null
+          severity: string | null
+          site_id: string
+          status: string | null
+          suppressed_until: string | null
+          threshold_value: number | null
+          triggered_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_key: string
+          current_value?: number | null
+          device_id?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          metric: string
+          recommendation?: string | null
+          resolved_at?: string | null
+          rule_id?: string | null
+          severity?: string | null
+          site_id: string
+          status?: string | null
+          suppressed_until?: string | null
+          threshold_value?: number | null
+          triggered_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_key?: string
+          current_value?: number | null
+          device_id?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          metric?: string
+          recommendation?: string | null
+          resolved_at?: string | null
+          rule_id?: string | null
+          severity?: string | null
+          site_id?: string
+          status?: string | null
+          suppressed_until?: string | null
+          threshold_value?: number | null
+          triggered_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_alerts_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_alerts_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_alerts_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
@@ -2054,6 +2317,56 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_alerts: {
+        Row: {
+          alert_type: Database["public"]["Enums"]["task_alert_type"]
+          certification_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          escalate_to_admin: boolean
+          id: string
+          is_resolved: boolean
+          resolved_at: string | null
+          scheduled_date: string | null
+          title: string
+        }
+        Insert: {
+          alert_type: Database["public"]["Enums"]["task_alert_type"]
+          certification_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          escalate_to_admin?: boolean
+          id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          scheduled_date?: string | null
+          title: string
+        }
+        Update: {
+          alert_type?: Database["public"]["Enums"]["task_alert_type"]
+          certification_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          escalate_to_admin?: boolean
+          id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          scheduled_date?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_alerts_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
         ]
@@ -2674,6 +2987,7 @@ export type Database = {
         Args: { _site_id: string; _user_id: string }
         Returns: boolean
       }
+      check_device_health: { Args: never; Returns: undefined }
       compute_historical_power: {
         Args: { p_device_id: string; p_end: string; p_start: string }
         Returns: {
@@ -2916,6 +3230,12 @@ export type Database = {
       milestone_category: "scorecard" | "timeline"
       permission_level: "view" | "edit" | "admin"
       scope_type: "project" | "site" | "brand" | "holding" | "region"
+      task_alert_type:
+        | "timeline_to_configure"
+        | "milestone_deadline"
+        | "project_on_hold"
+        | "pm_operational"
+        | "other_critical"
       wiring_type: "WYE" | "DELTA"
     }
     CompositeTypes: {
@@ -3071,6 +3391,13 @@ export const Constants = {
       milestone_category: ["scorecard", "timeline"],
       permission_level: ["view", "edit", "admin"],
       scope_type: ["project", "site", "brand", "holding", "region"],
+      task_alert_type: [
+        "timeline_to_configure",
+        "milestone_deadline",
+        "project_on_hold",
+        "pm_operational",
+        "other_critical",
+      ],
       wiring_type: ["WYE", "DELTA"],
     },
   },

@@ -129,24 +129,24 @@ const Auth = () => {
     );
   }
 
-  const inputClass = "pl-11 h-11 md:h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all";
-  const inputClassNoPad = "h-11 md:h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all";
+  const inputClass = "pl-11 h-[clamp(2.5rem,4vh,3rem)] bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all text-[clamp(0.8rem,1.1vw,0.9375rem)]";
+  const inputClassNoPad = "h-[clamp(2.5rem,4vh,3rem)] bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all text-[clamp(0.8rem,1.1vw,0.9375rem)]";
 
   return (
     <div className="min-h-[100dvh] bg-background flex">
       {/* Left Panel - Auth Form */}
-      <div className="w-full lg:w-[420px] xl:w-[520px] flex flex-col min-h-[100dvh] bg-[#006367] text-white shrink-0">
-        <header className="flex-shrink-0 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 flex items-center justify-center lg:justify-start lg:pl-6">
-          <img src={brandImg} alt="FGB" className="h-14 md:h-16 xl:h-20 w-auto" />
+      <div className="w-full lg:w-[clamp(360px,35vw,520px)] flex flex-col min-h-[100dvh] bg-[#006367] text-white shrink-0">
+        <header className="flex-shrink-0 pt-[max(1.25rem,env(safe-area-inset-top))] pb-1 flex items-center justify-center lg:justify-start lg:pl-[clamp(1rem,2vw,1.5rem)]">
+          <img src={brandImg} alt="FGB" className="h-[clamp(2.5rem,5vw,5rem)] w-auto" />
         </header>
 
-        <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 xl:px-12 py-4 lg:py-8 overflow-y-auto">
-          <div className="max-w-[380px] xl:max-w-sm mx-auto w-full">
-            <div className="mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+        <div className="flex-1 flex flex-col justify-center px-[clamp(1.25rem,4vw,3rem)] py-[clamp(0.5rem,2vh,2rem)] overflow-y-auto">
+          <div className="max-w-[420px] mx-auto w-full">
+            <div className="mb-[clamp(0.75rem,2vh,1.5rem)]">
+              <h1 className="text-[clamp(1.25rem,2.5vw,1.875rem)] font-bold text-white mb-1">
                 {mode === "login" ? t('auth.welcome_back') : t('auth.request_access')}
               </h1>
-              <p className="text-white/70 text-sm">
+              <p className="text-white/70 text-[clamp(0.75rem,1.2vw,0.875rem)]">
                 {mode === "login" ? t('auth.login_subtitle') : t('auth.request_subtitle')}
               </p>
             </div>
@@ -163,7 +163,7 @@ const Auth = () => {
             )}
 
             {mode === "login" ? (
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} className="space-y-[clamp(0.75rem,1.5vh,1.25rem)]">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm text-white/80">{t('auth.email')}</Label>
                   <div className="relative">
@@ -189,7 +189,7 @@ const Auth = () => {
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}
-                  className="w-full min-h-[48px] h-11 md:h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-sm md:text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-white/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98]">
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -201,7 +201,7 @@ const Auth = () => {
                 </Button>
               </form>
             ) : (
-              <form onSubmit={handleRequestAccess} className="space-y-4">
+              <form onSubmit={handleRequestAccess} className="space-y-[clamp(0.5rem,1.2vh,1rem)]">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="firstName" className="text-sm text-white/80">{t('auth.first_name')} *</Label>
@@ -272,7 +272,7 @@ const Auth = () => {
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}
-                  className="w-full min-h-[48px] h-11 md:h-12 bg-white hover:bg-white/90 text-[#911141] font-bold text-sm md:text-base gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-white/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98]">
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -285,7 +285,7 @@ const Auth = () => {
               </form>
             )}
 
-            <div className="mt-6 text-center">
+            <div className="mt-[clamp(0.75rem,1.5vh,1.5rem)] text-center">
               {mode === "login" ? (
                 <p className="text-sm text-white/70">
                   {t('auth.no_account')}{" "}
@@ -301,7 +301,7 @@ const Auth = () => {
               )}
             </div>
 
-            <div className="mt-8 text-center">
+            <div className="mt-[clamp(1rem,2vh,2rem)] text-center">
               <a href="mailto:support@fgb-studio.com" className="text-sm text-white/50 hover:text-white transition-colors">
                 {t('auth.need_help')}
               </a>
@@ -309,8 +309,8 @@ const Auth = () => {
           </div>
         </div>
 
-        <footer className="p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center">
-          <p className="text-xs text-white/30">Powered by FGB Monitoring</p>
+        <footer className="p-[clamp(0.75rem,1.5vh,1.5rem)] pb-[max(1rem,env(safe-area-inset-bottom))] text-center shrink-0">
+          <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-white/30">Powered by FGB Monitoring</p>
         </footer>
       </div>
 
