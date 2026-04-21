@@ -11,6 +11,7 @@ export interface SensorHealthRecord {
   last_seen: string | null;
   is_offline: boolean;
   is_flatlining: boolean;
+  is_degraded: boolean;
   flapping_count_24h: number;
   trust_score: number;
   last_evaluated_at: string;
@@ -134,7 +135,7 @@ export function useSensorHealth(
 
     const offlineCount = sensors.filter(s => s.is_offline).length;
     const flatliningCount = sensors.filter(s => s.is_flatlining).length;
-    const flappingCount = sensors.filter(s => s.flapping_count_24h > 0).length;
+    const flappingCount = sensors.filter(s => s.is_degraded && !s.is_offline).length;
 
     return {
       sensors,
