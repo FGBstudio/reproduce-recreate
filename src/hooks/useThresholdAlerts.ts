@@ -89,7 +89,7 @@ export function useThresholdAlerts(
         .from('site_alerts')
         .select(`
           *,
-          alert_rules!inner (
+          alert_rules (
             threshold,
             duration_minutes,
             hysteresis_pct
@@ -106,10 +106,10 @@ export function useThresholdAlerts(
           severity: d.severity,
           metric: d.metric,
           message: d.message,
-          currentValue: d.value_at_trigger || d.current_value,
+          currentValue: d.value_at_trigger || d.current_value || 0,
           threshold: d.alert_rules?.threshold || d.threshold_value || 0,
-          duration_minutes: d.alert_rules?.duration_minutes,
-          hysteresis_pct: d.alert_rules?.hysteresis_pct,
+          duration_minutes: d.alert_rules?.duration_minutes || 0,
+          hysteresis_pct: d.alert_rules?.hysteresis_pct || 5,
           recommendation: d.recommendation,
           timestamp: d.triggered_at,
           status: d.status,
