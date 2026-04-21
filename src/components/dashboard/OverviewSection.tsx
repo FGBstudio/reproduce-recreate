@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { DataSourceBadge } from "./DataSourceBadge";
-import { useThresholdAlerts, getMetricStatus } from "@/hooks/useThresholdAlerts";
+import { useThresholdAlerts, getMetricStatus, type ThresholdAlert } from "@/hooks/useThresholdAlerts";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 import { EVSWidget } from "./EVSWidget";
 import { useEnergyPowerByCategory, EnergyPowerBreakdown } from "@/hooks/useEnergyPowerByCategory";
@@ -66,7 +66,7 @@ const getStatusIconBg = (level: StatusLevel) => {
 
 const getLiveBadgeColor = (isLive: boolean) => {
   return isLive
-    ? "bg-emerald-500 text-white" 
+    ? "bg-emerald-500 text-white"
     : "bg-gray-400 text-white";
 };
 
@@ -91,7 +91,7 @@ const ReadingItem = ({ icon, label, value, unit, status = "good" }: ReadingItemP
     warning: "text-amber-600",
     critical: "text-red-600"
   };
-  
+
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
       <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               </div>
             </div>
           </div>
-          
+
           {/* Center: Score, EVS, Modules, Alerts, Trend */}
           <div className="flex flex-wrap items-center gap-4 md:gap-8">
             {/* Score */}
@@ -161,9 +161,9 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               </div>
               <div className="text-base text-gray-500">{t('overview.score')}</div>
             </div>
-            
+
             <div className="hidden md:block h-12 w-px bg-gray-200" />
-            
+
             {/* Environmental Visibility Score */}
             <EVSWidget
               modules={{
@@ -173,9 +173,9 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
               }}
               onActivateModule={onActivateModule}
             />
-            
+
             <div className="hidden md:block h-12 w-px bg-gray-200" />
-            
+
             {/* Module breakdown with weights */}
             <div className="flex gap-4">
               {moduleConfig.energy.enabled && (
@@ -206,9 +206,9 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                 </div>
               )}
             </div>
-            
+
             <div className="hidden md:block h-12 w-px bg-gray-200" />
-            
+
             {/* Active Alerts from Thresholds */}
             {alertStatus.hasAlerts ? (
               <div className="text-center bg-red-50 rounded-xl px-4 py-2">
@@ -219,7 +219,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                   </span>
                 </div>
                 <div className="text-[10px] text-red-700 font-medium uppercase tracking-wide">
-                {alertStatus.criticalCount > 0 ? `${alertStatus.criticalCount} critical` : ''}{alertStatus.criticalCount > 0 && alertStatus.warningCount > 0 ? ' + ' : ''}{alertStatus.warningCount > 0 ? `${alertStatus.warningCount} warning` : ''}
+                  {alertStatus.criticalCount > 0 ? `${alertStatus.criticalCount} critical` : ''}{alertStatus.criticalCount > 0 && alertStatus.warningCount > 0 ? ' + ' : ''}{alertStatus.warningCount > 0 ? `${alertStatus.warningCount} warning` : ''}
                 </div>
               </div>
             ) : (
@@ -230,9 +230,9 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                 </div>
               </div>
             )}
-            
+
             <div className="hidden md:block h-12 w-px bg-gray-200" />
-            
+
             <div className="text-center">
               <div className="flex items-center gap-1 text-emerald-600">
                 <TrendingUp className="w-5 h-5" />
@@ -248,11 +248,12 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
 };
 
 // Energy Card with detailed readings - connected to real-time data
-const EnergyCard = ({ status, enabled, onClick, powerData }: { 
-  status: ModuleStatus; 
-  enabled: boolean; 
+const EnergyCard = ({ status, enabled, onClick, powerData, threshold }: {
+  status: ModuleStatus;
+  enabled: boolean;
   onClick?: () => void;
   powerData?: EnergyPowerBreakdown;
+  threshold?: number;
 }) => {
   const { t } = useLanguage();
   const readings = useMemo(() => {
@@ -323,52 +324,61 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
             <div className="text-[10px] text-gray-500 uppercase">{t('overview.score')} {status.score}</div>
           </div>
         </div>
-        
+
         <div className="text-base text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.energy_performance')}</div>
-        
+
         {isStale && (
           <div className="bg-amber-50 text-amber-700 text-[10px] rounded-md px-2 py-1 mb-3 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
             {t('overview.stale_data')}
           </div>
         )}
-        
+
         {/* Total consumption highlight */}
-          <div className="bg-white/60 rounded-lg p-3 mb-3">
+        <div className="bg-white/60 rounded-lg p-3 mb-3">
           <div className="flex items-center justify-between">
-            <span className="text-lg text-gray-600">{t('overview.current_consumption')}</span>
+            <div className="flex flex-col">
+              <span className="text-lg text-gray-600 font-medium">{t('overview.current_consumption')}</span>
+              {threshold && (
+                <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                  {t('overview.limit')}: {threshold.toFixed(1)} kW
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1">
-              <span className="text-4xl font-bold text-gray-800">{formatMaybe(readings.totalPower, 1)}</span>
+              <span className={`text-4xl font-bold ${(threshold && readings.totalPower != null && readings.totalPower > threshold) ? 'text-red-500' : 'text-gray-800'}`}>
+                {formatMaybe(readings.totalPower, 1)}
+              </span>
               <span className="text-lg text-gray-500">kW</span>
             </div>
           </div>
         </div>
-        
+
         {/* Detailed readings */}
         <div className="bg-white/40 rounded-lg p-3">
           <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">{t('overview.latest_readings')}</div>
-          <ReadingItem 
+          <ReadingItem
             icon={<Fan className="w-3.5 h-3.5" />}
             label="HVAC"
             value={formatMaybe(readings.hvac.value, 1)}
             unit="kW"
             status={readings.hvac.status}
           />
-          <ReadingItem 
+          <ReadingItem
             icon={<Lightbulb className="w-3.5 h-3.5" />}
             label="Lighting"
             value={formatMaybe(readings.lighting.value, 1)}
             unit="kW"
             status={readings.lighting.status}
           />
-          <ReadingItem 
+          <ReadingItem
             icon={<Plug className="w-3.5 h-3.5" />}
             label="Plugs & Loads"
             value={formatMaybe(readings.plugs.value, 1)}
             unit="kW"
             status={readings.plugs.status}
           />
-          <ReadingItem 
+          <ReadingItem
             icon={<MoreHorizontal className="w-3.5 h-3.5" />}
             label="Other"
             value={formatMaybe(readings.other.value, 1)}
@@ -382,10 +392,10 @@ const EnergyCard = ({ status, enabled, onClick, powerData }: {
 };
 
 // Air Quality Card with all monitored parameters - connected to real-time data
-const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: { 
-  status: ModuleStatus; 
-  enabled: boolean; 
-  project: Project; 
+const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: {
+  status: ModuleStatus;
+  enabled: boolean;
+  project: Project;
   onClick?: () => void;
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
   alerts?: ThresholdAlert[];
@@ -403,7 +413,7 @@ const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: {
     const humidityVal = isReal ? m['env.humidity'] : undefined;
     const coVal = isReal ? m['iaq.co'] : undefined;
     const o3Val = isReal ? m['iaq.o3'] : undefined;
-    
+
     // Use configured thresholds for status evaluation
     return {
       co2: { value: co2Val, unit: "ppm", status: getMetricStatus('iaq.co2', alerts || []) },
@@ -454,63 +464,63 @@ const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: {
             <div className="text-[10px] text-gray-500 uppercase">{t('overview.score')} {status.score}</div>
           </div>
         </div>
-        
+
         <div className="text-base text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.indoor_air_quality')}</div>
-        
+
         {/* All parameters grid */}
         <div className="bg-white/40 rounded-lg p-3">
           <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">{t('overview.monitored_params')}</div>
           <div className="grid grid-cols-2 gap-x-4">
-            <ReadingItem 
+            <ReadingItem
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="CO₂"
               value={formatMaybe(readings.co2.value, 0)}
               unit={readings.co2.unit}
               status={readings.co2.status}
             />
-            <ReadingItem 
+            <ReadingItem
               icon={<Wind className="w-3.5 h-3.5" />}
               label="TVOC"
               value={formatMaybe(readings.tvoc.value, 0)}
               unit={readings.tvoc.unit}
               status={readings.tvoc.status}
             />
-            <ReadingItem 
+            <ReadingItem
               icon={<Activity className="w-3.5 h-3.5" />}
               label="PM2.5"
               value={formatMaybe(readings.pm25.value, 1)}
               unit={readings.pm25.unit}
               status={readings.pm25.status}
             />
-            <ReadingItem 
+            <ReadingItem
               icon={<Activity className="w-3.5 h-3.5" />}
               label="PM10"
               value={formatMaybe(readings.pm10.value, 1)}
               unit={readings.pm10.unit}
               status={readings.pm10.status}
             />
-            <ReadingItem 
+            <ReadingItem
               icon={<Thermometer className="w-3.5 h-3.5" />}
               label="Temp"
               value={formatMaybe(readings.temp.value, 1)}
               unit={readings.temp.unit}
               status={readings.temp.status}
             />
-            <ReadingItem 
+            <ReadingItem
               icon={<Droplet className="w-3.5 h-3.5" />}
               label="Humidity"
               value={formatMaybe(readings.humidity.value, 0)}
               unit={readings.humidity.unit}
               status={readings.humidity.status}
             />
-            <ReadingItem 
+            <ReadingItem
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="CO"
               value={formatMaybe(readings.co.value, 2)}
               unit={readings.co.unit}
               status={readings.co.status}
             />
-            <ReadingItem 
+            <ReadingItem
               icon={<Gauge className="w-3.5 h-3.5" />}
               label="O₃"
               value={formatMaybe(readings.o3.value, 0)}
@@ -525,9 +535,9 @@ const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: {
 };
 
 // Water Card with detailed readings - connected to real-time data
-const WaterCard = ({ status, enabled, onClick, liveData }: { 
-  status: ModuleStatus; 
-  enabled: boolean; 
+const WaterCard = ({ status, enabled, onClick, liveData }: {
+  status: ModuleStatus;
+  enabled: boolean;
   onClick?: () => void;
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
 }) => {
@@ -537,7 +547,7 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
     const m = isReal ? liveData!.metrics : {};
     const totalLiters = isReal ? m['water.total_liters'] : undefined;
     const flowRate = isReal ? m['water.flow_rate'] : undefined;
-    
+
     return {
       dailyConsumption: typeof totalLiters === 'number' ? Math.round(totalLiters) : undefined,
       vsBaseline: undefined as number | undefined,
@@ -583,9 +593,9 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
             <div className="text-[10px] text-gray-500 uppercase">{t('overview.score')} {status.score}</div>
           </div>
         </div>
-        
+
         <div className="text-base text-gray-500 font-medium uppercase tracking-wide mb-3">{t('overview.water_consumption_title')}</div>
-        
+
         {/* Main metrics */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-white/60 rounded-lg p-3 text-center">
@@ -600,7 +610,7 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
             <div className="text-[10px] text-gray-500">{t('overview.vs_baseline')}</div>
           </div>
         </div>
-        
+
         {/* Additional metrics */}
         <div className="bg-white/40 rounded-lg p-3">
           <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
@@ -623,17 +633,17 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   const { t } = useLanguage();
   // Fetch real-time telemetry data for this site
   const liveData = useRealTimeLatestData(project.siteId);
-  
+
   // Fetch energy power by category from energy_latest
   const powerData = useEnergyPowerByCategory(project.siteId);
-  
+
   // Fetch site thresholds and evaluate alerts
   const { thresholds } = useSiteThresholds(project.siteId);
   const staleMsg = t('overview.stale_data');
   // Combine staleness from energy AND general telemetry
   const isAnythingStale = powerData.isStale || liveData.isStale;
   const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics, { isStale: isAnythingStale, staleMessage: staleMsg });
-  
+
   // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
     // Use power data from energy_latest
@@ -676,7 +686,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
   const overallStatus = useMemo<ModuleStatus>(() => {
     let totalWeight = 0;
     let weightedSum = 0;
-    
+
     if (moduleConfig.energy.enabled) {
       weightedSum += energyStatus.score * MODULE_WEIGHTS.energy;
       totalWeight += MODULE_WEIGHTS.energy;
@@ -689,11 +699,11 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
       weightedSum += waterStatus.score * MODULE_WEIGHTS.water;
       totalWeight += MODULE_WEIGHTS.water;
     }
-    
-    const avgScore = totalWeight > 0 
+
+    const avgScore = totalWeight > 0
       ? Math.round(weightedSum / totalWeight)
       : 0;
-    
+
     return {
       score: avgScore,
       level: getStatusLevel(avgScore),
@@ -711,7 +721,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
     <div className="px-3 md:px-16 mb-4 md:mb-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         {/* Overall Performance - Full width on top */}
-        <OverallCard 
+        <OverallCard
           status={overallStatus}
           moduleConfig={moduleConfig}
           energyScore={energyStatus.score}
@@ -721,24 +731,25 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           alertStatus={alertStatus}
           liveData={liveData}
         />
-        
+
         {/* Three detail cards below */}
-        <EnergyCard 
-          status={energyStatus} 
-          enabled={moduleConfig.energy.enabled} 
+        <EnergyCard
+          status={energyStatus}
+          enabled={moduleConfig.energy.enabled}
           onClick={moduleConfig.energy.enabled ? () => handleCardClick("energy") : undefined}
           powerData={powerData}
+          threshold={thresholds?.energy_power_limit_kw}
         />
-        <AirCard 
-          status={airStatus} 
-          enabled={moduleConfig.air.enabled} 
+        <AirCard
+          status={airStatus}
+          enabled={moduleConfig.air.enabled}
           project={project}
           onClick={moduleConfig.air.enabled ? () => handleCardClick("air") : undefined}
           liveData={liveData}
           alerts={alertStatus.alerts}
         />
-        <WaterCard 
-          status={waterStatus} 
+        <WaterCard
+          status={waterStatus}
           enabled={moduleConfig.water.enabled}
           onClick={moduleConfig.water.enabled ? () => handleCardClick("water") : undefined}
           liveData={liveData}
