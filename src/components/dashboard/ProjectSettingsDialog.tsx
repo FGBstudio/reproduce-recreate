@@ -50,6 +50,8 @@ const i18n = {
     leakPlaceholder: 'e.g. 5',
     dailyBudgetWater: 'Daily Budget (L)',
     dailyBudgetWaterPlaceholder: 'e.g. 1000',
+    euiBenchmark: 'EUI Benchmark (kWh/m²)',
+    euiPlaceholder: 'e.g. 150',
     cancel: 'Cancel',
     save: 'Save',
     saveSuccess: 'Settings saved successfully',
@@ -80,6 +82,8 @@ const i18n = {
     leakPlaceholder: 'es. 5',
     dailyBudgetWater: 'Budget Giornaliero (L)',
     dailyBudgetWaterPlaceholder: 'es. 1000',
+    euiBenchmark: 'Benchmark EUI (kWh/m²)',
+    euiPlaceholder: 'es. 150',
     cancel: 'Annulla',
     save: 'Salva',
     saveSuccess: 'Impostazioni salvate con successo',
@@ -95,6 +99,7 @@ function createSchema(t: typeof i18n.en) {
   return z.object({
     energy_power_limit_kw: z.number().positive().nullable(),
     energy_daily_budget_kwh: z.number().positive().nullable(),
+    energy_target_eui_kwh_m2: z.number().positive().nullable(),
     energy_anomaly_detection_enabled: z.boolean(),
     air_temp_min_c: z.number().min(-20).max(50).nullable(),
     air_temp_max_c: z.number().min(-20).max(50).nullable(),
@@ -147,6 +152,7 @@ export function ProjectSettingsDialog({
     defaultValues: {
       energy_power_limit_kw: null,
       energy_daily_budget_kwh: null,
+      energy_target_eui_kwh_m2: 200,
       energy_anomaly_detection_enabled: false,
       air_temp_min_c: 18,
       air_temp_max_c: 26,
@@ -165,6 +171,7 @@ export function ProjectSettingsDialog({
       form.reset({
         energy_power_limit_kw: thresholds.energy_power_limit_kw,
         energy_daily_budget_kwh: thresholds.energy_daily_budget_kwh,
+        energy_target_eui_kwh_m2: thresholds.energy_target_eui_kwh_m2,
         energy_anomaly_detection_enabled: thresholds.energy_anomaly_detection_enabled ?? false,
         air_temp_min_c: thresholds.air_temp_min_c,
         air_temp_max_c: thresholds.air_temp_max_c,
@@ -259,6 +266,19 @@ export function ProjectSettingsDialog({
                     step="1"
                     placeholder={t.dailyBudgetPlaceholder}
                     {...form.register('energy_daily_budget_kwh', { setValueAs: parseNumber })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="energy_target_eui_kwh_m2">
+                    {t.euiBenchmark}
+                  </Label>
+                  <Input
+                    id="energy_target_eui_kwh_m2"
+                    type="number"
+                    step="1"
+                    placeholder={t.euiPlaceholder}
+                    {...form.register('energy_target_eui_kwh_m2', { setValueAs: parseNumber })}
                   />
                 </div>
 
