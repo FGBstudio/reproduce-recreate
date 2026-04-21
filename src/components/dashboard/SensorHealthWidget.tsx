@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { 
-  ShieldCheck, ShieldAlert, WifiOff, Activity, AlertTriangle, 
-  ChevronDown, ChevronUp, ServerCrash 
+import {
+  ShieldCheck, ShieldAlert, WifiOff, Activity, AlertTriangle,
+  ChevronDown, ChevronUp, ServerCrash
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSensorHealth } from '@/hooks/useSensorHealth';
@@ -14,14 +14,14 @@ interface SensorHealthWidgetProps {
 
 export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetProps) {
   const { t } = useLanguage();
-  const { 
-    sensors, 
-    averageTrustScore, 
+  const {
+    sensors,
+    averageTrustScore,
     worstSensor,
-    offlineCount, 
-    flatliningCount, 
+    offlineCount,
+    flatliningCount,
     flappingCount,
-    isLoading 
+    isLoading
   } = useSensorHealth(siteId, moduleFilter);
 
   const [expandedSensorId, setExpandedSensorId] = useState<string | null>(null);
@@ -39,11 +39,11 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
 
   const isHealthy = averageTrustScore >= 80;
   const isWarning = averageTrustScore >= 50 && averageTrustScore < 80;
-  
+
   const scoreColor = isHealthy ? 'text-emerald-500' : (isWarning ? 'text-amber-500' : 'text-rose-500');
-  const gradientStops = isHealthy 
+  const gradientStops = isHealthy
     ? { start: '#10b981', end: '#34d399' } // Emerald
-    : isWarning 
+    : isWarning
       ? { start: '#f59e0b', end: '#fbbf24' } // Amber
       : { start: '#f43f5e', end: '#fb7185' }; // Rose
 
@@ -57,8 +57,8 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
     .map(s => `${s.device_name} (${s.metadata.metric} stuck at ${Number(s.metadata.value).toFixed(1)} across ${s.metadata.samples} consecutive readings)`)
     .join(' • ');
 
-  const flatlineTooltipContent = flatlineReasons 
-    ? `Flatlining detected: ${flatlineReasons}` 
+  const flatlineTooltipContent = flatlineReasons
+    ? `Flatlining detected: ${flatlineReasons}`
     : "Flatlining occurs when a sensor sends the exact same value for an extended period, indicating a stuck mechanism.";
 
   return (
@@ -68,11 +68,11 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
         <div className="relative flex-shrink-0 w-28 h-28 flex items-center justify-center">
           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-            <circle 
-              cx="50" cy="50" r="45" 
-              fill="none" 
-              stroke={`url(#scoreGradient)`} 
-              strokeWidth="8" 
+            <circle
+              cx="50" cy="50" r="45"
+              fill="none"
+              stroke={`url(#scoreGradient)`}
+              strokeWidth="8"
               strokeDasharray={circleLength}
               strokeDashoffset={strokeOffset}
               strokeLinecap="round"
@@ -104,7 +104,7 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
               )}
             </div>
           </div>
-          
+
           {worstSensor && worstSensor.trust_score < 100 && (
             <div className="bg-rose-50/50 p-2 rounded-lg border border-rose-100 mt-2">
               <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider block mb-0.5">Most Degraded Sensor</span>
@@ -122,9 +122,9 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
         <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center relative pointer-events-auto">
           <div className="flex w-full justify-between items-start mb-1">
             <WifiOff className={`w-3.5 h-3.5 ${offlineCount > 0 ? 'text-rose-500' : 'text-slate-300'}`} />
-            <LegendTooltip 
-              iconSize={12} 
-              content="Sensor has not communicated with the platform for over 15 minutes." 
+            <LegendTooltip
+              iconSize={12}
+              content="Sensor has not communicated with the platform for over 15 minutes."
               position="top"
             />
           </div>
@@ -136,9 +136,9 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
         <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center relative">
           <div className="flex w-full justify-between items-start mb-1">
             <Activity className={`w-3.5 h-3.5 ${flatliningCount > 0 ? 'text-amber-500' : 'text-slate-300'}`} />
-            <LegendTooltip 
-              iconSize={12} 
-              content={flatlineTooltipContent} 
+            <LegendTooltip
+              iconSize={12}
+              content={flatlineTooltipContent}
               position="top"
             />
           </div>
@@ -150,9 +150,9 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
         <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center relative">
           <div className="flex w-full justify-between items-start mb-1">
             <ServerCrash className={`w-3.5 h-3.5 ${flappingCount > 0 ? 'text-indigo-500' : 'text-slate-300'}`} />
-            <LegendTooltip 
-              iconSize={12} 
-              content="Flapping indicates packet loss or intermittent connectivity, reducing confidence in the metric's accuracy for threshold alerts." 
+            <LegendTooltip
+              iconSize={12}
+              content="Flapping indicates packet loss or intermittent connectivity, reducing confidence in the metric's accuracy for threshold alerts."
               position="top"
             />
           </div>
@@ -168,11 +168,11 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
           {degradedSensors.map(sensor => {
             const isExpanded = expandedSensorId === sensor.sensor_id;
             return (
-              <div 
-                key={sensor.sensor_id} 
+              <div
+                key={sensor.sensor_id}
                 className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
-                <button 
+                <button
                   onClick={() => setExpandedSensorId(isExpanded ? null : sensor.sensor_id)}
                   className="w-full flex items-center justify-between px-3 py-2.5 text-left"
                 >
@@ -195,14 +195,6 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
                 </button>
                 {isExpanded && (
                   <div className="px-3 pb-3 pt-1 border-t border-slate-50 bg-slate-50/50">
-                    {sensor.is_degraded && !sensor.is_offline && (
-                      <div className="flex items-start gap-2 bg-amber-50 p-2 rounded border border-amber-100 shadow-sm mt-1">
-                        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
-                          This sensor is experiencing <span className="font-bold">intermittent connectivity</span> or data loss, which may affect the stability of threshold alerts.
-                        </p>
-                      </div>
-                    )}
                     {sensor.metadata?.metric && sensor.is_flatlining && (
                       <div className="mt-2 bg-white rounded border border-slate-100 shadow-sm p-2 flex justify-between items-center">
                         <div className="flex flex-col">
