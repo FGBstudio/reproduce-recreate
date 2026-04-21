@@ -52,6 +52,13 @@ const translations: Record<string, Record<Language, string>> = {
   'overview.current_consumption': { en: 'Current Consumption', it: 'Consumo Attuale', fr: 'Consommation actuelle', es: 'Consumo actual', zh: '当前消耗' },
   'overview.latest_readings': { en: 'Latest Readings', it: 'Ultime Rilevazioni', fr: 'Dernières mesures', es: 'Últimas lecturas', zh: '最新读数' },
   'overview.stale_data': { en: 'Stale data (> 2 days)', it: 'Dati non aggiornati (> 2 giorni)', fr: 'Données obsolètes (> 2 jours)', es: 'Datos desactualizados (> 2 días)', zh: '数据过期（> 2天）' },
+  'overview.limit': { 
+    en: 'Limit set by user', 
+    it: 'Limite impostato dall\'utente', 
+    fr: 'Limite définie par l\'utilisateur', 
+    es: 'Límite definido por el usuario', 
+    zh: '用户设置的限值' 
+  },
   'overview.humidity': { en: 'Humidity', it: 'Umidità', fr: 'Humidité', es: 'Humedad', zh: '湿度' },
 
   // Energy
