@@ -195,14 +195,14 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
                 </button>
                 {isExpanded && (
                   <div className="px-3 pb-3 pt-1 border-t border-slate-50 bg-slate-50/50">
-                    <div className="flex items-start gap-2 bg-white p-2 rounded border border-slate-100 shadow-sm mt-1">
-                      <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-[10px] text-slate-600 font-medium leading-relaxed">
-                        Phase 1 Alert Rules for this sensor are currently 
-                        <span className="font-bold text-slate-800 mx-1">suppressed</span> 
-                        by the Trust Layer due to hardware faults to prevent false alarms.
-                      </p>
-                    </div>
+                    {sensor.is_degraded && !sensor.is_offline && (
+                      <div className="flex items-start gap-2 bg-amber-50 p-2 rounded border border-amber-100 shadow-sm mt-1">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
+                          This sensor is experiencing <span className="font-bold">intermittent connectivity</span> or data loss, which may affect the stability of threshold alerts.
+                        </p>
+                      </div>
+                    )}
                     {sensor.metadata?.metric && sensor.is_flatlining && (
                       <div className="mt-2 bg-white rounded border border-slate-100 shadow-sm p-2 flex justify-between items-center">
                         <div className="flex flex-col">
