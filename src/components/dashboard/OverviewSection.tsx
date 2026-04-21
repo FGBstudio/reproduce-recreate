@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Project } from "@/lib/data";
-import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal, Loader2, AlertTriangle } from "lucide-react";
+import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
@@ -122,7 +122,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
   airScore: number;
   waterScore: number;
   isRealData: boolean;
-  alertStatus: { criticalCount: number; warningCount: number; hasAlerts: boolean };
+  alertStatus: { alerts: any[]; criticalCount: number; warningCount: number; hasAlerts: boolean };
   liveData: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
   onActivateModule?: (module: 'energy' | 'air' | 'water') => void;
 }) => {
