@@ -3128,11 +3128,15 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
-                        <p className="text-xl md:text-3xl font-bold text-amber-500">
+                        <p className={`text-xl md:text-3xl font-bold ${pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                           {pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length || 0}
                         </p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
+                        {pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length > 0 && (
+                          <>
+                            <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
+                            <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -4499,10 +4503,16 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         )}
                       </div>
                       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Leaks Detected</p>
-                        <p className="text-3xl font-bold text-amber-500">2</p>
-                        <p className="text-xs text-gray-500 mt-1">zones with anomalies</p>
-                        <div className="mt-2 text-xs text-red-500 font-medium">⚠ Requires attention</div>
+                        <p className="text-sm text-gray-500 mb-1">{language === 'it' ? 'Perdite Rilevate' : 'Leaks Detected'}</p>
+                        <p className={`text-3xl font-bold ${pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                          {pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length || 0}
+                        </p>
+                        {pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length > 0 && (
+                          <>
+                            <p className="text-xs text-gray-500 mt-1">{language === 'it' ? 'zone con anomalie' : 'zones with anomalies'}</p>
+                            <div className="mt-2 text-xs text-red-500 font-medium">⚠️ {language === 'it' ? 'Richiede attenzione' : 'Requires attention'}</div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
