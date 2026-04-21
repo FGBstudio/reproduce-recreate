@@ -18,6 +18,16 @@ export interface SiteThresholds {
   // Water
   water_leak_threshold_lh: number | null;
   water_daily_budget_liters: number | null;
+  // Benchmarks & Health
+  energy_target_eui_kwh_m2: number | null;
+  connectivity_offline_threshold_min: number | null;
+  connectivity_offline_threshold_energy_min: number | null;
+  // Extra IAQ
+  air_voc_warning_ppb: number | null;
+  air_pm25_warning_ugm3: number | null;
+  air_pm10_warning_ugm3: number | null;
+  air_co_warning_ppm: number | null;
+  air_o3_warning_ppb: number | null;
 }
 
 const defaultThresholds: Omit<SiteThresholds, 'site_id'> = {
@@ -32,6 +42,14 @@ const defaultThresholds: Omit<SiteThresholds, 'site_id'> = {
   air_co2_critical_ppm: 1500,
   water_leak_threshold_lh: null,
   water_daily_budget_liters: null,
+  energy_target_eui_kwh_m2: 200,
+  connectivity_offline_threshold_min: 30,
+  connectivity_offline_threshold_energy_min: 240,
+  air_voc_warning_ppb: 300,
+  air_pm25_warning_ugm3: 15,
+  air_pm10_warning_ugm3: 25,
+  air_co_warning_ppm: 4,
+  air_o3_warning_ppb: 50,
 };
 
 export function useSiteThresholds(siteId: string | undefined) {
@@ -51,7 +69,7 @@ export function useSiteThresholds(siteId: string | undefined) {
       if (error) throw error;
       
       if (data) {
-        return data as SiteThresholds;
+        return data as unknown as SiteThresholds;
       }
       
       // Return defaults if no record exists
