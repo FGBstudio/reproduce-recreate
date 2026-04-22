@@ -45,6 +45,7 @@ import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
+import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
 import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
@@ -3756,107 +3757,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                       </div>
                     </div>
-                    <div ref={outdoorRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg flex flex-col h-full">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-bold text-gray-800">Energy vs outdoor condition</h3>
-                        <ExportButtons chartRef={outdoorRef} data={energyOutdoorLiveData as any} filename="energy-vs-outdoor" onExpand={() => setFullscreenChart('outdoor')} />
-                      </div>
-                      <div className="flex-1 min-h-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={energyOutdoorLiveData as any} margin={{ top: 5, right: 50, left: 5, bottom: 5 }}>
-                          <CartesianGrid {...gridStyle} />
-                          <XAxis 
-                            dataKey="time" 
-                            tick={axisStyle} 
-                            axisLine={{ stroke: '#e2e8f0' }} 
-                            tickLine={{ stroke: '#e2e8f0' }} 
-                            minTickGap={30}
-                          />
-                          
-                          {/* Left Y-Axis: Energy (kWh) */}
-                          <YAxis
-                            yAxisId="energy"
-                            tick={axisStyle}
-                            axisLine={{ stroke: '#e2e8f0' }}
-                            tickLine={{ stroke: '#e2e8f0' }}
-                            domain={autoDomainWithPadding}
-                            tickFormatter={(val) => Math.round(val).toString()}
-                            label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }}
-                          />
-                          
-                          {/* Right Y-Axis 1: Temperature (°C) */}
-                          <YAxis
-                            yAxisId="temp"
-                            orientation="right"
-                            tick={{ fontSize: 9, fill: '#F59E0B' }}
-                            axisLine={false}
-                            tickLine={false}
-                            domain={['auto', 'auto']}
-                            tickFormatter={(val) => `${Math.round(val)}°`}
-                            width={28}
-                          />
-                          
-                          {/* Right Y-Axis 2: Humidity (%) — offset to avoid overlap */}
-                          <YAxis
-                            yAxisId="humidity"
-                            orientation="right"
-                            tick={{ fontSize: 9, fill: '#3b82f6' }}
-                            axisLine={false}
-                            tickLine={false}
-                            domain={[0, 100]}
-                            tickFormatter={(val) => `${val}%`}
-                            width={32}
-                          />
-                          
-                          <Tooltip 
-                            {...tooltipStyle} 
-                            formatter={(value: number, name: string) => {
-                              if (name.includes('kWh')) return [`${(Math.round(value * 100) / 100).toLocaleString()} kWh`, name];
-                              if (name.includes('°C')) return [`${Math.round(value * 10) / 10} °C`, name];
-                              if (name.includes('%')) return [`${Math.round(value)}%`, name];
-                              return [value, name];
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
-                          
-                          {/* Energy line (Left axis) */}
-                          <Line 
-                            yAxisId="energy" 
-                            type="monotone" 
-                            dataKey="energy" 
-                            stroke="#006367" 
-                            strokeWidth={2.5} 
-                            dot={false} 
-                            name={`${energyCategoryLabel ?? 'HVAC'} (kWh)`}
-                            connectNulls
-                          />
-                        
-                          {/* Temperature (Right axis 1) */}
-                          <Line 
-                            yAxisId="temp" 
-                            type="monotone" 
-                            dataKey="temperature" 
-                            stroke="#F59E0B" 
-                            strokeWidth={2} 
-                            dot={false} 
-                            name="Temp (°C)" 
-                            connectNulls
-                          />
-                          {/* Humidity (Right axis 2) */}
-                          <Line 
-                            yAxisId="humidity" 
-                            type="monotone" 
-                            dataKey="humidity" 
-                            stroke="#3b82f6" 
-                            strokeWidth={2} 
-                            dot={false} 
-                            name="Humidity (%)" 
-                            connectNulls
-                            strokeDasharray="4 2"
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                      </div>
+                    <div ref={outdoorRef} className={`${airCardClass} h-full`}>
+                       <EnergyWeatherCorrelation 
+                         siteId={project?.siteId} 
+                         timePeriod={timePeriod}
+                         dateRange={dateRange}
+                       />
                     </div>
                   </div>
                 </div>
