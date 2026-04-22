@@ -14,6 +14,7 @@ import {
   ScatterChart,
   Scatter,
   ZAxis,
+  Cell,
   ReferenceLine
 } from 'recharts';
 import { Thermometer, Zap, Info, Droplets, Activity, BarChart2, TrendingUp, Grid } from 'lucide-react';
@@ -90,7 +91,8 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
   const insightData = insightDataRaw as any;
 
   // 4. Data Processing
-  const { chartData, scatterData, hasRealData } = useMemo(() => {
+  // 4. Data Cleansing & Formatting (Combined Flow)
+  const { chartData, validPoints, hasRealData } = useMemo(() => {
     if (!rawData || rawData.length === 0) {
        const mock = Array.from({ length: 48 }, (_, i) => {
          const t = 15 + Math.sin(i / 10) * 10 + Math.random() * 2;
@@ -101,94 +103,103 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
            humidity: 50 + Math.cos(i / 10) * 20 + Math.random() * 5,
          };
        }).reverse();
-       return { chartData: mock, scatterData: mock.map(d => ({ x: d.temp, y: d.energy })), hasRealData: false };
+       
+       return { 
+         chartData: mock, 
+         validPoints: mock.map(d => ({ temp: d.temp, energy: d.energy, humidity: d.humidity })), 
+         hasRealData: false 
+       };
     }
 
-    return { 
-      chartData: rawData.map(d => ({
+    const cleaned = rawData.map(d => {
+      const anyD = d as any;
+      return {
         ...d,
+        timestamp: anyD.timestamp || anyD.ts_bucket || d.ts || anyD.ts,
         energy: d.energy_kwh,
         temp: d.temp_c,
-        humidity: d.humidity_pct,
-      })),
-      scatterData: rawData.map(d => ({ x: d.temp_c, y: d.energy_kwh })),
+        humidity: d.humidity_pct || 50
+      };
+    });
+
+    return { 
+      chartData: cleaned,
+      validPoints: cleaned.map(d => ({ temp: d.temp, energy: d.energy, humidity: d.humidity })),
       hasRealData: true 
     };
   }, [rawData]);
 
-  const stats = (insightData as any)?.metadata || {};
-  const correlationValue = (insightData as any)?.value;
-  const dbInsight = stats.insight || "Correlation analysis completed. Waiting for trend stabilization.";
-  
-  // Dynamic Correlation & Insights (Local calculation for real-time timeframe updates)
-  const dynamicStats = useMemo(() => {
-    if (scatterData.length < 5) {
-       return { 
-         r: correlationValue || 0, 
-         insight: dbInsight 
-       };
-    }
+  const dbInsightMetadata = (insightData as any)?.metadata || {};
+  // --- MULTIVARIATE ANALYTICS ENGINE (R²) ---
+  const stats = useMemo(() => {
+    if (!validPoints.length || validPoints.length < 5) return null;
 
-    const n = scatterData.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+    const n = validPoints.length;
+    let sumT = 0, sumH = 0, sumE = 0;
+    let sumT2 = 0, sumH2 = 0, sumTH = 0;
+    let sumTE = 0, sumHE = 0;
 
-    for (const p of scatterData) {
-      sumX += p.x;
-      sumY += p.y;
-      sumXY += p.x * p.y;
-      sumX2 += p.x * p.x;
-      sumY2 += p.y * p.y;
-    }
+    validPoints.forEach(p => {
+      const t = p.temp;
+      const h = p.humidity;
+      const e = p.energy;
+      sumT += t; sumH += h; sumE += e;
+      sumT2 += t * t; sumH2 += h * h; sumTH += t * h;
+      sumTE += t * e; sumHE += h * e;
+    });
 
-    const num = (n * sumXY - sumX * sumY);
-    const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-    
-    const r = den === 0 ? 0 : num / den;
-    const absR = Math.abs(r);
+    const det = (
+      n * (sumT2 * sumH2 - sumTH * sumTH) -
+      sumT * (sumT * sumH2 - sumTH * sumH) +
+      sumH * (sumT * sumTH - sumT2 * sumH)
+    );
 
-    const dynamicInsight = 
-      absR > 0.7 ? "Critical Thermal Coupling: Consumption is locked to outdoor temperature." :
-      absR > 0.4 ? "High Weather Sensitivity: Significant HVAC influence detected." :
-      absR > 0.1 ? "Moderate Influence: Weather contributes to peak loads." :
-      "Low Thermal Impact: Site loads are independent of weather.";
+    if (Math.abs(det) < 1e-10) return null;
 
-    return { r, insight: dynamicInsight };
-  }, [scatterData, correlationValue, dbInsight, hasRealData]);
+    const b0 = (sumE * (sumT2 * sumH2 - sumTH * sumTH) - sumT * (sumTE * sumH2 - sumTH * sumHE) + sumH * (sumTE * sumTH - sumT2 * sumHE)) / det;
+    const b1 = (n * (sumTE * sumH2 - sumTH * sumHE) - sumE * (sumT * sumH2 - sumTH * sumH) + sumH * (sumT * sumHE - sumTE * sumH)) / det;
+    const b2 = (n * (sumT2 * sumHE - sumTE * sumTH) - sumT * (sumT * sumHE - sumTE * sumH) + sumE * (sumT * sumTH - sumT2 * sumH)) / det;
 
-  // Regression line calculation points (Calculated LOCALLY for speed and reliability)
-  const regressionLine = useMemo(() => {
-    if (scatterData.length < 2) return [];
+    const meanE = sumE / n;
+    let ssRes = 0, ssTot = 0;
+    validPoints.forEach(p => {
+      const predictedE = b0 + b1 * p.temp + b2 * p.humidity;
+      ssRes += Math.pow(p.energy - predictedE, 2);
+      ssTot += Math.pow(p.energy - meanE, 2);
+    });
 
-    const n = scatterData.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    const r2 = ssTot > 0 ? Math.max(0, 1 - (ssRes / ssTot)) : 0;
+    const correlation = Math.sqrt(r2);
+    const avgH = sumH / n;
+    const slope = b1;
+    const intercept = b0 + (b2 * avgH);
 
-    for (const p of scatterData) {
-      sumX += p.x;
-      sumY += p.y;
-      sumXY += p.x * p.y;
-      sumX2 += p.x * p.x;
-    }
+    const minX = Math.min(...validPoints.map(p => p.temp));
+    const maxX = Math.max(...validPoints.map(p => p.temp));
 
-    const denominator = (n * sumX2 - sumX * sumX);
-    if (denominator === 0) return []; // Vertical line or identical points
-
-    const slope = (n * sumXY - sumX * sumY) / denominator;
-    const intercept = (sumY - slope * sumX) / n;
-    
-    const minX = Math.min(...scatterData.map(d => d.x));
-    const maxX = Math.max(...scatterData.map(d => d.x));
-    
-    return [
-      { x: minX, y: slope * minX + intercept },
-      { x: maxX, y: slope * maxX + intercept }
-    ];
-  }, [scatterData]);
+    return {
+      correlation,
+      r2,
+      regressionLine: [
+        { x: minX, y: intercept + slope * minX },
+        { x: maxX, y: intercept + slope * maxX }
+      ]
+    };
+  }, [validPoints]);
 
   const displayCorrelation = useMemo(() => {
-    return `${Math.round(Math.abs(dynamicStats.r) * 100)}%`;
-  }, [dynamicStats.r]);
+    if (!stats) return "N/A";
+    return `${Math.round(stats.correlation * 100)}%`;
+  }, [stats]);
 
-  const insightText = dynamicStats.insight;
+  const insightText = useMemo(() => {
+    if (!stats) return "Not enough data for weather analysis.";
+    const absR = stats.correlation;
+    if (absR > 0.8) return "Critical Weather Coupling: Site consumption is extremely sensitive to heat and humidity.";
+    if (absR > 0.6) return "High Weather Sensitivity: HVAC loads are a primary driver of energy peaks.";
+    if (absR > 0.3) return "Moderate Weather Sensitivity: Environmental factors impact performance significantly.";
+    return "Low Weather Sensitivity: Building loads appear resilient to external weather variations.";
+  }, [stats]);
 
   if (loadingData || loadingInsight) {
     return (
@@ -198,6 +209,14 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
       </div>
     );
   }
+
+  const getHumidityColor = (hum: number) => {
+    if (hum > 80) return "#0f766e"; // Darkest Teal
+    if (hum > 60) return "#0d9488"; // Deep Teal
+    if (hum > 40) return "#14b8a6"; // Medium Teal
+    if (hum > 20) return "#5eead4"; // Light Teal
+    return "#ccfbf1"; // Faint Teal
+  };
 
   return (
     <div className="flex flex-col h-full group">
@@ -210,9 +229,20 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
              <h3 className="text-lg font-bold text-gray-900 leading-tight">Energy Weather Analytics</h3>
              <p className="text-xs text-gray-500 font-medium">Power consumption vs. outdoor intensity</p>
            </div>
-           <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50/50 border border-emerald-100 rounded-full ml-2">
+           <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50/50 border border-emerald-100 rounded-full ml-2 relative group/info">
               <Activity className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-[11px] font-bold text-emerald-700">Correlation: {displayCorrelation}</span>
+              <span className="text-[11px] font-bold text-emerald-700">Combined Correlation (R): {displayCorrelation}</span>
+              <div className="ml-1 cursor-help">
+                <Info className="w-3 h-3 text-emerald-400 hover:text-emerald-600 transition-colors" />
+              </div>
+              <div className="absolute left-0 top-8 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none border border-slate-700">
+                <p className="font-bold mb-1 border-b border-slate-700 pb-1 text-emerald-400 uppercase tracking-wider">WEATHER SENSITIVITY LOGIC</p>
+                <p className="leading-relaxed opacity-90 text-[9px]">
+                  Site performance is modeled using Multiple Linear Regression: 
+                  <span className="block font-mono mt-1 text-emerald-400">Energy = β₀ + β₁·T + β₂·H</span>
+                  The R-score represents the percentage of energy fluctuations **explained by** the combined impact of heat and humidity.
+                </p>
+              </div>
            </div>
         </div>
         
@@ -320,7 +350,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                 stroke="#94a3b8" 
                 fontSize={10} 
               />
-              <ZAxis type="number" dataKey="z" range={[10, 1000]} />
+              <ZAxis type="number" dataKey="z" range={[25, 25]} />
               <Tooltip 
                 cursor={{ strokeDasharray: '3 3' }} 
                 content={({ active, payload }) => {
@@ -351,19 +381,27 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
               />
               <Scatter 
                 name="Weather Observations" 
-                data={rawData?.map(d => ({ 
-                  x: d.temp_c, 
-                  y: d.energy_kwh, 
-                  z: Math.pow(d.humidity_pct || 50, 1.5),
-                  humidity: d.humidity_pct || 50
+                data={validPoints.map(p => ({ 
+                  x: p.temp, 
+                  y: p.energy, 
+                  z: 25,
+                  humidity: p.humidity,
+                  color: getHumidityColor(p.humidity)
                 }))} 
-                fill="#10b981" 
-                fillOpacity={0.4} 
-              />
-              {regressionLine.length > 0 && (
+                fill="#14b8a6"
+              >
+                {validPoints.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={getHumidityColor(entry.humidity)} 
+                    fillOpacity={0.6} 
+                  />
+                ))}
+              </Scatter>
+              {stats?.regressionLine && (
                 <Scatter
                   name="Thermal Sensitivity Profile"
-                  data={regressionLine}
+                  data={stats.regressionLine}
                   fill="#ef4444"
                   line={{ stroke: '#ef4444', strokeWidth: 4 }}
                   shape={() => null}
