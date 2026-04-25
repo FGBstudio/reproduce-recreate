@@ -17,10 +17,10 @@ export const AdminStats = () => {
       
       try {
         const [totalRes, inboxRes, onlineRes, usersRes] = await Promise.all([
-          supabase.from('devices').select('*', { count: 'exact', head: true }),
-          supabase.from('devices').select('*', { count: 'exact', head: true }).eq('site_id', INBOX_SITE_ID),
-          supabase.from('devices').select('*', { count: 'exact', head: true }).eq('status', 'online'),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('devices').select('id', { count: 'exact', head: true }),
+          supabase.from('devices').select('id', { count: 'exact', head: true }).eq('site_id', INBOX_SITE_ID),
+          supabase.from('devices').select('id', { count: 'exact', head: true }).eq('status', 'online'),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }),
         ]);
         
         setDeviceStats({

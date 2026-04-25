@@ -40,7 +40,10 @@ export const AccessRequestsManager = () => {
     if (!isSupabaseConfigured) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      let query = supabase.from('access_requests').select('*').order('created_at', { ascending: false });
+      let query = supabase
+        .from('access_requests')
+        .select('id, first_name, last_name, email, company, job_title, message, status, created_at, reviewed_at, review_notes')
+        .order('created_at', { ascending: false });
       if (filterStatus !== 'all') {
         query = query.eq('status', filterStatus);
       }
