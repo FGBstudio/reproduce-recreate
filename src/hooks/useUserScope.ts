@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { brands as mockBrands } from '@/lib/data';
 
 // Client role types (mapped from user_memberships)
 export type ClientRole = 
@@ -72,35 +71,10 @@ export const useUserScope = (): UserScopeInfo => {
       return;
     }
 
-    // --- HELPER PER LOGICA EMAIL (Fallback) ---
-    const checkEmailForBrandScope = () => {
-      const email = user.email?.toLowerCase() || '';
-      const matchedBrand = mockBrands.find(b => 
-        email.includes(b.id) || email.includes(b.name.toLowerCase())
-      );
-
-      if (matchedBrand) {
-        setScopeInfo({
-          clientRole: 'ADMIN_BRAND',
-          holdingId: matchedBrand.holdingId,
-          brandId: matchedBrand.id,
-          siteId: null,
-          projectId: null,
-          accessibleHoldingIds: [matchedBrand.holdingId],
-          accessibleBrandIds: [matchedBrand.id],
-          accessibleSiteIds: [],
-          allowedRegions: null,
-          isLoading: false,
-        });
-        return true;
-      }
-      return false;
-    };
-
     if (!isSupabaseConfigured) {
-      if (!checkEmailForBrandScope()) {
-        setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
-      }
+      // Senza Supabase configurato non possiamo verificare alcuna membership.
+      // Lo scope deve venire SOLO dal DB autenticato — niente fallback su email.
+      setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
       return;
     }
 
@@ -114,10 +88,9 @@ export const useUserScope = (): UserScopeInfo => {
       if (error) throw error;
 
       if (!memberships || memberships.length === 0) {
-        // Fallback email se non ci sono membership nel DB
-        if (!checkEmailForBrandScope()) {
-          setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
-        }
+        // Nessuna membership = nessuno scope ereditato.
+        // Niente fallback su email per prevenire privilege escalation.
+        setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
         return;
       }
 
@@ -188,9 +161,8 @@ export const useUserScope = (): UserScopeInfo => {
 
     } catch (error) {
       console.error('Error fetching user scope:', error);
-      if (!checkEmailForBrandScope()) {
-        setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
-      }
+      // In caso di errore, ruolo minimo (USER_FGB) — mai elevare basandosi sull'email.
+      setScopeInfo(prev => ({ ...prev, clientRole: 'USER_FGB', isLoading: false }));
     }
   }, [user, isAdmin, authLoading]);
 
