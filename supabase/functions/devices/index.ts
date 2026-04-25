@@ -17,7 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 // Validation helpers
@@ -44,8 +44,36 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+
+    // --- AuthN: estrarre l'identità SOLO dal JWT ---
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+    const token = authHeader.replace('Bearer ', '')
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token)
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: 'Invalid or expired token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    const userId = userData.user.id
+
+    // Service-role client SOLO per operazioni autorizzate dopo i check
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Verifica admin
+    const { data: isAdminFlag } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' })
+    const isAdmin = !!isAdminFlag
 
     const url = new URL(req.url)
     const siteId = url.searchParams.get('site_id')
@@ -92,6 +120,52 @@ Deno.serve(async (req) => {
     const limit = Math.min(Math.max(1, parseInt(limitParam || '100')), 500)
     const offset = Math.max(0, parseInt(offsetParam || '0'))
 
+    // --- AuthZ: il client NON decide cosa può vedere ---
+    // 1. Se è stato richiesto un site_id specifico, verifica accesso server-side
+    // 2. Altrimenti, restringi automaticamente ai siti accessibili
+    let allowedSiteIds: string[] | null = null
+    if (!isAdmin) {
+      if (siteId) {
+        const { data: canAccess, error: accessErr } = await supabase
+          .rpc('can_access_site', { _user_id: userId, _site_id: siteId })
+        if (accessErr || !canAccess) {
+          return new Response(JSON.stringify({ error: 'Forbidden', details: 'No access to this site' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+      } else {
+        // Deriva la lista di siti accessibili dalle membership dell'utente
+        const { data: memberships } = await supabase
+          .from('user_memberships')
+          .select('scope_type, scope_id')
+          .eq('user_id', userId)
+        const siteScopes = (memberships || []).filter(m => m.scope_type === 'site').map(m => m.scope_id)
+        const brandScopes = (memberships || []).filter(m => m.scope_type === 'brand').map(m => m.scope_id)
+        const holdingScopes = (memberships || []).filter(m => m.scope_type === 'holding').map(m => m.scope_id)
+
+        const siteIdSet = new Set<string>(siteScopes)
+        if (brandScopes.length > 0) {
+          const { data: brandSites } = await supabase.from('sites').select('id').in('brand_id', brandScopes)
+          ;(brandSites || []).forEach(s => siteIdSet.add(s.id as string))
+        }
+        if (holdingScopes.length > 0) {
+          const { data: hBrands } = await supabase.from('brands').select('id').in('holding_id', holdingScopes)
+          const brandIds = (hBrands || []).map(b => b.id as string)
+          if (brandIds.length > 0) {
+            const { data: hSites } = await supabase.from('sites').select('id').in('brand_id', brandIds)
+            ;(hSites || []).forEach(s => siteIdSet.add(s.id as string))
+          }
+        }
+        allowedSiteIds = Array.from(siteIdSet)
+        if (allowedSiteIds.length === 0) {
+          return new Response(JSON.stringify({ data: [], meta: { total: 0, limit, offset, has_more: false } }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+      }
+    }
+
     let query = supabase
       .from('devices')
       .select(`
@@ -113,7 +187,11 @@ Deno.serve(async (req) => {
       .order('last_seen', { ascending: false, nullsFirst: false })
       .range(offset, offset + limit - 1)
 
-    if (siteId) query = query.eq('site_id', siteId)
+    if (siteId) {
+      query = query.eq('site_id', siteId)
+    } else if (allowedSiteIds) {
+      query = query.in('site_id', allowedSiteIds)
+    }
     if (deviceType) query = query.eq('device_type', deviceType)
     if (status) query = query.eq('status', status)
     if (model) query = query.ilike('model', `%${model}%`)

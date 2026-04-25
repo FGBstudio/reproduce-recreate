@@ -65,35 +65,67 @@ export type Database = {
       alert_audit_log: {
         Row: {
           action: string
+          alert_id: string | null
           changed_at: string | null
           changed_by: string | null
           details: Json | null
+          device_id: string | null
           id: string
+          metric: string | null
           new_status: string | null
           prev_status: string | null
+          rule_id: string | null
+          severity: string | null
           site_alert_id: string | null
+          site_id: string | null
         }
         Insert: {
           action: string
+          alert_id?: string | null
           changed_at?: string | null
           changed_by?: string | null
           details?: Json | null
+          device_id?: string | null
           id?: string
+          metric?: string | null
           new_status?: string | null
           prev_status?: string | null
+          rule_id?: string | null
+          severity?: string | null
           site_alert_id?: string | null
+          site_id?: string | null
         }
         Update: {
           action?: string
+          alert_id?: string | null
           changed_at?: string | null
           changed_by?: string | null
           details?: Json | null
+          device_id?: string | null
           id?: string
+          metric?: string | null
           new_status?: string | null
           prev_status?: string | null
+          rule_id?: string | null
+          severity?: string | null
           site_alert_id?: string | null
+          site_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "alert_audit_log_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_audit_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "alert_audit_log_site_alert_id_fkey"
             columns: ["site_alert_id"]
@@ -101,16 +133,25 @@ export type Database = {
             referencedRelation: "site_alerts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "alert_audit_log_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
         ]
       }
       alert_rules: {
         Row: {
+          building_type: string | null
           condition: string
           created_at: string | null
           device_type: string | null
           duration_minutes: number | null
           enabled: boolean | null
           hysteresis: number | null
+          hysteresis_pct: number | null
           id: string
           message_template: string
           metric: string
@@ -120,12 +161,14 @@ export type Database = {
           threshold: number
         }
         Insert: {
+          building_type?: string | null
           condition?: string
           created_at?: string | null
           device_type?: string | null
           duration_minutes?: number | null
           enabled?: boolean | null
           hysteresis?: number | null
+          hysteresis_pct?: number | null
           id?: string
           message_template: string
           metric: string
@@ -135,12 +178,14 @@ export type Database = {
           threshold: number
         }
         Update: {
+          building_type?: string | null
           condition?: string
           created_at?: string | null
           device_type?: string | null
           duration_minutes?: number | null
           enabled?: boolean | null
           hysteresis?: number | null
+          hysteresis_pct?: number | null
           id?: string
           message_template?: string
           metric?: string
@@ -354,8 +399,16 @@ export type Database = {
           created_at: string
           due_date: string | null
           id: string
+          invoice_sent_by: string | null
+          invoice_sent_date: string | null
           name: string
+          payment_received_by: string | null
+          payment_received_date: string | null
+          payment_scheme: string | null
           status: string
+          tranche_order: number | null
+          tranche_pct: number | null
+          trigger_event: string | null
           trigger_task_id: string | null
         }
         Insert: {
@@ -364,8 +417,16 @@ export type Database = {
           created_at?: string
           due_date?: string | null
           id?: string
+          invoice_sent_by?: string | null
+          invoice_sent_date?: string | null
           name: string
+          payment_received_by?: string | null
+          payment_received_date?: string | null
+          payment_scheme?: string | null
           status?: string
+          tranche_order?: number | null
+          tranche_pct?: number | null
+          trigger_event?: string | null
           trigger_task_id?: string | null
         }
         Update: {
@@ -374,8 +435,16 @@ export type Database = {
           created_at?: string
           due_date?: string | null
           id?: string
+          invoice_sent_by?: string | null
+          invoice_sent_date?: string | null
           name?: string
+          payment_received_by?: string | null
+          payment_received_date?: string | null
+          payment_scheme?: string | null
           status?: string
+          tranche_order?: number | null
+          tranche_pct?: number | null
+          trigger_event?: string | null
           trigger_task_id?: string | null
         }
         Relationships: [
@@ -717,6 +786,95 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          address: string | null
+          bank_name: string | null
+          brand_id: string | null
+          city: string | null
+          company_name: string
+          country: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          iban: string | null
+          id: string
+          kind: string
+          notes: string | null
+          pec: string | null
+          phone: string | null
+          postal_code: string | null
+          primary_contact_email: string | null
+          primary_contact_name: string | null
+          primary_contact_phone: string | null
+          primary_contact_role: string | null
+          tax_code: string | null
+          updated_at: string
+          vat_number: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          bank_name?: string | null
+          brand_id?: string | null
+          city?: string | null
+          company_name: string
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          iban?: string | null
+          id?: string
+          kind: string
+          notes?: string | null
+          pec?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          primary_contact_email?: string | null
+          primary_contact_name?: string | null
+          primary_contact_phone?: string | null
+          primary_contact_role?: string | null
+          tax_code?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          bank_name?: string | null
+          brand_id?: string | null
+          city?: string | null
+          company_name?: string
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          iban?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          pec?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          primary_contact_email?: string | null
+          primary_contact_name?: string | null
+          primary_contact_phone?: string | null
+          primary_contact_role?: string | null
+          tax_code?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_migration_log: {
         Row: {
           id: number
@@ -888,6 +1046,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_send_log: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_message: string | null
+          id: string
+          message_id: string
+          metadata: Json
+          provider_message_id: string | null
+          queue_name: string | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id: string
+          metadata?: Json
+          provider_message_id?: string | null
+          queue_name?: string | null
+          recipient_email: string
+          status?: string
+          template_name: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string
+          metadata?: Json
+          provider_message_id?: string | null
+          queue_name?: string | null
+          recipient_email?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      email_send_state: {
+        Row: {
+          auth_email_ttl_minutes: number
+          batch_size: number
+          created_at: string
+          id: number
+          max_attempts: number
+          rate_limited_until: string | null
+          send_delay_ms: number
+          transactional_email_ttl_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          created_at?: string
+          id?: number
+          max_attempts?: number
+          rate_limited_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          created_at?: string
+          id?: number
+          max_attempts?: number
+          rate_limited_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: []
       }
       energy_daily: {
         Row: {
@@ -1369,6 +1632,174 @@ export type Database = {
           },
         ]
       }
+      hardware_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          hardware_id: string | null
+          id: string
+          new_status:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+          notes: string | null
+          previous_status:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string | null
+          hardware_id?: string | null
+          id?: string
+          new_status?:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+          notes?: string | null
+          previous_status?:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string | null
+          hardware_id?: string | null
+          id?: string
+          new_status?:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+          notes?: string | null
+          previous_status?:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hardware_status_history_hardware_id_fkey"
+            columns: ["hardware_id"]
+            isOneToOne: false
+            referencedRelation: "hardwares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hardwares: {
+        Row: {
+          carrier_name: string | null
+          category: string | null
+          country: string | null
+          created_at: string
+          delivery_person: string | null
+          device_id: string
+          fulfillment_status:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+          hardware_type: string | null
+          id: string
+          logistics_details: string | null
+          mac_address: string | null
+          notes: string | null
+          po: string | null
+          po_number_link: string | null
+          product_id: string | null
+          purchase_order_id: string | null
+          region: string | null
+          shipment_date: string | null
+          shipment_group_id: string | null
+          shipment_mode: string | null
+          shipped_by: string | null
+          shipping_cost: number | null
+          shipping_currency: string | null
+          site_id: string | null
+          status: string | null
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          carrier_name?: string | null
+          category?: string | null
+          country?: string | null
+          created_at?: string
+          delivery_person?: string | null
+          device_id: string
+          fulfillment_status?:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+          hardware_type?: string | null
+          id?: string
+          logistics_details?: string | null
+          mac_address?: string | null
+          notes?: string | null
+          po?: string | null
+          po_number_link?: string | null
+          product_id?: string | null
+          purchase_order_id?: string | null
+          region?: string | null
+          shipment_date?: string | null
+          shipment_group_id?: string | null
+          shipment_mode?: string | null
+          shipped_by?: string | null
+          shipping_cost?: number | null
+          shipping_currency?: string | null
+          site_id?: string | null
+          status?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          carrier_name?: string | null
+          category?: string | null
+          country?: string | null
+          created_at?: string
+          delivery_person?: string | null
+          device_id?: string
+          fulfillment_status?:
+            | Database["public"]["Enums"]["hardware_fulfillment_status"]
+            | null
+          hardware_type?: string | null
+          id?: string
+          logistics_details?: string | null
+          mac_address?: string | null
+          notes?: string | null
+          po?: string | null
+          po_number_link?: string | null
+          product_id?: string | null
+          purchase_order_id?: string | null
+          region?: string | null
+          shipment_date?: string | null
+          shipment_group_id?: string | null
+          shipment_mode?: string | null
+          shipped_by?: string | null
+          shipping_cost?: number | null
+          shipping_currency?: string | null
+          site_id?: string | null
+          status?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hardwares_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hardwares_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "ops_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hardwares_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historical_energy: {
         Row: {
           circuit_name: string | null
@@ -1472,6 +1903,190 @@ export type Database = {
           topic?: string
         }
         Relationships: []
+      }
+      ops_hardware_movements: {
+        Row: {
+          action: string | null
+          created_at: string | null
+          hardware_id: string | null
+          id: string
+          shipment_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string | null
+          hardware_id?: string | null
+          id?: string
+          shipment_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string | null
+          hardware_id?: string | null
+          id?: string
+          shipment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_hardware_movements_hardware_id_fkey"
+            columns: ["hardware_id"]
+            isOneToOne: false
+            referencedRelation: "hardwares"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_hardware_movements_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "ops_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ops_locations: {
+        Row: {
+          country: string | null
+          created_at: string | null
+          id: string
+          name: string
+          region: string | null
+          type: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          region?: string | null
+          type?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          region?: string | null
+          type?: string | null
+        }
+        Relationships: []
+      }
+      ops_purchase_orders: {
+        Row: {
+          category: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_status: string | null
+          po_cost: number | null
+          po_issued_date: string | null
+          po_number: string | null
+          status: string | null
+          supplier: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          po_cost?: number | null
+          po_issued_date?: string | null
+          po_number?: string | null
+          status?: string | null
+          supplier?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          po_cost?: number | null
+          po_issued_date?: string | null
+          po_number?: string | null
+          status?: string | null
+          supplier?: string | null
+        }
+        Relationships: []
+      }
+      ops_shipments: {
+        Row: {
+          carrier_name: string | null
+          created_at: string | null
+          currency: string | null
+          customs_cost: number | null
+          destination_location_id: string | null
+          id: string
+          notes: string | null
+          origin_location_id: string | null
+          purchase_order_id: string | null
+          shipment_type: string | null
+          shipped_date: string | null
+          status: string | null
+          total_shipping_cost: number | null
+          tracking_number: string | null
+        }
+        Insert: {
+          carrier_name?: string | null
+          created_at?: string | null
+          currency?: string | null
+          customs_cost?: number | null
+          destination_location_id?: string | null
+          id?: string
+          notes?: string | null
+          origin_location_id?: string | null
+          purchase_order_id?: string | null
+          shipment_type?: string | null
+          shipped_date?: string | null
+          status?: string | null
+          total_shipping_cost?: number | null
+          tracking_number?: string | null
+        }
+        Update: {
+          carrier_name?: string | null
+          created_at?: string | null
+          currency?: string | null
+          customs_cost?: number | null
+          destination_location_id?: string | null
+          id?: string
+          notes?: string | null
+          origin_location_id?: string | null
+          purchase_order_id?: string | null
+          shipment_type?: string | null
+          shipped_date?: string | null
+          status?: string | null
+          total_shipping_cost?: number | null
+          tracking_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_shipments_destination_location_id_fkey"
+            columns: ["destination_location_id"]
+            isOneToOne: false
+            referencedRelation: "ops_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_shipments_origin_location_id_fkey"
+            columns: ["origin_location_id"]
+            isOneToOne: false
+            referencedRelation: "ops_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_shipments_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "ops_purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       panel_config: {
         Row: {
@@ -1628,6 +2243,7 @@ export type Database = {
           id: string
           job_title: string | null
           last_name: string | null
+          notify_escalations_email: boolean
           phone: string | null
           updated_at: string | null
         }
@@ -1642,6 +2258,7 @@ export type Database = {
           id: string
           job_title?: string | null
           last_name?: string | null
+          notify_escalations_email?: boolean
           phone?: string | null
           updated_at?: string | null
         }
@@ -1656,6 +2273,7 @@ export type Database = {
           id?: string
           job_title?: string | null
           last_name?: string | null
+          notify_escalations_email?: boolean
           phone?: string | null
           updated_at?: string | null
         }
@@ -1884,6 +2502,69 @@ export type Database = {
           },
         ]
       }
+      sensor_health: {
+        Row: {
+          flapping_count_24h: number | null
+          flatline_started_at: string | null
+          health_message: string | null
+          is_degraded: boolean | null
+          is_flatlining: boolean | null
+          is_offline: boolean | null
+          last_evaluated_at: string | null
+          last_seen: string | null
+          metadata: Json | null
+          packet_loss_pct: number | null
+          sensor_id: string
+          site_id: string | null
+          trust_score: number | null
+        }
+        Insert: {
+          flapping_count_24h?: number | null
+          flatline_started_at?: string | null
+          health_message?: string | null
+          is_degraded?: boolean | null
+          is_flatlining?: boolean | null
+          is_offline?: boolean | null
+          last_evaluated_at?: string | null
+          last_seen?: string | null
+          metadata?: Json | null
+          packet_loss_pct?: number | null
+          sensor_id: string
+          site_id?: string | null
+          trust_score?: number | null
+        }
+        Update: {
+          flapping_count_24h?: number | null
+          flatline_started_at?: string | null
+          health_message?: string | null
+          is_degraded?: boolean | null
+          is_flatlining?: boolean | null
+          is_offline?: boolean | null
+          last_evaluated_at?: string | null
+          last_seen?: string | null
+          metadata?: Json | null
+          packet_loss_pct?: number | null
+          sensor_id?: string
+          site_id?: string | null
+          trust_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensor_health_sensor_id_fkey"
+            columns: ["sensor_id"]
+            isOneToOne: true
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensor_health_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -1904,6 +2585,7 @@ export type Database = {
           suppressed_until: string | null
           threshold_value: number | null
           triggered_at: string | null
+          value_at_trigger: number | null
         }
         Insert: {
           acknowledged_at?: string | null
@@ -1924,6 +2606,7 @@ export type Database = {
           suppressed_until?: string | null
           threshold_value?: number | null
           triggered_at?: string | null
+          value_at_trigger?: number | null
         }
         Update: {
           acknowledged_at?: string | null
@@ -1944,6 +2627,7 @@ export type Database = {
           suppressed_until?: string | null
           threshold_value?: number | null
           triggered_at?: string | null
+          value_at_trigger?: number | null
         }
         Relationships: [
           {
@@ -1968,6 +2652,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      site_alerts_history: {
+        Row: {
+          alert_key: string | null
+          archived_at: string | null
+          device_id: string | null
+          id: string
+          message: string | null
+          metadata: Json | null
+          metric: string | null
+          resolved_at: string | null
+          rule_id: string | null
+          severity: string | null
+          site_id: string | null
+          status: string | null
+          triggered_at: string | null
+          value_at_trigger: number | null
+        }
+        Insert: {
+          alert_key?: string | null
+          archived_at?: string | null
+          device_id?: string | null
+          id: string
+          message?: string | null
+          metadata?: Json | null
+          metric?: string | null
+          resolved_at?: string | null
+          rule_id?: string | null
+          severity?: string | null
+          site_id?: string | null
+          status?: string | null
+          triggered_at?: string | null
+          value_at_trigger?: number | null
+        }
+        Update: {
+          alert_key?: string | null
+          archived_at?: string | null
+          device_id?: string | null
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          metric?: string | null
+          resolved_at?: string | null
+          rule_id?: string | null
+          severity?: string | null
+          site_id?: string | null
+          status?: string | null
+          triggered_at?: string | null
+          value_at_trigger?: number | null
+        }
+        Relationships: []
       }
       site_config: {
         Row: {
@@ -2047,11 +2782,16 @@ export type Database = {
           energy_plugs_kwh: number | null
           energy_total_kwh: number | null
           id: string
+          metadata: Json | null
+          metric: string | null
+          period: string | null
           period_end: string | null
           period_start: string | null
           period_type: string | null
           site_id: string
+          ts: string | null
           ts_computed: string
+          value: number | null
           water_consumption_liters: number | null
           water_leak_count: number | null
           water_target_liters: number | null
@@ -2077,11 +2817,16 @@ export type Database = {
           energy_plugs_kwh?: number | null
           energy_total_kwh?: number | null
           id?: string
+          metadata?: Json | null
+          metric?: string | null
+          period?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string | null
           site_id: string
+          ts?: string | null
           ts_computed?: string
+          value?: number | null
           water_consumption_liters?: number | null
           water_leak_count?: number | null
           water_target_liters?: number | null
@@ -2107,11 +2852,16 @@ export type Database = {
           energy_plugs_kwh?: number | null
           energy_total_kwh?: number | null
           id?: string
+          metadata?: Json | null
+          metric?: string | null
+          period?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string | null
           site_id?: string
+          ts?: string | null
           ts_computed?: string
+          value?: number | null
           water_consumption_liters?: number | null
           water_leak_count?: number | null
           water_target_liters?: number | null
@@ -2128,17 +2878,30 @@ export type Database = {
       }
       site_thresholds: {
         Row: {
+          air_co_critical_ppm: number | null
+          air_co_warning_ppm: number | null
           air_co2_critical_ppm: number | null
           air_co2_warning_ppm: number | null
           air_humidity_max_pct: number | null
           air_humidity_min_pct: number | null
+          air_o3_critical_ppb: number | null
+          air_o3_warning_ppb: number | null
+          air_pm10_critical_ugm3: number | null
+          air_pm10_warning_ugm3: number | null
+          air_pm25_critical_ugm3: number | null
+          air_pm25_warning_ugm3: number | null
           air_temp_max_c: number | null
           air_temp_min_c: number | null
+          air_voc_critical_ppb: number | null
+          air_voc_warning_ppb: number | null
+          connectivity_offline_threshold_energy_min: number | null
+          connectivity_offline_threshold_min: number | null
           created_at: string
           created_by: string | null
           energy_anomaly_detection_enabled: boolean | null
           energy_daily_budget_kwh: number | null
           energy_power_limit_kw: number | null
+          energy_target_eui_kwh_m2: number | null
           id: string
           site_id: string
           updated_at: string
@@ -2147,17 +2910,30 @@ export type Database = {
           water_leak_threshold_lh: number | null
         }
         Insert: {
+          air_co_critical_ppm?: number | null
+          air_co_warning_ppm?: number | null
           air_co2_critical_ppm?: number | null
           air_co2_warning_ppm?: number | null
           air_humidity_max_pct?: number | null
           air_humidity_min_pct?: number | null
+          air_o3_critical_ppb?: number | null
+          air_o3_warning_ppb?: number | null
+          air_pm10_critical_ugm3?: number | null
+          air_pm10_warning_ugm3?: number | null
+          air_pm25_critical_ugm3?: number | null
+          air_pm25_warning_ugm3?: number | null
           air_temp_max_c?: number | null
           air_temp_min_c?: number | null
+          air_voc_critical_ppb?: number | null
+          air_voc_warning_ppb?: number | null
+          connectivity_offline_threshold_energy_min?: number | null
+          connectivity_offline_threshold_min?: number | null
           created_at?: string
           created_by?: string | null
           energy_anomaly_detection_enabled?: boolean | null
           energy_daily_budget_kwh?: number | null
           energy_power_limit_kw?: number | null
+          energy_target_eui_kwh_m2?: number | null
           id?: string
           site_id: string
           updated_at?: string
@@ -2166,17 +2942,30 @@ export type Database = {
           water_leak_threshold_lh?: number | null
         }
         Update: {
+          air_co_critical_ppm?: number | null
+          air_co_warning_ppm?: number | null
           air_co2_critical_ppm?: number | null
           air_co2_warning_ppm?: number | null
           air_humidity_max_pct?: number | null
           air_humidity_min_pct?: number | null
+          air_o3_critical_ppb?: number | null
+          air_o3_warning_ppb?: number | null
+          air_pm10_critical_ugm3?: number | null
+          air_pm10_warning_ugm3?: number | null
+          air_pm25_critical_ugm3?: number | null
+          air_pm25_warning_ugm3?: number | null
           air_temp_max_c?: number | null
           air_temp_min_c?: number | null
+          air_voc_critical_ppb?: number | null
+          air_voc_warning_ppb?: number | null
+          connectivity_offline_threshold_energy_min?: number | null
+          connectivity_offline_threshold_min?: number | null
           created_at?: string
           created_by?: string | null
           energy_anomaly_detection_enabled?: boolean | null
           energy_daily_budget_kwh?: number | null
           energy_power_limit_kw?: number | null
+          energy_target_eui_kwh_m2?: number | null
           id?: string
           site_id?: string
           updated_at?: string
@@ -2189,6 +2978,70 @@ export type Database = {
             foreignKeyName: "site_thresholds_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: true
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_weather_energy_daily: {
+        Row: {
+          energy_kwh: number | null
+          humidity_pct: number | null
+          site_id: string
+          temp_c: number | null
+          ts_day: string
+        }
+        Insert: {
+          energy_kwh?: number | null
+          humidity_pct?: number | null
+          site_id: string
+          temp_c?: number | null
+          ts_day: string
+        }
+        Update: {
+          energy_kwh?: number | null
+          humidity_pct?: number | null
+          site_id?: string
+          temp_c?: number | null
+          ts_day?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_weather_energy_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_weather_energy_hourly: {
+        Row: {
+          energy_kwh: number | null
+          humidity_pct: number | null
+          site_id: string
+          temp_c: number | null
+          ts_hour: string
+        }
+        Insert: {
+          energy_kwh?: number | null
+          humidity_pct?: number | null
+          site_id: string
+          temp_c?: number | null
+          ts_hour: string
+        }
+        Update: {
+          energy_kwh?: number | null
+          humidity_pct?: number | null
+          site_id?: string
+          temp_c?: number | null
+          ts_hour?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_weather_energy_hourly_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
@@ -2320,6 +3173,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      suppressed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          metadata: Json
+          provider: string | null
+          provider_event_id: string | null
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          metadata?: Json
+          provider?: string | null
+          provider_event_id?: string | null
+          reason?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          metadata?: Json
+          provider?: string | null
+          provider_event_id?: string | null
+          reason?: string
+        }
+        Relationships: []
       }
       task_alerts: {
         Row: {
@@ -2975,6 +3858,22 @@ export type Database = {
           rows_processed: number
         }[]
       }
+      apply_payment_scheme: {
+        Args: { _cert_id: string; _scheme: string; _total: number }
+        Returns: undefined
+      }
+      archive_resolved_alerts: {
+        Args: { p_retention_days?: number }
+        Returns: undefined
+      }
+      backfill_correlation_cache: {
+        Args: { p_days?: number; p_site_id?: string }
+        Returns: undefined
+      }
+      calculate_site_weather_correlation: {
+        Args: { p_days?: number; p_site_id: string }
+        Returns: number
+      }
       can_access_brand: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
@@ -3055,7 +3954,18 @@ export type Database = {
           power_w: number
         }[]
       }
+      delete_email: {
+        Args: { msg_id: number; queue_name: string }
+        Returns: boolean
+      }
       delete_stale_energy_latest: { Args: never; Returns: undefined }
+      enqueue_email:
+        | { Args: { payload: Json; queue_name: string }; Returns: number }
+        | { Args: { payload: Json; queue_name: string }; Returns: number }
+      evaluate_daily_alerts: { Args: never; Returns: undefined }
+      evaluate_instant_alerts: { Args: never; Returns: undefined }
+      evaluate_sensor_health: { Args: never; Returns: undefined }
+      evaluate_sustained_alerts: { Args: never; Returns: undefined }
       extract_mqtt_timestamp: {
         Args: { p_fallback: string; p_payload: Json }
         Returns: string
@@ -3063,6 +3973,15 @@ export type Database = {
       generate_standard_leed_timeline: {
         Args: { p_certification_id: string }
         Returns: undefined
+      }
+      get_energy_weather_correlation_data: {
+        Args: { p_end_date?: string; p_site_id: string; p_start_date?: string }
+        Returns: {
+          energy_kwh: number
+          humidity_pct: number
+          temp_c: number
+          ts: string
+        }[]
       }
       get_panel_config: {
         Args: { p_device_id: string; p_site_id: string }
@@ -3152,6 +4071,10 @@ export type Database = {
           records_created: number
         }[]
       }
+      move_to_dlq: {
+        Args: { msg_id: number; queue_name: string }
+        Returns: boolean
+      }
       normalize_device_id: { Args: { p_device_id: string }; Returns: string }
       purge_old_telemetry: {
         Args: {
@@ -3165,6 +4088,22 @@ export type Database = {
           raw_deleted: number
         }[]
       }
+      read_email_batch: {
+        Args: {
+          batch_size?: number
+          queue_name: string
+          visibility_timeout?: number
+        }
+        Returns: {
+          enqueued_at: string
+          message: Json
+          msg_id: number
+          read_ct: number
+          vt: string
+        }[]
+      }
+      refresh_correlation_cache: { Args: never; Returns: undefined }
+      refresh_weather_impact_insights: { Args: never; Returns: undefined }
       reprocess_failed_mqtt_messages: {
         Args: { p_limit?: number }
         Returns: {
@@ -3180,6 +4119,7 @@ export type Database = {
           telemetry_created: number
         }[]
       }
+      reset_sensor_health_daily: { Args: never; Returns: undefined }
       run_daily_jobs: {
         Args: never
         Returns: {
@@ -3195,6 +4135,12 @@ export type Database = {
           job_name: string
           status: string
         }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      sync_site_settings_to_rules: {
+        Args: { p_site_id: string }
+        Returns: undefined
       }
       sync_telemetry_to_energy: {
         Args: { p_since?: string }
@@ -3227,6 +4173,11 @@ export type Database = {
         | "other"
       event_severity: "info" | "warning" | "critical"
       event_status: "active" | "acknowledged" | "resolved"
+      hardware_fulfillment_status:
+        | "Available"
+        | "Allocated"
+        | "In_Transit"
+        | "Delivered"
       milestone_category: "scorecard" | "timeline"
       permission_level: "view" | "edit" | "admin"
       scope_type: "project" | "site" | "brand" | "holding" | "region"
@@ -3236,6 +4187,7 @@ export type Database = {
         | "project_on_hold"
         | "pm_operational"
         | "other_critical"
+        | "extra_canone"
       wiring_type: "WYE" | "DELTA"
     }
     CompositeTypes: {
@@ -3388,6 +4340,12 @@ export const Constants = {
       ],
       event_severity: ["info", "warning", "critical"],
       event_status: ["active", "acknowledged", "resolved"],
+      hardware_fulfillment_status: [
+        "Available",
+        "Allocated",
+        "In_Transit",
+        "Delivered",
+      ],
       milestone_category: ["scorecard", "timeline"],
       permission_level: ["view", "edit", "admin"],
       scope_type: ["project", "site", "brand", "holding", "region"],
@@ -3397,6 +4355,7 @@ export const Constants = {
         "project_on_hold",
         "pm_operational",
         "other_critical",
+        "extra_canone",
       ],
       wiring_type: ["WYE", "DELTA"],
     },

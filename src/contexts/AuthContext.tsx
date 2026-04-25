@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, display_name, first_name, last_name, avatar_url, company, job_title')
         .eq('id', supabaseUser.id)
         .single();
 
