@@ -63,6 +63,16 @@ export default defineConfig(({ mode, command }) => ({
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // ISTRUZIONI CRITICHE PER PWA: 
+        // Escludiamo le immagini di presentazione pesanti dalla cache offline
+        globIgnores: [
+          "**/FGB_Mac.png", 
+          "**/FGB_Pad.png", 
+          "**/FGB_Phone.png", 
+          "**/Glass.jpg"
+        ],
+        // Alziamo il limite a 10MB per coprire futuri asset validi ma voluminosi
+        maximumFileSizeToCacheInBytes: 10485760,
       },
     }),
   ].filter(Boolean),
