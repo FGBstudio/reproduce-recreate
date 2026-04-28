@@ -5,10 +5,12 @@ import { User, UserRole, UserProfile, AuthState } from '@/lib/types/admin';
 
 interface AuthContextType extends AuthState {
   session: Session | null;
+  isPasswordRecovery: boolean;
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
   signup: (email: string, password: string, metadata?: { display_name?: string; company?: string }) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<{ error: Error | null }>;
+  updatePassword: (password: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +24,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   // Fetch user profile and role from database
   const fetchUserData = useCallback(async (supabaseUser: SupabaseUser) => {
@@ -91,6 +94,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
+        }
         setSession(currentSession);
         
         if (currentSession?.user) {
@@ -190,6 +197,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     return { error: error ? new Error(error.message) : null };
   }, [user, profile]);
+  
+
+  const updatePassword = useCallback(async (password: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Supabase not configured') };
+    }
+    
+    setIsLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setIsLoading(false);
+    
+    if (!error) {
+      setIsPasswordRecovery(false); // Chiudiamo la modalità recupero
+    }
+    
+    return { error: error ? new Error(error.message) : null };
+  }, []);
 
   const isAuthenticated = !!user;
   const isAdmin = user?.role === 'admin' || user?.role === 'superuser';
@@ -204,10 +228,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isAuthenticated,
       isAdmin,
       isSuperuser,
+      isPasswordRecovery, // <-- AGGIUNGI AL PROVIDER
       login,
       signup,
       logout,
       updateProfile,
+      updatePassword,     // <-- AGGIUNGI AL PROVIDER
     }}>
       {children}
     </AuthContext.Provider>
