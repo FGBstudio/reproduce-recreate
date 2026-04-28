@@ -15,11 +15,12 @@ import {
 import brandImg from "@/assets/brand-white.png";
 import FloatingBentoPanel from "@/components/auth/FloatingBentoPanel";
 
-type AuthMode = "login" | "request";
+type AuthMode = "login" | "request" | "update_password";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  // RADAR: Estratte le nuove variabili dal context
+  const { login, isAuthenticated, isLoading: authLoading, isPasswordRecovery, updatePassword } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
   
   const [mode, setMode] = useState<AuthMode>("login");
@@ -30,6 +31,10 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Update Password fields
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   // Request form fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -38,11 +43,19 @@ const Auth = () => {
   const [requestMessage, setRequestMessage] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  // INTERCETTAZIONE: Forza la UI in modalità aggiornamento se il context segnala il recovery
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    if (isPasswordRecovery) {
+      setMode("update_password");
+    }
+  }, [isPasswordRecovery]);
+
+  // DEVIAZIONE DI ROTTA: Se l'utente è loggato, ma NON è in fase di recupero password, mandalo alla dashboard
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && !isPasswordRecovery && mode !== "update_password") {
       navigate("/", { replace: true });
     }
-  }, [isAuthenticated, authLoading, navigate]);
+  }, [isAuthenticated, authLoading, isPasswordRecovery, mode, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +82,36 @@ const Auth = () => {
       }
     } catch (err: any) {
       setError(err.message || t('auth.auth_error'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
+    if (newPassword !== confirmPassword) {
+      setError(t('auth.passwords_do_not_match') || "Le password non coincidono.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError("La password deve contenere almeno 6 caratteri.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error: updateError } = await updatePassword(newPassword);
+      if (updateError) throw updateError;
+
+      setSuccessMessage("Password aggiornata con successo! Reindirizzamento in corso...");
+      setTimeout(() => {
+        navigate("/", { replace: true });
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || "Errore durante l'aggiornamento della password.");
     } finally {
       setIsSubmitting(false);
     }
@@ -144,10 +187,10 @@ const Auth = () => {
           <div className="max-w-[420px] mx-auto w-full">
             <div className="mb-[clamp(0.75rem,2vh,1.5rem)]">
               <h1 className="text-[clamp(1.25rem,2.5vw,1.875rem)] font-bold text-white mb-1">
-                {mode === "login" ? t('auth.welcome_back') : t('auth.request_access')}
+                {mode === "login" ? t('auth.welcome_back') : mode === "update_password" ? "Reimposta Password" : t('auth.request_access')}
               </h1>
               <p className="text-white/70 text-[clamp(0.75rem,1.2vw,0.875rem)]">
-                {mode === "login" ? t('auth.login_subtitle') : t('auth.request_subtitle')}
+                {mode === "login" ? t('auth.login_subtitle') : mode === "update_password" ? "Inserisci la tua nuova password di accesso." : t('auth.request_subtitle')}
               </p>
             </div>
 
@@ -162,7 +205,42 @@ const Auth = () => {
               </div>
             )}
 
-            {mode === "login" ? (
+            {mode === "update_password" ? (
+              <form onSubmit={handleUpdatePassword} className="space-y-[clamp(0.75rem,1.5vh,1.25rem)]">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="text-sm text-white/80">Nuova Password</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
+                    <Input id="newPassword" type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`${inputClass} pr-11`} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-sm text-white/80">Conferma Password</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
+                    <Input id="confirmPassword" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`${inputClass} pr-11`} />
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={isSubmitting}
+                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-white/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98] mt-4">
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    "Salva nuova password"
+                  )}
+                </Button>
+              </form>
+            ) : mode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-[clamp(0.75rem,1.5vh,1.25rem)]">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm text-white/80">{t('auth.email')}</Label>
@@ -292,13 +370,13 @@ const Auth = () => {
                   <button onClick={() => { setMode("request"); setError(null); setSuccessMessage(null); }}
                     className="text-white hover:underline font-semibold hover:text-white/90">{t('auth.request_access')}</button>
                 </p>
-              ) : (
+              ) : mode === "request" ? (
                 <button onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}
                   className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors mx-auto min-h-[44px]">
                   <ArrowLeft className="w-4 h-4" />
                   {t('auth.back_to_login')}
                 </button>
-              )}
+              ) : null}
             </div>
 
             <div className="mt-[clamp(1rem,2vh,2rem)] text-center">
