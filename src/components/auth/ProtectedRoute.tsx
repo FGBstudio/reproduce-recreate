@@ -8,7 +8,8 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+  // RADAR: Estratto isPasswordRecovery per intercettare l'evento
+  const { isAuthenticated, isAdmin, isLoading, isPasswordRecovery } = useAuth();
   const location = useLocation();
 
   // Show loading state
@@ -21,6 +22,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
         </div>
       </div>
     );
+  }
+
+  // IL DEVIATORE DI ROTTA: Blocca l'ingresso in dashboard durante il recupero password
+  if (isPasswordRecovery) {
+    return <Navigate to="/auth" replace />;
   }
 
   // If Supabase is not configured, allow access (dev mode)
