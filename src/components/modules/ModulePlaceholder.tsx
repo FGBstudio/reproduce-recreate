@@ -8,13 +8,13 @@ interface ModulePlaceholderProps {
   className?: string;
 }
 
-const moduleColors: Record<ModuleType, string> = {
+const moduleColors: Partial<Record<ModuleType, string>> = {
   energy: 'from-teal-50 to-cyan-50 border-teal-200',
   air: 'from-sky-50 to-blue-50 border-sky-200',
   water: 'from-blue-50 to-indigo-50 border-blue-200',
 };
 
-const moduleTextColors: Record<ModuleType, string> = {
+const moduleTextColors: Partial<Record<ModuleType, string>> = {
   energy: 'text-teal-600',
   air: 'text-sky-600',
   water: 'text-blue-600',

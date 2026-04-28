@@ -81,6 +81,7 @@ const mockProjects: AdminProject[] = [
       energy: { ...defaultProjectModules.energy, enabled: true },
       air: { ...defaultProjectModules.air, enabled: true },
       water: { ...defaultProjectModules.water, enabled: true },
+      certification: { ...defaultProjectModules.certification },
     },
     certifications: ['LEED', 'BREEAM'],
     createdAt: new Date(), 
@@ -223,6 +224,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
             enabled: s.module_water_enabled ?? false,
             showDemo: s.module_water_show_demo ?? false,
           },
+          certification: { ...defaultProjectModules.certification },
         };
         
         return {

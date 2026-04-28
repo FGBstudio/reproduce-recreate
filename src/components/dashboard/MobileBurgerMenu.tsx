@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Globe, Building2, Tag, Shield, LogOut, ChevronRight } from "lucide-react";
+import { X, Globe, Building2, Tag, Shield, LogOut, ChevronRight, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -48,6 +48,11 @@ const MobileBurgerMenu = ({
   const handleAdminClick = () => {
     onClose();
     navigate('/admin');
+  };
+
+  const handleInstallClick = () => {
+    onClose();
+    navigate('/install');
   };
 
   const handleLogout = async () => {
@@ -190,6 +195,15 @@ const MobileBurgerMenu = ({
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               )}
+              <button
+                onClick={handleInstallClick}
+                className="flex items-center gap-3 w-full p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/8"
+                style={{ minHeight: 48 }}
+              >
+                <Download className="w-4 h-4 text-fgb-accent" />
+                <span className="text-sm text-foreground flex-1 text-left">Installa app</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
         </div>

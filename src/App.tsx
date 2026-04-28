@@ -10,6 +10,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,8 @@ const App = () => (
               <Routes>
                 {/* Public route - Auth page */}
                 <Route path="/auth" element={<Auth />} />
+                {/* Public route - PWA install landing */}
+                <Route path="/install" element={<Install />} />
                 
                 {/* Protected routes */}
                 <Route path="/" element={

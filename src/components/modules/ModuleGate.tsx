@@ -15,7 +15,7 @@ interface ModuleGateProps {
   demoContent?: ReactNode;
 }
 
-const moduleLabels: Record<string, Record<ModuleType, string>> = {
+const moduleLabels: Record<string, Partial<Record<ModuleType, string>>> = {
   en: { energy: 'Energy', air: 'Air', water: 'Water' },
   it: { energy: 'Energia', air: 'Aria', water: 'Acqua' },
 };
