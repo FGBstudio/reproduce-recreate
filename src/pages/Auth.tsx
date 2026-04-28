@@ -236,7 +236,7 @@ const Auth = () => {
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    "Salva nuova password"
+                    "Save your new password"
                   )}
                 </Button>
               </form>
