@@ -20,13 +20,13 @@ import { Badge } from '@/components/ui/badge';
 
 const certificationOptions: CertificationType[] = ['LEED', 'BREEAM', 'WELL', 'ENERGY_AUDIT', 'ISO_14001', 'ISO_50001'];
 
-const moduleIcons: Record<ModuleType, React.ReactNode> = {
+const moduleIcons: Partial<Record<ModuleType, React.ReactNode>> = {
   energy: <Zap className="w-4 h-4" />,
   air: <Wind className="w-4 h-4" />,
   water: <Droplet className="w-4 h-4" />,
 };
 
-const moduleLabels: Record<ModuleType, string> = {
+const moduleLabels: Partial<Record<ModuleType, string>> = {
   energy: 'Energy',
   air: 'Air Quality',
   water: 'Water',

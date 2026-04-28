@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const moduleIcons: Record<ModuleType, React.ReactNode> = {
+const moduleIcons: Partial<Record<ModuleType, React.ReactNode>> = {
   energy: <Zap className="w-3 h-3 text-amber-500" />,
   air: <Wind className="w-3 h-3 text-blue-500" />,
   water: <Droplet className="w-3 h-3 text-cyan-500" />,

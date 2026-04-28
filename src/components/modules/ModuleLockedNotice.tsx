@@ -10,13 +10,13 @@ interface ModuleLockedNoticeProps {
   children?: ReactNode;
 }
 
-const moduleIcons: Record<ModuleType, string> = {
+const moduleIcons: Partial<Record<ModuleType, string>> = {
   energy: '⚡',
   air: '🌬️',
   water: '💧',
 };
 
-const moduleLabels: Record<string, Record<ModuleType, string>> = {
+const moduleLabels: Record<string, Partial<Record<ModuleType, string>>> = {
   en: { energy: 'Energy', air: 'Air Quality', water: 'Water' },
   it: { energy: 'Energia', air: 'Qualità dell\'Aria', water: 'Acqua' },
   fr: { energy: 'Énergie', air: "Qualité de l'air", water: 'Eau' },
