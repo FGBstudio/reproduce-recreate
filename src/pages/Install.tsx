@@ -158,7 +158,7 @@ const Install = () => {
                 index={3}
                 icon={<Check className="w-4 h-4" />}
                 title="Conferma"
-                desc='Tocca "Aggiungi" in alto a destra. L\'icona FGB apparirà sulla Home.'
+                desc={'Tocca "Aggiungi" in alto a destra. L\'icona FGB apparirà sulla Home.'}
               />
             </ol>
             <p className="text-xs text-muted-foreground italic">
