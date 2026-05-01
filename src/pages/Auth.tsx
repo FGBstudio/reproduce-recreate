@@ -236,7 +236,7 @@ const Auth = () => {
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    "Save your new password"
+                    "Salva nuova password"
                   )}
                 </Button>
               </form>
@@ -382,15 +382,6 @@ const Auth = () => {
             <div className="mt-[clamp(1rem,2vh,2rem)] text-center">
               <a href="mailto:support@fgb-studio.com" className="text-sm text-white/50 hover:text-white transition-colors">
                 {t('auth.need_help')}
-              </a>
-            </div>
-
-            <div className="mt-[clamp(0.5rem,1vh,1rem)] text-center">
-              <a
-                href="#/install"
-                className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition-colors"
-              >
-                📲 Installa l'app sul tuo dispositivo
               </a>
             </div>
           </div>
