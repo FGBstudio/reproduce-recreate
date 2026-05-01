@@ -17,8 +17,11 @@ sono volutamente disabilitati lì per non rompere il preview).
 
 1. Pubblica l'app da Lovable (pulsante **Publish**).
 2. Apri l'URL pubblicato (es. `https://ripro-fab-fun.lovable.app`) sul telefono.
-3. Apri la pagina **`/install`** (es. `https://ripro-fab-fun.lovable.app/install`)
-   oppure il menu burger → "Installa app".
+3. Apri la pagina di installazione:
+   - URL diretto: `https://ripro-fab-fun.lovable.app/#/install`
+   - oppure dal menu burger → **"Installa app"**
+   - (anche `https://ripro-fab-fun.lovable.app/install` funziona: viene
+     redirezionato automaticamente all'hash route giusta)
 4. Segui le istruzioni a schermo:
    - **iOS Safari**: pulsante Condividi → "Aggiungi a Home"
    - **Android Chrome**: tasto "Installa adesso" (o menu → Installa app)

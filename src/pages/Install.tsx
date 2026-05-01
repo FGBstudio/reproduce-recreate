@@ -67,14 +67,14 @@ const Install = () => {
       style={{
         background:
           "radial-gradient(circle at 20% 0%, hsl(188 100% 19% / 0.6), transparent 50%), radial-gradient(circle at 80% 100%, hsl(43 41% 57% / 0.15), transparent 50%), hsl(var(--background))",
-        paddingTop: "max(1.5rem, env(safe-area-inset-top))",
-        paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+        paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+        paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
         paddingLeft: "max(1rem, env(safe-area-inset-left))",
         paddingRight: "max(1rem, env(safe-area-inset-right))",
       }}
     >
       {/* Top bar */}
-      <header className="flex items-center justify-between mb-8">
+      <header className="flex items-center justify-between mb-4">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"

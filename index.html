@@ -33,6 +33,21 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // HashRouter compatibility: if a user visits a clean path like
+      // /install (no hash), redirect to /#/install so React Router can
+      // resolve it. Without this the page renders blank on mobile because
+      // the static host serves index.html but the router has no matching
+      // route for the bare path.
+      (function () {
+        var p = window.location.pathname;
+        var h = window.location.hash;
+        if (!h && p && p !== "/" && p !== "/index.html") {
+          var clean = p.replace(/\/+$/, "");
+          window.location.replace(window.location.origin + "/#" + clean + window.location.search);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
