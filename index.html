@@ -29,6 +29,31 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!--
+      HashRouter compatibility: if a user (or PWA shortcut) opens a known
+      app route directly (e.g. /install, /auth, /admin) WITHOUT the leading
+      "#", redirect to the hash-based equivalent BEFORE React boots.
+      Otherwise the request hits the SPA fallback at "/" which is protected
+      and the user lands on a blank/auth screen instead of the requested page.
+    -->
+    <script>
+      (function () {
+        try {
+          var p = window.location.pathname.replace(/\/+$/, "");
+          var known = ["/install", "/auth", "/admin"];
+          if (known.indexOf(p) !== -1 && !window.location.hash) {
+            var target =
+              window.location.origin +
+              "/#" + p +
+              window.location.search;
+            window.location.replace(target);
+          }
+        } catch (e) {
+          /* no-op */
+        }
+      })();
+    </script>
   </head>
 
   <body>
