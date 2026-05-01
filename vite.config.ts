@@ -46,8 +46,9 @@ export default defineConfig(({ mode, command }) => ({
         background_color: "#002838",
         display: "standalone",
         orientation: "portrait",
-        start_url: ".",
-        scope: ".",
+        start_url: "./#/",
+        scope: "./",
+        id: "/",
         lang: "it",
         icons: [
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
