@@ -384,6 +384,15 @@ const Auth = () => {
                 {t('auth.need_help')}
               </a>
             </div>
+
+            <div className="mt-[clamp(0.5rem,1vh,1rem)] text-center">
+              <a
+                href="#/install"
+                className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition-colors"
+              >
+                📲 Installa l'app sul tuo dispositivo
+              </a>
+            </div>
           </div>
         </div>
 
