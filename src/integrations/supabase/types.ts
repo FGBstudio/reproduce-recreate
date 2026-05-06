@@ -2356,31 +2356,34 @@ export type Database = {
       }
       products: {
         Row: {
+          category: string | null
           certification: string
           created_at: string
           id: string
           name: string
-          quantity_in_stock: number
           sku: string
           supplier_lead_time_days: number
+          unit_price: number | null
         }
         Insert: {
+          category?: string | null
           certification?: string
           created_at?: string
           id?: string
           name: string
-          quantity_in_stock?: number
           sku: string
           supplier_lead_time_days?: number
+          unit_price?: number | null
         }
         Update: {
+          category?: string | null
           certification?: string
           created_at?: string
           id?: string
           name?: string
-          quantity_in_stock?: number
           sku?: string
           supplier_lead_time_days?: number
+          unit_price?: number | null
         }
         Relationships: []
       }
@@ -2938,6 +2941,7 @@ export type Database = {
           contracted: string | null
           country: string | null
           created_at: string
+          ct_builder_snapshot: Json | null
           customized_package: boolean | null
           dns1: string | null
           dns2: string | null
@@ -3003,6 +3007,7 @@ export type Database = {
           contracted?: string | null
           country?: string | null
           created_at?: string
+          ct_builder_snapshot?: Json | null
           customized_package?: boolean | null
           dns1?: string | null
           dns2?: string | null
@@ -3068,6 +3073,7 @@ export type Database = {
           contracted?: string | null
           country?: string | null
           created_at?: string
+          ct_builder_snapshot?: Json | null
           customized_package?: boolean | null
           dns1?: string | null
           dns2?: string | null
