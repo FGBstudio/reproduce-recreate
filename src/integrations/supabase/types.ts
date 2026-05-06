@@ -4246,6 +4246,20 @@ export type Database = {
           rows_raw: number
         }[]
       }
+      _apply_tz_fix_device: {
+        Args: { p_device_id: string; p_tz: string }
+        Returns: number
+      }
+      _tz_fix_list_devices: {
+        Args: { p_site_id: string }
+        Returns: {
+          device_id: string
+        }[]
+      }
+      _tz_fix_mark_done: {
+        Args: { p_rows: number; p_site_id: string }
+        Returns: undefined
+      }
       aggregate_daily: { Args: { p_date?: string }; Returns: number }
       aggregate_energy_daily: {
         Args: { p_date?: string }
