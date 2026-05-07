@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ZoomableChart,
   Cell, ReferenceLine, BarChart, Bar, Legend
 } from "recharts";
 import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList } from "lucide-react";
@@ -514,7 +514,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   ))}
                 </div>
                 <div className="flex-1 min-h-0">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ZoomableChart width="100%" height="100%">
                     <ScatterChart margin={{ top: 10, right: 15, left: 5, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
                       <XAxis 
@@ -550,7 +550,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         ))}
                       </Scatter>
                     </ScatterChart>
-                  </ResponsiveContainer>
+                  </ZoomableChart>
                 </div>
               </div>
             )}

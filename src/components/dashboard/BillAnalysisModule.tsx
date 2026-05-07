@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ZoomableChart,
 } from 'recharts';
 
 // Types matching DB schema
@@ -714,7 +714,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
           </CardHeader>
           <CardContent>
             {kpis.monthlyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
+              <ZoomableChart width="100%" height={240}>
                 <BarChart data={kpis.monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -722,7 +722,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                   <Tooltip {...tooltipStyle} />
                   <Bar dataKey="consumption" fill="hsl(175, 60%, 35%)" radius={[4, 4, 0, 0]} name="kWh" />
                 </BarChart>
-              </ResponsiveContainer>
+              </ZoomableChart>
             ) : (
               <div className="flex items-center justify-center h-[240px] text-gray-400 text-sm">
                 <BarChart3 className="h-8 w-8 mr-2 opacity-40" /> No data yet

@@ -7,7 +7,7 @@ import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneU
 
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area, ReferenceArea, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ZoomableChart,
   PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
 import html2canvas from "html2canvas";
@@ -2899,7 +2899,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={energyConsumptionRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('energyConsumption')} />
                       </div>
 
-                      <ResponsiveContainer width="100%" height={280}>
+                      <ZoomableChart width="100%" height={280}>
                         <AreaChart
                           data={energyConsumptionData}
                           margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
@@ -3016,7 +3016,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             </>
                           )}
                         </AreaChart>
-                      </ResponsiveContainer>
+                      </ZoomableChart>
                     </div>
 
                     {/* Energy Consumption Breakdown Chart - REPLACED */}
@@ -3046,7 +3046,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                         {/* Donut Chart a Destra */}
                         <div className="relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ZoomableChart width="100%" height="100%">
                             <PieChart>
                               <Pie
                                 data={energyDistributionData}
@@ -3065,7 +3065,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', '']}
                               />
                             </PieChart>
-                          </ResponsiveContainer>
+                          </ZoomableChart>
                           {/* Valore Centrale: Totale kWh */}
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                             <span className="text-lg md:text-xl font-bold text-slate-900">
@@ -3373,7 +3373,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
 
                       <div className="flex-1 min-h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                             <XAxis 
@@ -3441,7 +3441,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               name="Actual"
                             />
                           </ComposedChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                     </div>
 
@@ -3475,7 +3475,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
 
                            {/* Donut Chart */}
                            <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
-                              <ResponsiveContainer width="100%" height="100%">
+                              <ZoomableChart width="100%" height="100%">
                                 <PieChart>
                                   <Pie
                                     data={powerDistributionData}
@@ -3494,7 +3494,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                     formatter={(value: any) => [Number(value).toFixed(2) + ' kW', '']}
                                   />
                                 </PieChart>
-                              </ResponsiveContainer>
+                              </ZoomableChart>
                               {/* Valore Centrale */}
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                 <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
@@ -3521,7 +3521,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       
                       <div className="flex-1 w-full min-h-[250px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <BarChart 
                             data={deviceConsumptionData.data} 
                             margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -3605,7 +3605,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 />
                             ))}
                           </BarChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                     </div>
                   </div>
@@ -3642,7 +3642,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       </div>
                       
                       <div className="flex-1 w-full min-h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <BarChart 
                             data={carbonChartData.data} 
                             margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -3682,7 +3682,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 />
                             ))}
                           </BarChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                     </div>
                   {/* CRASH-PROOF CIRCULAR DAY/NIGHT WIDGET */}
@@ -3698,7 +3698,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                       <div className="flex-1 flex flex-col items-center justify-center relative z-10 mt-2">
                         {/* MAIN CIRCULAR DIAL */}
                         <div className="relative w-48 h-48 md:w-52 md:h-52 drop-shadow-md">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ZoomableChart width="100%" height="100%">
                             <PieChart>
                               <Pie data={dayNightSummary.chartData} cx="50%" cy="50%" innerRadius="75%" outerRadius="100%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>
                                 {dayNightSummary.chartData.map((entry, index) => (
@@ -3707,7 +3707,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               </Pie>
                               <Tooltip formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' kWh', 'Total']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                             </PieChart>
-                          </ResponsiveContainer>
+                          </ZoomableChart>
 
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                             <span className="text-3xl font-black text-gray-800 tracking-tight">
@@ -3962,7 +3962,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
                       <div className="relative w-full h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradCO2" x1="0" y1="0" x2="0" y2="1">
@@ -3985,7 +3985,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             ))}
                             <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limite" strokeOpacity={0.5} />
                           </LineChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                     </div>
 
@@ -3999,7 +3999,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
                       <div className="relative w-full h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradTVOC" x1="0" y1="0" x2="0" y2="1">
@@ -4022,7 +4022,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             ))}
                             <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limit" strokeOpacity={0.5} />
                           </LineChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                     </div>
 
@@ -4036,7 +4036,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
                       <div className="relative w-full h-[220px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradTemp" x1="0" y1="0" x2="0" y2="1">
@@ -4062,7 +4062,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
                             ))}
                           </LineChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                     </div>
                   </div>
@@ -4081,7 +4081,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
                       <div className="relative w-full h-[250px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradPM25" x1="0" y1="0" x2="0" y2="1">
@@ -4104,7 +4104,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             ))}
                             <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
                           </LineChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
                         <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
@@ -4122,7 +4122,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
                       <div className="relative w-full h-[250px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
                               <linearGradient id="gradPM10" x1="0" y1="0" x2="0" y2="1">
@@ -4145,7 +4145,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             ))}
                             <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
                           </LineChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
                         <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
@@ -4216,7 +4216,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
                       <div className="relative w-full h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ZoomableChart width="100%" height="100%">
                           <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
@@ -4232,7 +4232,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
                             ))}
                           </LineChart>
-                        </ResponsiveContainer>
+                        </ZoomableChart>
                       </div>
                     </div>
 
@@ -4320,7 +4320,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <ExportButtons chartRef={waterConsumptionRef} data={filteredWaterData} filename="water-consumption" onExpand={() => setFullscreenChart('waterConsumption')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={280}>
+                      <ZoomableChart width="100%" height={280}>
                         <AreaChart data={filteredWaterData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <defs>
                             <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
@@ -4337,7 +4337,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <Line type="monotone" dataKey="target" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
                           <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Previous Year" />
                         </AreaChart>
-                      </ResponsiveContainer>
+                      </ZoomableChart>
                     </div>
 
                     {/* Distribuzione consumo */}
@@ -4357,7 +4357,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           ))}
                         </div>
                         <div className="relative w-40 h-40">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ZoomableChart width="100%" height="100%">
                             <PieChart>
                               <Pie data={waterDistributionData} innerRadius={45} outerRadius={65} paddingAngle={2} dataKey="value">
                                 {waterDistributionData.map((entry, index) => (
@@ -4365,7 +4365,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 ))}
                               </Pie>
                             </PieChart>
-                          </ResponsiveContainer>
+                          </ZoomableChart>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
                             <Droplet className="w-6 h-6 text-blue-500 mb-1" />
                             <span className="text-xs text-gray-500">m³/mese</span>
@@ -4470,7 +4470,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <ExportButtons chartRef={waterTrendRef} data={waterDailyTrendData} filename="water-daily-trend" onExpand={() => setFullscreenChart('waterTrend')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={280}>
+                      <ZoomableChart width="100%" height={280}>
                         <BarChart data={waterDailyTrendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
@@ -4482,7 +4482,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                             ))}
                           </Bar>
                         </BarChart>
-                      </ResponsiveContainer>
+                      </ZoomableChart>
                     </div>
 
                     {/* Efficienza Settimanale */}
@@ -4494,7 +4494,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <ExportButtons chartRef={waterEfficiencyRef} data={waterEfficiencyData} filename="water-efficiency" />
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
+                      <ZoomableChart width="100%" height={200}>
                         <BarChart data={waterEfficiencyData} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis type="number" domain={[0, 100]} tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} tickFormatter={(v) => `${v}%`} />
@@ -4504,7 +4504,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <Bar dataKey="efficiency" stackId="a" fill="hsl(150, 60%, 45%)" name="Efficiency" radius={[0, 0, 0, 0]} />
                           <Bar dataKey="waste" stackId="a" fill="hsl(0, 60%, 60%)" name="Waste" radius={[0, 4, 4, 0]} />
                         </BarChart>
-                      </ResponsiveContainer>
+                      </ZoomableChart>
                     </div>
                   </div>
                 </div>
@@ -4521,7 +4521,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                         </div>
                         <ExportButtons chartRef={waterQualityRef} data={waterQualityData} filename="water-quality" onExpand={() => setFullscreenChart('waterQuality')} />
                       </div>
-                      <ResponsiveContainer width="100%" height={280}>
+                      <ZoomableChart width="100%" height={280}>
                         <LineChart data={waterQualityData} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
                           <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
@@ -4533,7 +4533,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2.5} dot={{ fill: 'hsl(30, 80%, 50%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Turbidity (NTU)" />
                           <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2.5} dot={{ fill: 'hsl(150, 60%, 45%)', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} name="Chlorine (mg/L)" />
                         </LineChart>
-                      </ResponsiveContainer>
+                      </ZoomableChart>
                     </div>
 
                     {/* Indicatori Qualità */}
@@ -5174,7 +5174,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Energy consumption over time"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <AreaChart data={energyConsumptionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorGeneralFS" x1="0" y1="0" x2="0" y2="1">
@@ -5230,7 +5230,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               </>
             )}
           </AreaChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
       {/* ENERGY: Actual vs Average */}
@@ -5239,7 +5239,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Actual vs Average"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="tsLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} dy={10} />
@@ -5256,7 +5256,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Line type="monotone" dataKey="benchmark" stroke="#7E0A2F" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Benchmark" />
             <Line type="monotone" dataKey="actual" stroke="#129E97" strokeWidth={3} dot={{ r: 3, fill: '#129E97', strokeWidth: 0 }} activeDot={{ r: 6 }} name="Actual" />
           </ComposedChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
       {/* ENERGY: Heatmap */}
@@ -5292,7 +5292,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Devices Consumption"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <BarChart data={deviceConsumptionData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={timePeriod === 'week' || timePeriod === 'month'} stroke="#f0f0f0" />
             <XAxis 
@@ -5366,7 +5366,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 />
             ))}
           </BarChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
      {/* ENERGY: Power Consumption */}
@@ -5393,7 +5393,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           </div>
           {/* Aggiunta la classe relative qui */}
           <div className="relative w-72 h-72 flex-shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
+            <ZoomableChart width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={powerDistributionData}
@@ -5412,7 +5412,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   formatter={(value: any) => [Number(value).toFixed(2) + ' kW', '']}
                 />
               </PieChart>
-            </ResponsiveContainer>
+            </ZoomableChart>
             
             {/* Aggiunto il Valore Centrale con grandezze testuali proporzionate */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -5430,7 +5430,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Carbon Footprint Analysis"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <BarChart data={carbonChartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="bucket" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} dy={10} />
@@ -5445,7 +5445,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={50} />
             ))}
           </BarChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
     {/* ENERGY: Day vs Night Fullscreen (Stacked Bar Chart History) */}
@@ -5454,7 +5454,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Day vs Night Energy History"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <BarChart data={dayNightData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barGap={0} barCategoryGap="10%">
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} minTickGap={30} />
@@ -5469,7 +5469,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Bar dataKey="nightKwh" stackId="1" fill="#64748b" name="nightKwh" radius={[0, 0, 4, 4]} maxBarSize={80} />
             <Bar dataKey="dayKwh" stackId="1" fill="#38bdf8" name="dayKwh" radius={[4, 4, 0, 0]} maxBarSize={80} />
           </BarChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
       {/* ENERGY: Energy vs Outdoor Condition */}
@@ -5478,7 +5478,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Energy vs Outdoor Condition"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 80, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
@@ -5491,7 +5491,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Line yAxisId="temp" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} dot={false} name="Temp (°C)" connectNulls />
             <Line yAxisId="humidity" type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Humidity (%)" connectNulls strokeDasharray="4 2" />
           </LineChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
       {/* AIR: CO2 Trend */}
@@ -5501,7 +5501,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`CO₂ · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ZoomableChart width="100%" height="100%">
             <LineChart data={co2MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradCO2FS" x1="0" y1="0" x2="0" y2="1">
@@ -5524,7 +5524,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               ))}
               <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limit" strokeOpacity={0.5} />
             </LineChart>
-          </ResponsiveContainer>
+          </ZoomableChart>
         </div>
       </ChartFullscreenModal>
 
@@ -5535,7 +5535,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`TVOC · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ZoomableChart width="100%" height="100%">
             <LineChart data={tvocMultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradTVOCFS" x1="0" y1="0" x2="0" y2="1">
@@ -5558,7 +5558,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               ))}
               <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Limit" strokeOpacity={0.5} />
             </LineChart>
-          </ResponsiveContainer>
+          </ZoomableChart>
         </div>
       </ChartFullscreenModal>
 
@@ -5569,7 +5569,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`Temperature & Humidity · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ZoomableChart width="100%" height="100%">
             <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradTempFS" x1="0" y1="0" x2="0" y2="1">
@@ -5595,7 +5595,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <Line key={`${d.id}-hum`} yAxisId="humidity" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_hum`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Humidity`} strokeOpacity={0.6} />
               ))}
             </LineChart>
-          </ResponsiveContainer>
+          </ZoomableChart>
         </div>
       </ChartFullscreenModal>
 
@@ -5606,7 +5606,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`PM2.5 · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ZoomableChart width="100%" height="100%">
             <LineChart data={pm25MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradPM25FS" x1="0" y1="0" x2="0" y2="1">
@@ -5629,7 +5629,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               ))}
               <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
             </LineChart>
-          </ResponsiveContainer>
+          </ZoomableChart>
         </div>
         <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 px-8">
           <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
@@ -5644,7 +5644,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title={`PM10 · ${periodLabel}`}
       >
         <div className="relative w-full h-[500px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ZoomableChart width="100%" height="100%">
             <LineChart data={pm10MultiSeries as any} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradPM10FS" x1="0" y1="0" x2="0" y2="1">
@@ -5667,7 +5667,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               ))}
               <Line type="monotone" dataKey="limit" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="WHO Limit" strokeOpacity={0.5} />
             </LineChart>
-          </ResponsiveContainer>
+          </ZoomableChart>
         </div>
         <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 px-8">
           <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
@@ -5682,7 +5682,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title="CO & O₃"
       >
         <div className="relative w-full h-[500px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ZoomableChart width="100%" height="100%">
             <LineChart data={coO3MultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
@@ -5698,7 +5698,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <Line key={`${d.id}-o3`} yAxisId="o3" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_o3`} stroke={airColorById.get(d.id)} strokeWidth={1.5} strokeDasharray="5 3" opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · O₃`} strokeOpacity={0.6} />
               ))}
             </LineChart>
-          </ResponsiveContainer>
+          </ZoomableChart>
         </div>
       </ChartFullscreenModal>
 
@@ -5708,7 +5708,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Water Consumption"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <AreaChart data={filteredWaterData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="waterGradientFS" x1="0" y1="0" x2="0" y2="1">
@@ -5725,7 +5725,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Line type="monotone" dataKey="target" stroke="hsl(150, 60%, 45%)" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
             <Line type="monotone" dataKey="lastYear" stroke="hsl(0, 0%, 60%)" strokeWidth={2} strokeDasharray="3 3" dot={false} name="Previous Year" />
           </AreaChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
       {/* WATER: Trend */}
@@ -5734,7 +5734,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Daily Consumption Trend"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <BarChart data={waterDailyTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
@@ -5746,7 +5746,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               ))}
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
 
       {/* WATER: Quality */}
@@ -5755,7 +5755,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         onClose={() => setFullscreenChart(null)}
         title="Water Quality Parameters"
       >
-        <ResponsiveContainer width="100%" height={500}>
+        <ZoomableChart width="100%" height={500}>
           <LineChart data={waterQualityData} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
             <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
@@ -5767,7 +5767,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <Line yAxisId="other" type="monotone" dataKey="turbidity" stroke="hsl(30, 80%, 50%)" strokeWidth={2} dot={false} name="Turbidity" />
             <Line yAxisId="other" type="monotone" dataKey="chlorine" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={false} name="Chlorine" />
           </LineChart>
-        </ResponsiveContainer>
+        </ZoomableChart>
       </ChartFullscreenModal>
       {/* ENERGY: Outdoor Condition */}
       <ChartFullscreenModal
@@ -5776,7 +5776,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
         title="Energy vs Outdoor Condition"
       >
         <div className="relative w-full h-[500px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ZoomableChart width="100%" height="100%">
             <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
               <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
@@ -5789,7 +5789,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
               <Line yAxisId="temp" type="monotone" dataKey="temperature" stroke="#F59E0B" strokeWidth={2} dot={false} name="Temp (°C)" connectNulls />
               <Line yAxisId="humidity" type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Humidity (%)" connectNulls strokeDasharray="4 2" />
             </LineChart>
-          </ResponsiveContainer>
+          </ZoomableChart>
         </div>
       </ChartFullscreenModal>
 
@@ -5801,7 +5801,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <div className="flex flex-col items-center justify-center p-8">
           <div className="relative w-64 h-64 md:w-80 md:h-80">
-            <ResponsiveContainer width="100%" height="100%">
+            <ZoomableChart width="100%" height="100%">
               <PieChart>
                 <Pie data={dayNightSummary.chartData} cx="50%" cy="50%" innerRadius="70%" outerRadius="100%" stroke="none" dataKey="value" startAngle={90} endAngle={-270}>
                   {dayNightSummary.chartData.map((entry, index) => (
@@ -5810,7 +5810,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 </Pie>
                 <Tooltip formatter={(value: number) => [`${value.toLocaleString()} kWh`, 'Total']} />
               </PieChart>
-            </ResponsiveContainer>
+            </ZoomableChart>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <span className="text-4xl font-black text-gray-800 tracking-tight">{dayNightSummary.total.toLocaleString()}</span>
               <span className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">kWh Total</span>
