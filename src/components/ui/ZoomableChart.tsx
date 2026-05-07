@@ -8,6 +8,7 @@ type ZoomableChartProps = {
   /** A single Recharts chart element (LineChart, AreaChart, BarChart, ...) with a `data` prop. */
   children: React.ReactElement;
   height?: number | string;
+  width?: number | string;
   className?: string;
   /** Set false to render a plain ResponsiveContainer with no zoom UI. */
   enableZoom?: boolean;
@@ -127,6 +128,7 @@ const ChartBody: React.FC<InnerProps> = ({ children, enableZoom, onExpand, showE
 export const ZoomableChart: React.FC<ZoomableChartProps> = ({
   children,
   height = "100%",
+  width = "100%",
   className,
   enableZoom = true,
   title,
@@ -135,7 +137,7 @@ export const ZoomableChart: React.FC<ZoomableChartProps> = ({
 
   return (
     <>
-      <div style={{ width: "100%", height }} className={cn(className)}>
+      <div style={{ width, height }} className={cn(className)}>
         <ChartBody
           enableZoom={enableZoom}
           onExpand={() => setExpanded(true)}
