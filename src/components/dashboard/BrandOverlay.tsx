@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ZoomableChart,
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip_REMOVE,
   Cell, ReferenceLine, BarChart, Bar, Legend
 } from "recharts";
 import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList } from "lucide-react";

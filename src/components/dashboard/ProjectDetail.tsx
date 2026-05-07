@@ -7,7 +7,7 @@ import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneU
 
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area, ReferenceArea, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ZoomableChart,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend_REMOVE,
   PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
 import html2canvas from "html2canvas";

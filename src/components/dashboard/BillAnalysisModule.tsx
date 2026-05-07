@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ZoomableChart,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip_REMOVE,
 } from 'recharts';
 
 // Types matching DB schema

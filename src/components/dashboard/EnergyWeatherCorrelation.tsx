@@ -9,7 +9,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ZoomableChart,
+  ZoomableChart_REMOVE,
   Legend,
   ScatterChart,
   Scatter,
