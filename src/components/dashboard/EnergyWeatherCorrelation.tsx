@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Legend,
   ScatterChart,
   Scatter,
@@ -17,6 +16,7 @@ import {
   Cell,
   ReferenceLine
 } from 'recharts';
+import { ZoomableChart } from '@/components/ui/ZoomableChart';
 import { Thermometer, Zap, Info, Droplets, Activity, BarChart2, TrendingUp, Grid } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TimePeriod, DateRange } from '@/hooks/useTimeFilteredData';
@@ -269,7 +269,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
       </div>
 
       <div className="flex-1 min-h-[300px] w-full bg-white/30 rounded-2xl border border-gray-100/50 p-2">
-        <ResponsiveContainer width="100%" height="100%">
+        <ZoomableChart width="100%" height="100%">
           {viewMode === 'timeseries' ? (
             <ComposedChart data={chartData} margin={{ top: 10, right: 60, bottom: 20, left: 10 }}>
               <defs>
@@ -411,7 +411,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
               <Legend verticalAlign="bottom" height={36} iconType="circle" />
             </ScatterChart>
           )}
-        </ResponsiveContainer>
+        </ZoomableChart>
       </div>
 
       <div className="mt-4 p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50 flex items-center gap-4 transition-all hover:bg-emerald-50/50">

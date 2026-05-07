@@ -1,111 +1,52 @@
-## Diagnosi
+# Grafici zoomabili e navigabili
 
-Il problema **non è nel frontend**. Il codice della heatmap (`ProjectDetail.tsx`) usa correttamente `getPartsInTz(ts, project.timezone)` con `Asia/Shanghai`, e il sito ha già `timezone = 'Asia/Shanghai'` salvato correttamente nel DB.
+## Obiettivo
+Permettere all'utente di ingrandire qualsiasi grafico della dashboard (specialmente i più piccoli, come quelli dentro i widget Energy/Air/Water) per leggere meglio i dettagli, usando:
+- **Ctrl + rotellina mouse** → zoom in/out centrato sul punto puntato
+- **Click + drag orizzontale** → seleziona un intervallo X da ingrandire
+- **Doppio click** → reset allo zoom completo
+- **Pulsante "Espandi"** in alto a destra di ogni grafico → apre il grafico in un dialog full-screen, zoomabile anch'esso
 
-Il problema è nei **dati storici importati**: i timestamp del CSV originale erano in **ora locale di Shanghai** ma sono stati inseriti in `energy_hourly.ts_hour` (colonna `timestamptz`) **senza applicare l'offset +08:00**. Postgres li ha quindi memorizzati come se fossero UTC, generando uno **shift di +8 ore** rispetto alla realtà.
+Su mobile (touch): pinch-to-zoom + pan a due dita, con stesso pulsante "Espandi" per il fullscreen.
 
-### Evidenza dal database
+## Approccio tecnico
 
-Profilo orario di **Shanghai, Taikoo Li Qiantan** (device "Main", aprile 2026):
+Recharts non supporta zoom/pan nativamente. La soluzione più pulita e compatibile con lo stack attuale è creare **un wrapper riusabile** attorno ai chart esistenti, senza cambiare libreria.
 
-```text
-Shanghai hour | avg kW   <- profilo OSSERVATO (sbagliato)
-00–07         | 7.7-8.2  <- alto (notte = "negozio aperto")
-08–11         | 7.6-7.7  
-12            | 7.1
-13–21         | 4.6-5.2  <- basso (giorno = "negozio chiuso")
-22–23         | 6.6-7.7
-```
+### Nuovo componente: `src/components/ui/ZoomableChart.tsx`
 
-Confronto con **Boucheron Shanghai Xintiandi** (stesso fuso, dati MQTT real-time, OK):
+Wrapper che:
+1. Mantiene uno stato `xDomain` ([startIndex, endIndex] oppure [startValue, endValue]) e lo passa come `domain` agli `XAxis` figli tramite `React.cloneElement` o tramite render-prop `(domain) => <LineChart .../>`.
+2. Intercetta su un overlay `<div>`:
+   - `onWheel` con `e.ctrlKey` → calcola nuovo dominio (fattore 0.85 zoom-in / 1.15 zoom-out) centrato sulla posizione X del cursore (usando `chartRef` + bbox).
+   - `onMouseDown` + `onMouseMove` + `onMouseUp` → mostra un rettangolo di selezione semi-trasparente, al rilascio applica il dominio selezionato.
+   - `onDoubleClick` → reset.
+   - Touch events `onTouchStart/Move/End` con 2 dita → pinch (mobile).
+3. Mostra in alto a destra:
+   - Pulsante **Reset** (icona `RotateCcw`) visibile solo quando lo zoom è attivo
+   - Pulsante **Espandi** (icona `Maximize2`) → apre `<Dialog>` con lo stesso chart a tutta finestra
+4. Hint discreto "Ctrl+scroll per zoom" mostrato al primo hover (auto-nascosto dopo 3s, salvato in localStorage).
 
-```text
-Shanghai hour | avg kW   <- profilo CORRETTO
-00–04         | 3.4      <- basso (notte)
-09–21         | 6.0-6.3  <- alto (giorno)
-22–23         | 3.6
-```
+### Integrazione
 
-I valori di Taikoo Li Qiantan, **se ruotati di -8 ore** (cioè interpretando il "Shanghai hour" attuale come "UTC hour"), tornano coerenti con un negozio aperto di giorno.
+Sostituire i ChartContainer / ResponsiveContainer dei chart "piccoli" con `<ZoomableChart>` nei file:
+- `src/components/dashboard/ProjectDetail.tsx` (chart Energy, IAQ timeseries, etc.)
+- `src/components/dashboard/EnergyWeatherCorrelation.tsx`
+- `src/components/dashboard/BrandOverlay.tsx`
+- `src/components/dashboard/BillAnalysisModule.tsx`
 
-### Altri siti affetti dallo stesso bug di import
+Esclusi: `LEEDCertificationWidget` (radar/gauge — lo zoom non ha senso lì).
 
-Lo stesso shift è presente in:
-- `Shanghai, Taikoo Li Qiantan` (Asia/Shanghai, +8h)
-- `Hannover, SmartUP Hannover` (Europe/Berlin, +1/+2h)
-- `Hoffenheim, SmartUP Hof` (Europe/Berlin, +1/+2h)
-- `Vendome, Place Vendome` (Europe/Paris, +1/+2h)
+Il wrapper è opt-in: passando `enableZoom={false}` torna al comportamento attuale, così i grafici di tipo "donut/radar/pie" non vengono toccati.
 
-Tutti gli altri siti (Boucheron Xintiandi, IFC, Plaza 66, Hangzhou, Milan, London, Munich, ecc.) hanno il profilo giorno/notte corretto.
+### Dipendenze
+Nessuna nuova libreria necessaria. Solo Recharts (già presente) + componenti shadcn (`Dialog`, `Button`, `Tooltip`) già nel progetto. Tutti i colori restano semantic tokens da `index.css`.
 
-## Soluzione proposta
+## Cosa NON cambia
+- Logica dati, hooks, query Supabase: invariati.
+- Aspetto di default dei grafici (colori, font, assi): invariato a riposo.
+- Memoria progetto sui token di design rispettata.
 
-### Step 1 — Migration di correzione retroattiva dei dati storici
-
-Creare una migration che **sposta indietro** i timestamp storici dei 4 siti affetti, applicando l'offset corretto del loro fuso orario all'epoca dell'import. Lo facciamo su tutte le tabelle energy:
-
-- `energy_telemetry` (raw)
-- `energy_hourly`
-- `energy_daily`
-- `energy_latest` (verrà ricalcolata)
-
-Per ciascun device dei 4 siti:
-
-```sql
--- Esempio per Shanghai (offset +8h costante, no DST)
-UPDATE energy_hourly
-SET ts_hour = ts_hour - INTERVAL '8 hours'
-WHERE device_id IN (SELECT id FROM devices WHERE site_id = '<uuid>')
-  AND ts_hour < '<cutoff_ingest_real-time>';
-
--- Per Berlino/Parigi useremo l'offset variabile via AT TIME ZONE per gestire DST:
-UPDATE energy_hourly
-SET ts_hour = (ts_hour AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Berlin'
-WHERE device_id IN (SELECT id FROM devices WHERE site_id = '<uuid>')
-  AND ts_hour < '<cutoff>';
-```
-
-Il `cutoff` separa i dati "storici importati male" da quelli "MQTT real-time corretti". Lo determineremo guardando il primo timestamp MQTT reale per ciascun sito (se esiste) o fissandolo a una data sicura prima dell'attivazione dei dispositivi.
-
-Dopo l'UPDATE, ri-aggreghiamo `energy_daily` e ri-popoliamo `energy_latest`.
-
-### Step 2 — Hardening dello script di import storico
-
-Verificare/aggiornare lo script di import storico (file `database/migrations/027_import_historical_energy_step2_telemetry.sql` e/o lo script Node `mqtt-ingestion/scripts/backfill-energy.js`) per:
-
-1. Leggere il `timezone` del sito di destinazione dalla tabella `sites`
-2. Convertire esplicitamente il timestamp del CSV da "ora locale del sito" a UTC prima dell'INSERT, p.es.:
-
-```sql
-INSERT INTO energy_hourly (ts_hour, ...)
-VALUES (
-  (csv_local_ts::timestamp AT TIME ZONE site_timezone),  -- → UTC corretto
-  ...
-);
-```
-
-Questo evita che import futuri ripropongano lo stesso problema.
-
-### Step 3 — Validazione
-
-Dopo la migration, ri-eseguire la query di check (rapporto giorno/notte) per confermare che tutti i siti abbiano `day_avg > night_avg`.
-
-## File / componenti coinvolti
-
-- **Nuova migration** `database/migrations/045_fix_historical_timezone_shift.sql` — UPDATE su `energy_telemetry`, `energy_hourly`, `energy_daily`, ricalcolo `energy_latest`.
-- **Script import** `mqtt-ingestion/scripts/backfill-energy.js` (e/o le migration `026/027`) — applicare conversione TZ esplicita.
-- **Nessun cambiamento al frontend**: la logica della heatmap è già corretta.
-
-## Sezione tecnica
-
-- Bucket `ts_hour` è `timestamptz`. Postgres normalizza tutto in UTC al momento dell'INSERT; se non specifichi l'offset, usa il TZ della sessione (di solito UTC sui server Supabase) → ecco perché timestamp Shanghai senza offset finiscono "shiftati di 8h".
-- Per Asia/Shanghai l'offset è costante (+08:00, niente DST), quindi un semplice `INTERVAL '8 hours'` è sicuro.
-- Per Europe/Berlin ed Europe/Paris c'è il DST: useremo `(ts_hour AT TIME ZONE 'UTC') AT TIME ZONE '<tz>'` che gestisce automaticamente il passaggio CET/CEST.
-- La migration sarà **idempotente** tramite una colonna marker (`labels->>'tz_fix_applied'='v1'`) per evitare doppi shift.
-- Backup consigliato: prima dell'UPDATE, eseguiremo `CREATE TABLE energy_hourly_backup_pre_tz_fix AS SELECT * FROM energy_hourly WHERE device_id IN (...)` per poter rollback.
-
-## Cosa NON tocchiamo
-
-- Frontend (heatmap, formattazione orari, `timezoneUtils.ts`): già corretti.
-- Tabella `sites.timezone`: già valorizzata correttamente.
-- Altri 13+ siti: dati già corretti, non li toccheremo.
+## Domande aperte (rispondi se vuoi cambiare qualcosa)
+- OK estendere lo zoom a **tutti** i timeseries chart, o vuoi limitarlo solo ai widget Energy?
+- Vuoi anche **pan orizzontale** (shift+drag) oltre allo zoom, o basta drag-to-zoom + reset?
