@@ -10,6 +10,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend_REMOVE,
   PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
+import { ZoomableChart } from "@/components/ui/ZoomableChart";
 import html2canvas from "html2canvas";
 import { createPortal } from "react-dom";
 import { TimePeriodSelector, TimePeriod } from "./TimePeriodSelector";

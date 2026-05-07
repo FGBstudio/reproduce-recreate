@@ -16,6 +16,7 @@ import {
   Cell,
   ReferenceLine
 } from 'recharts';
+import { ZoomableChart } from '@/components/ui/ZoomableChart';
 import { Thermometer, Zap, Info, Droplets, Activity, BarChart2, TrendingUp, Grid } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TimePeriod, DateRange } from '@/hooks/useTimeFilteredData';

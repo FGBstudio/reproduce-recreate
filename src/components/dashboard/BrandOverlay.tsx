@@ -5,6 +5,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip_REMOVE,
   Cell, ReferenceLine, BarChart, Bar, Legend
 } from "recharts";
+import { ZoomableChart } from "@/components/ui/ZoomableChart";
 import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList } from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 import { useLanguage } from "@/contexts/LanguageContext";

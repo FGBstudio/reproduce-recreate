@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip_REMOVE,
 } from 'recharts';
+import { ZoomableChart } from '@/components/ui/ZoomableChart';
 
 // Types matching DB schema
 interface Bill {
