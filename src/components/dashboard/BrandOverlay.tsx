@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip_REMOVE,
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   Cell, ReferenceLine, BarChart, Bar, Legend
 } from "recharts";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";

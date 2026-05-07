@@ -7,7 +7,7 @@ import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneU
 
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area, ReferenceArea, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend_REMOVE,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
