@@ -1811,23 +1811,17 @@ export type Database = {
       hardwares: {
         Row: {
           assigned_port: string | null
-          carrier_name: string | null
           category: string | null
           country: string | null
           created_at: string
-          delivery_person: string | null
           device_id: string
           dns1: string | null
           dns2: string | null
-          fulfillment_status:
-            | Database["public"]["Enums"]["hardware_fulfillment_status"]
-            | null
           gateway: string | null
           hardware_type: string | null
           id: string
           ip_address: string | null
           ip_configuration: string | null
-          logistics_details: string | null
           mac_address: string | null
           notes: string | null
           po: string | null
@@ -1837,35 +1831,25 @@ export type Database = {
           region: string | null
           shipment_date: string | null
           shipment_group_id: string | null
-          shipment_mode: string | null
-          shipped_by: string | null
-          shipping_cost: number | null
           shipping_currency: string | null
           site_id: string | null
           status: string | null
           subnet_mask: string | null
-          tracking_number: string | null
           updated_at: string
         }
         Insert: {
           assigned_port?: string | null
-          carrier_name?: string | null
           category?: string | null
           country?: string | null
           created_at?: string
-          delivery_person?: string | null
           device_id: string
           dns1?: string | null
           dns2?: string | null
-          fulfillment_status?:
-            | Database["public"]["Enums"]["hardware_fulfillment_status"]
-            | null
           gateway?: string | null
           hardware_type?: string | null
           id?: string
           ip_address?: string | null
           ip_configuration?: string | null
-          logistics_details?: string | null
           mac_address?: string | null
           notes?: string | null
           po?: string | null
@@ -1875,35 +1859,25 @@ export type Database = {
           region?: string | null
           shipment_date?: string | null
           shipment_group_id?: string | null
-          shipment_mode?: string | null
-          shipped_by?: string | null
-          shipping_cost?: number | null
           shipping_currency?: string | null
           site_id?: string | null
           status?: string | null
           subnet_mask?: string | null
-          tracking_number?: string | null
           updated_at?: string
         }
         Update: {
           assigned_port?: string | null
-          carrier_name?: string | null
           category?: string | null
           country?: string | null
           created_at?: string
-          delivery_person?: string | null
           device_id?: string
           dns1?: string | null
           dns2?: string | null
-          fulfillment_status?:
-            | Database["public"]["Enums"]["hardware_fulfillment_status"]
-            | null
           gateway?: string | null
           hardware_type?: string | null
           id?: string
           ip_address?: string | null
           ip_configuration?: string | null
-          logistics_details?: string | null
           mac_address?: string | null
           notes?: string | null
           po?: string | null
@@ -1913,14 +1887,10 @@ export type Database = {
           region?: string | null
           shipment_date?: string | null
           shipment_group_id?: string | null
-          shipment_mode?: string | null
-          shipped_by?: string | null
-          shipping_cost?: number | null
           shipping_currency?: string | null
           site_id?: string | null
           status?: string | null
           subnet_mask?: string | null
-          tracking_number?: string | null
           updated_at?: string
         }
         Relationships: [
