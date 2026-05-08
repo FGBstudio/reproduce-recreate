@@ -1,52 +1,56 @@
-# Grafici zoomabili e navigabili
+# Piano di correzione timezone per Shanghai, Taikoo Li Qiantan
 
-## Obiettivo
-Permettere all'utente di ingrandire qualsiasi grafico della dashboard (specialmente i più piccoli, come quelli dentro i widget Energy/Air/Water) per leggere meglio i dettagli, usando:
-- **Ctrl + rotellina mouse** → zoom in/out centrato sul punto puntato
-- **Click + drag orizzontale** → seleziona un intervallo X da ingrandire
-- **Doppio click** → reset allo zoom completo
-- **Pulsante "Espandi"** in alto a destra di ogni grafico → apre il grafico in un dialog full-screen, zoomabile anch'esso
+## Cosa ho verificato
 
-Su mobile (touch): pinch-to-zoom + pan a due dita, con stesso pulsante "Espandi" per il fullscreen.
+- I dati del sito `Shanghai, Taikoo Li Qiantan` esistono nel DB: circa 396k righe in `energy_telemetry`, con dati recenti fino all'8 maggio.
+- Il sito ha timezone corretta in tabella `sites`: `Asia/Shanghai`.
+- Il frontend sta già formattando le label usando `project.timezone`, quindi il problema non sembra essere solo un'etichetta frontend.
+- La distribuzione oraria del device `general` conferma il problema: con timezone `Asia/Shanghai`, il consumo scende intorno alle 13:00 locali e resta basso di sera/notte, cioè è disallineato rispetto all'orario reale del negozio.
+- Simulando uno shift di `+8h`, il pattern diventa coerente: consumo alto circa 08:00-20:00 Shanghai e basso di notte.
+- `Boucheron Shanghai Xintiandi` non va toccato: ha già un profilo coerente e non risulta nel log timezone fix.
 
-## Approccio tecnico
+## Causa probabile
 
-Recharts non supporta zoom/pan nativamente. La soluzione più pulita e compatibile con lo stack attuale è creare **un wrapper riusabile** attorno ai chart esistenti, senza cambiare libreria.
+Per questo sito specifico, i timestamp storici sembrano essere stati salvati come se l'ora locale Shanghai fosse già UTC, quindi il grafico poi aggiunge correttamente `Asia/Shanghai` e mostra tutto 8 ore avanti nel giorno locale.
 
-### Nuovo componente: `src/components/ui/ZoomableChart.tsx`
+Il fix precedente non è stato applicato a Taikoo Li Qiantan (`tz_fix_log` vuoto), e la funzione `_apply_tz_fix_device` attuale usa una trasformazione rischiosa/non reversibile per tutti i casi. Non voglio applicarla “alla cieca” ad altri siti.
 
-Wrapper che:
-1. Mantiene uno stato `xDomain` ([startIndex, endIndex] oppure [startValue, endValue]) e lo passa come `domain` agli `XAxis` figli tramite `React.cloneElement` o tramite render-prop `(domain) => <LineChart .../>`.
-2. Intercetta su un overlay `<div>`:
-   - `onWheel` con `e.ctrlKey` → calcola nuovo dominio (fattore 0.85 zoom-in / 1.15 zoom-out) centrato sulla posizione X del cursore (usando `chartRef` + bbox).
-   - `onMouseDown` + `onMouseMove` + `onMouseUp` → mostra un rettangolo di selezione semi-trasparente, al rilascio applica il dominio selezionato.
-   - `onDoubleClick` → reset.
-   - Touch events `onTouchStart/Move/End` con 2 dita → pinch (mobile).
-3. Mostra in alto a destra:
-   - Pulsante **Reset** (icona `RotateCcw`) visibile solo quando lo zoom è attivo
-   - Pulsante **Espandi** (icona `Maximize2`) → apre `<Dialog>` con lo stesso chart a tutta finestra
-4. Hint discreto "Ctrl+scroll per zoom" mostrato al primo hover (auto-nascosto dopo 3s, salvato in localStorage).
+## Intervento proposto
 
-### Integrazione
+1. Creare una nuova migrazione DB sicura e specifica per questo caso:
+   - nuova funzione `public._shift_energy_site_timestamps(p_site_id uuid, p_shift interval, p_fix_version text)`;
+   - applica uno shift esplicito ai timestamp (`ts + interval '8 hours'`) solo ai device del sito indicato;
+   - ricostruisce `energy_hourly`, `energy_daily` ed `energy_latest` per quei device;
+   - marca l'intervento in `tz_fix_log` con una versione nuova, ad esempio `shanghai_taikoo_plus_8h_v1`, così è idempotente.
 
-Sostituire i ChartContainer / ResponsiveContainer dei chart "piccoli" con `<ZoomableChart>` nei file:
-- `src/components/dashboard/ProjectDetail.tsx` (chart Energy, IAQ timeseries, etc.)
-- `src/components/dashboard/EnergyWeatherCorrelation.tsx`
-- `src/components/dashboard/BrandOverlay.tsx`
-- `src/components/dashboard/BillAnalysisModule.tsx`
+2. Applicare la correzione solo a:
+   - `Shanghai, Taikoo Li Qiantan`
+   - site UUID: `1338d4af-d6d8-4b7f-b030-02468c157818`
+   - shift: `+8 hours`
 
-Esclusi: `LEEDCertificationWidget` (radar/gauge — lo zoom non ha senso lì).
+3. Non toccare:
+   - `Boucheron Shanghai Xintiandi`;
+   - gli altri siti Shanghai;
+   - frontend, componenti grafici, ZoomableChart;
+   - timezone registrata nel sito (`Asia/Shanghai` resta corretta).
 
-Il wrapper è opt-in: passando `enableZoom={false}` torna al comportamento attuale, così i grafici di tipo "donut/radar/pie" non vengono toccati.
+4. Verificare subito dopo:
+   - `energy_telemetry`, `energy_hourly`, `energy_daily`, `energy_latest` hanno timestamp coerenti;
+   - la media oraria locale mostra basso consumo di notte e consumo più alto nelle ore di apertura;
+   - il sito continua ad avere dati nel periodo corrente.
 
-### Dipendenze
-Nessuna nuova libreria necessaria. Solo Recharts (già presente) + componenti shadcn (`Dialog`, `Button`, `Tooltip`) già nel progetto. Tutti i colori restano semantic tokens da `index.css`.
+## Rollback previsto
 
-## Cosa NON cambia
-- Logica dati, hooks, query Supabase: invariati.
-- Aspetto di default dei grafici (colori, font, assi): invariato a riposo.
-- Memoria progetto sui token di design rispettata.
+La funzione userà un `fix_version` dedicato. Se il risultato non fosse corretto, si potrà applicare l'inverso solo per quel sito:
 
-## Domande aperte (rispondi se vuoi cambiare qualcosa)
-- OK estendere lo zoom a **tutti** i timeseries chart, o vuoi limitarlo solo ai widget Energy?
-- Vuoi anche **pan orizzontale** (shift+drag) oltre allo zoom, o basta drag-to-zoom + reset?
+```sql
+SELECT public._shift_energy_site_timestamps(
+  '1338d4af-d6d8-4b7f-b030-02468c157818'::uuid,
+  interval '-8 hours',
+  'shanghai_taikoo_minus_8h_rollback_v1'
+);
+```
+
+## Nota importante
+
+Questo è un fix DB mirato al sito dove il dato è disallineato. Non userò una correzione globale per tutti i siti perché rischierebbe di rompere siti già coerenti come Boucheron Shanghai Xintiandi.
