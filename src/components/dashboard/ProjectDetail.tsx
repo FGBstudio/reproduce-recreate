@@ -646,18 +646,57 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     }
   );
 
-  const airLatestByMetric = useMemo(() => {
-    // average across selected devices
-    const out: Record<string, number> = {};
-    if (!airLatestResp?.data) return out;
+  // ---------------------------------------------------------------------------
+  // PERIOD-BASED AVERAGES (Calculated from timeseries data)
+  // ---------------------------------------------------------------------------
+  
+  // Averages for EACH device (Building Overview) - Period Aware
+  const devicePeriodAverages = useMemo(() => {
+    const out: Record<string, any> = {};
+    const points = airTimeseriesResp?.data;
+    if (!points || !Array.isArray(points)) return out;
 
-    const sum: Record<string, { total: number; count: number }> = {};
-    Object.values(airLatestResp.data).forEach((deviceMetrics) => {
-      deviceMetrics.forEach((m) => {
-        if (!sum[m.metric]) sum[m.metric] = { total: 0, count: 0 };
-        sum[m.metric].total += m.value;
-        sum[m.metric].count += 1;
+    // device_id -> metric -> { sum, count }
+    const agg: Record<string, Record<string, { sum: number; count: number }>> = {};
+
+    points.forEach((p) => {
+      const devId = p.device_id;
+      if (!agg[devId]) agg[devId] = {};
+      if (!agg[devId][p.metric]) agg[devId][p.metric] = { sum: 0, count: 0 };
+      
+      const val = Number(p.value_avg ?? p.value ?? 0);
+      if (Number.isFinite(val)) {
+        agg[devId][p.metric].sum += val;
+        agg[devId][p.metric].count += 1;
+      }
+    });
+
+    Object.entries(agg).forEach(([devId, metrics]) => {
+      out[devId] = {};
+      Object.entries(metrics).forEach(([metric, { sum, count }]) => {
+        out[devId][metric] = count > 0 ? sum / count : 0;
       });
+    });
+
+    return out;
+  }, [airTimeseriesResp]);
+
+  // Combined averages across ALL selected devices (Top KPIs) - Period Aware
+  const airPeriodAverages = useMemo(() => {
+    const out: Record<string, number> = {};
+    const points = airTimeseriesResp?.data;
+    if (!points || !Array.isArray(points)) return out;
+
+    // metric -> { sum, count }
+    const sum: Record<string, { total: number; count: number }> = {};
+    
+    points.forEach((p) => {
+      const val = Number(p.value_avg ?? p.value ?? 0);
+      if (Number.isFinite(val)) {
+        if (!sum[p.metric]) sum[p.metric] = { total: 0, count: 0 };
+        sum[p.metric].total += val;
+        sum[p.metric].count += 1;
+      }
     });
 
     Object.entries(sum).forEach(([metric, { total, count }]) => {
@@ -665,10 +704,48 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     });
 
     return out;
-  }, [airLatestResp]);
+  }, [airTimeseriesResp]);
 
-  // Averages for EACH device (Building Overview)
-  const deviceAverages = useMemo(() => {
+  // Logic to switch between Period and Latest (Latest only used for Today or when timeseries is empty)
+  const isToday = timePeriod === 'today';
+  
+  const activeAirMetrics = useMemo(() => {
+    // If we have period data, use it. Fallback to latest if period is empty.
+    const hasPeriodData = Object.keys(airPeriodAverages).length > 0;
+    
+    // For anything other than Today, prefer Period Averages
+    if (!isToday && hasPeriodData) {
+      return airPeriodAverages;
+    }
+    
+    // Fallback to latest
+    const latestOut: Record<string, number> = {};
+    if (airLatestResp?.data) {
+      const sum: Record<string, { total: number; count: number }> = {};
+      Object.values(airLatestResp.data).forEach((deviceMetrics) => {
+        deviceMetrics.forEach((m) => {
+          if (!sum[m.metric]) sum[m.metric] = { total: 0, count: 0 };
+          sum[m.metric].total += m.value;
+          sum[m.metric].count += 1;
+        });
+      });
+      Object.entries(sum).forEach(([metric, { total, count }]) => {
+        latestOut[metric] = count ? total / count : 0;
+      });
+    }
+
+    // If "Today" but we have some period data, maybe we want average? 
+    // Usually user wants latest for today, so we keep latestOut.
+    return latestOut;
+  }, [airPeriodAverages, airLatestResp, isToday]);
+
+  const activeDeviceAverages = useMemo(() => {
+    const hasPeriodData = Object.keys(devicePeriodAverages).length > 0;
+    if (!isToday && hasPeriodData) {
+      return devicePeriodAverages;
+    }
+
+    // Latest fallback
     const out: Record<string, any> = {};
     if (!airLatestResp?.data) return out;
     Object.entries(airLatestResp.data).forEach(([devId, sensors]) => {
@@ -678,7 +755,42 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       });
     });
     return out;
-  }, [airLatestResp]);
+  }, [devicePeriodAverages, airLatestResp, isToday]);
+
+  // ENERGY PERIOD AVERAGES for Overview Section
+  const energyPeriodAverages = useMemo(() => {
+    const data = energyTimeseriesResp?.data;
+    if (!data || !Array.isArray(data)) return undefined;
+
+    let totalGeneral = 0; let totalHVAC = 0; let totalLighting = 0; let totalPlugs = 0;
+    let countGen = 0; let countHVAC = 0; let countLighting = 0; let countPlugs = 0;
+
+    data.forEach(d => {
+      // For power (kW), use value_avg
+      if (d.metric !== 'energy.power_kw' && d.metric !== 'energy.active_power' && d.metric !== 'power') return;
+      
+      const info = deviceMap.get(d.device_id);
+      if (!info) return;
+
+      const val = Number(d.value_avg ?? d.value ?? 0);
+      if (!Number.isFinite(val) || val <= 0) return;
+
+      switch (info.category) {
+        case 'general': totalGeneral += val; countGen++; break;
+        case 'hvac': totalHVAC += val; countHVAC++; break;
+        case 'lighting': totalLighting += val; countLighting++; break;
+        case 'plugs': totalPlugs += val; countPlugs++; break;
+      }
+    });
+
+    return {
+      totalGeneral: countGen > 0 ? totalGeneral / countGen : undefined,
+      hvac: countHVAC > 0 ? totalHVAC / countHVAC : undefined,
+      lighting: countLighting > 0 ? totalLighting / countLighting : undefined,
+      plugs: countPlugs > 0 ? totalPlugs / countPlugs : undefined,
+      isRealData: countGen > 0 || countHVAC > 0 || countLighting > 0 || countPlugs > 0,
+    };
+  }, [energyTimeseriesResp, deviceMap]);
 
   // Heatmap logic for Air Dashboard
   const airHeatmapGrid = useMemo(() => {
@@ -2851,6 +2963,10 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                 <OverviewSection 
                   project={project} 
                   moduleConfig={resolvedModuleConfig} 
+                  timePeriod={timePeriod}
+                  dateRange={dateRange}
+                  airAverages={activeAirMetrics}
+                  energyAverages={energyPeriodAverages}
                   onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
                 />
               </div>
@@ -3781,9 +3897,9 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     {/* Air Quality Overview Card */}
                     {(() => {
                       // 1. Calculate base quality from metrics if available
-                      const co2 = airLatestByMetric['iaq.co2'] ?? project.data.co2 ?? 0;
-                      const voc = airLatestByMetric['iaq.voc'] ?? 0;
-                      const pm25 = airLatestByMetric['iaq.pm25'] ?? 0;
+                      const co2 = activeAirMetrics['iaq.co2'] ?? project.data.co2 ?? 0;
+                      const voc = activeAirMetrics['iaq.voc'] ?? 0;
+                      const pm25 = activeAirMetrics['iaq.pm25'] ?? 0;
                       
                       let dynamicAq = 'EXCELLENT';
                       if (co2 > 1000 || voc > 500 || pm25 > 25) {
@@ -3812,8 +3928,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
                             <div className="flex items-center gap-4">
                               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(dynamicAq)} ${getAqColor(dynamicAq)} text-[10px] font-semibold tracking-wider uppercase`}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                                LIVE
+                                <span className={`w-1.5 h-1.5 rounded-full bg-current ${isToday ? 'animate-pulse' : ''}`} />
+                                {isToday ? 'LIVE' : periodLabel}
                               </div>
                               <div>
                                 <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(dynamicAq)}`}>
@@ -3837,56 +3953,56 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                               <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center mb-2">
                                 <Wind className="w-3.5 h-3.5 text-sky-500" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{Math.round(airLatestByMetric["iaq.co2"] ?? project.data.co2)}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{Math.round(activeAirMetrics["iaq.co2"] ?? project.data.co2)}</div>
                               <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO₂</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
                                 <Activity className="w-3.5 h-3.5 text-purple-500" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.voc"] == null ? "—" : Math.round(airLatestByMetric["iaq.voc"])}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.voc"] == null ? "—" : Math.round(activeAirMetrics["iaq.voc"])}</div>
                               <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb TVOC</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center mb-2">
                                 <Thermometer className="w-3.5 h-3.5 text-orange-500" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.temperature"] == null ? "—" : `${Math.round(airLatestByMetric["env.temperature"])}` }°</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["env.temperature"] == null ? "—" : `${Math.round(activeAirMetrics["env.temperature"])}` }°</div>
                               <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">°C Temp</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center mb-2">
                                 <Droplets className="w-3.5 h-3.5 text-cyan-500" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["env.humidity"] == null ? "—" : Math.round(airLatestByMetric["env.humidity"])}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["env.humidity"] == null ? "—" : Math.round(activeAirMetrics["env.humidity"])}</div>
                               <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">% Humidity</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
                                 <Cloud className="w-3.5 h-3.5 text-amber-600" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm25"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm25"])}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm25"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm25"])}</div>
                               <div className="text-[9px] text-gray-400 tracking-wider mt-0.5">µg/m³ PM2.5</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
                                 <Cloud className="w-3.5 h-3.5 text-amber-800" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.pm10"] == null ? "—" : Math.round(airLatestByMetric["iaq.pm10"])}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm10"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm10"])}</div>
                               <div className="text-[9px] text-gray-400 tracking-wider mt-0.5">µg/m³ PM10</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center mb-2">
                                 <Gauge className="w-4 h-4 text-red-500" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.co"] == null ? "—" : airLatestByMetric["iaq.co"].toFixed(2)}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.co"] == null ? "—" : activeAirMetrics["iaq.co"].toFixed(2)}</div>
                               <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center mb-2">
                                 <Sparkles className="w-4 h-4 text-indigo-500" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{airLatestByMetric["iaq.o3"] == null ? "—" : Math.round(airLatestByMetric["iaq.o3"])}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.o3"] == null ? "—" : Math.round(activeAirMetrics["iaq.o3"])}</div>
                               <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb O₃</div>
                             </div>
                           </div>
@@ -3921,7 +4037,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   <div className="mt-5">
                     <BuildingOverview 
                       selectedAirDevices={selectedAirDevices}
-                      deviceAverages={deviceAverages}
+                      deviceAverages={activeDeviceAverages}
                       airDeviceLabelById={airDeviceLabelById}
                       airCardClass={airCardClass}
                       t={t}
