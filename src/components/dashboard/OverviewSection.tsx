@@ -27,6 +27,10 @@ interface OverviewSectionProps {
     air: { enabled: boolean };
     water: { enabled: boolean };
   };
+  timePeriod: string;
+  dateRange?: { from: Date; to: Date };
+  airAverages?: Record<string, number>;
+  energyAverages?: any;
   onNavigate?: (tab: string) => void;
 }
 
@@ -115,7 +119,7 @@ const MODULE_WEIGHTS = {
 };
 
 // Overall Performance Card - Full width, prominent
-const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData, alertStatus, liveData, onActivateModule }: {
+const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData, alertStatus, liveData, timePeriod, periodLabel, onActivateModule }: {
   status: ModuleStatus;
   moduleConfig: { energy: { enabled: boolean }; air: { enabled: boolean }; water: { enabled: boolean } };
   energyScore: number;
@@ -124,9 +128,12 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
   isRealData: boolean;
   alertStatus: { alerts: any[]; criticalCount: number; warningCount: number; hasAlerts: boolean };
   liveData: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
+  timePeriod: string;
+  periodLabel: string;
   onActivateModule?: (module: 'energy' | 'air' | 'water') => void;
 }) => {
   const { t } = useLanguage();
+  const isToday = timePeriod === 'today';
   return (
     <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
       <CardContent className="p-4 md:p-6">
@@ -139,7 +146,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-                  {status.isLive ? "LIVE" : "Offline"}
+                  {isToday ? (status.isLive ? "LIVE" : "Offline") : periodLabel}
                 </Badge>
                 <DataSourceBadge isRealData={isRealData} size="sm" />
               </div>
@@ -248,14 +255,17 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
 };
 
 // Energy Card with detailed readings - connected to real-time data
-const EnergyCard = ({ status, enabled, onClick, powerData, threshold }: {
+const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod, periodLabel }: {
   status: ModuleStatus;
   enabled: boolean;
   onClick?: () => void;
-  powerData?: EnergyPowerBreakdown;
+  powerData?: any;
   threshold?: number;
+  timePeriod: string;
+  periodLabel: string;
 }) => {
   const { t } = useLanguage();
+  const isToday = timePeriod === 'today';
   const readings = useMemo(() => {
     if (!powerData?.isRealData && !powerData?.isStale) {
       return {
@@ -316,7 +326,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold }: {
               <Zap className="w-5 h-5" />
             </div>
             <Badge className={`${isStale ? 'bg-amber-500 text-white' : getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-              {isStale ? 'STALE' : 'LIVE'}
+              {isToday ? (isStale ? 'STALE' : 'LIVE') : periodLabel}
             </Badge>
           </div>
           <div className="text-right">
@@ -338,7 +348,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold }: {
         <div className="bg-white/60 rounded-lg p-3 mb-3">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-lg text-gray-600 font-medium">{t('overview.current_consumption')}</span>
+              <span className="text-lg text-gray-600 font-medium">{isToday ? t('overview.current_consumption') : t('overview.avg_consumption')}</span>
               {threshold && (
                 <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                   {t('overview.limit')}: {threshold.toFixed(1)} kW
@@ -356,7 +366,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold }: {
 
         {/* Detailed readings */}
         <div className="bg-white/40 rounded-lg p-3">
-          <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">{t('overview.latest_readings')}</div>
+          <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">{isToday ? t('overview.latest_readings') : t('overview.avg_readings')}</div>
           <ReadingItem
             icon={<Fan className="w-3.5 h-3.5" />}
             label="HVAC"
@@ -392,15 +402,18 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold }: {
 };
 
 // Air Quality Card with all monitored parameters - connected to real-time data
-const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: {
+const AirCard = ({ status, enabled, project, onClick, liveData, alerts, timePeriod, periodLabel }: {
   status: ModuleStatus;
   enabled: boolean;
   project: Project;
   onClick?: () => void;
   liveData?: { metrics: Record<string, number>; isLoading: boolean; isRealData: boolean };
   alerts?: ThresholdAlert[];
+  timePeriod: string;
+  periodLabel: string;
 }) => {
   const { t } = useLanguage();
+  const isToday = timePeriod === 'today';
   // Use real-time data if available with threshold-based status
   const readings = useMemo(() => {
     const isReal = !!liveData?.isRealData;
@@ -456,7 +469,7 @@ const AirCard = ({ status, enabled, project, onClick, liveData, alerts }: {
               <Wind className="w-5 h-5" />
             </div>
             <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-              LIVE
+              {isToday ? 'LIVE' : periodLabel}
             </Badge>
           </div>
           <div className="text-right">
@@ -629,26 +642,50 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
   );
 };
 
-export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewSectionProps) => {
-  const { t } = useLanguage();
-  // Fetch real-time telemetry data for this site
+export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate }: OverviewSectionProps) => {
+  const { t, language } = useLanguage();
+  // Fetch real-time telemetry data for this site (still needed for Today/Alerts)
   const liveData = useRealTimeLatestData(project.siteId);
 
-  // Fetch energy power by category from energy_latest
-  const powerData = useEnergyPowerByCategory(project.siteId);
+  // Fetch energy power by category from energy_latest (still needed for Today)
+  const powerLatest = useEnergyPowerByCategory(project.siteId);
+
+  const isToday = timePeriod === 'today';
+  
+  // Use period averages if not today
+  const activeAirMetrics = isToday ? liveData.metrics : (airAverages || liveData.metrics);
+  const activePowerData = isToday ? powerLatest : (energyAverages || powerLatest);
+
+  // Get period label for badges
+  const periodLabel = useMemo(() => {
+    // Standard periods
+    const labels: Record<string, string> = {
+      today: language === 'it' ? 'Oggi' : 'Today',
+      week: language === 'it' ? 'Settimana' : 'Week',
+      month: language === 'it' ? 'Mese' : 'Month',
+      year: language === 'it' ? 'Anno' : 'Year',
+    };
+    if (labels[timePeriod]) return labels[timePeriod];
+    
+    // Custom range
+    if (timePeriod === 'custom' && dateRange) {
+      return `${dateRange.from.toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { day: '2-digit', month: '2-digit' })} - ${dateRange.to.toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { day: '2-digit', month: '2-digit' })}`;
+    }
+    return timePeriod;
+  }, [timePeriod, dateRange, language]);
 
   // Fetch site thresholds and evaluate alerts
   const { thresholds } = useSiteThresholds(project.siteId);
   const staleMsg = t('overview.stale_data');
   // Combine staleness from energy AND general telemetry
-  const isAnythingStale = powerData.isStale || liveData.isStale;
-  const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics, { isStale: isAnythingStale, staleMessage: staleMsg });
+  const isAnythingStale = activePowerData.isStale || liveData.isStale;
+  const alertStatus = useThresholdAlerts(project.siteId, activeAirMetrics, { isStale: isAnythingStale, staleMessage: staleMsg });
 
   // Calculate status for each module based on real-time or project data
   const energyStatus = useMemo<ModuleStatus>(() => {
-    // Use power data from energy_latest
-    const powerKw = powerData.totalGeneral;
-    if (typeof powerKw !== 'number' || !powerData.isRealData) {
+    // Use power data
+    const powerKw = activePowerData.totalGeneral;
+    if (typeof powerKw !== 'number' || !activePowerData.isRealData) {
       return { score: 0, level: getStatusLevel(0), isLive: false };
     }
 
@@ -657,13 +694,13 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
     return {
       score,
       level: getStatusLevel(score),
-      isLive: !powerData.isStale,
-      lastUpdate: powerData.lastUpdate,
+      isLive: !activePowerData.isStale,
+      lastUpdate: activePowerData.lastUpdate,
     };
-  }, [powerData]);
+  }, [activePowerData]);
 
   const airStatus = useMemo<ModuleStatus>(() => {
-    const co2 = liveData.isRealData ? liveData.metrics['iaq.co2'] : undefined;
+    const co2 = activeAirMetrics['iaq.co2'];
     if (typeof co2 !== 'number') {
       return { score: 0, level: getStatusLevel(0), isLive: false };
     }
@@ -671,7 +708,7 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
     const co2Score = Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100));
     const score = Math.round(co2Score);
     return { score, level: getStatusLevel(score), isLive: true };
-  }, [liveData]);
+  }, [activeAirMetrics]);
 
   const waterStatus = useMemo<ModuleStatus>(() => {
     const flowRate = liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined;
@@ -727,9 +764,12 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           energyScore={energyStatus.score}
           airScore={airStatus.score}
           waterScore={waterStatus.score}
-          isRealData={liveData.isRealData || powerData.isRealData}
+          isRealData={liveData.isRealData || activePowerData.isRealData}
           alertStatus={alertStatus}
           liveData={liveData}
+          timePeriod={timePeriod}
+          periodLabel={periodLabel}
+          onActivateModule={(module) => onNavigate && onNavigate(module)}
         />
 
         {/* Three detail cards below */}
@@ -737,16 +777,20 @@ export const OverviewSection = ({ project, moduleConfig, onNavigate }: OverviewS
           status={energyStatus}
           enabled={moduleConfig.energy.enabled}
           onClick={moduleConfig.energy.enabled ? () => handleCardClick("energy") : undefined}
-          powerData={powerData}
+          powerData={activePowerData}
           threshold={thresholds?.energy_power_limit_kw}
+          timePeriod={timePeriod}
+          periodLabel={periodLabel}
         />
         <AirCard
           status={airStatus}
           enabled={moduleConfig.air.enabled}
           project={project}
           onClick={moduleConfig.air.enabled ? () => handleCardClick("air") : undefined}
-          liveData={liveData}
+          liveData={{ metrics: activeAirMetrics, isLoading: liveData.isLoading, isRealData: true }}
           alerts={alertStatus.alerts}
+          timePeriod={timePeriod}
+          periodLabel={periodLabel}
         />
         <WaterCard
           status={waterStatus}
