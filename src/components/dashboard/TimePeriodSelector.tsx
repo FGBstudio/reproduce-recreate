@@ -45,7 +45,12 @@ export const TimePeriodSelector = ({
 
   const handlePeriodChange = (newPeriod: TimePeriod) => {
     if (newPeriod === "custom") {
-      setIsCalendarOpen(true);
+      // Small delay to allow the Select dropdown to close before opening the popover
+      // to avoid focus conflicts that cause the popover to close immediately.
+      setTimeout(() => {
+        setTempRange({ from: dateRange?.from, to: dateRange?.to });
+        setIsCalendarOpen(true);
+      }, 100);
     } else {
       onChange(newPeriod);
     }
@@ -97,7 +102,6 @@ export const TimePeriodSelector = ({
               "h-9 px-3 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-700",
               value === "custom" ? "border-fgb-secondary/50" : ""
             )}
-            onClick={() => setIsCalendarOpen(true)}
           >
             <CalendarIcon className="w-4 h-4 mr-2 text-gray-500" />
             {value === "custom" && dateRange ? (
