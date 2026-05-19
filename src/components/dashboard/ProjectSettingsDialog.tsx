@@ -560,7 +560,7 @@ export function ProjectSettingsDialog({
                 {/* Modulo Formaldeide */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="air_hcho_warning_ugm3">Formaldeide Warning (µg/m³)</Label>
+                    <Label htmlFor="air_hcho_warning_ugm3">HCHO Warning (µg/m³)</Label>
                     <Input
                       id="air_hcho_warning_ugm3"
                       type="number"
@@ -570,7 +570,7 @@ export function ProjectSettingsDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="air_hcho_critical_ugm3">Formaldeide Critical (µg/m³)</Label>
+                    <Label htmlFor="air_hcho_critical_ugm3">HCHO Critical (µg/m³)</Label>
                     <Input
                       id="air_hcho_critical_ugm3"
                       type="number"
