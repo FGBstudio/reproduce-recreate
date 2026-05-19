@@ -28,6 +28,11 @@ export interface SiteThresholds {
   air_pm10_warning_ugm3: number | null;
   air_co_warning_ppm: number | null;
   air_o3_warning_ppb: number | null;
+  // Nuovi moduli richiesti: TVOC e Formaldeide in µg/m³
+  air_tvoc_warning_ugm3: number | null;
+  air_tvoc_critical_ugm3: number | null;
+  air_hcho_warning_ugm3: number | null;
+  air_hcho_critical_ugm3: number | null;
 }
 
 const defaultThresholds: Omit<SiteThresholds, 'site_id'> = {
@@ -50,6 +55,11 @@ const defaultThresholds: Omit<SiteThresholds, 'site_id'> = {
   air_pm10_warning_ugm3: 25,
   air_co_warning_ppm: 4,
   air_o3_warning_ppb: 50,
+  // Valori di default per i nuovi campi (puoi aggiustarli in base alle necessità)
+  air_tvoc_warning_ugm3: 500,
+  air_tvoc_critical_ugm3: 1000,
+  air_hcho_warning_ugm3: 50,
+  air_hcho_critical_ugm3: 100,
 };
 
 export function useSiteThresholds(siteId: string | undefined) {
