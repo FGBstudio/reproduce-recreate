@@ -58,6 +58,8 @@ const i18n = {
     saveError: 'Error saving settings',
     tempError: 'Minimum temperature must be lower than maximum',
     co2Error: 'Warning threshold must be lower than critical threshold',
+    tvocError: 'TVOC warning threshold must be lower than critical threshold',
+    hchoError: 'Formaldehyde warning threshold must be lower than critical threshold',
   },
   it: {
     title: 'Impostazioni Progetto',
@@ -90,6 +92,8 @@ const i18n = {
     saveError: 'Errore durante il salvataggio',
     tempError: 'La temperatura minima deve essere inferiore alla massima',
     co2Error: 'La soglia warning deve essere inferiore alla soglia critical',
+    tvocError: 'La soglia warning del TVOC deve essere inferiore alla critical',
+    hchoError: 'La soglia warning della Formaldeide deve essere inferiore alla critical',
   },
   fr: {
     title: 'Paramètres du Projet',
@@ -122,6 +126,8 @@ const i18n = {
     saveError: 'Erreur lors de l\'enregistrement',
     tempError: 'La température minimale doit être inférieure à la maximale',
     co2Error: 'Le seuil d\'avertissement doit être inférieur au seuil critique',
+    tvocError: 'Le seuil d\'avertissement COV doit être inférieur au seuil critique',
+    hchoError: 'Le seuil d\'avertissement formaldéhyde doit être inférieur au seuil critique',
   },
   es: {
     title: 'Ajustes del Proyecto',
@@ -154,6 +160,8 @@ const i18n = {
     saveError: 'Error al guardar los ajustes',
     tempError: 'La temperatura mínima debe ser inferior a la máxima',
     co2Error: 'El umbral de advertencia debe ser inferior al umbral crítico',
+    tvocError: 'El umbral de advertencia de TVOC debe ser inferior al crítico',
+    hchoError: 'El umbral de advertencia de formaldehído debe ser inferior al crítico',
   },
   zh: {
     title: '项目设置',
@@ -186,6 +194,8 @@ const i18n = {
     saveError: '保存设置时出错',
     tempError: '最低温度必须低于最高温度',
     co2Error: '警告阈值必须低于关键阈值',
+    tvocError: 'TVOC 警告阈值必须低于关键阈值',
+    hchoError: '甲醛警告阈值必须低于关键阈值',
   },
 };
 
@@ -203,6 +213,10 @@ function createSchema(t: typeof i18n.en) {
     air_humidity_max_pct: z.number().min(0).max(100).nullable(),
     air_co2_warning_ppm: z.number().positive().max(5000).nullable(),
     air_co2_critical_ppm: z.number().positive().max(10000).nullable(),
+    air_tvoc_warning_ugm3: z.number().positive().nullable(),
+    air_tvoc_critical_ugm3: z.number().positive().nullable(),
+    air_hcho_warning_ugm3: z.number().positive().nullable(),
+    air_hcho_critical_ugm3: z.number().positive().nullable(),
     water_leak_threshold_lh: z.number().positive().nullable(),
     water_daily_budget_liters: z.number().positive().nullable(),
   }).refine((data) => {
@@ -221,6 +235,22 @@ function createSchema(t: typeof i18n.en) {
   }, {
     message: t.co2Error,
     path: ['air_co2_warning_ppm'],
+  }).refine((data) => {
+    if (data.air_tvoc_warning_ugm3 !== null && data.air_tvoc_critical_ugm3 !== null) {
+      return data.air_tvoc_warning_ugm3 < data.air_tvoc_critical_ugm3;
+    }
+    return true;
+  }, {
+    message: t.tvocError,
+    path: ['air_tvoc_warning_ugm3'],
+  }).refine((data) => {
+    if (data.air_hcho_warning_ugm3 !== null && data.air_hcho_critical_ugm3 !== null) {
+      return data.air_hcho_warning_ugm3 < data.air_hcho_critical_ugm3;
+    }
+    return true;
+  }, {
+    message: t.hchoError,
+    path: ['air_hcho_warning_ugm3'],
   });
 }
 
@@ -256,6 +286,10 @@ export function ProjectSettingsDialog({
       air_humidity_max_pct: 60,
       air_co2_warning_ppm: 1000,
       air_co2_critical_ppm: 1500,
+      air_tvoc_warning_ugm3: 500,
+      air_tvoc_critical_ugm3: 1000,
+      air_hcho_warning_ugm3: 50,
+      air_hcho_critical_ugm3: 100,
       water_leak_threshold_lh: null,
       water_daily_budget_liters: null,
     },
@@ -275,6 +309,10 @@ export function ProjectSettingsDialog({
         air_humidity_max_pct: thresholds.air_humidity_max_pct,
         air_co2_warning_ppm: thresholds.air_co2_warning_ppm,
         air_co2_critical_ppm: thresholds.air_co2_critical_ppm,
+        air_tvoc_warning_ugm3: thresholds.air_tvoc_warning_ugm3,
+        air_tvoc_critical_ugm3: thresholds.air_tvoc_critical_ugm3,
+        air_hcho_warning_ugm3: thresholds.air_hcho_warning_ugm3,
+        air_hcho_critical_ugm3: thresholds.air_hcho_critical_ugm3,
         water_leak_threshold_lh: thresholds.water_leak_threshold_lh,
         water_daily_budget_liters: thresholds.water_daily_budget_liters,
       });
@@ -487,6 +525,64 @@ export function ProjectSettingsDialog({
                 {form.formState.errors.air_co2_warning_ppm && (
                   <p className="text-xs text-destructive">
                     {form.formState.errors.air_co2_warning_ppm.message}
+                  </p>
+                )}
+
+                {/* Modulo TVOC */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="air_tvoc_warning_ugm3">TVOC Warning (µg/m³)</Label>
+                    <Input
+                      id="air_tvoc_warning_ugm3"
+                      type="number"
+                      step="10"
+                      placeholder="500"
+                      {...form.register('air_tvoc_warning_ugm3', { setValueAs: parseNumber })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="air_tvoc_critical_ugm3">TVOC Critical (µg/m³)</Label>
+                    <Input
+                      id="air_tvoc_critical_ugm3"
+                      type="number"
+                      step="10"
+                      placeholder="1000"
+                      {...form.register('air_tvoc_critical_ugm3', { setValueAs: parseNumber })}
+                    />
+                  </div>
+                </div>
+                {form.formState.errors.air_tvoc_warning_ugm3 && (
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.air_tvoc_warning_ugm3.message}
+                  </p>
+                )}
+
+                {/* Modulo Formaldeide */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="air_hcho_warning_ugm3">Formaldeide Warning (µg/m³)</Label>
+                    <Input
+                      id="air_hcho_warning_ugm3"
+                      type="number"
+                      step="5"
+                      placeholder="50"
+                      {...form.register('air_hcho_warning_ugm3', { setValueAs: parseNumber })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="air_hcho_critical_ugm3">Formaldeide Critical (µg/m³)</Label>
+                    <Input
+                      id="air_hcho_critical_ugm3"
+                      type="number"
+                      step="5"
+                      placeholder="100"
+                      {...form.register('air_hcho_critical_ugm3', { setValueAs: parseNumber })}
+                    />
+                  </div>
+                </div>
+                {form.formState.errors.air_hcho_warning_ugm3 && (
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.air_hcho_warning_ugm3.message}
                   </p>
                 )}
               </TabsContent>
