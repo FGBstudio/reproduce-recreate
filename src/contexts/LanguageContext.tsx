@@ -50,7 +50,9 @@ const translations: Record<string, Record<Language, string>> = {
   'overview.active_alerts': { en: 'Active Alerts', it: 'Alert Attivi', fr: 'Alertes actives', es: 'Alertas activas', zh: '活跃警报' },
   'overview.disabled': { en: 'Disabled', it: 'Disabilitato', fr: 'Désactivé', es: 'Desactivado', zh: '已禁用' },
   'overview.current_consumption': { en: 'Current Consumption', it: 'Consumo Attuale', fr: 'Consommation actuelle', es: 'Consumo actual', zh: '当前消耗' },
+  'overview.avg_consumption': { en: 'Power consumption', it: 'Consumo di potenza', fr: 'Consommation de puissance', es: 'Consumo de potencia', zh: '功率消耗' },
   'overview.latest_readings': { en: 'Latest Readings', it: 'Ultime Rilevazioni', fr: 'Dernières mesures', es: 'Últimas lecturas', zh: '最新读数' },
+  'overview.avg_readings': { en: 'Average Readings', it: 'Letture Medie', fr: 'Moyennes des relevés', es: 'Lecturas promedio', zh: '平均读数' },
   'overview.stale_data': { en: 'Stale data (> 2 days)', it: 'Dati non aggiornati (> 2 giorni)', fr: 'Données obsolètes (> 2 jours)', es: 'Datos desactualizados (> 2 días)', zh: '数据过期（> 2天）' },
   'overview.limit': { 
     en: 'Limit set by user', 
