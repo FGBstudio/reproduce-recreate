@@ -228,6 +228,15 @@ const translations: Record<string, Record<Language, string>> = {
   'pd.avg_power_kw': { en: 'Average Power (kW)', it: 'Potenza Media (kW)', fr: 'Puissance moyenne (kW)', es: 'Potencia media (kW)', zh: '平均功率 (kW)' },
   'pd.categories': { en: 'Categories', it: 'Categorie', fr: 'Catégories', es: 'Categorías', zh: '类别' },
   'pd.devices': { en: 'Devices', it: 'Dispositivi', fr: 'Appareils', es: 'Dispositivos', zh: '设备' },
+  'pd.virtual_split': { en: 'Simulate breakdown', it: 'Simula scomposizione', fr: 'Simuler la division', es: 'Simular división', zh: '模拟分解' },
+  'pd.virtual_split_tooltip': {
+    en: 'Generate building profile sub-metering simulation based on climate zone & typology',
+    it: 'Genera simulazione di sotto-misurazione basata su zona climatica e tipologia',
+    fr: 'Générer une simulation de sous-comptage basée sur la zone climatique et la typologie',
+    es: 'Generar simulación de submedición basada en zona climática y tipología',
+    zh: '根据气候区和建筑类型生成分项计量虚拟拆分模拟'
+  },
+  'pd.virtual_split_info': { en: 'Simulated Splits', it: 'Suddivisioni Simulate', fr: 'Divisions simulées', es: 'Divisiones simuladas', zh: '模拟拆分' },
   'pd.energy_breakdown': { en: 'Energy consumption breakdown', it: 'Distribuzione consumi energetici', fr: 'Répartition de la consommation énergétique', es: 'Desglose de consumo energético', zh: '能耗分类明细' },
   'pd.total_kwh': { en: 'Total kWh', it: 'kWh Totali', fr: 'kWh totaux', es: 'kWh totales', zh: '总 kWh' },
   'pd.energy_density': { en: 'Energy Density', it: 'Densità Energetica', fr: 'Densité énergétique', es: 'Densidad energética', zh: '能量密度' },
