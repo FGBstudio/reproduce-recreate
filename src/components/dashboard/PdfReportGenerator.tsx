@@ -51,6 +51,11 @@ interface GeneratePdfOptions {
   includeAiDiagnosis?: boolean;
   onProgress?: (message: string) => void;
   language?: ReportLanguage;
+  precalculatedTotals?: {
+    totalEnergyKwh?: number;
+    totalCostEur?: number;
+    totalCo2Kg?: number;
+  };
 }
 
 // --- COLORS ---
@@ -191,6 +196,7 @@ export const generatePdfReport = async ({
   includeAiDiagnosis = true,
   onProgress,
   language = 'en',
+  precalculatedTotals,
 }: GeneratePdfOptions) => {
   const t = getTranslations(language);
   const dateLocale = await getDateLocale(language);
@@ -251,19 +257,25 @@ export const generatePdfReport = async ({
     moduleConfig.air.enabled && chartRefs?.airQualityChart ? captureChartAsImage(chartRefs.airQualityChart) : null,
   ]);
 
+  // --- COMPUTED METRICS ---
+  const totalEnergyKwh = precalculatedTotals?.totalEnergyKwh !== undefined
+    ? precalculatedTotals.totalEnergyKwh
+    : (moduleConfig.energy.enabled
+        ? data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0) || (project.data.total * 30)
+        : 0);
+  const totalCo2Kg = precalculatedTotals?.totalCo2Kg !== undefined
+    ? precalculatedTotals.totalCo2Kg
+    : totalEnergyKwh * CO2_EMISSION_FACTOR_KG_KWH;
+  const totalCostEur = precalculatedTotals?.totalCostEur !== undefined
+    ? precalculatedTotals.totalCostEur
+    : totalEnergyKwh * energyPrice;
+
   // --- 3. AI DIAGNOSIS (parallel with chart capture if possible) ---
   let aiDiagnosis: string | null = null;
   if (includeAiDiagnosis) {
     onProgress?.(t.progress.generatingAiDiagnosis);
-    aiDiagnosis = await generateAiDiagnosis(project, periodLabel, data, moduleConfig, language);
+    aiDiagnosis = await generateAiDiagnosis(project, periodLabel, data, moduleConfig, language, totalEnergyKwh);
   }
-
-  // --- COMPUTED METRICS ---
-  const totalEnergyKwh = moduleConfig.energy.enabled
-    ? data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh'), 0) || (project.data.total * 30)
-    : 0;
-  const totalCo2Kg = totalEnergyKwh * CO2_EMISSION_FACTOR_KG_KWH;
-  const totalCostEur = totalEnergyKwh * energyPrice;
 
   // --- LAYOUT HELPERS ---
   const addPage = () => { doc.addPage(); yPos = margin; };
@@ -489,7 +501,7 @@ export const generatePdfReport = async ({
     );
     drawKpiMacroBlock(
       margin + 2 * (blockW + 5), yPos, blockW, blockH,
-      isIt ? 'Emissioni CO₂eq' : 'CO₂eq Emissions',
+      isIt ? 'Emissioni CO2eq' : 'CO2eq Emissions',
       fmtNum(totalCo2Kg / 1000, 2),
       isIt ? 'ton' : 't',
       null, null,
@@ -552,8 +564,8 @@ export const generatePdfReport = async ({
       doc.setFont("FuturaLT", "normal");
       doc.setFontSize(8);
       const correlationText = isIt
-        ? `Consumo: ${fmtNum(totalEnergyKwh, 0)} kWh × EF ${CO2_EMISSION_FACTOR_KG_KWH} kg/kWh = ${fmtNum(totalCo2Kg, 1)} kg CO₂eq (${fmtNum(totalCo2Kg / 1000, 2)} tonnellate)`
-        : `Consumption: ${fmtNum(totalEnergyKwh, 0)} kWh × EF ${CO2_EMISSION_FACTOR_KG_KWH} kg/kWh = ${fmtNum(totalCo2Kg, 1)} kg CO₂eq (${fmtNum(totalCo2Kg / 1000, 2)} tonnes)`;
+        ? `Consumo: ${fmtNum(totalEnergyKwh, 0)} kWh × EF ${CO2_EMISSION_FACTOR_KG_KWH} kg/kWh = ${fmtNum(totalCo2Kg, 1)} kg CO2eq (${fmtNum(totalCo2Kg / 1000, 2)} tonnellate)`
+        : `Consumption: ${fmtNum(totalEnergyKwh, 0)} kWh × EF ${CO2_EMISSION_FACTOR_KG_KWH} kg/kWh = ${fmtNum(totalCo2Kg, 1)} kg CO2eq (${fmtNum(totalCo2Kg / 1000, 2)} tonnes)`;
       doc.text(correlationText, margin + 5, yPos + 14);
       yPos += 25;
     }
@@ -591,11 +603,17 @@ export const generatePdfReport = async ({
         isIt ? 'Periodo' : 'Period',
         isIt ? 'Consumo (kWh)' : 'Consumption (kWh)',
         isIt ? 'Costo Stimato (€)' : 'Est. Cost (€)',
-        'CO₂ (kg)',
+        'CO2 (kg)',
       ];
+      
+      // Calculate energy scale factor so rows sum to totalEnergyKwh exactly
+      const totalTableKwh = data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0);
+      const energyScaleFactor = (totalTableKwh > 0 && totalEnergyKwh > 0) ? (totalEnergyKwh / totalTableKwh) : 1;
+
       const rows = data.energy.consumption.map(row => {
         const label = String(row['label'] || row['name'] || row['period'] || Object.values(row)[0] || '–');
-        const kwh = extractNum(row, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual');
+        const rawKwh = extractNum(row, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual');
+        const kwh = rawKwh * energyScaleFactor;
         const cost = kwh * energyPrice;
         const co2 = kwh * CO2_EMISSION_FACTOR_KG_KWH;
         return [label, fmtNum(kwh), energyPrice > 0 ? fmtNum(cost) : '–', fmtNum(co2)];
@@ -640,9 +658,9 @@ export const generatePdfReport = async ({
     ];
     const co2SummaryRows = [
       [isIt ? 'Consumo Totale' : 'Total Consumption', fmtNum(totalEnergyKwh), 'kWh'],
-      [isIt ? 'Fattore di Emissione' : 'Emission Factor', String(CO2_EMISSION_FACTOR_KG_KWH), 'kg CO₂/kWh'],
-      [isIt ? 'Emissioni Totali' : 'Total Emissions', fmtNum(totalCo2Kg), 'kg CO₂eq'],
-      [isIt ? 'Emissioni Totali' : 'Total Emissions', fmtNum(totalCo2Kg / 1000, 3), isIt ? 'tonnellate CO₂eq' : 'tonnes CO₂eq'],
+      [isIt ? 'Fattore di Emissione' : 'Emission Factor', String(CO2_EMISSION_FACTOR_KG_KWH), 'kg CO2/kWh'],
+      [isIt ? 'Emissioni Totali' : 'Total Emissions', fmtNum(totalCo2Kg), 'kg CO2eq'],
+      [isIt ? 'Emissioni Totali' : 'Total Emissions', fmtNum(totalCo2Kg / 1000, 3), isIt ? 'tonnellate CO2eq' : 'tonnes CO2eq'],
     ];
     if (energyPrice > 0) {
       co2SummaryRows.push([isIt ? 'Costo Totale Stimato' : 'Estimated Total Cost', fmtNum(totalCostEur), '€']);
@@ -869,15 +887,21 @@ async function generateAiDiagnosis(
   data: ReportData,
   moduleConfig: ReportModuleConfig,
   language: ReportLanguage,
+  totalEnergyKwh?: number,
 ): Promise<string | null> {
   try {
+    const totalConsumption = totalEnergyKwh !== undefined
+      ? totalEnergyKwh
+      : (data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0) || (project.data.total * 30));
+    const calculatedCo2 = totalConsumption * CO2_EMISSION_FACTOR_KG_KWH;
+
     const energyPayload = moduleConfig.energy.enabled ? {
-      totalConsumption: data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0) || (project.data.total * 30),
+      totalConsumption,
       breakdown: data.energy.devices.map(d => ({
         name: String(d['name'] || d['Dispositivo'] || d['Device'] || ''),
         kwh: extractNum(d, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh'),
       })),
-      co2Total: data.energy.co2.reduce((s, r) => s + extractNum(r, 'value', 'CO₂ (kg)'), 0),
+      co2Total: data.energy.co2.reduce((s, r) => s + extractNum(r, 'value', 'CO2 (kg)', 'CO₂ (kg)', 'co2'), 0) || calculatedCo2,
     } : null;
 
     const waterPayload = moduleConfig.water.enabled ? {
