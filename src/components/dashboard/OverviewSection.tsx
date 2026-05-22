@@ -87,9 +87,10 @@ interface ReadingItemProps {
   value: string;
   unit: string;
   status?: "good" | "warning" | "critical";
+  isSimulated?: boolean;
 }
 
-const ReadingItem = ({ icon, label, value, unit, status = "good" }: ReadingItemProps) => {
+const ReadingItem = ({ icon, label, value, unit, status = "good", isSimulated = false }: ReadingItemProps) => {
   const statusColors = {
     good: "text-emerald-600",
     warning: "text-amber-600",
@@ -104,8 +105,13 @@ const ReadingItem = ({ icon, label, value, unit, status = "good" }: ReadingItemP
         </div>
         <span className="text-base text-gray-600">{label}</span>
       </div>
-      <div className={`text-lg font-semibold ${statusColors[status]}`}>
-        {value} <span className="text-base text-gray-400 font-normal">{unit}</span>
+      <div className="flex items-center gap-1.5">
+        <div className={`text-lg font-semibold ${statusColors[status]}`}>
+          {value} <span className="text-base text-gray-400 font-normal">{unit}</span>
+        </div>
+        {isSimulated && (
+          <span className="text-[10px] text-gray-400/80 italic font-medium tracking-wide">(simulated)</span>
+        )}
       </div>
     </div>
   );
@@ -270,28 +276,74 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
     if (!powerData?.isRealData && !powerData?.isStale) {
       return {
         totalPower: undefined,
-        hvac: { value: undefined, status: "good" as const },
-        lighting: { value: undefined, status: "good" as const },
-        plugs: { value: undefined, status: "good" as const },
-        other: { value: undefined, status: "good" as const },
+        hvac: { value: undefined, status: "good" as const, isSimulated: false },
+        lighting: { value: undefined, status: "good" as const, isSimulated: false },
+        plugs: { value: undefined, status: "good" as const, isSimulated: false },
+        other: { value: undefined, status: "good" as const, isSimulated: false },
+      };
+    }
+
+    const totalGeneral = powerData.totalGeneral;
+    
+    // Check if we ONLY have general data and no submeters
+    const hasOnlyGeneral = typeof totalGeneral === 'number' &&
+      powerData.hvac === undefined &&
+      powerData.lighting === undefined &&
+      powerData.plugs === undefined;
+
+    if (hasOnlyGeneral) {
+      const hvacVal = totalGeneral * 0.40;
+      const lightingVal = totalGeneral * 0.25;
+      const plugsVal = totalGeneral * 0.20;
+      const otherVal = totalGeneral * 0.15;
+      
+      return {
+        totalPower: totalGeneral,
+        hvac: {
+          value: hvacVal,
+          status: hvacVal > 30 ? "warning" as const : "good" as const,
+          isSimulated: true
+        },
+        lighting: {
+          value: lightingVal,
+          status: lightingVal > 20 ? "warning" as const : "good" as const,
+          isSimulated: true
+        },
+        plugs: {
+          value: plugsVal,
+          status: plugsVal > 12 ? "warning" as const : "good" as const,
+          isSimulated: true
+        },
+        other: {
+          value: otherVal,
+          status: "good" as const,
+          isSimulated: true
+        }
       };
     }
 
     return {
-      totalPower: powerData.totalGeneral,
+      totalPower: totalGeneral,
       hvac: {
         value: powerData.hvac,
         status: typeof powerData.hvac === 'number' && powerData.hvac > 30 ? "warning" as const : "good" as const,
+        isSimulated: false,
       },
       lighting: {
         value: powerData.lighting,
         status: typeof powerData.lighting === 'number' && powerData.lighting > 20 ? "warning" as const : "good" as const,
+        isSimulated: false,
       },
       plugs: {
         value: powerData.plugs,
         status: typeof powerData.plugs === 'number' && powerData.plugs > 12 ? "warning" as const : "good" as const,
+        isSimulated: false,
       },
-      other: { value: powerData.other, status: "good" as const },
+      other: { 
+        value: powerData.other, 
+        status: "good" as const,
+        isSimulated: false,
+      },
     };
   }, [powerData]);
 
@@ -373,6 +425,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
             value={formatMaybe(readings.hvac.value, 1)}
             unit="kW"
             status={readings.hvac.status}
+            isSimulated={readings.hvac.isSimulated}
           />
           <ReadingItem
             icon={<Lightbulb className="w-3.5 h-3.5" />}
@@ -380,6 +433,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
             value={formatMaybe(readings.lighting.value, 1)}
             unit="kW"
             status={readings.lighting.status}
+            isSimulated={readings.lighting.isSimulated}
           />
           <ReadingItem
             icon={<Plug className="w-3.5 h-3.5" />}
@@ -387,6 +441,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
             value={formatMaybe(readings.plugs.value, 1)}
             unit="kW"
             status={readings.plugs.status}
+            isSimulated={readings.plugs.isSimulated}
           />
           <ReadingItem
             icon={<MoreHorizontal className="w-3.5 h-3.5" />}
@@ -394,6 +449,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
             value={formatMaybe(readings.other.value, 1)}
             unit="kW"
             status={readings.other.status}
+            isSimulated={readings.other.isSimulated}
           />
         </div>
       </CardContent>
