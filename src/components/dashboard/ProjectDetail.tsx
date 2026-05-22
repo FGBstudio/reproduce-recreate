@@ -2778,15 +2778,70 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     
     setIsGeneratingPdf(true);
     try {
+      // 1. Dynamic Telemetry Enrichment
+      const enrichedProject = {
+        ...project,
+        data: {
+          ...project.data,
+          temp: activeAirMetrics["env.temperature"] != null 
+            ? Math.round(activeAirMetrics["env.temperature"]) 
+            : project.data.temp,
+          co2: activeAirMetrics["iaq.co2"] != null 
+            ? Math.round(activeAirMetrics["iaq.co2"]) 
+            : project.data.co2,
+          humidity: activeAirMetrics["env.humidity"] != null 
+            ? Math.round(activeAirMetrics["env.humidity"]) 
+            : (project.data.humidity || 45),
+          aq: activeAirMetrics["iaq.co2"] != null
+            ? (activeAirMetrics["iaq.co2"] <= 600 ? "EXCELLENT" : activeAirMetrics["iaq.co2"] <= 1000 ? "GOOD" : "MODERATE")
+            : project.data.aq,
+        }
+      };
+
+      const isIt = language === 'it';
+      const devicesDataForReport = energyDistributionData.map(item => {
+        let name = item.name;
+        let category = item.name;
+        if (item.name === 'HVAC') {
+          name = isIt ? 'Riscaldamento e Ventilazione (HVAC)' : 'Heating & Ventilation (HVAC)';
+          category = isIt ? 'Climatizzazione' : 'HVAC';
+        } else if (item.name === 'Lighting') {
+          name = isIt ? 'Illuminazione' : 'Lighting';
+          category = isIt ? 'Illuminazione' : 'Lighting';
+        } else if (item.name === 'Plugs & Loads') {
+          name = isIt ? 'Prese di Corrente' : 'Plugs';
+          category = isIt ? 'Forza Motrice' : 'Plugs';
+        } else if (item.name === 'Other') {
+          name = isIt ? 'Carichi Vari / Baseload' : 'Other / Baseload';
+          category = isIt ? 'Generale' : 'Other';
+        } else if (item.name === 'Other Devices') {
+          name = isIt ? 'Altri Dispositivi' : 'Other Devices';
+          category = isIt ? 'Generale' : 'Other';
+        } else if (item.name === 'General') {
+          name = isIt ? 'Generale / Principale' : 'General / Main';
+          category = isIt ? 'Generale' : 'Other';
+        }
+        return {
+          name,
+          category,
+          value: item.value
+        };
+      });
+
       await generatePdfReport({
-        project,
+        project: enrichedProject,
         timePeriod,
         dateRange,
         moduleConfig: resolvedModuleConfig,
+        precalculatedTotals: {
+          totalEnergyKwh: totalBreakdownKwh,
+          totalCostEur: estimatedCostData?.totalCost || 0,
+          totalCo2Kg: totalBreakdownKwh * 0.233,
+        },
         data: {
           energy: {
             consumption: filteredEnergyData as unknown as Record<string, unknown>[],
-            devices: filteredDeviceData as unknown as Record<string, unknown>[],
+            devices: devicesDataForReport, // Passing the correctly summed device categories flat array
             co2: filteredCO2Data as unknown as Record<string, unknown>[],
           },
           water: {
@@ -2817,7 +2872,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     project, 
     timePeriod, 
     dateRange, 
-    resolvedModuleConfig, // <--- Importante: aggiunto alle dipendenze
+    resolvedModuleConfig, 
     filteredEnergyData, 
     filteredDeviceData, 
     filteredCO2Data, 
@@ -2827,7 +2882,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     co2HistoryData, 
     tempHumidityData, 
     pm25Data, 
-    isGeneratingPdf
+    isGeneratingPdf,
+    activeAirMetrics,
+    language,
+    energyDistributionData,
+    totalBreakdownKwh,
+    estimatedCostData
   ]);
 
   return (
