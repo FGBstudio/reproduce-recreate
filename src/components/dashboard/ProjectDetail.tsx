@@ -249,6 +249,101 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   const [expandedCert, setExpandedCert] = useState<string | null>(null);
   const [activeWidget, setActiveWidget] = useState<'active' | 'achieved' | 'progress' | 'audit' | null>(null);
 
+  // AI Virtual Split states
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const [siteTypology, setSiteTypology] = useState<string>('office');
+  const [siteClimateZone, setSiteClimateZone] = useState<string>('4A');
+  const [benchmarkMatrix, setBenchmarkMatrix] = useState<any[]>([]);
+
+  // Query sites table for typology and climate zone when siteId is active
+  useEffect(() => {
+    if (!project?.siteId || !isSupabaseConfigured || !supabase) {
+      setSiteTypology('office');
+      setSiteClimateZone('4A');
+      return;
+    }
+    supabase
+      .from('sites')
+      .select('typology, climate_zone')
+      .eq('id', project.siteId)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          if (data.typology) setSiteTypology(data.typology.toLowerCase());
+          if (data.climate_zone) setSiteClimateZone(data.climate_zone);
+        }
+      });
+  }, [project?.siteId]);
+
+  // Fetch matching benchmark splits matrix from energy_benchmarks table
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !siteTypology || !siteClimateZone) {
+      setBenchmarkMatrix([]);
+      return;
+    }
+    supabase
+      .from('energy_benchmarks')
+      .select('month_num, day_type, hour_num, hvac_pct, lighting_pct, plugs_pct, other_pct')
+      .eq('typology', siteTypology)
+      .eq('climate_zone', siteClimateZone)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setBenchmarkMatrix(data);
+        }
+      });
+  }, [siteTypology, siteClimateZone]);
+
+  // Memoized hourly index for O(1) lookups: key = "month|day_type|hour"
+  const hourlyBenchmarksMap = useMemo(() => {
+    const map = new Map<string, { hvac_pct: number; lighting_pct: number; plugs_pct: number; other_pct: number }>();
+    benchmarkMatrix.forEach((row) => {
+      const key = `${row.month_num}|${row.day_type}|${row.hour_num}`;
+      map.set(key, {
+        hvac_pct: Number(row.hvac_pct),
+        lighting_pct: Number(row.lighting_pct),
+        plugs_pct: Number(row.plugs_pct),
+        other_pct: Number(row.other_pct),
+      });
+    });
+    return map;
+  }, [benchmarkMatrix]);
+
+  // Memoized daily average index for O(1) lookups: key = "month|day_type"
+  const dailyBenchmarksMap = useMemo(() => {
+    const map = new Map<string, { hvac_pct: number; lighting_pct: number; plugs_pct: number; other_pct: number }>();
+    
+    // Group hourly values by month and day_type
+    const groups = new Map<string, { hvac: number[]; lighting: number[]; plugs: number[]; other: number[] }>();
+    benchmarkMatrix.forEach((row) => {
+      const key = `${row.month_num}|${row.day_type}`;
+      if (!groups.has(key)) {
+        groups.set(key, { hvac: [], lighting: [], plugs: [], other: [] });
+      }
+      const g = groups.get(key)!;
+      g.hvac.push(Number(row.hvac_pct));
+      g.lighting.push(Number(row.lighting_pct));
+      g.plugs.push(Number(row.plugs_pct));
+      g.other.push(Number(row.other_pct));
+    });
+
+    // Compute average for each group
+    groups.forEach((g, key) => {
+      const count = g.hvac.length || 1;
+      const hvac_avg = g.hvac.reduce((a, b) => a + b, 0) / count;
+      const lighting_avg = g.lighting.reduce((a, b) => a + b, 0) / count;
+      const plugs_avg = g.plugs.reduce((a, b) => a + b, 0) / count;
+      const other_avg = g.other.reduce((a, b) => a + b, 0) / count;
+      map.set(key, {
+        hvac_pct: hvac_avg,
+        lighting_pct: lighting_avg,
+        plugs_pct: plugs_avg,
+        other_pct: other_avg,
+      });
+    });
+
+    return map;
+  }, [benchmarkMatrix]);
+
   // Reset custom bg when project changes
   useEffect(() => {
     setCustomBgUrl(undefined);
@@ -441,6 +536,23 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   );
   const siteDevices = siteDevicesResp?.data ?? [];
   const siteDeviceIds = useMemo(() => siteDevices.map((d) => d.id), [siteDevices]);
+
+  // Gating rule selector: check if site has ONLY general category meters
+  const hasOnlyGeneralMeters = useMemo(() => {
+    if (!siteDevices || siteDevices.length === 0) return false;
+    const subMeterCategories = ['hvac', 'lighting', 'plugs', 'plug'];
+    return !siteDevices.some((d) => {
+      const cat = d.category ? d.category.toLowerCase() : '';
+      return subMeterCategories.includes(cat);
+    });
+  }, [siteDevices]);
+
+  // Safety guard: disable simulation mode if real sub-meters exist
+  useEffect(() => {
+    if (!hasOnlyGeneralMeters) {
+      setIsSimulationMode(false);
+    }
+  }, [hasOnlyGeneralMeters]);
 
   // Creiamo una mappa per lookup istantaneo: ID -> { categoria, nome_circuito }
   const deviceMap = useMemo(() => {
@@ -1309,11 +1421,53 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       }
     });
 
+    // Apply virtual splits if simulation mode is active and site has only general meters in category view
+    if (isSimulationMode && hasOnlyGeneralMeters && energyViewMode === 'category') {
+      const siteTz = resolveTimezone(project?.timezone);
+      groupedMap.forEach((entry) => {
+        const dateObj = new Date(entry.ts);
+        const p = getPartsInTz(dateObj, siteTz);
+        const isWeekend = p.weekday === 'Sat' || p.weekday === 'Sun';
+        const day_type = isWeekend ? 'weekend' : 'weekday';
+
+        // High-quality fallback defaults (40% HVAC, 25% Lighting, 20% Plugs, 15% Other)
+        let pct = { hvac_pct: 0.40, lighting_pct: 0.25, plugs_pct: 0.20, other_pct: 0.15 };
+        
+        if (timeRange.bucket === '1d') {
+          const key = `${p.month}|${day_type}`;
+          const found = dailyBenchmarksMap.get(key);
+          if (found) pct = found;
+        } else {
+          const key = `${p.month}|${day_type}|${p.hour}`;
+          const found = hourlyBenchmarksMap.get(key);
+          if (found) pct = found;
+        }
+
+        const totalGeneral = entry.General;
+        entry.HVAC = totalGeneral * pct.hvac_pct;
+        entry.Lighting = totalGeneral * pct.lighting_pct;
+        entry.Plugs = totalGeneral * pct.plugs_pct;
+        entry.Other = totalGeneral * pct.other_pct;
+        entry.General = 0; // Morph general completely into virtual splits
+      });
+    }
+
     // F. Ordinamento Temporale
     return Array.from(groupedMap.values()).sort((a, b) => 
       new Date(a.ts).getTime() - new Date(b.ts).getTime()
     );
-  }, [energyTimeseriesResp, timePeriod, energyViewMode, deviceMap, project?.timezone, timeRange.bucket]);
+  }, [
+    energyTimeseriesResp,
+    timePeriod,
+    energyViewMode,
+    deviceMap,
+    project?.timezone,
+    timeRange.bucket,
+    isSimulationMode,
+    hasOnlyGeneralMeters,
+    hourlyBenchmarksMap,
+    dailyBenchmarksMap
+  ]);
 
   // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
   const deviceKeys = useMemo(() => {
@@ -2986,31 +3140,56 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           <div>
                             {/* TITOLO RINOMINATO */}
                             <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_over_time')}</h3>
-                            <p className="text-[10px] md:text-xs text-gray-500">
-                              {timeRange.bucket === '1d' ? t('pd.daily_energy_kwh') : t('pd.avg_power_kw')}
+                            <p className="text-[10px] md:text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
+                              <span>{timeRange.bucket === '1d' ? t('pd.daily_energy_kwh') : t('pd.avg_power_kw')}</span>
+                              {isSimulationMode && hasOnlyGeneralMeters && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-teal-500/10 to-purple-500/10 border border-teal-500/20 text-[9px] font-semibold text-teal-700 dark:text-teal-300">
+                                  <span>✨ {t('pd.virtual_split_info')} ({siteTypology.toUpperCase()}, {siteClimateZone})</span>
+                                </span>
+                              )}
                             </p>
                           </div>
                           <DataSourceBadge isRealData={realTimeEnergy.isRealData} isLoading={realTimeEnergy.isLoading} />
                         </div>
                         
-                        {/* TOGGLE: CATEGORIE vs DEVICES */}
-                        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-                          <button
-                            onClick={() => setEnergyViewMode('category')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                              energyViewMode === 'category' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                          >
-                            {t('pd.categories')}
-                          </button>
-                          <button
-                            onClick={() => setEnergyViewMode('device')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                              energyViewMode === 'device' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                          >
-                            Devices
-                          </button>
+                        <div className="flex items-center gap-2">
+                          {/* TOGGLE: CATEGORIE vs DEVICES */}
+                          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                            <button
+                              onClick={() => setEnergyViewMode('category')}
+                              className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                                energyViewMode === 'category' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
+                              }`}
+                            >
+                              {t('pd.categories')}
+                            </button>
+                            <button
+                              onClick={() => setEnergyViewMode('device')}
+                              className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                                energyViewMode === 'device' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
+                              }`}
+                            >
+                              Devices
+                            </button>
+                          </div>
+
+                          {hasOnlyGeneralMeters && energyViewMode === 'category' && (
+                            <button
+                              onClick={() => setIsSimulationMode(!isSimulationMode)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all duration-300 backdrop-blur-md relative group overflow-hidden ${
+                                isSimulationMode
+                                  ? 'bg-[#0F766E]/10 border-[#0F766E]/20 text-[#0F766E] shadow-[0_2px_10px_rgba(15,118,110,0.08)] font-bold'
+                                  : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                              }`}
+                              title={t('pd.virtual_split_tooltip')}
+                            >
+                              <Sparkles className={`w-3.5 h-3.5 ${isSimulationMode ? 'text-[#F59E0B] animate-pulse' : 'text-[#0F766E]'}`} />
+                              <span>{t('pd.virtual_split')}</span>
+                              {isSimulationMode && (
+                                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                              )}
+                            </button>
+                          )}
                         </div>
 
                         <ExportButtons chartRef={energyConsumptionRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('energyConsumption')} />
@@ -3022,26 +3201,43 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                         >
                           <defs>
-                            {/* GRADIENTI BASATI SU PALETTE FGB */}
                             {/* General: Teal Primary */}
                             <linearGradient id="colorGeneral" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#009193" stopOpacity={0.4}/>
+                              <stop offset="5%" stopColor="#009193" stopOpacity={0.18}/>
                               <stop offset="95%" stopColor="#009193" stopOpacity={0}/>
                             </linearGradient>
-                            {/* HVAC: Dark Teal */}
+                            {/* HVAC: Deep Teal */}
                             <linearGradient id="colorHVAC" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#006367" stopOpacity={0.4}/>
-                              <stop offset="95%" stopColor="#006367" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#0F766E" stopOpacity={0.18}/>
+                              <stop offset="95%" stopColor="#0F766E" stopOpacity={0}/>
                             </linearGradient>
-                            {/* Lighting: Orange/Red */}
+                            {/* Lighting: Amber/Gold */}
                             <linearGradient id="colorLighting" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#e63f26" stopOpacity={0.4}/>
-                              <stop offset="95%" stopColor="#e63f26" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.15}/>
+                              <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
                             </linearGradient>
-                            {/* Other: Burgundy */}
+                            {/* Other: Slate Grey */}
                             <linearGradient id="colorOther" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#911140" stopOpacity={0.4}/>
-                              <stop offset="95%" stopColor="#911140" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#64748B" stopOpacity={0.12}/>
+                              <stop offset="95%" stopColor="#64748B" stopOpacity={0}/>
+                            </linearGradient>
+
+                            {/* Simulation Mode Gradients */}
+                            <linearGradient id="colorHVACSim" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#0F766E" stopOpacity={0.15}/>
+                              <stop offset="95%" stopColor="#0F766E" stopOpacity={0.01}/>
+                            </linearGradient>
+                            <linearGradient id="colorLightingSim" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.12}/>
+                              <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.01}/>
+                            </linearGradient>
+                            <linearGradient id="colorPlugsSim" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.12}/>
+                              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.01}/>
+                            </linearGradient>
+                            <linearGradient id="colorOtherSim" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#64748B" stopOpacity={0.08}/>
+                              <stop offset="95%" stopColor="#64748B" stopOpacity={0.01}/>
                             </linearGradient>
                           </defs>
                           
@@ -3062,59 +3258,74 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                           />
                           <Tooltip 
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', '']}
+                            formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', name]}
                             labelStyle={{ color: '#111827', fontWeight: 'bold' }}
+                            itemSorter={(item: any) => -Number(item.value)}
                           />
                           <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} iconType="circle" />
 
                           {energyViewMode === 'category' ? (
                             <>
-                              {/* ORDINE DI RENDER: General (Sfondo/Totale) -> Specifici (Sopra) */}
+                              {!isSimulationMode && (
+                                <Area 
+                                  type="monotone" 
+                                  dataKey="General" 
+                                  stroke="#009193" 
+                                  fillOpacity={1} 
+                                  fill="url(#colorGeneral)" 
+                                  strokeWidth={2}
+                                  activeDot={{ r: 5 }}
+                                />
+                              )}
                               
-                              {/* General (Totale) - Teal FGB */}
-                              <Area 
-                                type="monotone" 
-                                dataKey="General" 
-                                stroke="#009193" 
-                                fillOpacity={1} 
-                                fill="url(#colorGeneral)" 
-                                strokeWidth={2}
-                                activeDot={{ r: 5 }}
-                              />
-                              
-                              {/* HVAC - Dark Teal */}
-                              <Area 
-                                type="monotone" 
-                                dataKey="HVAC" 
-                                stroke="#006367" 
-                                fillOpacity={1} 
-                                fill="url(#colorHVAC)" 
-                                strokeWidth={2}
-                              />
-                              
-                              {/* Lighting - Orange Red */}
-                              <Area 
-                                type="monotone" 
-                                dataKey="Lighting" 
-                                stroke="#e63f26" 
-                                fillOpacity={1} 
-                                fill="url(#colorLighting)" 
-                                strokeWidth={2}
-                              />
-                              
-                              {/* Other - Burgundy */}
                               <Area 
                                 type="monotone" 
                                 dataKey="Other" 
-                                stroke="#911140" 
+                                stroke="#64748B" 
                                 fillOpacity={1} 
-                                fill="url(#colorOther)" 
+                                fill={isSimulationMode ? "url(#colorOtherSim)" : "url(#colorOther)"} 
                                 strokeWidth={2}
+                                strokeOpacity={isSimulationMode ? 0.95 : 1}
+                                name={isSimulationMode ? "Other (Simulated)" : "Other"}
+                              />
+                              
+                              {isSimulationMode && (
+                                <Area 
+                                  type="monotone" 
+                                  dataKey="Plugs" 
+                                  stroke="#3B82F6" 
+                                  fillOpacity={1} 
+                                  fill="url(#colorPlugsSim)" 
+                                  strokeWidth={2}
+                                  strokeOpacity={0.95}
+                                  name="Plugs (Simulated)"
+                                />
+                              )}
+                              
+                              <Area 
+                                type="monotone" 
+                                dataKey="Lighting" 
+                                stroke="#F59E0B" 
+                                fillOpacity={1} 
+                                fill={isSimulationMode ? "url(#colorLightingSim)" : "url(#colorLighting)"} 
+                                strokeWidth={2}
+                                strokeOpacity={isSimulationMode ? 0.95 : 1}
+                                name={isSimulationMode ? "Lighting (Simulated)" : "Lighting"}
+                              />
+                              
+                              <Area 
+                                type="monotone" 
+                                dataKey="HVAC" 
+                                stroke="#0F766E" 
+                                fillOpacity={1} 
+                                fill={isSimulationMode ? "url(#colorHVACSim)" : "url(#colorHVAC)"} 
+                                strokeWidth={2}
+                                strokeOpacity={isSimulationMode ? 0.95 : 1}
+                                name={isSimulationMode ? "HVAC (Simulated)" : "HVAC"}
                               />
                             </>
                           ) : (
                             <>
-                              {/* VISTA DEVICE: Usa la palette FGB ciclica */}
                               {deviceKeys.slice(0, 10).map((key, idx) => {
                                 const color = FGB_PALETTE[idx % FGB_PALETTE.length];
                                 return (
@@ -5295,20 +5506,38 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           <AreaChart data={energyConsumptionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorGeneralFS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#009193" stopOpacity={0.4} />
+                <stop offset="5%" stopColor="#009193" stopOpacity={0.18} />
                 <stop offset="95%" stopColor="#009193" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorHVACFS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#006367" stopOpacity={0.4}/>
-                <stop offset="95%" stopColor="#006367" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#0F766E" stopOpacity={0.18}/>
+                <stop offset="95%" stopColor="#0F766E" stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="colorLightingFS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#e63f26" stopOpacity={0.4}/>
-                <stop offset="95%" stopColor="#e63f26" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.15}/>
+                <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="colorOtherFS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#911140" stopOpacity={0.4}/>
-                <stop offset="95%" stopColor="#911140" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#64748B" stopOpacity={0.12}/>
+                <stop offset="95%" stopColor="#64748B" stopOpacity={0}/>
+              </linearGradient>
+
+              {/* Simulation Mode Gradients */}
+              <linearGradient id="colorHVACSimFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0F766E" stopOpacity={0.15}/>
+                <stop offset="95%" stopColor="#0F766E" stopOpacity={0.01}/>
+              </linearGradient>
+              <linearGradient id="colorLightingSimFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.12}/>
+                <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.01}/>
+              </linearGradient>
+              <linearGradient id="colorPlugsSimFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.12}/>
+                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.01}/>
+              </linearGradient>
+              <linearGradient id="colorOtherSimFS" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#64748B" stopOpacity={0.08}/>
+                <stop offset="95%" stopColor="#64748B" stopOpacity={0.01}/>
               </linearGradient>
             </defs>
             <CartesianGrid {...gridStyle} />
@@ -5316,16 +5545,58 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kW" />
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', '']}
+              formatter={(value: number, name: string) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kW', name]}
+              itemSorter={(item: any) => -Number(item.value)}
             />
             <Legend />
 
             {energyViewMode === 'category' ? (
               <>
-                <Area type="monotone" dataKey="General" stroke="#009193" fillOpacity={1} fill="url(#colorGeneralFS)" name="General" />
-                <Area type="monotone" dataKey="HVAC" stroke="#006367" fillOpacity={1} fill="url(#colorHVACFS)" name="HVAC" />
-                <Area type="monotone" dataKey="Lighting" stroke="#e63f26" fillOpacity={1} fill="url(#colorLightingFS)" name="Lighting" />
-                <Area type="monotone" dataKey="Other" stroke="#911140" fillOpacity={1} fill="url(#colorOtherFS)" name="Other" />
+                {!isSimulationMode && (
+                  <Area type="monotone" dataKey="General" stroke="#009193" fillOpacity={1} fill="url(#colorGeneralFS)" name="General" />
+                )}
+                <Area 
+                  type="monotone" 
+                  dataKey="Other" 
+                  stroke="#64748B" 
+                  fillOpacity={1} 
+                  fill={isSimulationMode ? "url(#colorOtherSimFS)" : "url(#colorOtherFS)"} 
+                  strokeWidth={2}
+                  strokeOpacity={isSimulationMode ? 0.95 : 1}
+                  name={isSimulationMode ? "Other (Simulated)" : "Other"} 
+                />
+                {isSimulationMode && (
+                  <Area 
+                    type="monotone" 
+                    dataKey="Plugs" 
+                    stroke="#3B82F6" 
+                    fillOpacity={1} 
+                    fill="url(#colorPlugsSimFS)" 
+                    strokeWidth={2}
+                    strokeOpacity={0.95}
+                    name="Plugs (Simulated)" 
+                  />
+                )}
+                <Area 
+                  type="monotone" 
+                  dataKey="Lighting" 
+                  stroke="#F59E0B" 
+                  fillOpacity={1} 
+                  fill={isSimulationMode ? "url(#colorLightingSimFS)" : "url(#colorLightingFS)"} 
+                  strokeWidth={2}
+                  strokeOpacity={isSimulationMode ? 0.95 : 1}
+                  name={isSimulationMode ? "Lighting (Simulated)" : "Lighting"} 
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="HVAC" 
+                  stroke="#0F766E" 
+                  fillOpacity={1} 
+                  fill={isSimulationMode ? "url(#colorHVACSimFS)" : "url(#colorHVACFS)"} 
+                  strokeWidth={2}
+                  strokeOpacity={isSimulationMode ? 0.95 : 1}
+                  name={isSimulationMode ? "HVAC (Simulated)" : "HVAC"} 
+                />
               </>
             ) : (
               <>
