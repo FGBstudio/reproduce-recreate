@@ -82,6 +82,7 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      // UNITO: Un solo blocco keyframes
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -91,10 +92,16 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        marquee: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
       },
+      // UNITO: Un solo blocco animation
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        marquee: 'marquee 25s linear infinite',
       },
     },
   },
