@@ -227,7 +227,7 @@ const InteractiveSlide: React.FC<SlideProps> = ({
       className={`snap-center shrink-0 relative transition-[width,height] duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
         isExpanded
           ? "w-0 h-0 invisible"
-          : "w-[min(560px,78%)] h-[min(520px,70vh)] cursor-pointer"
+          : "w-[min(880px,86%)] h-[min(580px,72vh)] cursor-pointer"
       }`}
       onClick={() => { if (!isExpanded) onExpand(); }}
       style={{ perspective: "1500px" }}
@@ -271,7 +271,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
     animate={{ opacity: 1, scale: 1 }}
     exit={{ opacity: 0, scale: 0.97 }}
     transition={{ duration: 0.45, ease: EASE }}
-    className="absolute inset-6 z-40"
+    className="fixed inset-0 z-[60] lg:left-[clamp(360px,35vw,520px)]"
     style={{ perspective: "1800px" }}
   >
     <div
@@ -280,7 +280,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
     >
       {/* Front */}
       <div
-        className="absolute inset-0 rounded-[32px] overflow-hidden bg-white border border-black/[0.06] shadow-[0_30px_80px_rgba(0,0,0,0.10)] grid grid-cols-1 lg:grid-cols-2"
+        className="absolute inset-0 overflow-hidden bg-white grid grid-cols-1 lg:grid-cols-2"
         style={{ backfaceVisibility: "hidden" }}
       >
         <div className="p-10 lg:p-12 flex flex-col justify-center">
@@ -321,7 +321,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
 
       {/* Back */}
       <div
-        className="absolute inset-0 rounded-[32px] overflow-hidden bg-white border border-black/[0.06] shadow-[0_30px_80px_rgba(0,0,0,0.10)] grid grid-cols-1 lg:grid-cols-2"
+        className="absolute inset-0 overflow-hidden bg-white grid grid-cols-1 lg:grid-cols-2"
         style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
       >
         <div className="p-10 lg:p-12 flex flex-col justify-center">
