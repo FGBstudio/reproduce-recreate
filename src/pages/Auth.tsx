@@ -389,17 +389,18 @@ const Auth = () => {
 
         <footer className="p-[clamp(0.75rem,1.5vh,1.5rem)] pb-[max(1rem,env(safe-area-inset-bottom))] text-center shrink-0">
           <div className="mt-8 flex flex-col items-center justify-center space-y-4">
-          <div className="flex space-x-8 text-center border-b border-emerald-500/20 pb-4">
-            <div className="flex flex-col items-center">
-              <span className="text-emerald-400 font-bold text-2xl">47</span>
-              <span className="text-emerald-500/60 font-mono text-xs uppercase tracking-wider">buildings monitored</span>
+            <div className="flex space-x-8 text-center border-b border-emerald-500/20 pb-4">
+              <div className="flex flex-col items-center">
+                <span className="text-emerald-400 font-bold text-2xl">47</span>
+                <span className="text-emerald-500/60 font-mono text-xs uppercase tracking-wider">buildings monitored</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-emerald-400 font-bold text-2xl">380k</span>
+                <span className="text-emerald-500/60 font-mono text-xs uppercase tracking-wider">m² analysed</span>
+              </div>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-emerald-400 font-bold text-2xl">380k</span>
-              <span className="text-emerald-500/60 font-mono text-xs uppercase tracking-wider">m² analysed</span>
-            </div>
-          </div>
-          <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-white/30">Powered by FGB Monitoring</p>
+            <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-white/30">Powered by FGB Monitoring</p>
+          </div> {/* ← DIV CHIUSO QUI */}
         </footer>
       </div>
 
