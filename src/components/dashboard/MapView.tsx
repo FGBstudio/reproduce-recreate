@@ -5,6 +5,7 @@ import { regions, Project, MonitoringType } from "@/lib/data";
 import { useAllProjects, useAllBrands } from "@/hooks/useRealTimeData";
 import { MapLoadingSkeleton } from "./DashboardSkeleton";
 import markerPinIcon from '@/assets/marker.png';
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface MapViewProps {
   currentRegion: string;
@@ -20,6 +21,8 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const { theme } = useTheme();
 
   // Use combined real + mock projects and brands with loading state
   const { projects, isLoading, error, refetch } = useAllProjects();
@@ -76,10 +79,11 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
       worldCopyJump: true, // Opzionale: se scorri orizzontalmente, il mondo si ripete all'infinito invece di finire
     });
 
-    // Dark themed OpenStreetMap tiles (CartoDB Dark Matter - free)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-    }).addTo(map.current);
+    // Themed CARTO tiles (Dark Matter / Positron based on theme)
+    const initialUrl = theme === 'light'
+      ? "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+      : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    tileLayerRef.current = L.tileLayer(initialUrl, { maxZoom: 19 }).addTo(map.current);
 
     // Add zoom control — offset from right edge to avoid system gesture zone
     L.control.zoom({ position: "topright" }).addTo(map.current);
@@ -103,8 +107,18 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     return () => {
       map.current?.remove();
       map.current = null;
+      tileLayerRef.current = null;
     };
   }, []);
+
+  // Swap tile layer when theme changes
+  useEffect(() => {
+    if (!map.current || !tileLayerRef.current) return;
+    const url = theme === 'light'
+      ? "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+      : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    tileLayerRef.current.setUrl(url);
+  }, [theme]);
 
   // Fly to region when changed
   useEffect(() => {
