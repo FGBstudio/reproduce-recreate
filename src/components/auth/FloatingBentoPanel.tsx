@@ -699,6 +699,92 @@ const FloatingBentoPanel: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Final CTA */}
+      <section
+        id="cta"
+        className="relative w-full min-h-[100dvh] snap-start flex items-center justify-center px-8 py-28"
+        style={{ background: SURFACE }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.7, ease: EASE }}
+          className="w-full max-w-[720px] text-center"
+        >
+          <div className="flex items-center justify-center gap-2 mb-5">
+            <span className="w-6 h-px" style={{ background: ACCENT }} />
+            <span
+              className="text-[11px] font-semibold uppercase tracking-[0.2em]"
+              style={{ color: ACCENT }}
+            >
+              Ready to start?
+            </span>
+          </div>
+          <h2
+            className="text-[clamp(2.25rem,4.5vw,3.75rem)] font-semibold leading-[1.05] tracking-tight"
+            style={{ color: INK }}
+          >
+            Your buildings are talking.
+            <br />
+            <span style={{ color: ACCENT }}>Are you listening?</span>
+          </h2>
+          <p
+            className="mt-6 text-[15px] leading-relaxed mx-auto max-w-[560px]"
+            style={{ color: SUB }}
+          >
+            Join 47 buildings already monitored by FGB. Setup takes under a week.
+            Your data starts speaking the same day sensors go live.
+          </p>
+          <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
+            <button
+              type="button"
+              className="h-12 px-7 rounded-full text-[14px] font-semibold text-white transition-transform hover:scale-[1.02] shadow-[0_10px_30px_rgba(10,125,122,0.25)]"
+              style={{ background: ACCENT }}
+            >
+              Request access →
+            </button>
+            <button
+              type="button"
+              className="h-12 px-7 rounded-full text-[14px] font-semibold border border-black/15 hover:bg-black/[0.04] transition-colors"
+              style={{ color: INK }}
+            >
+              See a live demo
+            </button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Footer */}
+      <footer
+        className="w-full border-t border-black/[0.06] px-8 py-10"
+        style={{ background: SURFACE }}
+      >
+        <div className="w-full max-w-[1200px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-6">
+          <div className="text-xl font-semibold tracking-tight" style={{ color: INK }}>
+            <span>FG</span>
+            <span style={{ color: ACCENT }}>B</span>
+          </div>
+          <nav className="flex items-center gap-6">
+            {["Solution", "Certifications", "Pricing", "Contact", "Privacy"].map((l) => (
+              <a
+                key={l}
+                href="#"
+                className="text-[13px] transition-colors hover:text-[color:var(--ink)]"
+                style={{ color: SUB }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = INK)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = SUB)}
+              >
+                {l}
+              </a>
+            ))}
+          </nav>
+          <div className="text-[12px]" style={{ color: SUB }}>
+            © 2026 FGB Studio · Future Green Building · All rights reserved
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
