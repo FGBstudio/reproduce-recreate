@@ -548,7 +548,7 @@ const FloatingBentoPanel: React.FC = () => {
       <style>{`.fb-scroll::-webkit-scrollbar{display:none}`}</style>
 
       {/* Top nav */}
-      <nav className="fixed top-0 right-0 w-full lg:w-[calc(100%-clamp(360px,35vw,520px))] z-50 flex items-center justify-between px-8 py-5 pointer-events-none">
+      <nav className={`fixed top-0 right-0 w-full lg:w-[calc(100%-clamp(360px,35vw,520px))] z-50 flex items-center justify-between px-8 py-5 pointer-events-none transition-opacity duration-300 ${expandedIndex !== null ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
         <div className="hidden lg:flex items-center gap-8 text-[13px] font-medium pointer-events-auto" style={{ color: INK }}>
           <a href="#solution" className="opacity-70 hover:opacity-100 transition-opacity">Our Solution</a>
           <a href="#values" className="opacity-70 hover:opacity-100 transition-opacity">Our Values</a>
