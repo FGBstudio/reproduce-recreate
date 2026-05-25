@@ -308,16 +308,6 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
               <span className="text-xs font-medium text-foreground">{language.toUpperCase()}</span>
             </button>
             */}
-            {isAdmin && (
-              <button
-                onClick={handleAdminClick}
-                className="glass-panel rounded-full px-3 py-1.5 md:py-2 flex items-center gap-2 hover:bg-fgb-light/50 transition-colors"
-                title="Admin Console"
-              >
-                <Shield className="w-4 h-4 text-fgb-accent" />
-                <span className="hidden sm:inline text-xs font-medium text-foreground">Admin</span>
-              </button>
-            )}
             <UserAccountDropdown />
           </div>
         </>
