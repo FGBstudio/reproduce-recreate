@@ -371,15 +371,15 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
 const SLIDES: SlideData[] = [
   {
     title: "Device-level visibility across structures.",
-    sub: "Monitoraggio centralizzato per il tuo intero portfolio.",
-    cta: "Scopri il potenziale",
+    sub: "Your portfolio in one place.",
+    cta: "Discover more",
     backTitle: "Your entire energy ecosystem. Instantly synchronized.",
     backDesc:
-      "Porta i tuoi KPI ovunque. Previeni le anomalie in tempo reale e riduci fino al 25% i costi operativi grazie all'intelligenza predittiva.",
+      "Take your KPIs anywhere. Prevent anomalies in real time and reduce operational costs by up to 25% thanks to predictive intelligence.",
     backBullets: [
-      "Monitoraggio real-time multi-dispositivo",
-      "Notifiche per anomalie di carico",
-      "Forecast automatici sui consumi mensili",
+      "Multi-device real-time monitoring",
+      "Load anomaly notifications",
+      "Automatic monthly consumption forecasts",
     ],
     backVideo: "/videos/app-nav.mp4",
     visual: (
@@ -392,15 +392,15 @@ const SLIDES: SlideData[] = [
   },
   {
     title: "A single platform. All your KPIs in one place.",
-    sub: "Dati complessi trasformati in visualizzazioni azionabili.",
-    cta: "Gira la card",
+    sub: "Complex data transformed into actionable visualizations.",
+    cta: "Flip the card",
     backTitle: "Intelligence that anticipates.",
     backDesc:
-      "Smetti di reagire ai guasti e inizia a prevenirli. Gli algoritmi analizzano i pattern di consumo per identificare inefficienze strutturali.",
+      "Stop reacting to failures and start preventing them. Algorithms analyze consumption patterns to identify structural inefficiencies.",
     backBullets: [
-      "Rilevamento automatico delle deviazioni",
-      "Analisi predittiva qualità dell'aria",
-      "Tracciamento obiettivi net-zero",
+      "Automatic out-reange detection",
+      "Air quality predictive analysis",
+      "Net-zero target tracking",
     ],
     backVideo: "/videos/dashboard.mp4",
     visual: (
@@ -413,15 +413,15 @@ const SLIDES: SlideData[] = [
   },
   {
     title: "Your path to ESG excellence. Precisely measured.",
-    sub: "Punteggi aggiornati in tempo reale per le certificazioni globali.",
-    cta: "Vedi le certificazioni",
+    sub: "Real-time updated scores for global certifications.",
+    cta: "Monitor your certifications",
     backTitle: "Turn compliance into competitive advantage.",
     backDesc:
-      "Automatizziamo la raccolta dati per LEED, BREEAM e WELL. Ottieni report pronti per l'audit con un singolo click.",
+      "We automate data collection for LEED, BREEAM, and WELL. Get audit-ready reports with a single click.",
     backBullets: [
-      "Mapping automatico sui framework ESG",
-      "Esportazione audit-ready in PDF/Excel",
-      "Condivisione pubblica dei traguardi",
+      "Automatic mapping to ESG frameworks",
+      "Audit-ready export to PDF",
+      "Public sharing of milestones",
     ],
     backVideo: "/videos/report.mp4",
     visual: (
@@ -434,15 +434,15 @@ const SLIDES: SlideData[] = [
   },
   {
     title: "Optimize waste. Your building's lifecycle.",
-    sub: "Analisi distributiva 24/7 dei carichi energetici.",
-    cta: "Analizza gli sprechi",
+    sub: "24/7 distributive analysis of energy loads.",
+    cta: "Analyze waste",
     backTitle: "Cut the invisible waste.",
     backDesc:
-      "Identifichiamo i carichi di base anomali e le dispersioni notturne, permettendoti di riprogrammare i sistemi HVAC.",
+      "We identify anomalous baseloads and nighttime energy leaks, allowing you to reschedule your systems.",
     backBullets: [
-      "Identificazione vampire loads",
-      "Comparazione giorno vs notte",
-      "Suggerimenti di ottimizzazione",
+      "Vampire load identification",
+      "Day vs. night comparison",
+      "Optimization suggestions",
     ],
     backVideo: "/videos/analysis.mp4",
     visual: (
@@ -463,15 +463,15 @@ const SLIDES: SlideData[] = [
   },
   {
     title: "From paper chaos to absolute clarity.",
-    sub: "Carica le tue bollette storiche. L'AI estrae i dati istantaneamente.",
-    cta: "Scopri l'OCR",
+    sub: "Upload your historical bills. The FGB AI extracts data instantly.",
+    cta: "Discover our OCR",
     backTitle: "Historical data, immediately actionable.",
     backDesc:
-      "Carica i PDF delle vecchie bollette: la nostra AI estrae costi, consumi e penali in pochi secondi.",
+      "Upload PDFs of your old bills: our AI is trained to extract costs, consumption, and penalties in just a few seconds.",
     backBullets: [
-      "Estrazione dati guidata dall'AI",
-      "Creazione automatica della baseline",
-      "Validazione delle bollette anomale",
+      "Data extraction powered by FGB AI",
+      "Automatic baseline creation",
+      "Validation of anomalous bills",
     ],
     backVideo: "/videos/ocr-scan.mp4",
     visual: (
