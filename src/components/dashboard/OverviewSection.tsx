@@ -10,6 +10,7 @@ import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 import { EVSWidget } from "./EVSWidget";
 import { useEnergyPowerByCategory, EnergyPowerBreakdown } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -32,6 +33,7 @@ interface OverviewSectionProps {
   airAverages?: Record<string, number>;
   energyAverages?: any;
   onNavigate?: (tab: string) => void;
+  benchmarkMatrix?: any[];
 }
 
 const getStatusLevel = (score: number): StatusLevel => {
@@ -261,7 +263,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
 };
 
 // Energy Card with detailed readings - connected to real-time data
-const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod, periodLabel }: {
+const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod, periodLabel, project, benchmarkMatrix }: {
   status: ModuleStatus;
   enabled: boolean;
   onClick?: () => void;
@@ -269,6 +271,8 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
   threshold?: number;
   timePeriod: string;
   periodLabel: string;
+  project: Project;
+  benchmarkMatrix?: any[];
 }) => {
   const { t } = useLanguage();
   const isToday = timePeriod === 'today';
@@ -292,10 +296,41 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
       powerData.plugs === undefined;
 
     if (hasOnlyGeneral) {
-      const hvacVal = totalGeneral * 0.40;
-      const lightingVal = totalGeneral * 0.25;
-      const plugsVal = totalGeneral * 0.20;
-      const otherVal = totalGeneral * 0.15;
+      let pct = { hvac_pct: 0.40, lighting_pct: 0.25, plugs_pct: 0.20, other_pct: 0.15 };
+      
+      // Look up percentages in benchmarkMatrix if provided!
+      if (benchmarkMatrix && benchmarkMatrix.length > 0 && powerData.lastUpdate) {
+        try {
+          const siteTz = resolveTimezone(project?.timezone);
+          const dateObj = new Date(powerData.lastUpdate);
+          if (!isNaN(dateObj.getTime())) {
+            const p = getPartsInTz(dateObj, siteTz);
+            const isWeekend = p.weekday === 'Sat' || p.weekday === 'Sun';
+            const dayType = isWeekend ? 'weekend' : 'weekday';
+            
+            const found = benchmarkMatrix.find(row => 
+              Number(row.month_num) === p.month && 
+              Number(row.hour_num) === p.hour && 
+              row.day_type === dayType
+            );
+            if (found) {
+              pct = {
+                hvac_pct: Number(found.hvac_pct),
+                lighting_pct: Number(found.lighting_pct),
+                plugs_pct: Number(found.plugs_pct),
+                other_pct: Number(found.other_pct)
+              };
+            }
+          }
+        } catch (e) {
+          console.error("Failed to calculate virtual split from benchmark matrix:", e);
+        }
+      }
+      
+      const hvacVal = totalGeneral * pct.hvac_pct;
+      const lightingVal = totalGeneral * pct.lighting_pct;
+      const plugsVal = totalGeneral * pct.plugs_pct;
+      const otherVal = totalGeneral * pct.other_pct;
       
       return {
         totalPower: totalGeneral,
@@ -327,25 +362,25 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
       hvac: {
         value: powerData.hvac,
         status: typeof powerData.hvac === 'number' && powerData.hvac > 30 ? "warning" as const : "good" as const,
-        isSimulated: false,
+        isSimulated: powerData.isSimulated || false,
       },
       lighting: {
         value: powerData.lighting,
         status: typeof powerData.lighting === 'number' && powerData.lighting > 20 ? "warning" as const : "good" as const,
-        isSimulated: false,
+        isSimulated: powerData.isSimulated || false,
       },
       plugs: {
         value: powerData.plugs,
         status: typeof powerData.plugs === 'number' && powerData.plugs > 12 ? "warning" as const : "good" as const,
-        isSimulated: false,
+        isSimulated: powerData.isSimulated || false,
       },
       other: { 
         value: powerData.other, 
         status: "good" as const,
-        isSimulated: false,
+        isSimulated: powerData.isSimulated || false,
       },
     };
-  }, [powerData]);
+  }, [powerData, project, benchmarkMatrix]);
 
   if (!enabled) {
     return (
@@ -698,7 +733,7 @@ const WaterCard = ({ status, enabled, onClick, liveData }: {
   );
 };
 
-export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate }: OverviewSectionProps) => {
+export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
   // Fetch real-time telemetry data for this site (still needed for Today/Alerts)
   const liveData = useRealTimeLatestData(project.siteId);
@@ -837,6 +872,8 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
           threshold={thresholds?.energy_power_limit_kw}
           timePeriod={timePeriod}
           periodLabel={periodLabel}
+          project={project}
+          benchmarkMatrix={benchmarkMatrix}
         />
         <AirCard
           status={airStatus}
