@@ -301,7 +301,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
               className="px-6 py-3 rounded-full text-[13px] font-medium border border-black/10 hover:bg-black/[0.04] transition-colors"
               style={{ color: INK }}
             >
-              Chiudi
+              Close
             </button>
           </div>
         </div>
@@ -312,7 +312,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
         {/* Top-right close */}
         <button
           onClick={onClose}
-          aria-label="Chiudi"
+          aria-label="Close"
           className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white border border-black/10 flex items-center justify-center hover:bg-black/[0.04] transition-colors z-10"
         >
           <X className="w-4 h-4" style={{ color: INK }} />
@@ -343,7 +343,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
               className="px-6 py-3 rounded-full text-[13px] font-medium border border-black/10 hover:bg-black/[0.04] transition-colors"
               style={{ color: INK }}
             >
-              ← Torna indietro
+              ← Back
             </button>
           </div>
         </div>
@@ -357,7 +357,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
 
         <button
           onClick={onClose}
-          aria-label="Chiudi"
+          aria-label="Close"
           className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/90 backdrop-blur border border-black/10 flex items-center justify-center hover:bg-white transition-colors z-10"
         >
           <X className="w-4 h-4" style={{ color: INK }} />
