@@ -10,6 +10,8 @@ import brandImg from "@/assets/brand-white.png";
 import { Project } from "@/lib/data";
 import { useAllProjects } from "@/hooks/useRealTimeData";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useUserScope } from "@/hooks/useUserScope";
+import { useAdminData } from "@/contexts/AdminDataContext";
 
 interface HeaderProps {
   userName?: string;
@@ -29,18 +31,39 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const { projects } = useAllProjects();
+  const { clientRole, holdingId, brandId, siteId } = useUserScope();
+  const { brands } = useAdminData();
+
+  // Restrict the searchable project list to what this user can actually access
+  const scopedProjects = useMemo(() => {
+    switch (clientRole) {
+      case 'ADMIN_HOLDING': {
+        if (!holdingId) return [];
+        const allowedBrandIds = new Set(
+          brands.filter(b => b.holdingId === holdingId).map(b => b.id)
+        );
+        return projects.filter(p => p.brandId && allowedBrandIds.has(p.brandId));
+      }
+      case 'ADMIN_BRAND':
+        return brandId ? projects.filter(p => p.brandId === brandId) : [];
+      case 'STORE_USER':
+        return siteId ? projects.filter(p => p.siteId === siteId) : [];
+      default:
+        return projects;
+    }
+  }, [projects, clientRole, holdingId, brandId, siteId, brands]);
 
   // Filter projects based on search query
   const filteredProjects = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
-    return projects
+    return scopedProjects
       .filter(p => 
         p.name.toLowerCase().includes(query) || 
         p.address.toLowerCase().includes(query)
       )
       .slice(0, 8); // Limit to 8 results
-  }, [projects, searchQuery]);
+  }, [scopedProjects, searchQuery]);
 
   const handleAdminClick = () => {
     if (!user) {
