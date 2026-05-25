@@ -249,8 +249,18 @@ const InteractiveSlide: React.FC<SlideProps> = ({
 };
 
 /* Expanded overlay rendered at section level so it fills the panel cleanly */
+interface SlideData {
+  title: string;
+  sub: string;
+  cta: string;
+  visual: React.ReactNode;
+  backTitle: string;
+  backDesc: string;
+  backBullets: string[];
+  backVideo?: string;
+}
 interface ExpandedProps {
-  slide: Omit<SlideProps, "isExpanded" | "isFlipped" | "onExpand" | "index">;
+  slide: SlideData;
   isFlipped: boolean;
   onClose: () => void;
   onFlip: (s: boolean) => void;
@@ -358,7 +368,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
 );
 
 /* ───────────────────────── Carousel ───────────────────────── */
-const SLIDES: Array<Omit<SlideProps, "isExpanded" | "isFlipped" | "onExpand" | "onCollapse" | "onFlip" | "index">> = [
+const SLIDES: SlideData[] = [
   {
     title: "Device-level visibility across structures.",
     sub: "Monitoraggio centralizzato per il tuo intero portfolio.",
