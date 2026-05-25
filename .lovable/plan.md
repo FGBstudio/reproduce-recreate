@@ -1,94 +1,34 @@
-# Redesign `UserAccountDropdown` — Profile · Notifications · Help
+## Goal
+Nascondere i selettori "All Groups" / "All Clients" in `RegionNav` quando l'utente non ha la facoltà di navigarli, in base al ruolo derivato da `useUserScope`.
 
-Trasformiamo l'attuale dropdown account in un **pannello di controllo unificato** (stile Apple, in linea con il resto dell'app), che ospita 3 sezioni: **Profilo + Tema**, **Notifiche**, **Help/FAQ**. Tutto resta dentro `UserAccountDropdown.tsx` (più 2 sotto-componenti per pulizia).
+## Regole di visibilità (desktop + mobile)
 
-## Trigger nella topbar (invariato + bollino)
+| Ruolo (`clientRole`) | Selettore Holding (Groups) | Selettore Brand (Clients) |
+|---|---|---|
+| `ADMIN_FGB` | visibile | visibile |
+| `USER_FGB` | visibile | visibile |
+| `ADMIN_HOLDING` | **nascosto** (auto-bloccato sul suo holding) | visibile (filtrato sui brand del suo holding) |
+| `ADMIN_BRAND` | **nascosto** | **nascosto** |
+| `STORE_USER` | **nascosto** | **nascosto** |
 
-Resta il chip attuale (avatar + nome). Aggiunte:
+Se entrambi sono nascosti, l'intero contenitore glass-panel dei selettori non viene renderizzato (così non resta un riquadro vuoto). Stessa logica applicata anche per la versione mobile (attualmente i selettori sono solo desktop, ma manteniamo coerenza).
 
-- **Bollino rosso burgundy** (piccolo dot sfumato, `bg-rose-700/glow`) sovrapposto all'avatar quando ci sono alert critici/warning *e* il pannello è chiuso.
-- Quando il pannello è aperto, il bollino scompare; il conteggio passa sulla **campanella interna** alla sezione Notifiche.
+## Implementazione
 
-## Layout del pannello (DropdownMenuContent)
+**File modificato:** `src/components/dashboard/RegionNav.tsx`
 
-Larghezza ~360px, glass-panel arrotondato, padding generoso. Struttura verticale:
+1. Importare `useUserScope` e leggere `clientRole`.
+2. Derivare due booleani:
+   - `canSelectHolding = clientRole === 'ADMIN_FGB' || clientRole === 'USER_FGB'`
+   - `canSelectBrand   = canSelectHolding || clientRole === 'ADMIN_HOLDING'`
+3. Nel blocco desktop `Holding & Brand Filters`:
+   - Render condizionale del `<Select>` Holding + relativo `Building2` + separatore.
+   - Render condizionale del `<Select>` Brand + relativo `Tag`.
+   - Se `!canSelectHolding && !canSelectBrand` → non renderizzare l'intero `glass-panel` contenitore.
+   - Se solo uno dei due è visibile, rimuovere il separatore `w-px h-6`.
+4. Nessuna modifica alla logica di filtraggio dati a monte (Index.tsx): lo scope è già applicato lato hook/RLS, qui si interviene solo sulla presentazione.
 
-```text
-┌─────────────────────────────────────┐
-│ [Avatar 56]  Nome utente            │
-│              email · company        │
-│              [Admin badge → /admin] │  ← solo se isAdmin
-├─────────────────────────────────────┤
-│ ☀  Theme        [ Light · Dark ]    │  ← toggle segmentato
-├─────────────────────────────────────┤
-│ Tabs:  Profile · 🔔 Alerts(3) · ?   │
-├─────────────────────────────────────┤
-│ <contenuto della tab attiva>        │
-├─────────────────────────────────────┤
-│ [Edit profile]      [Sign out]      │
-└─────────────────────────────────────┘
-```
-
-Tab switcher minimale (underline animato con framer-motion `layoutId`).
-
-### Tab 1 — Profile
-
-Scheda dati read-only elegante: avatar grande, nome, email, company, job title, system role. Pulsante "Edit profile" apre il `Dialog` esistente (riutilizzato così com'è).
-
-### Tab 2 — Alerts (NotificationsTab)
-
-- Header: titolo "Notifications" + counter + link **"Mark all read"**.
-- Lista scrollabile (max-h ~340px) di item: icona severity, titolo, sito · device, timestamp relativo (`date-fns formatDistanceToNow`).
-- Colori severity (token-based):
-  - critical → `text-rose-700` + bg `rose/10` (sensori offline)
-  - warning → `text-orange-500` + bg `orange/10` (energia/IAQ)
-  - info → `text-teal-500` + bg `teal/10` (report/sistema)
-- **Data scoping**: la lista usa `useUserScope()` per ricavare i `site_id` accessibili, poi un nuovo hook `useUserAlerts(siteIds)` che fa `select` su `site_alerts` filtrato `IN (siteIds)` con realtime subscription (riusando la stessa logica di `useThresholdAlerts`, ma multi-site).
-- Lo stato "read" è client-side (localStorage `alerts.readIds`) — niente migrazione DB. "Mark all read" salva gli id correnti come letti; il counter mostra solo i non-letti.
-- Empty state: "No active alerts. All sites operating normally."
-
-### Tab 3 — Help & FAQ (HelpTab)
-
-- Input ricerca (`useState searchTerm`) con icona lente.
-- FAQ raggruppate per categoria: **Map & Sites**, **Scores & Metrics**, **Plans & Upgrades** (contenuti adattati dall'HTML condiviso, in EN/IT via `useLanguage`).
-- Accordion: usa `@/components/ui/accordion` (shadcn) già nel progetto.
-- Filtro live: nasconde domande dove né domanda né risposta matchano `searchTerm`; nasconde categorie senza match.
-- Footer contatto: card piccola con avatar di **Monitoring**, ruolo "FGB Support", dot verde "online", bottone "Contact support" (mailto).
-
-### Theme toggle (Dark / Light)
-
-- Nuovo `ThemeProvider` minimale in `src/contexts/ThemeContext.tsx` (state + `localStorage` `theme` + toggle classe `dark` su `<html>`).
-- Montato in `src/main.tsx` o `src/App.tsx` attorno all'app.
-- Toggle segmentato a due opzioni (icone Sun/Moon) dentro il pannello.
-- **Mappa in light mode**: in `MapView.tsx` aggiungiamo varianti condizionali (via classe `dark:` Tailwind o `useTheme`) per:
-  - `opacity` ridotta sull'SVG mondo (`.map-svg` → `opacity-[0.07]` in light, `0.15` in dark)
-  - tile CARTO: in light mode passare a `CARTO Positron` invece di `Dark Matter`
-  - pin: invariati (già a colori semantici saturi, contrastano su entrambi)
-  - glow/aura: in light mode `mix-blend-multiply` invece di `screen`
-
-## File toccati
-
-- `**src/components/dashboard/UserAccountDropdown.tsx**` — riscritto con tabs + theme toggle; mantiene il `Dialog` Edit profile e la logica `updateProfile`.
-- `**src/components/dashboard/NotificationsTab.tsx**` *(nuovo)* — lista alert + mark-as-read.
-- `**src/components/dashboard/HelpTab.tsx**` *(nuovo)* — ricerca + accordion + contatto support.
-- `**src/contexts/ThemeContext.tsx**` *(nuovo)* — provider tema.
-- `**src/hooks/useUserAlerts.ts**` *(nuovo)* — fetch + realtime su `site_alerts` filtrato per `siteIds` dello scope utente.
-- `**src/App.tsx**` o `**src/main.tsx**` — wrap con `ThemeProvider`.
-- `**src/components/dashboard/MapView.tsx**` — adattamenti light mode (opacità SVG, tile Positron, blend mode).
-- `**src/index.css**` — eventuale verifica token light già presenti (root + `.dark` già configurati: useremo `.dark` come default).
-
-## Fuori scope (non in questo task)
-
-- Persistenza "read state" lato DB (resta local-storage).
-- Notifiche push / toast realtime (la subscription aggiorna solo il pannello).
-- Modifiche a `Header.tsx` (resta l'unico trigger).
-- Refactor di `useThresholdAlerts` (lasciato com'è per la dashboard del singolo sito).
-
-## Dettagli tecnici
-
-- `useUserAlerts` shape: `{ alerts, unreadCount, markAllRead, isLoading }`. Alert join con `sites(name)` per mostrare nome sito.
-- Severity ordering: critical → warning → info → timestamp desc.
-- Bollino su avatar: condizione `unreadCount > 0 && !isOpen`.
-- Tabs persistenza: tab attiva in `useState`, reset a "profile" alla chiusura.
-- Theme attribute: aggiungo `data-theme` su `<html>` oltre alla classe `dark`, così possiamo usare i token HTML condivisi se servisse in futuro.
-- Accessibilità: ruolo `tablist`, focus trap già fornito da `DropdownMenu`.
+## Out of scope
+- Nessuna modifica a `Index.tsx`, `useUserScope`, RLS o policies.
+- I bottoni Region/Monitoring restano invariati (già filtrati da `allowedRegions`).
+- Nessun cambiamento al comportamento di KPI / mobile command center oltre alla regola sopra.

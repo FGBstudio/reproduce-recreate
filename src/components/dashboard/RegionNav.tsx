@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Zap, Wind, Droplets, Building2, Tag, BarChart2 } from "lucide-react";
 import { MonitoringType } from "@/lib/data";
 import { useAllHoldings, useAllBrands } from "@/hooks/useRealTimeData";
+import { useUserScope } from "@/hooks/useUserScope";
 import {
   Select,
   SelectContent,
@@ -55,6 +56,11 @@ const RegionNav = ({
 }: RegionNavProps) => {
   const { holdings } = useAllHoldings();
   const { brands } = useAllBrands();
+  const { clientRole } = useUserScope();
+
+  const canSelectHolding = clientRole === 'ADMIN_FGB' || clientRole === 'USER_FGB';
+  const canSelectBrand = canSelectHolding || clientRole === 'ADMIN_HOLDING';
+  const showSelectorsPanel = canSelectHolding || canSelectBrand;
 
   // Filter region buttons based on allowed regions
   const visibleRegionButtons = useMemo(() => {
@@ -146,46 +152,58 @@ const RegionNav = ({
       {/* ── DESKTOP: Original layout (unchanged) ── */}
       <div className="hidden md:flex items-center gap-3" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Holding & Brand Filters */}
-        <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-muted-foreground" />
-          <Select
-            value={selectedHolding || "all"}
-            onValueChange={(val) => {
-              onHoldingChange?.(val === "all" ? null : val);
-              onBrandChange?.(null);
-            }}
-            disabled={!onHoldingChange}
-          >
-            <SelectTrigger className="w-[120px] h-8 border-0 bg-transparent text-sm focus:ring-0">
-              <SelectValue placeholder="All Groups" />
-            </SelectTrigger>
-            <SelectContent className="glass-panel border-white/10">
-              <SelectItem value="all">All Groups</SelectItem>
-              {holdings.map((h) => (
-                <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {showSelectorsPanel && (
+          <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2">
+            {canSelectHolding && (
+              <>
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <Select
+                  value={selectedHolding || "all"}
+                  onValueChange={(val) => {
+                    onHoldingChange?.(val === "all" ? null : val);
+                    onBrandChange?.(null);
+                  }}
+                  disabled={!onHoldingChange}
+                >
+                  <SelectTrigger className="w-[120px] h-8 border-0 bg-transparent text-sm focus:ring-0">
+                    <SelectValue placeholder="All Groups" />
+                  </SelectTrigger>
+                  <SelectContent className="glass-panel border-white/10">
+                    <SelectItem value="all">All Groups</SelectItem>
+                    {holdings.map((h) => (
+                      <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
 
-          <div className="w-px h-6 bg-white/20" />
+            {canSelectHolding && canSelectBrand && (
+              <div className="w-px h-6 bg-white/20" />
+            )}
 
-          <Tag className="w-4 h-4 text-muted-foreground" />
-          <Select
-            value={selectedBrand || "all"}
-            onValueChange={(val) => onBrandChange?.(val === "all" ? null : val)}
-            disabled={!onBrandChange}
-          >
-            <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent text-sm focus:ring-0">
-              <SelectValue placeholder="All Clients" />
-            </SelectTrigger>
-            <SelectContent className="glass-panel border-white/10">
-              <SelectItem value="all">All Clients</SelectItem>
-              {availableBrands.map((b) => (
-                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            {canSelectBrand && (
+              <>
+                <Tag className="w-4 h-4 text-muted-foreground" />
+                <Select
+                  value={selectedBrand || "all"}
+                  onValueChange={(val) => onBrandChange?.(val === "all" ? null : val)}
+                  disabled={!onBrandChange}
+                >
+                  <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent text-sm focus:ring-0">
+                    <SelectValue placeholder="All Clients" />
+                  </SelectTrigger>
+                  <SelectContent className="glass-panel border-white/10">
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {availableBrands.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Region Buttons */}
         <div className="glass-panel rounded-full px-6 py-3 flex items-center gap-2">
