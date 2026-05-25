@@ -1450,7 +1450,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       });
       const len = energyConsumptionData.length;
       return {
-        totalGeneral: sumHVAC + sumLighting + sumPlugs + sumOther, // Sum equals General total
+        totalGeneral: (sumHVAC + sumLighting + sumPlugs + sumOther) / len, // Average General total
         hvac: sumHVAC / len,
         lighting: sumLighting / len,
         plugs: sumPlugs / len,
@@ -2374,35 +2374,88 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // --- 8. WIDGET: POWER CONSUMPTION (Real-time Donut kW) ---
   // Uses shared hook energyPowerBreakdown (from useEnergyPowerByCategory)
 
+  // A. Combine real-time power latest and period averages
+  const activePowerBreakdown = useMemo(() => {
+    const isToday = timePeriod === 'today';
+    const rawBreakdown = isToday ? energyPowerBreakdown : (energyPeriodAverages || energyPowerBreakdown);
+
+    if (isToday && isSimulationMode && hasOnlyGeneralMeters && rawBreakdown.totalGeneral !== undefined) {
+      let pct = { hvac_pct: 0.40, lighting_pct: 0.25, plugs_pct: 0.20, other_pct: 0.15 };
+      if (benchmarkMatrix && benchmarkMatrix.length > 0 && rawBreakdown.lastUpdate) {
+        try {
+          const siteTz = resolveTimezone(project?.timezone);
+          const dateObj = new Date(rawBreakdown.lastUpdate);
+          if (!isNaN(dateObj.getTime())) {
+            const p = getPartsInTz(dateObj, siteTz);
+            const isWeekend = p.weekday === 'Sat' || p.weekday === 'Sun';
+            const dayType = isWeekend ? 'weekend' : 'weekday';
+            
+            const found = benchmarkMatrix.find(row => 
+              Number(row.month_num) === p.month && 
+              Number(row.hour_num) === p.hour && 
+              row.day_type === dayType
+            );
+            if (found) {
+              pct = {
+                hvac_pct: Number(found.hvac_pct),
+                lighting_pct: Number(found.lighting_pct),
+                plugs_pct: Number(found.plugs_pct),
+                other_pct: Number(found.other_pct)
+              };
+            }
+          }
+        } catch (e) {
+          console.error("Failed to calculate virtual split from benchmark matrix in activePowerBreakdown:", e);
+        }
+      }
+      
+      const totalGeneral = rawBreakdown.totalGeneral;
+      return {
+        ...rawBreakdown,
+        hvac: totalGeneral * pct.hvac_pct,
+        lighting: totalGeneral * pct.lighting_pct,
+        plugs: totalGeneral * pct.plugs_pct,
+        other: totalGeneral * pct.other_pct,
+        isRealData: true,
+        isSimulated: true
+      };
+    }
+
+    return rawBreakdown;
+  }, [timePeriod, energyPowerBreakdown, energyPeriodAverages, isSimulationMode, hasOnlyGeneralMeters, benchmarkMatrix, project?.timezone]);
+
   // B. Elaborazione Dati per il Donut Chart
   const powerDistributionData = useMemo(() => {
-    const bp = energyPowerBreakdown;
+    const bp = activePowerBreakdown;
     if (!bp.isRealData && !bp.isStale) return [];
 
     let segments: { name: string; value: number; color: string }[] = [];
+    const isSim = (bp as any).isSimulated || (isSimulationMode && hasOnlyGeneralMeters);
 
     if (energyViewMode === 'category') {
       const hasSubMeters = (bp.hvac !== undefined || bp.lighting !== undefined || bp.plugs !== undefined);
       
       if (!hasSubMeters && bp.totalGeneral !== undefined) {
-        segments.push({ name: 'General', value: bp.totalGeneral, color: '#009193' });
+        segments.push({ name: isSim ? 'General (simulated)' : 'General', value: bp.totalGeneral, color: '#009193' });
       } else {
-        if (bp.hvac !== undefined && bp.hvac > 0) segments.push({ name: 'HVAC', value: bp.hvac, color: '#006367' });
-        if (bp.lighting !== undefined && bp.lighting > 0) segments.push({ name: 'Lighting', value: bp.lighting, color: '#e63f26' });
-        if (bp.plugs !== undefined && bp.plugs > 0) segments.push({ name: 'Plugs & Loads', value: bp.plugs, color: '#f8cbcc' });
-        if (bp.other !== undefined && bp.other > 0.1) segments.push({ name: 'Other', value: bp.other, color: '#a0d5d6' });
+        if (bp.hvac !== undefined && bp.hvac > 0) segments.push({ name: isSim ? 'HVAC (simulated)' : 'HVAC', value: bp.hvac, color: '#006367' });
+        if (bp.lighting !== undefined && bp.lighting > 0) segments.push({ name: isSim ? 'Lighting (simulated)' : 'Lighting', value: bp.lighting, color: '#e63f26' });
+        if (bp.plugs !== undefined && bp.plugs > 0) segments.push({ name: isSim ? 'Plugs & Loads (simulated)' : 'Plugs & Loads', value: bp.plugs, color: '#f8cbcc' });
+        if (bp.other !== undefined && bp.other > 0.1) segments.push({ name: isSim ? 'Other (simulated)' : 'Other', value: bp.other, color: '#a0d5d6' });
       }
     } else {
       // Vista Device
-      if (bp.deviceBreakdown.size === 0 && bp.totalGeneral !== undefined) {
-        segments.push({ name: 'General', value: bp.totalGeneral, color: '#009193' });
+      if (!bp.deviceBreakdown || bp.deviceBreakdown.size === 0) {
+        if (bp.totalGeneral !== undefined) {
+          segments.push({ name: isSim ? 'General (simulated)' : 'General', value: bp.totalGeneral, color: '#009193' });
+        }
       } else {
         const entries = Array.from(bp.deviceBreakdown.values())
           .filter(d => d.category !== 'general')
           .sort((a, b) => b.value - a.value);
         entries.forEach((entry, index) => {
           segments.push({
-            name: entry.label,
+            name: isSim ? `${entry.label} (simulated)` : entry.label,
             value: entry.value,
             color: FGB_PALETTE[index % FGB_PALETTE.length]
           });
@@ -2410,12 +2463,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       }
     }
     return segments;
-  }, [energyPowerBreakdown, energyViewMode, FGB_PALETTE]);
+  }, [activePowerBreakdown, energyViewMode, FGB_PALETTE, isSimulationMode, hasOnlyGeneralMeters]);
 
-  // C. Calcolo Totale KW (Centro del Donut) - from shared hook
+  // C. Calcolo Totale KW (Centro del Donut)
   const totalPowerKw = useMemo(() => {
-    return energyPowerBreakdown.totalGeneral ?? 0;
-  }, [energyPowerBreakdown]);
+    return activePowerBreakdown.totalGeneral ?? 0;
+  }, [activePowerBreakdown]);
 
   // --- 9. WIDGET: DEVICES CONSUMPTION (Stacked Bar Chart) ---
   const deviceConsumptionData = useMemo(() => {
@@ -3862,8 +3915,12 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                     <div ref={powerConsRef} className="lg:col-span-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <div>
-                            <h3 className="text-base md:text-lg font-bold text-gray-800">Power Consumption</h3>
-                            <p className="text-xs text-gray-500">Real-time (kW)</p>
+                            <h3 className="text-base md:text-lg font-bold text-gray-800">
+                              {timePeriod === 'today' ? 'Power Consumption' : 'Average Power'}
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                              {timePeriod === 'today' ? 'Real-time (kW)' : 'Average (kW)'}
+                            </p>
                           </div>
                           <ExportButtons chartRef={powerConsRef} data={powerDistributionData} filename="power-consumption" onExpand={() => setFullscreenChart('powerCons')} />
                         </div>
@@ -3877,7 +3934,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                                 powerDistributionData.map((item, idx) => (
                                   <div key={idx} className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                                    <span className="text-xs text-gray-600 truncate max-w-[100px]" title={item.name}>{item.name}</span>
+                                    <span className="text-xs text-gray-600 truncate max-w-[160px]" title={item.name}>{item.name}</span>
                                     <span className="text-xs font-semibold text-gray-800 ml-auto tabular-nums">
                                       {item.value.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kW
                                     </span>
@@ -5846,12 +5903,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'powerCons'}
         onClose={() => setFullscreenChart(null)}
-        title="Power Consumption (Real-time)"
+        title={timePeriod === 'today' ? 'Power Consumption (Real-time)' : 'Power Consumption (Average)'}
       >
         <div className="flex items-center gap-8 h-[500px]">
           <div className="space-y-2 flex-1 max-h-[450px] overflow-y-auto pr-4">
             {powerDistributionData.length === 0 ? (
-              <div className="text-gray-400 italic">No real-time data</div>
+              <div className="text-gray-400 italic">
+                {timePeriod === 'today' ? 'No real-time data' : 'No average data'}
+              </div>
             ) : (
               powerDistributionData.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3">
