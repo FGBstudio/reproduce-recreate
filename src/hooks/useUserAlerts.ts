@@ -50,12 +50,20 @@ export function useUserAlerts() {
   const [readIds, setReadIds] = useState<Set<string>>(() => loadReadIds());
 
   // FGB admins see all sites; scoped users see only their accessible sites.
+  // NOTE: accessibleSiteIds only contains direct site memberships. For
+  // ADMIN_BRAND / ADMIN_HOLDING users the array is empty even though they
+  // can access many sites via brand/holding membership. In that case we
+  // skip the client-side .in() filter and rely on RLS (can_access_site)
+  // to scope the rows server-side.
   const siteIds = useMemo(() => accessibleSiteIds, [accessibleSiteIds]);
   const seeAll = isAdmin || clientRole === 'ADMIN_FGB';
+  const relyOnRls =
+    !seeAll && siteIds.length === 0 &&
+    (clientRole === 'ADMIN_HOLDING' || clientRole === 'ADMIN_BRAND');
 
   useEffect(() => {
     if (!isSupabaseConfigured || scopeLoading) return;
-    if (!seeAll && siteIds.length === 0) {
+    if (!seeAll && !relyOnRls && siteIds.length === 0) {
       setAlerts([]);
       setIsLoading(false);
       return;
@@ -71,7 +79,7 @@ export function useUserAlerts() {
         .order('triggered_at', { ascending: false })
         .limit(50);
 
-      if (!seeAll) query = query.in('site_id', siteIds);
+      if (!seeAll && !relyOnRls) query = query.in('site_id', siteIds);
 
       const { data, error } = await query;
       if (cancelled) return;
@@ -108,7 +116,7 @@ export function useUserAlerts() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [siteIds.join(','), seeAll, scopeLoading]);
+  }, [siteIds.join(','), seeAll, relyOnRls, scopeLoading]);
 
   const unreadCount = useMemo(
     () => alerts.filter(a => !readIds.has(a.id)).length,
