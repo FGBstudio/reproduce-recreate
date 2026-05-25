@@ -869,40 +869,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     return out;
   }, [devicePeriodAverages, airLatestResp, isToday]);
 
-  // ENERGY PERIOD AVERAGES for Overview Section
-  const energyPeriodAverages = useMemo(() => {
-    const data = energyTimeseriesResp?.data;
-    if (!data || !Array.isArray(data)) return undefined;
-
-    let totalGeneral = 0; let totalHVAC = 0; let totalLighting = 0; let totalPlugs = 0;
-    let countGen = 0; let countHVAC = 0; let countLighting = 0; let countPlugs = 0;
-
-    data.forEach(d => {
-      // For power (kW), use value_avg
-      if (d.metric !== 'energy.power_kw' && d.metric !== 'energy.active_power' && d.metric !== 'power') return;
-      
-      const info = deviceMap.get(d.device_id);
-      if (!info) return;
-
-      const val = Number(d.value_avg ?? d.value ?? 0);
-      if (!Number.isFinite(val) || val <= 0) return;
-
-      switch (info.category) {
-        case 'general': totalGeneral += val; countGen++; break;
-        case 'hvac': totalHVAC += val; countHVAC++; break;
-        case 'lighting': totalLighting += val; countLighting++; break;
-        case 'plugs': totalPlugs += val; countPlugs++; break;
-      }
-    });
-
-    return {
-      totalGeneral: countGen > 0 ? totalGeneral / countGen : undefined,
-      hvac: countHVAC > 0 ? totalHVAC / countHVAC : undefined,
-      lighting: countLighting > 0 ? totalLighting / countLighting : undefined,
-      plugs: countPlugs > 0 ? totalPlugs / countPlugs : undefined,
-      isRealData: countGen > 0 || countHVAC > 0 || countLighting > 0 || countPlugs > 0,
-    };
-  }, [energyTimeseriesResp, deviceMap]);
+  // ENERGY PERIOD AVERAGES moved below energyConsumptionData to resolve dependency temporal dead zone
 
   // Heatmap logic for Air Dashboard
   const airHeatmapGrid = useMemo(() => {
@@ -1468,6 +1435,63 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
     hourlyBenchmarksMap,
     dailyBenchmarksMap
   ]);
+
+  // ENERGY PERIOD AVERAGES for Overview Section
+  const energyPeriodAverages = useMemo(() => {
+    // If simulation mode is active and site has only general meters, average the virtual split values computed for the graph
+    if (isSimulationMode && hasOnlyGeneralMeters && energyConsumptionData && energyConsumptionData.length > 0) {
+      let sumGen = 0; let sumHVAC = 0; let sumLighting = 0; let sumPlugs = 0; let sumOther = 0;
+      energyConsumptionData.forEach(d => {
+        sumGen += d.General || 0;
+        sumHVAC += d.HVAC || 0;
+        sumLighting += d.Lighting || 0;
+        sumPlugs += d.Plugs || 0;
+        sumOther += d.Other || 0;
+      });
+      const len = energyConsumptionData.length;
+      return {
+        totalGeneral: sumHVAC + sumLighting + sumPlugs + sumOther, // Sum equals General total
+        hvac: sumHVAC / len,
+        lighting: sumLighting / len,
+        plugs: sumPlugs / len,
+        other: sumOther / len,
+        isRealData: true,
+        isSimulated: true
+      };
+    }
+
+    const data = energyTimeseriesResp?.data;
+    if (!data || !Array.isArray(data)) return undefined;
+
+    let totalGeneral = 0; let totalHVAC = 0; let totalLighting = 0; let totalPlugs = 0;
+    let countGen = 0; let countHVAC = 0; let countLighting = 0; let countPlugs = 0;
+
+    data.forEach(d => {
+      // For power (kW), use value_avg
+      if (d.metric !== 'energy.power_kw' && d.metric !== 'energy.active_power' && d.metric !== 'power') return;
+      
+      const info = deviceMap.get(d.device_id);
+      if (!info) return;
+
+      const val = Number(d.value_avg ?? d.value ?? 0);
+      if (!Number.isFinite(val) || val <= 0) return;
+
+      switch (info.category) {
+        case 'general': totalGeneral += val; countGen++; break;
+        case 'hvac': totalHVAC += val; countHVAC++; break;
+        case 'lighting': totalLighting += val; countLighting++; break;
+        case 'plugs': totalPlugs += val; countPlugs++; break;
+      }
+    });
+
+    return {
+      totalGeneral: countGen > 0 ? totalGeneral / countGen : undefined,
+      hvac: countHVAC > 0 ? totalHVAC / countHVAC : undefined,
+      lighting: countLighting > 0 ? totalLighting / countLighting : undefined,
+      plugs: countPlugs > 0 ? totalPlugs / countPlugs : undefined,
+      isRealData: countGen > 0 || countHVAC > 0 || countLighting > 0 || countPlugs > 0,
+    };
+  }, [energyTimeseriesResp, deviceMap, isSimulationMode, hasOnlyGeneralMeters, energyConsumptionData]);
 
   // Estrai le chiavi dei device per la legenda dinamica (solo mode Device)
   const deviceKeys = useMemo(() => {
@@ -2921,8 +2945,8 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           />
         )}
 
-        {/* LIVELLO OVERLAY SFUMATO (Migliora sempre la leggibilità) */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/30 to-white/60 pointer-events-none" />
+        {/* LIVELLO OVERLAY SFUMATO (Cinematic Gradient for maximum readability and visual depth) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/10 to-black/65 pointer-events-none" />
         
       </div>
 
@@ -2938,14 +2962,14 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
       >
         <button 
           onClick={onClose}
-          className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold transition-all group border border-black/10"
+          className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold text-white transition-all group border border-white/10"
           style={{ minHeight: 44 }}
         >
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="hidden sm:inline">{t('pd.back_to_region')}</span>
         </button>
         {/* Change Background Button */}
-        <label className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-black/10 hover:bg-black/20 backdrop-blur-md rounded-full text-xs font-medium transition-all cursor-pointer border border-black/10 ${isUploadingBg ? 'opacity-50 pointer-events-none' : ''}`}>
+        <label className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-xs font-medium text-white transition-all cursor-pointer border border-white/10 ${isUploadingBg ? 'opacity-50 pointer-events-none' : ''}`}>
           {isUploadingBg ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <Image className="w-3.5 h-3.5 md:w-4 md:h-4" />}
           <span className="hidden md:inline">{isUploadingBg ? 'Uploading...' : t('pd.change_bg')}</span>
           <input 
@@ -3134,19 +3158,19 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
             </div>
           </div>
           
-          <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-fgb-secondary tracking-wide truncate drop-shadow-sm">{project.name}</h1>
-          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-gray-700 font-medium flex-wrap">
+          <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-white tracking-wide truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">{project.name}</h1>
+          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-white/90 font-medium flex-wrap drop-shadow-[0_1px_4px_rgba(0,0,0,0.3)]">
             <span className="truncate max-w-[150px] md:max-w-none">{project.address}</span>
-            <span className="text-gray-400 hidden sm:inline">|</span>
+            <span className="text-white/40 hidden sm:inline">|</span>
             <span className="flex items-center gap-1">
-              {outdoorTemp ?? project.data.temp}° <Cloud className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              {outdoorTemp ?? project.data.temp}° <Cloud className="w-3.5 h-3.5 md:w-4 md:h-4 text-white/80" />
             </span>
             {/* Brand & Holding Info - Dinamico */}
             {brand && (
               <>
-                <span className="text-gray-400 hidden md:inline">|</span>
+                <span className="text-white/40 hidden md:inline">|</span>
                 <span className="hidden md:flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-gray-500" />
+                  <Tag className="w-4 h-4 text-white/70" />
                   <span className="font-medium">{brand.name}</span>
                 </span>
                 {/* Nota: Per le holding reali bisognerebbe fare un lookup simile, 
@@ -3182,6 +3206,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
                   airAverages={activeAirMetrics}
                   energyAverages={energyPeriodAverages}
                   onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
+                  benchmarkMatrix={benchmarkMatrix}
                 />
               </div>
             )}
