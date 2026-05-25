@@ -652,7 +652,7 @@ const FloatingBentoPanel: React.FC = () => {
             <p className="mt-1 text-[13px]" style={{ color: SUB }}>Entry-level building monitoring.</p>
             <div className="mt-6 text-4xl font-semibold" style={{ color: INK }}>€0</div>
             <ul className="mt-6 space-y-2.5 flex-1">
-              {["1 struttura base", "Dashboard standard", "Notifiche email"].map((b) => (
+              {["1 Site view", "Standard Dashboard", "Eemail notification"].map((b) => (
                 <li key={b} className="flex items-center gap-2 text-[13px]" style={{ color: SUB }}>
                   <span className="w-1 h-1 rounded-full" style={{ background: SUB }} /> {b}
                 </li>
@@ -672,7 +672,7 @@ const FloatingBentoPanel: React.FC = () => {
             <p className="mt-1 text-[13px]" style={{ color: SUB }}>Full ecosystem fusion & predictive AI.</p>
             <div className="mt-6 text-4xl font-semibold" style={{ color: ACCENT }}>Custom</div>
             <ul className="mt-6 space-y-2.5 flex-1">
-              {["Multi-site portfolio", "Modulo OCR & gamification ESG", "API dedicate & predictive AI"].map((b) => (
+              {["Multi-site portfolio", "OCR module & ESG gamification", "Dedicated API & FGB-AI based predictive"].map((b) => (
                 <li key={b} className="flex items-center gap-2 text-[13px]" style={{ color: INK }}>
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }} /> {b}
                 </li>
@@ -688,10 +688,10 @@ const FloatingBentoPanel: React.FC = () => {
             <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: INK }}>Accelerate your transition</h3>
             <p className="mt-1 text-[13px]" style={{ color: SUB }}>Talk directly to our implementation engineers.</p>
             <form className="mt-6 space-y-3 flex-1 flex flex-col">
-              <input type="text" placeholder="Nome completo" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
-              <input type="email" placeholder="Email aziendale" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
-              <input type="text" placeholder="Nome azienda" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
-              <textarea placeholder="Parlaci delle tue strutture…" rows={3} className="rounded-xl border border-black/10 px-4 py-3 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors resize-none" />
+              <input type="text" placeholder="Full Name" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
+              <input type="email" placeholder="Company Email" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
+              <input type="text" placeholder="Company Name" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
+              <textarea placeholder="Introduce your portfolio.." rows={3} className="rounded-xl border border-black/10 px-4 py-3 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors resize-none" />
               <button type="button" className="mt-2 py-3 rounded-xl text-[13px] font-semibold text-white transition-transform hover:scale-[1.01] flex items-center justify-center gap-2" style={{ background: INK }}>
                 Contact sales <ChevronRight className="w-4 h-4" />
               </button>
