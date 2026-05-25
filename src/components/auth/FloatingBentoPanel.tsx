@@ -548,10 +548,8 @@ const FloatingBentoPanel: React.FC = () => {
       <style>{`.fb-scroll::-webkit-scrollbar{display:none}`}</style>
 
       {/* Top nav */}
-      <nav className="fixed top-0 right-0 w-full lg:w-[calc(100%-clamp(360px,35vw,520px))] z-50 flex items-center px-8 py-6 bg-gradient-to-b from-black/80 to-transparent pointer-events-none transition-all">
-        
-        {/* LINK CENTRATI (Posizionamento assoluto e logica di scroll custom) */}
-        <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex space-x-10 text-[11px] font-bold uppercase tracking-widest text-white/60 pointer-events-auto">
+       <nav className={`fixed top-0 right-0 w-full lg:w-[calc(100%-clamp(360px,35vw,520px))] z-50 flex items-center justify-between px-8 py-5 pointer-events-none transition-opacity duration-300 ${expandedIndex !== null ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+        <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-8 text-[13px] font-medium pointer-events-auto" style={{ color: INK }}>
           <button onClick={() => scrollToSection('solution')} className="hover:text-emerald-400 transition-colors">Our Solution</button>
           <button onClick={() => scrollToSection('values')} className="hover:text-emerald-400 transition-colors">Our Values</button>
           <button onClick={() => scrollToSection('clients')} className="hover:text-emerald-400 transition-colors">Uffici</button>
