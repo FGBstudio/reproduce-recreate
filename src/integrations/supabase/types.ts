@@ -240,6 +240,13 @@ export type Database = {
             referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "audit_logs_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
         ]
       }
       bill_data: {
@@ -456,6 +463,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cert_payment_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
             foreignKeyName: "cert_payment_milestones_trigger_task_id_fkey"
             columns: ["trigger_task_id"]
             isOneToOne: false
@@ -552,6 +566,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cert_tasks_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
             foreignKeyName: "cert_tasks_phase_id_fkey"
             columns: ["phase_id"]
             isOneToOne: false
@@ -593,11 +614,19 @@ export type Database = {
             referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cert_wbs_phases_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
         ]
       }
       certification_milestones: {
         Row: {
           actual_date: string | null
+          allocated_hours: number | null
           category: string
           certification_id: string
           completed_date: string | null
@@ -619,6 +648,7 @@ export type Database = {
         }
         Insert: {
           actual_date?: string | null
+          allocated_hours?: number | null
           category: string
           certification_id: string
           completed_date?: string | null
@@ -640,6 +670,7 @@ export type Database = {
         }
         Update: {
           actual_date?: string | null
+          allocated_hours?: number | null
           category?: string
           certification_id?: string
           completed_date?: string | null
@@ -667,11 +698,90 @@ export type Database = {
             referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "certification_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+        ]
+      }
+      certification_stakeholders: {
+        Row: {
+          certification_id: string
+          company_name: string | null
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          certification_id: string
+          company_name?: string | null
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          certification_id?: string
+          company_name?: string | null
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_stakeholders_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certification_stakeholders_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "certification_stakeholders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
         ]
       }
       certifications: {
         Row: {
           actual_handover_date: string | null
+          allocated_hours: number | null
+          baseline_handover_date: string | null
           categories: Json | null
           cert_level: string | null
           cert_rating: string | null
@@ -682,6 +792,10 @@ export type Database = {
           fgb_monitor: boolean
           gbci_fees: number | null
           handover_date: string
+          has_energy_monitoring: boolean
+          has_hardware_redirection: boolean
+          has_iaq_monitoring: boolean
+          has_water_monitoring: boolean
           id: string
           is_commissioning: boolean | null
           issued_date: string | null
@@ -705,6 +819,8 @@ export type Database = {
         }
         Insert: {
           actual_handover_date?: string | null
+          allocated_hours?: number | null
+          baseline_handover_date?: string | null
           categories?: Json | null
           cert_level?: string | null
           cert_rating?: string | null
@@ -715,6 +831,10 @@ export type Database = {
           fgb_monitor?: boolean
           gbci_fees?: number | null
           handover_date?: string
+          has_energy_monitoring?: boolean
+          has_hardware_redirection?: boolean
+          has_iaq_monitoring?: boolean
+          has_water_monitoring?: boolean
           id?: string
           is_commissioning?: boolean | null
           issued_date?: string | null
@@ -738,6 +858,8 @@ export type Database = {
         }
         Update: {
           actual_handover_date?: string | null
+          allocated_hours?: number | null
+          baseline_handover_date?: string | null
           categories?: Json | null
           cert_level?: string | null
           cert_rating?: string | null
@@ -748,6 +870,10 @@ export type Database = {
           fgb_monitor?: boolean
           gbci_fees?: number | null
           handover_date?: string
+          has_energy_monitoring?: boolean
+          has_hardware_redirection?: boolean
+          has_iaq_monitoring?: boolean
+          has_water_monitoring?: boolean
           id?: string
           is_commissioning?: boolean | null
           issued_date?: string | null
@@ -1149,6 +1275,45 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      energy_benchmarks: {
+        Row: {
+          climate_zone: string
+          day_type: string
+          hour_num: number
+          hvac_pct: number
+          id: string
+          lighting_pct: number
+          month_num: number
+          other_pct: number
+          plugs_pct: number
+          typology: string
+        }
+        Insert: {
+          climate_zone: string
+          day_type: string
+          hour_num: number
+          hvac_pct: number
+          id?: string
+          lighting_pct: number
+          month_num: number
+          other_pct: number
+          plugs_pct: number
+          typology: string
+        }
+        Update: {
+          climate_zone?: string
+          day_type?: string
+          hour_num?: number
+          hvac_pct?: number
+          id?: string
+          lighting_pct?: number
+          month_num?: number
+          other_pct?: number
+          plugs_pct?: number
+          typology?: string
         }
         Relationships: []
       }
@@ -2367,6 +2532,13 @@ export type Database = {
             referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payment_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
         ]
       }
       products: {
@@ -2375,30 +2547,36 @@ export type Database = {
           certification: string
           created_at: string
           id: string
+          is_system_placeholder: boolean
           name: string
           sku: string
           supplier_lead_time_days: number
-          unit_price: number | null
+          unit_cost: number | null
+          unit_sale_price: number | null
         }
         Insert: {
           category?: string | null
           certification?: string
           created_at?: string
           id?: string
+          is_system_placeholder?: boolean
           name: string
           sku: string
           supplier_lead_time_days?: number
-          unit_price?: number | null
+          unit_cost?: number | null
+          unit_sale_price?: number | null
         }
         Update: {
           category?: string | null
           certification?: string
           created_at?: string
           id?: string
+          is_system_placeholder?: boolean
           name?: string
           sku?: string
           supplier_lead_time_days?: number
-          unit_price?: number | null
+          unit_cost?: number | null
+          unit_sale_price?: number | null
         }
         Relationships: []
       }
@@ -2456,8 +2634,10 @@ export type Database = {
           certification_id: string
           created_at: string
           id: string
+          is_generic_placeholder: boolean
           product_id: string
           quantity: number
+          replaced_by_allocation_id: string | null
           requested_quantity: number | null
           source: string | null
           status: string
@@ -2468,8 +2648,10 @@ export type Database = {
           certification_id: string
           created_at?: string
           id?: string
+          is_generic_placeholder?: boolean
           product_id: string
           quantity?: number
+          replaced_by_allocation_id?: string | null
           requested_quantity?: number | null
           source?: string | null
           status?: string
@@ -2480,8 +2662,10 @@ export type Database = {
           certification_id?: string
           created_at?: string
           id?: string
+          is_generic_placeholder?: boolean
           product_id?: string
           quantity?: number
+          replaced_by_allocation_id?: string | null
           requested_quantity?: number | null
           source?: string | null
           status?: string
@@ -2496,10 +2680,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_allocations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
             foreignKeyName: "project_allocations_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_allocations_replaced_by_allocation_id_fkey"
+            columns: ["replaced_by_allocation_id"]
+            isOneToOne: false
+            referencedRelation: "project_allocations"
             referencedColumns: ["id"]
           },
         ]
@@ -2547,44 +2745,75 @@ export type Database = {
             referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "project_canvas_entries_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
         ]
       }
       project_tasks: {
         Row: {
           assigned_to: string | null
+          assignees: string[]
           blocking_payment_id: string | null
-          certification_id: string
+          certification_id: string | null
           created_at: string
           dependency_id: string | null
+          description: string | null
+          due_date: string | null
           end_date: string | null
           id: string
+          priority: string | null
+          sprint_id: string | null
           start_date: string | null
           status: string
+          task_kind: string
           task_name: string
+          team_id: string | null
+          title: string | null
         }
         Insert: {
           assigned_to?: string | null
+          assignees?: string[]
           blocking_payment_id?: string | null
-          certification_id: string
+          certification_id?: string | null
           created_at?: string
           dependency_id?: string | null
+          description?: string | null
+          due_date?: string | null
           end_date?: string | null
           id?: string
+          priority?: string | null
+          sprint_id?: string | null
           start_date?: string | null
           status?: string
+          task_kind?: string
           task_name?: string
+          team_id?: string | null
+          title?: string | null
         }
         Update: {
           assigned_to?: string | null
+          assignees?: string[]
           blocking_payment_id?: string | null
-          certification_id?: string
+          certification_id?: string | null
           created_at?: string
           dependency_id?: string | null
+          description?: string | null
+          due_date?: string | null
           end_date?: string | null
           id?: string
+          priority?: string | null
+          sprint_id?: string | null
           start_date?: string | null
           status?: string
+          task_kind?: string
           task_name?: string
+          team_id?: string | null
+          title?: string | null
         }
         Relationships: [
           {
@@ -2602,10 +2831,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_tasks_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
             foreignKeyName: "project_tasks_dependency_id_fkey"
             columns: ["dependency_id"]
             isOneToOne: false
             referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "team_sprints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -2674,11 +2924,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "projects_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
             foreignKeyName: "projects_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_budget_history: {
+        Row: {
+          breakdown: Json
+          certification_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          markup_pct: number
+          total_cost: number
+          total_effort_days: number
+          total_suggested: number
+        }
+        Insert: {
+          breakdown: Json
+          certification_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          markup_pct?: number
+          total_cost: number
+          total_effort_days?: number
+          total_suggested: number
+        }
+        Update: {
+          breakdown?: Json
+          certification_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          markup_pct?: number
+          total_cost?: number
+          total_effort_days?: number
+          total_suggested?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_budget_history_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_budget_history_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
           },
         ]
       }
@@ -2740,6 +3048,125 @@ export type Database = {
             foreignKeyName: "sensor_health_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_air_records: {
+        Row: {
+          certification_id: string | null
+          created_at: string
+          customs_cost: number | null
+          handover_date: string | null
+          hardware_cost: number | null
+          id: string
+          inbound_cost: number | null
+          internal_cost: number | null
+          latest_shipment_date: string | null
+          notes: string | null
+          online_status: string | null
+          outbound_cost: number | null
+          planned_remaining: number | null
+          pm_id: string | null
+          po_numbers: string[] | null
+          profit: number | null
+          project_name: string
+          quotation_value: number | null
+          roi: number | null
+          site_id: string
+          status: string
+          taxes: number | null
+          total_cost: number | null
+          total_sensors: number | null
+          updated_at: string
+          vat_cost: number | null
+          working_time_cost: number | null
+        }
+        Insert: {
+          certification_id?: string | null
+          created_at?: string
+          customs_cost?: number | null
+          handover_date?: string | null
+          hardware_cost?: number | null
+          id?: string
+          inbound_cost?: number | null
+          internal_cost?: number | null
+          latest_shipment_date?: string | null
+          notes?: string | null
+          online_status?: string | null
+          outbound_cost?: number | null
+          planned_remaining?: number | null
+          pm_id?: string | null
+          po_numbers?: string[] | null
+          profit?: number | null
+          project_name: string
+          quotation_value?: number | null
+          roi?: number | null
+          site_id: string
+          status?: string
+          taxes?: number | null
+          total_cost?: number | null
+          total_sensors?: number | null
+          updated_at?: string
+          vat_cost?: number | null
+          working_time_cost?: number | null
+        }
+        Update: {
+          certification_id?: string | null
+          created_at?: string
+          customs_cost?: number | null
+          handover_date?: string | null
+          hardware_cost?: number | null
+          id?: string
+          inbound_cost?: number | null
+          internal_cost?: number | null
+          latest_shipment_date?: string | null
+          notes?: string | null
+          online_status?: string | null
+          outbound_cost?: number | null
+          planned_remaining?: number | null
+          pm_id?: string | null
+          po_numbers?: string[] | null
+          profit?: number | null
+          project_name?: string
+          quotation_value?: number | null
+          roi?: number | null
+          site_id?: string
+          status?: string
+          taxes?: number | null
+          total_cost?: number | null
+          total_sensors?: number | null
+          updated_at?: string
+          vat_cost?: number | null
+          working_time_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_air_records_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_air_records_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "site_air_records_pm_id_fkey"
+            columns: ["pm_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_air_records_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: true
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
@@ -3164,6 +3591,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "site_energy_records_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
             foreignKeyName: "site_energy_records_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -3294,6 +3728,8 @@ export type Database = {
           air_co_warning_ppm: number | null
           air_co2_critical_ppm: number | null
           air_co2_warning_ppm: number | null
+          air_hcho_critical_ugm3: number | null
+          air_hcho_warning_ugm3: number | null
           air_humidity_max_pct: number | null
           air_humidity_min_pct: number | null
           air_o3_critical_ppb: number | null
@@ -3304,6 +3740,8 @@ export type Database = {
           air_pm25_warning_ugm3: number | null
           air_temp_max_c: number | null
           air_temp_min_c: number | null
+          air_tvoc_critical_ugm3: number | null
+          air_tvoc_warning_ugm3: number | null
           air_voc_critical_ppb: number | null
           air_voc_warning_ppb: number | null
           connectivity_offline_threshold_energy_min: number | null
@@ -3326,6 +3764,8 @@ export type Database = {
           air_co_warning_ppm?: number | null
           air_co2_critical_ppm?: number | null
           air_co2_warning_ppm?: number | null
+          air_hcho_critical_ugm3?: number | null
+          air_hcho_warning_ugm3?: number | null
           air_humidity_max_pct?: number | null
           air_humidity_min_pct?: number | null
           air_o3_critical_ppb?: number | null
@@ -3336,6 +3776,8 @@ export type Database = {
           air_pm25_warning_ugm3?: number | null
           air_temp_max_c?: number | null
           air_temp_min_c?: number | null
+          air_tvoc_critical_ugm3?: number | null
+          air_tvoc_warning_ugm3?: number | null
           air_voc_critical_ppb?: number | null
           air_voc_warning_ppb?: number | null
           connectivity_offline_threshold_energy_min?: number | null
@@ -3358,6 +3800,8 @@ export type Database = {
           air_co_warning_ppm?: number | null
           air_co2_critical_ppm?: number | null
           air_co2_warning_ppm?: number | null
+          air_hcho_critical_ugm3?: number | null
+          air_hcho_warning_ugm3?: number | null
           air_humidity_max_pct?: number | null
           air_humidity_min_pct?: number | null
           air_o3_critical_ppb?: number | null
@@ -3368,6 +3812,8 @@ export type Database = {
           air_pm25_warning_ugm3?: number | null
           air_temp_max_c?: number | null
           air_temp_min_c?: number | null
+          air_tvoc_critical_ugm3?: number | null
+          air_tvoc_warning_ugm3?: number | null
           air_voc_critical_ppb?: number | null
           air_voc_warning_ppb?: number | null
           connectivity_offline_threshold_energy_min?: number | null
@@ -3465,6 +3911,7 @@ export type Database = {
           area_m2: number | null
           brand_id: string
           city: string | null
+          climate_zone: string | null
           country: string | null
           created_at: string | null
           energy_price_kwh: number | null
@@ -3491,6 +3938,7 @@ export type Database = {
           area_m2?: number | null
           brand_id: string
           city?: string | null
+          climate_zone?: string | null
           country?: string | null
           created_at?: string | null
           energy_price_kwh?: number | null
@@ -3517,6 +3965,7 @@ export type Database = {
           area_m2?: number | null
           brand_id?: string
           city?: string | null
+          climate_zone?: string | null
           country?: string | null
           created_at?: string | null
           energy_price_kwh?: number | null
@@ -3628,6 +4077,7 @@ export type Database = {
           is_resolved: boolean
           resolved_at: string | null
           scheduled_date: string | null
+          target_route: string | null
           title: string
         }
         Insert: {
@@ -3641,6 +4091,7 @@ export type Database = {
           is_resolved?: boolean
           resolved_at?: string | null
           scheduled_date?: string | null
+          target_route?: string | null
           title: string
         }
         Update: {
@@ -3654,6 +4105,7 @@ export type Database = {
           is_resolved?: boolean
           resolved_at?: string | null
           scheduled_date?: string | null
+          target_route?: string | null
           title?: string
         }
         Relationships: [
@@ -3664,7 +4116,120 @@ export type Database = {
             referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "task_alerts_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
         ]
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_sprints: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          label: string
+          meeting_notes: string | null
+          start_date: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          label: string
+          meeting_notes?: string | null
+          start_date?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          label?: string
+          meeting_notes?: string | null
+          start_date?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_sprints_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       telemetry: {
         Row: {
@@ -3887,6 +4452,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      time_entries: {
+        Row: {
+          certification_id: string
+          created_at: string
+          description: string | null
+          entry_date: string
+          hours: number
+          id: string
+          is_overbudget: boolean
+          milestone_id: string | null
+          overbudget_note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certification_id: string
+          created_at?: string
+          description?: string | null
+          entry_date: string
+          hours: number
+          id?: string
+          is_overbudget?: boolean
+          milestone_id?: string | null
+          overbudget_note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certification_id?: string
+          created_at?: string
+          description?: string | null
+          entry_date?: string
+          hours?: number
+          id?: string
+          is_overbudget?: boolean
+          milestone_id?: string | null
+          overbudget_note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       tz_fix_log: {
         Row: {
@@ -4127,6 +4734,42 @@ export type Database = {
           },
         ]
       }
+      weekly_reports: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          last_edited_at: string
+          locked_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          id?: string
+          last_edited_at?: string
+          locked_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          last_edited_at?: string
+          locked_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       energy_phase_latest: {
@@ -4253,11 +4896,67 @@ export type Database = {
           },
         ]
       }
+      view_cert_hours_burn: {
+        Row: {
+          allocated_hours: number | null
+          certification_id: string | null
+          certification_name: string | null
+          client: string | null
+          consumed_hours: number | null
+          overrun_alerts: number | null
+          pct_used: number | null
+          pm_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certifications_pm_id_fkey"
+            columns: ["pm_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_milestone_hours_burn: {
+        Row: {
+          allocated_hours: number | null
+          certification_id: string | null
+          consumed_hours: number | null
+          milestone_id: string | null
+          pct_used: number | null
+          requirement: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certification_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+        ]
+      }
       view_resource_saturation: {
         Row: {
           next_deadline: string | null
           total_active_tasks: number | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      view_user_weekly_saturation: {
+        Row: {
+          active_projects: number | null
+          total_hours: number | null
+          user_id: string | null
+          week_start: string | null
         }
         Relationships: []
       }
@@ -4440,6 +5139,22 @@ export type Database = {
         Args: { p_fallback: string; p_payload: Json }
         Returns: string
       }
+      fn_check_budget_erosion: {
+        Args: { p_cert_id: string }
+        Returns: undefined
+      }
+      fn_check_handover_drift: {
+        Args: { p_cert_id: string }
+        Returns: undefined
+      }
+      fn_check_resource_burnout: {
+        Args: { p_cert_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      fn_recalculate_site_air: {
+        Args: { p_site_id: string }
+        Returns: undefined
+      }
       generate_standard_leed_timeline: {
         Args: { p_certification_id: string }
         Returns: undefined
@@ -4464,6 +5179,19 @@ export type Database = {
           wiring_type: string
         }[]
       }
+      get_simulated_consumption_breakdown: {
+        Args: { p_end_time: string; p_site_id: string; p_start_time: string }
+        Returns: {
+          climate_zone: string
+          hvac_kwh: number
+          lighting_kwh: number
+          other_kwh: number
+          plugs_kwh: number
+          total_kwh: number
+          ts_hour: string
+          typology: string
+        }[]
+      }
       get_site_energy_summary: {
         Args: { p_end: string; p_site_id: string; p_start: string }
         Returns: {
@@ -4474,6 +5202,10 @@ export type Database = {
           plugs_kwh: number
           total_kwh: number
         }[]
+      }
+      get_strategic_report_data: {
+        Args: { p_end_date: string; p_site_id: string; p_start_date: string }
+        Returns: Json
       }
       get_telemetry_timeseries: {
         Args: {
@@ -4530,7 +5262,19 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      is_team_lead: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_team_member: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_valid_measurement: { Args: { val: number }; Returns: boolean }
+      lookup_climate_zone: {
+        Args: { p_lat: number; p_lng: number }
+        Returns: string
+      }
       mark_stale_devices_offline: {
         Args: { p_threshold_minutes?: number }
         Returns: number
@@ -4590,6 +5334,10 @@ export type Database = {
         }[]
       }
       reset_sensor_health_daily: { Args: never; Returns: undefined }
+      rpc_confirm_energy_ct_build: {
+        Args: { p_cert_id: string; p_components: Json }
+        Returns: Json
+      }
       run_daily_jobs: {
         Args: never
         Returns: {
@@ -4658,6 +5406,13 @@ export type Database = {
         | "pm_operational"
         | "other_critical"
         | "extra_canone"
+        | "monitoring_iaq_requested"
+        | "monitoring_energy_requested"
+        | "monitoring_water_requested"
+        | "monitoring_energy_ready_to_assign"
+        | "budget_warning_80"
+        | "budget_overrun"
+        | "resource_burnout_warning"
       wiring_type: "WYE" | "DELTA"
     }
     CompositeTypes: {
@@ -4826,6 +5581,13 @@ export const Constants = {
         "pm_operational",
         "other_critical",
         "extra_canone",
+        "monitoring_iaq_requested",
+        "monitoring_energy_requested",
+        "monitoring_water_requested",
+        "monitoring_energy_ready_to_assign",
+        "budget_warning_80",
+        "budget_overrun",
+        "resource_burnout_warning",
       ],
       wiring_type: ["WYE", "DELTA"],
     },
