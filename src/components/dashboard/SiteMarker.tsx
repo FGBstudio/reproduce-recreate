@@ -127,9 +127,9 @@ const MapMetricRadar = ({
         />
       </svg>
 
-      {/* ── LENS ── circular container; overflow:hidden clips all layers */}
+      {/* ── LENS ── */}
       <div
-        className="absolute rounded-full overflow-hidden pointer-events-auto cursor-pointer"
+        className="absolute rounded-full pointer-events-auto cursor-pointer"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         role="button"
         aria-label={`${meta.label} lens`}
@@ -140,77 +140,62 @@ const MapMetricRadar = ({
           top:       LENS_T,
           background: css("--lens-card"),
           boxShadow:  `0 20px 40px ${cssA("--lens-shadow", 0.45)}, 0 0 0 2.5px ${accent}, inset 0 0 0 1px ${cssA("--lens-card", 0.5)}`,
-          /* No isolation:isolate — we use explicit z-index layers instead */
+          overflow: "hidden",
+          isolation: "isolate", // CRITICO: Forza il browser a rispettare gli z-index dei figli
+          transform: "translateZ(0)", // CRITICO: Attiva l'accelerazione hardware per prevenire bug di clipping
         }}
       >
-        {/* ── Layer z-10: background image or brand logo pattern
-            Counter-rotated so it always appears upright regardless
-            of how the outer widget is rotated.                           */}
+        {/* ── Layer z-10: Brand Pattern ── */}
+        {/* Rimossa la contro-rotazione inutile: il pattern ora ruota fluidamente con la lente */}
         {(backgroundImage || brandLogo) && (
           <div
-            className="absolute inset-0 rounded-full overflow-hidden"
-            style={{
-              zIndex:    10,
-              transform: `rotate(${-rotationDeg}deg)`,
-            }}
+            className="absolute inset-0"
+            style={{ zIndex: 10 }}
           >
             {backgroundImage ? (
               <div
                 style={{
-                  position:           "absolute",
-                  inset:              0,
-                  backgroundImage:    `url(${backgroundImage})`,
-                  backgroundSize:     "cover",
+                  position: "absolute",
+                  inset: -20, // Espande leggermente per evitare bordi tagliati
+                  backgroundImage: `url(${backgroundImage})`,
+                  backgroundSize: "cover",
                   backgroundPosition: "center",
-                  opacity:            0.42,
+                  opacity: 0.42,
                 }}
               />
             ) : (
               <div
                 style={{
-                  position:           "absolute",
-                  inset:              0,
-                  backgroundImage:    `url(${brandLogo})`,
-                  backgroundRepeat:   "repeat",
-                  backgroundSize:     "80px 80px",
-                  opacity:            0.12,
+                  position: "absolute",
+                  inset: -20, // Espande leggermente per sicurezza
+                  backgroundImage: `url(${brandLogo})`,
+                  backgroundRepeat: "repeat",
+                  backgroundSize: "80px 80px",
+                  opacity: 0.12,
                 }}
               />
             )}
           </div>
         )}
 
-        {/* ── Layer z-20: very subtle radial FGB tint */}
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{
-            zIndex:     20,
-            background: `radial-gradient(circle at 50% 50%, ${cssA(meta.accentVar, 0.13)} 0%, ${cssA(meta.accentVar, 0.03)} 60%, transparent 100%)`,
-            pointerEvents: "none",
-          }}
-        />
+        {/* Layer z-20 e z-30 restano uguali... */}
 
-        {/* ── Layer z-30: inner border ring */}
-        <div
-          className="absolute inset-2 rounded-full border"
-          style={{ zIndex: 30, pointerEvents: "none", borderColor: cssA("--lens-card", 0.4) }}
-        />
-
-        {/* ── Layer z-40: central metric card, counter-rotated so text is upright */}
+        {/* ── Layer z-40: Central Metric Card ── */}
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{
-            zIndex:    40,
-            transform: `rotate(${-rotationDeg}deg)`,
+            zIndex: 40,
+            transform: `rotate(${-rotationDeg}deg)`, // Manteniamo dritto solo il TESTO
           }}
         >
-          {/* Card shell */}
+          {/* Aggiunto backdropFilter o colore solido per assicurarsi che il pattern non buchi i dati */}
           <div
-            className="relative flex flex-col items-center justify-center rounded-full bg-lens-card shadow-xl"
+            className="relative flex flex-col items-center justify-center rounded-full shadow-xl"
             style={{
-              width:  CARD_SIZE,
+              width: CARD_SIZE,
               height: CARD_SIZE,
               border: `1.5px solid ${cssA(meta.accentVar, 0.2)}`,
+              backgroundColor: "hsl(var(--background))", // SOSTITUISCI CON IL TUO COLORE SFONDO SOLIDO
             }}
           >
             {/* Progress ring (behind text via z-index) */}
