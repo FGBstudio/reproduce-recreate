@@ -238,6 +238,11 @@ interface ProjectDetailProps {
 const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>(initialDashboard ?? "overview");
+
+  // Sync tab when initialDashboard prop changes (e.g. user clicks a different metric sphere on the map)
+  useEffect(() => {
+    if (initialDashboard) setActiveDashboard(initialDashboard);
+  }, [initialDashboard, project?.id]);
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
