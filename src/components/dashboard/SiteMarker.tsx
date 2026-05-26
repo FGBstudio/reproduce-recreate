@@ -94,6 +94,8 @@ const MapMetricRadar = ({
 }: RadarProps) => {
   const meta = METRIC_META[section];
   const Icon = meta.icon;
+  const accent     = css(meta.accentVar);
+  const ringColor  = css(meta.ringVar);
 
   return (
     <motion.div
@@ -118,8 +120,8 @@ const MapMetricRadar = ({
       >
         <path
           d={conePath}
-          fill={`${meta.accent}1f`}
-          stroke={`${meta.accent}55`}
+          fill={cssA(meta.accentVar, 0.12)}
+          stroke={cssA(meta.accentVar, 0.33)}
           strokeWidth={1.25}
           strokeDasharray="6 6"
         />
@@ -136,8 +138,8 @@ const MapMetricRadar = ({
           height:    LENS_D,
           left:      LENS_L,
           top:       LENS_T,
-          background: "#ffffff",
-          boxShadow:  `0 20px 40px rgba(0,40,56,0.45), 0 0 0 2.5px ${meta.accent}, inset 0 0 0 1px rgba(255,255,255,0.5)`,
+          background: css("--lens-card"),
+          boxShadow:  `0 20px 40px ${cssA("--lens-shadow", 0.45)}, 0 0 0 2.5px ${accent}, inset 0 0 0 1px ${cssA("--lens-card", 0.5)}`,
           /* No isolation:isolate — we use explicit z-index layers instead */
         }}
       >
@@ -183,15 +185,15 @@ const MapMetricRadar = ({
           className="absolute inset-0 rounded-full"
           style={{
             zIndex:     20,
-            background: `radial-gradient(circle at 50% 50%, ${meta.accent}22 0%, ${meta.accent}08 60%, transparent 100%)`,
+            background: `radial-gradient(circle at 50% 50%, ${cssA(meta.accentVar, 0.13)} 0%, ${cssA(meta.accentVar, 0.03)} 60%, transparent 100%)`,
             pointerEvents: "none",
           }}
         />
 
         {/* ── Layer z-30: inner border ring */}
         <div
-          className="absolute inset-2 rounded-full border border-white/40"
-          style={{ zIndex: 30, pointerEvents: "none" }}
+          className="absolute inset-2 rounded-full border"
+          style={{ zIndex: 30, pointerEvents: "none", borderColor: cssA("--lens-card", 0.4) }}
         />
 
         {/* ── Layer z-40: central metric card, counter-rotated so text is upright */}
@@ -204,11 +206,11 @@ const MapMetricRadar = ({
         >
           {/* Card shell */}
           <div
-            className="relative flex flex-col items-center justify-center rounded-full bg-white shadow-xl"
+            className="relative flex flex-col items-center justify-center rounded-full bg-lens-card shadow-xl"
             style={{
               width:  CARD_SIZE,
               height: CARD_SIZE,
-              border: `1.5px solid ${meta.accent}33`,
+              border: `1.5px solid ${cssA(meta.accentVar, 0.2)}`,
             }}
           >
             {/* Progress ring (behind text via z-index) */}
@@ -219,11 +221,11 @@ const MapMetricRadar = ({
             >
               <circle
                 cx={CARD_SIZE / 2} cy={CARD_SIZE / 2} r={RING_R}
-                stroke="#eef2f4" strokeWidth={5} fill="none"
+                stroke={css("--lens-ring-track")} strokeWidth={5} fill="none"
               />
               <motion.circle
                 cx={CARD_SIZE / 2} cy={CARD_SIZE / 2} r={RING_R}
-                stroke={meta.ring} strokeWidth={5} fill="none" strokeLinecap="round"
+                stroke={ringColor} strokeWidth={5} fill="none" strokeLinecap="round"
                 strokeDasharray={RING_C}
                 initial={{ strokeDashoffset: RING_C }}
                 animate={{ strokeDashoffset: RING_C * 0.25 }}
@@ -234,24 +236,24 @@ const MapMetricRadar = ({
             {/* Text content (above the SVG ring via relative z-10) */}
             <Icon
               className="w-4 h-4 mb-1"
-              style={{ color: meta.accent, position: "relative", zIndex: 1 }}
+              style={{ color: accent, position: "relative", zIndex: 1 }}
               strokeWidth={2.4}
             />
             <span
               className="text-[9px] font-bold uppercase leading-none tracking-[0.18em]"
-              style={{ color: "#64748b", position: "relative", zIndex: 1 }}
+              style={{ color: css("--lens-label"), position: "relative", zIndex: 1 }}
             >
               {meta.label}
             </span>
             <span
               className="text-3xl font-black tracking-tighter leading-none mt-1"
-              style={{ color: "#002838", position: "relative", zIndex: 1 }}
+              style={{ color: css("--fgb-navy"), position: "relative", zIndex: 1 }}
             >
               {formatValue(value)}
             </span>
             <span
               className="text-[9px] font-semibold mt-0.5"
-              style={{ color: "#94a3b8", position: "relative", zIndex: 1 }}
+              style={{ color: css("--lens-unit"), position: "relative", zIndex: 1 }}
             >
               {meta.unit}
             </span>
