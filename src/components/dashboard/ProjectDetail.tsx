@@ -2375,7 +2375,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // Uses shared hook energyPowerBreakdown (from useEnergyPowerByCategory)
 
   // A. Combine real-time power latest and period averages
-  const activePowerBreakdown = useMemo(() => {
+  const activePowerBreakdown = useMemo((): import('@/hooks/useEnergyPowerByCategory').EnergyPowerBreakdown & { isSimulated?: boolean } => {
     const isToday = timePeriod === 'today';
     const rawBreakdown = isToday ? energyPowerBreakdown : (energyPeriodAverages || energyPowerBreakdown);
 
