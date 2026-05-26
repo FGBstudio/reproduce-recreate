@@ -39,7 +39,7 @@ const formatValue = (v: number | undefined | null): string => {
 
 /* ------------------------- MapMetricRadar widget ------------------------- */
 
-const WIDGET_PX = 280;        // rendered size on screen
+const WIDGET_PX = 340;        // rendered size on screen
 const VB = 600;               // SVG viewBox (matches user spec)
 const CIRCLE_R = 180;
 const CX = 300;
@@ -199,7 +199,7 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
           {/* Counter-rotated central card so text always reads upright */}
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ transform: `rotate(${-rotationDeg}deg)` }}
+            style={{ transform: `rotate(${-rotationDeg}deg)`, zIndex: 30 }}
           >
             <motion.div
               initial={{ y: 8, opacity: 0 }}
