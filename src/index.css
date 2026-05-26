@@ -78,6 +78,18 @@
     --fgb-glass: 200 100% 11% / 0.75;
     --fgb-surface: 0 0% 100% / 0.08;
 
+    /* FGB lens (SiteMarker radar widget) — design-system tokens */
+    --fgb-gold: 41 39% 57%;
+    --fgb-teal: 192 100% 19%;
+    --fgb-teal-ring: 192 86% 28%;
+    --fgb-navy: 198 100% 11%;
+    --fgb-navy-ring: 198 64% 28%;
+    --lens-card: 0 0% 100%;
+    --lens-ring-track: 200 19% 95%;
+    --lens-label: 215 16% 47%;
+    --lens-unit: 215 20% 65%;
+    --lens-shadow: 195 100% 11%;
+
     /* Heatmap scale (per-store, quantile-based) */
     --heatmap-empty: 210 40% 98%;
     --heatmap-1: 160 84% 94%;
