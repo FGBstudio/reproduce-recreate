@@ -18,29 +18,11 @@ interface SiteMarkerProps {
 
 const SPHERE_META: Record<
   Exclude<ProjectSection, "overview">,
-  { icon: typeof Zap; iconClass: string; shadow: string; label: string; unit: string }
+  { icon: typeof Zap; iconTint: string; label: string; unit: string }
 > = {
-  energy: {
-    icon: Zap,
-    iconClass: "text-fgb-accent",
-    shadow: "shadow-[0_10px_40px_rgba(20,184,166,0.25)]",
-    label: "Main Load",
-    unit: "kW",
-  },
-  air: {
-    icon: Wind,
-    iconClass: "text-sky-400",
-    shadow: "shadow-[0_10px_40px_rgba(56,189,248,0.22)]",
-    label: "CO₂",
-    unit: "ppm",
-  },
-  water: {
-    icon: Droplet,
-    iconClass: "text-blue-400",
-    shadow: "shadow-[0_10px_40px_rgba(96,165,250,0.22)]",
-    label: "Flow",
-    unit: "L/m",
-  },
+  energy: { icon: Zap,     iconTint: "text-amber-500",  label: "Load", unit: "kW"  },
+  air:    { icon: Wind,    iconTint: "text-sky-500",    label: "CO₂",  unit: "ppm" },
+  water:  { icon: Droplet, iconTint: "text-blue-500",   label: "Flow", unit: "L/m" },
 };
 
 const formatValue = (v: number | undefined | null): string => {
@@ -58,9 +40,9 @@ const containerVariants = {
 };
 
 const sphereVariants = {
-  hidden: { opacity: 0, scale: 0.2, y: 10 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 260, damping: 22 } },
-  exit: { opacity: 0, scale: 0.2, y: 10, transition: { duration: 0.15 } },
+  hidden: { opacity: 0, scale: 0.3, y: 8 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 320, damping: 24 } },
+  exit: { opacity: 0, scale: 0.3, y: 8, transition: { duration: 0.15 } },
 };
 
 export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }: SiteMarkerProps) => {
@@ -113,7 +95,7 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
   return (
     <div
       className="site-marker-wrapper"
-      style={{ position: "relative", width: 58, height: 58, pointerEvents: "auto" }}
+      style={{ position: "relative", width: 58, height: 58, pointerEvents: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
@@ -131,10 +113,10 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
               bottom: "100%",
               left: "50%",
               transform: "translateX(-50%)",
-              marginBottom: 8,
+              marginBottom: 12,
               transformOrigin: "bottom center",
               display: "flex",
-              gap: 8,
+              gap: 10,
               pointerEvents: "auto",
             }}
           >
@@ -150,22 +132,20 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
                   onClick={(e) => handleSphereClick(e, section)}
                   aria-label={`Apri sezione ${section} di ${project.name}`}
                   className={[
-                    "w-20 h-20 rounded-full",
-                    "bg-background/70 backdrop-blur-xl",
-                    "border border-white/10",
-                    meta.shadow,
-                    "flex flex-col items-center justify-center gap-0.5",
-                    "cursor-pointer transition-transform hover:scale-110",
+                    "w-[68px] h-[68px] rounded-full",
+                    "bg-white/80 dark:bg-white/85 backdrop-blur-2xl",
+                    "border border-white/60",
+                    "shadow-[0_8px_24px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.9)]",
+                    "flex flex-col items-center justify-center gap-[2px]",
+                    "cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-white/95",
+                    "ring-1 ring-black/5",
                   ].join(" ")}
                 >
-                  <Icon className={`w-4 h-4 ${meta.iconClass}`} strokeWidth={2.2} />
-                  <div className="text-sm font-bold text-foreground leading-none">
+                  <Icon className={`w-[14px] h-[14px] ${meta.iconTint}`} strokeWidth={2.4} />
+                  <div className="text-[13px] font-semibold text-neutral-900 leading-none tracking-tight">
                     {formatValue(value)}
                   </div>
-                  <div className="text-[8px] uppercase tracking-wider text-muted-foreground leading-none">
-                    {meta.label}
-                  </div>
-                  <div className="text-[8px] text-muted-foreground/70 leading-none">
+                  <div className="text-[8px] font-medium uppercase tracking-[0.08em] text-neutral-500 leading-none">
                     {meta.unit}
                   </div>
                 </motion.button>
@@ -183,8 +163,8 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
         }}
         title={project.name}
         style={{
-          width: "100%",
-          height: "100%",
+          width: 36,
+          height: 36,
           background: "transparent",
           border: "none",
           padding: 0,
@@ -201,7 +181,6 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
             objectFit: "contain",
             filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3))",
             transition: "transform 0.2s ease",
-            transform: isHovered ? "scale(1.1)" : "scale(1)",
           }}
         />
       </button>
