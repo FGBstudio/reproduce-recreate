@@ -308,9 +308,11 @@ export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSp
    * apply to the widget so its cone aims at the marker).
    */
   const arcAngles = (n: number): number[] => {
-    if (n <= 1) return [90]; // straight down from widget → marker is below
-    if (n === 2) return [70, 110];
-    return [55, 90, 125];
+    // Angle = direction (deg) from widget center → marker, in standard
+    // screen coords (0°=right, 90°=down, 270°=up).
+    if (n <= 1) return [270]; // widget directly above marker
+    if (n === 2) return [210, 330]; // 120° apart, both above marker
+    return [90, 210, 330]; // 120° apart: below, upper-right, upper-left
   };
   const angles = arcAngles(activeSpheres.length);
 
