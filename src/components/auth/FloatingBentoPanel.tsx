@@ -539,6 +539,13 @@ const FloatingBentoPanel: React.FC = () => {
   const scrollToSolution = () =>
     scrollerRef.current?.scrollBy({ top: window.innerHeight, behavior: "smooth" });
 
+  const scrollToSection = (id: string) => {
+    const el = scrollerRef.current?.querySelector(`#${id}`) as HTMLElement | null;
+    if (el && scrollerRef.current) {
+      scrollerRef.current.scrollTo({ top: el.offsetTop, behavior: "smooth" });
+    }
+  };
+
   return (
     <div
       ref={scrollerRef}

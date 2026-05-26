@@ -11,6 +11,7 @@ import { Project, MonitoringType } from "@/lib/data";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
 import { DashboardLoadingSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import type { ProjectSection } from "@/components/dashboard/SiteMarker";
 
 const Index = () => {
   const [currentRegion, setCurrentRegion] = useState("GLOBAL");
@@ -20,6 +21,7 @@ const Index = () => {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [autoOpenProject, setAutoOpenProject] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [initialSection, setInitialSection] = useState<ProjectSection | undefined>(undefined);
   // Mobile-only state
   const [isBurgerOpen, setIsBurgerOpen] = useState(false);
   const [isKpiPanelOpen, setIsKpiPanelOpen] = useState(false);
@@ -153,6 +155,13 @@ const Index = () => {
   };
 
   const handleProjectSelect = (project: Project) => {
+    setInitialSection("overview");
+    setSelectedProject(project);
+  };
+
+  const handleProjectSectionSelect = (project: Project, section: ProjectSection) => {
+    const target: ProjectSection = clientRole === "STORE_USER" ? "overview" : section;
+    setInitialSection(target);
     setSelectedProject(project);
   };
 
@@ -162,6 +171,7 @@ const Index = () => {
       return;
     }
     setSelectedProject(null);
+    setInitialSection(undefined);
   };
 
   const handleFilterToggle = (filter: MonitoringType) => {
@@ -190,6 +200,7 @@ const Index = () => {
       <MapView 
         currentRegion={currentRegion} 
         onProjectSelect={handleProjectSelect}
+        onProjectSectionSelect={handleProjectSectionSelect}
         activeFilters={activeFilters}
         selectedHolding={selectedHolding}
         selectedBrand={selectedBrand}
@@ -267,6 +278,7 @@ const Index = () => {
         <ProjectDetail 
           project={selectedProject} 
           onClose={handleCloseProject}
+          initialDashboard={initialSection as any}
         />
       )}
     </div>

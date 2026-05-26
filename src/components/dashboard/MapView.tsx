@@ -1,15 +1,18 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { regions, Project, MonitoringType } from "@/lib/data";
 import { useAllProjects, useAllBrands } from "@/hooks/useRealTimeData";
 import { MapLoadingSkeleton } from "./DashboardSkeleton";
-import markerPinIcon from '@/assets/marker.png';
 import { useTheme } from "@/contexts/ThemeContext";
+import { SiteMarker, ProjectSection } from "./SiteMarker";
+import { useUserScope } from "@/hooks/useUserScope";
 
 interface MapViewProps {
   currentRegion: string;
   onProjectSelect: (project: Project) => void;
+  onProjectSectionSelect?: (project: Project, section: ProjectSection) => void;
   activeFilters: MonitoringType[];
   selectedHolding: string | null;
   selectedBrand: string | null;
@@ -17,12 +20,15 @@ interface MapViewProps {
   allowedRegions?: string[] | null;
 }
 
-const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHolding, selectedBrand, searchQuery = "", allowedRegions }: MapViewProps) => {
+const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activeFilters, selectedHolding, selectedBrand, searchQuery = "", allowedRegions }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const { theme } = useTheme();
+  const { clientRole } = useUserScope();
+  // Tracks portal hosts per project id (Leaflet divIcon DOM nodes we mount React into)
+  const [portalHosts, setPortalHosts] = useState<Record<string, HTMLElement>>({});
 
   // Use combined real + mock projects and brands with loading state
   const { projects, isLoading, error, refetch } = useAllProjects();
@@ -139,21 +145,15 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
+    setPortalHosts({});
 
-    // Custom icon
-    const createCustomIcon = () => {
+    const nextHosts: Record<string, HTMLElement> = {};
+
+    // Custom icon: divIcon wrapping a stable host div that React will portal into
+    const createCustomIcon = (projectKey: string) => {
       return L.divIcon({
-        className: "custom-marker",
-        html: `
-          <div class="marker-container">
-            <div class="marker-dot" style="background: transparent; border: none; box-shadow: none; border-radius: 0;">
-              <img 
-                src="${markerPinIcon}"  alt="marker" 
-                style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));"
-              />
-            </div>
-          </div>
-        `,
+        className: "fgb-site-marker",
+        html: `<div data-marker-portal="${projectKey}" style="width:58px;height:58px;overflow:visible;"></div>`,
         iconSize: [58, 58],
         iconAnchor: [32, 32],
       });
@@ -161,42 +161,55 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
 
     // Add markers for visible projects
     visibleProjects.forEach((project) => {
+      const projectKey = String(project.id);
       const marker = L.marker([project.lat, project.lng], {
-        icon: createCustomIcon(),
+        icon: createCustomIcon(projectKey),
       }).addTo(map.current!);
 
-      // Create popup content
-      const popupContent = `
-        <div class="leaflet-custom-popup">
-          <div class="popup-title">${project.name}</div>
-          <div class="popup-address">${project.address}</div>
-        </div>
-      `;
-
-      marker.bindPopup(popupContent, {
-        className: "custom-popup",
-        closeButton: false,
-      });
-
-      marker.on("click", () => {
-        onProjectSelect(project);
-      });
-
-      marker.on("mouseover", () => {
-        marker.openPopup();
-      });
-
-      marker.on("mouseout", () => {
-        marker.closePopup();
-      });
-
       markersRef.current.push(marker);
+
+      // Resolve the portal host DOM node after the marker is added
+      const el = (marker.getElement() as HTMLElement | null);
+      const host = el?.querySelector(`[data-marker-portal="${projectKey}"]`) as HTMLElement | null;
+      if (host) {
+        nextHosts[projectKey] = host;
+        // Raise z-index on hover so spheres render above other markers
+        host.addEventListener("mouseenter", () => {
+          if (el) el.style.zIndex = "1000";
+        });
+        host.addEventListener("mouseleave", () => {
+          if (el) el.style.zIndex = "";
+        });
+      }
     });
-  }, [visibleProjects, onProjectSelect, activeFilters, selectedHolding, selectedBrand]);
+
+    setPortalHosts(nextHosts);
+  }, [visibleProjects, activeFilters, selectedHolding, selectedBrand]);
+
+  const handleSphereClick = (project: Project, section: ProjectSection) => {
+    if (onProjectSectionSelect) onProjectSectionSelect(project, section);
+    else onProjectSelect(project);
+  };
 
   return (
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="absolute inset-0" />
+
+      {/* React portals into each Leaflet marker host */}
+      {visibleProjects.map((p) => {
+        const host = portalHosts[String(p.id)];
+        if (!host) return null;
+        return createPortal(
+          <SiteMarker
+            key={p.id}
+            project={p}
+            clientRole={clientRole}
+            onMarkerClick={onProjectSelect}
+            onSphereClick={handleSphereClick}
+          />,
+          host
+        );
+      })}
       
       {/* Overlay gradient for better UI integration - stronger on mobile for nav visibility */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/60 md:from-background/40 via-transparent to-background/40 md:to-background/30" />
@@ -228,13 +241,8 @@ const MapView = ({ currentRegion, onProjectSelect, activeFilters, selectedHoldin
 
       {/* Custom marker styles */}
       <style>{`
-        .custom-marker {
-          background: transparent;
-          border: none;
-          display: flex !important;
-          align-items: flex-end !important;
-          justify-content: center !important;
-        }
+        .fgb-site-marker { background: transparent; border: none; overflow: visible !important; }
+        .fgb-site-marker > div { overflow: visible !important; }
         .marker-container {
           position: relative;
           width: 48px;
