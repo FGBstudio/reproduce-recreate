@@ -548,16 +548,18 @@ const FloatingBentoPanel: React.FC = () => {
       <style>{`.fb-scroll::-webkit-scrollbar{display:none}`}</style>
 
       {/* Top nav */}
-       <nav className={`fixed top-0 right-0 w-full lg:w-[calc(100%-clamp(360px,35vw,520px))] z-50 flex items-center justify-between px-8 py-5 pointer-events-none transition-opacity duration-300 ${expandedIndex !== null ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-        <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-8 text-[13px] font-medium pointer-events-auto" style={{ color: INK }}>
-          <button onClick={() => scrollToSection('solution')} className="hover:text-emerald-400 transition-colors">Our Solution</button>
-          <button onClick={() => scrollToSection('values')} className="hover:text-emerald-400 transition-colors">Our Values</button>
-          <button onClick={() => scrollToSection('clients')} className="hover:text-emerald-400 transition-colors">Uffici</button>
-          <button onClick={() => scrollToSection('pricing')} className="hover:text-emerald-400 transition-colors">Our Pricing</button>
+      <nav className={`fixed top-0 right-0 w-full lg:w-[calc(100%-clamp(360px,35vw,520px))] z-50 flex items-center justify-between px-8 py-5 pointer-events-none transition-opacity duration-300 ${expandedIndex !== null ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+        <div className="hidden lg:flex items-center gap-8 text-[13px] font-medium pointer-events-auto" style={{ color: INK }}>
+          <a href="#solution" className="opacity-70 hover:opacity-100 transition-opacity">Our Solution</a>
+          <a href="#values" className="opacity-70 hover:opacity-100 transition-opacity">Our Values</a>
+          <a href="#clients" className="opacity-70 hover:opacity-100 transition-opacity">Our Clients</a>
+          <a href="#pricing" className="opacity-70 hover:opacity-100 transition-opacity">Our Pricing</a>
         </div>
-
-        {/* TASTO REQUEST ACCESS (Mantenuto fisso a destra) */}
-        <a href="mailto:fgb@fgb-studio.com" className="pointer-events-auto px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold uppercase tracking-wider rounded-full transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] ml-auto">
+        <a
+          href="mailto:fgb@fgb-studio.com?subject=Request%20access%20to%20FGB%20Monitoring"
+          className="pointer-events-auto ml-auto px-5 py-2.5 rounded-full text-[13px] font-semibold text-white transition-transform hover:scale-[1.02]"
+          style={{ background: ACCENT }}
+        >
           Request access →
         </a>
       </nav>
