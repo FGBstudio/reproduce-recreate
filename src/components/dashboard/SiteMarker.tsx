@@ -39,7 +39,7 @@ const formatValue = (v: number | undefined | null): string => {
 
 /* ------------------------- MapMetricRadar widget ------------------------- */
 
-const WIDGET_PX = 280;        // rendered size on screen
+const WIDGET_PX = 340;        // rendered size on screen
 const VB = 600;               // SVG viewBox (matches user spec)
 const CIRCLE_R = 180;
 const CX = 300;
@@ -199,7 +199,7 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
           {/* Counter-rotated central card so text always reads upright */}
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ transform: `rotate(${-rotationDeg}deg)` }}
+            style={{ transform: `rotate(${-rotationDeg}deg)`, zIndex: 30 }}
           >
             <motion.div
               initial={{ y: 8, opacity: 0 }}
@@ -308,9 +308,11 @@ export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSp
    * apply to the widget so its cone aims at the marker).
    */
   const arcAngles = (n: number): number[] => {
-    if (n <= 1) return [90]; // straight down from widget → marker is below
-    if (n === 2) return [70, 110];
-    return [55, 90, 125];
+    // Angle = direction (deg) from widget center → marker, in standard
+    // screen coords (0°=right, 90°=down, 270°=up).
+    if (n <= 1) return [270]; // widget directly above marker
+    if (n === 2) return [210, 330]; // 120° apart, both above marker
+    return [90, 210, 330]; // 120° apart: below, upper-right, upper-left
   };
   const angles = arcAngles(activeSpheres.length);
 
