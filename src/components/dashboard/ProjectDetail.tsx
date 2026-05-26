@@ -2377,7 +2377,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
   // A. Combine real-time power latest and period averages
   const activePowerBreakdown = useMemo<any>(() => {
     const isToday = timePeriod === 'today';
-    const rawBreakdown = isToday ? energyPowerBreakdown : (energyPeriodAverages || energyPowerBreakdown);
+    const rawBreakdown: any = isToday ? energyPowerBreakdown : (energyPeriodAverages || energyPowerBreakdown);
 
     if (isToday && isSimulationMode && hasOnlyGeneralMeters && rawBreakdown.totalGeneral !== undefined) {
       let pct = { hvac_pct: 0.40, lighting_pct: 0.25, plugs_pct: 0.20, other_pct: 0.15 };
@@ -2450,7 +2450,7 @@ const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
           segments.push({ name: isSim ? 'General (simulated)' : 'General', value: bp.totalGeneral, color: '#009193' });
         }
       } else {
-        const entries = Array.from(bp.deviceBreakdown.values())
+        const entries = (Array.from(bp.deviceBreakdown.values()) as { label: string; category: string; value: number }[])
           .filter(d => d.category !== 'general')
           .sort((a, b) => b.value - a.value);
         entries.forEach((entry, index) => {
