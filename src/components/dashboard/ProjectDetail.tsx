@@ -232,11 +232,12 @@ const ExportButtons = ({ chartRef, data, filename, onExpand }: ExportButtonsProp
 interface ProjectDetailProps {
   project: Project | null;
   onClose: () => void;
+  initialDashboard?: DashboardType;
 }
 
-const ProjectDetail = ({ project, onClose }: ProjectDetailProps) => {
+const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [activeDashboard, setActiveDashboard] = useState<DashboardType>("overview");
+  const [activeDashboard, setActiveDashboard] = useState<DashboardType>(initialDashboard ?? "overview");
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
