@@ -130,6 +130,8 @@ const MapMetricRadar = ({
       {/* ── LENS ── */}
       <div
         className="absolute rounded-full pointer-events-auto cursor-pointer"
+        // ROOT CAUSE FIX: Leaflet ruba i click. onPointerDown bypassa la mappa.
+        onPointerDown={(e) => { e.stopPropagation(); onClick(); }}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         role="button"
         aria-label={`${meta.label} lens`}
@@ -328,8 +330,7 @@ export const SiteMarker = ({
    * STORE_USER is always redirected to overview.
    */
   const handleSectionClick = (section: MetricSection) => {
-    const target: ProjectSection = clientRole === "STORE_USER" ? "overview" : section;
-    onSphereClick(project, target);
+    onSphereClick(project, section);
   };
 
   /**
@@ -418,9 +419,14 @@ export const SiteMarker = ({
 
       {/* ── Marker pin — click opens site Overview ── */}
       <button
+        // ROOT CAUSE FIX: Protezione eventi Leaflet
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onMarkerClick(project); 
+        }}
         onClick={(e) => {
           e.stopPropagation();
-          onMarkerClick(project); // Index.tsx handles setSelectedProject + section "overview"
+          onMarkerClick(project); 
         }}
         title={project.name}
         style={{
