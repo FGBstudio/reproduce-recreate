@@ -99,8 +99,9 @@ const MapMetricRadar = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.6 }}
-      animate={{ opacity: 1, scale: 1 }}
+      // 1. ROOT CAUSE FIX: Passa la rotazione direttamente a Framer Motion, non al CSS 'transform'
+      initial={{ opacity: 0, scale: 0.6, rotate: rotationDeg }}
+      animate={{ opacity: 1, scale: 1, rotate: rotationDeg }}
       exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.15 } }}
       transition={{ type: "spring", stiffness: 260, damping: 22, delay: index * 0.05 }}
       className="absolute pointer-events-none"
@@ -109,10 +110,9 @@ const MapMetricRadar = ({
         height:    WIDGET_PX,
         left:      `calc(50% - ${WIDGET_PX / 2}px)`,
         top:       `calc(50% - ${WIDGET_PX / 2}px)`,
-        transform: `rotate(${rotationDeg}deg)`,
       }}
     >
-      {/* ── CONE ── rendered as a separate SVG behind the lens (zIndex: -1) */}
+      {/* ── CONE ── */}
       <svg
         viewBox={`0 0 ${VB} ${VB}`}
         className="absolute inset-0 w-full h-full"
@@ -138,67 +138,92 @@ const MapMetricRadar = ({
           height:    LENS_D,
           left:      LENS_L,
           top:       LENS_T,
-          background: css("--lens-card"),
-          boxShadow:  `0 20px 40px ${cssA("--lens-shadow", 0.45)}, 0 0 0 2.5px ${accent}, inset 0 0 0 1px ${cssA("--lens-card", 0.5)}`,
+          boxShadow:  `0 20px 40px ${cssA("--lens-shadow", 0.45)}, 0 0 0 2.5px ${accent}, inset 0 0 0 1px rgba(255,255,255,0.4)`,
           overflow: "hidden",
-          isolation: "isolate", // CRITICO: Forza il browser a rispettare gli z-index dei figli
-          transform: "translateZ(0)", // CRITICO: Attiva l'accelerazione hardware per prevenire bug di clipping
+          isolation: "isolate",
+          transform: "translateZ(0)",
         }}
       >
-        {/* ── Layer z-10: Brand Pattern ── */}
-        {/* Rimossa la contro-rotazione inutile: il pattern ora ruota fluidamente con la lente */}
+        {/* ── Layer z-10: Brand Pattern (Scollegato dalla rotazione) ── */}
         {(backgroundImage || brandLogo) && (
           <div
-            className="absolute inset-0"
-            style={{ zIndex: 10 }}
+            className="absolute flex items-center justify-center"
+            style={{
+              // 2. ROOT CAUSE FIX: Maggiorato al 150% per evitare angoli tagliati durante la contro-rotazione
+              width: "150%",
+              height: "150%",
+              left: "-25%",
+              top: "-25%",
+              zIndex: 10,
+              transform: `rotate(${-rotationDeg}deg)`, // Pattern sempre orizzontale
+            }}
           >
             {backgroundImage ? (
               <div
                 style={{
                   position: "absolute",
-                  inset: -20, // Espande leggermente per evitare bordi tagliati
+                  inset: 0,
                   backgroundImage: `url(${backgroundImage})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
-                  opacity: 0.42,
+                  opacity: 0.5,
                 }}
               />
             ) : (
               <div
                 style={{
                   position: "absolute",
-                  inset: -20, // Espande leggermente per sicurezza
+                  inset: 0,
                   backgroundImage: `url(${brandLogo})`,
                   backgroundRepeat: "repeat",
                   backgroundSize: "80px 80px",
-                  opacity: 0.12,
+                  opacity: 0.15,
                 }}
               />
             )}
           </div>
         )}
 
-        {/* Layer z-20 e z-30 restano uguali... */}
+        {/* ── Layer z-20: LA PATINA DI VETRO ── */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            zIndex: 20,
+            // 3. ROOT CAUSE FIX: Blur nativo sopra il pattern z-10
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* ── Layer z-30: Inner border ring ── */}
+        <div
+          className="absolute inset-2 rounded-full border"
+          style={{ zIndex: 30, pointerEvents: "none", borderColor: "rgba(255,255,255,0.3)" }}
+        />
 
         {/* ── Layer z-40: Central Metric Card ── */}
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{
             zIndex: 40,
-            transform: `rotate(${-rotationDeg}deg)`, // Manteniamo dritto solo il TESTO
+            transform: `rotate(${-rotationDeg}deg)`, // Contenuti orizzontali
           }}
         >
-          {/* Aggiunto backdropFilter o colore solido per assicurarsi che il pattern non buchi i dati */}
           <div
             className="relative flex flex-col items-center justify-center rounded-full shadow-xl"
             style={{
               width: CARD_SIZE,
               height: CARD_SIZE,
-              border: `1.5px solid ${cssA(meta.accentVar, 0.2)}`,
-              backgroundColor: "hsl(var(--background))", // SOSTITUISCI CON IL TUO COLORE SFONDO SOLIDO
+              border: `1.5px solid rgba(255, 255, 255, 0.4)`,
+              // 4. ROOT CAUSE FIX: Trasparenza intenzionale bianca + extra blur
+              backgroundColor: "rgba(255, 255, 255, 0.85)", 
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
             }}
           >
-            {/* Progress ring (behind text via z-index) */}
+            {/* Progress ring */}
             <svg
               className="absolute inset-0 pointer-events-none"
               viewBox={`0 0 ${CARD_SIZE} ${CARD_SIZE}`}
@@ -206,7 +231,7 @@ const MapMetricRadar = ({
             >
               <circle
                 cx={CARD_SIZE / 2} cy={CARD_SIZE / 2} r={RING_R}
-                stroke={css("--lens-ring-track")} strokeWidth={5} fill="none"
+                stroke="rgba(0,0,0,0.06)" strokeWidth={5} fill="none"
               />
               <motion.circle
                 cx={CARD_SIZE / 2} cy={CARD_SIZE / 2} r={RING_R}
@@ -218,7 +243,7 @@ const MapMetricRadar = ({
               />
             </svg>
 
-            {/* Text content (above the SVG ring via relative z-10) */}
+            {/* Testo scuro ad alto contrasto per fondo chiaro */}
             <Icon
               className="w-4 h-4 mb-1"
               style={{ color: accent, position: "relative", zIndex: 1 }}
@@ -226,19 +251,19 @@ const MapMetricRadar = ({
             />
             <span
               className="text-[9px] font-bold uppercase leading-none tracking-[0.18em]"
-              style={{ color: css("--lens-label"), position: "relative", zIndex: 1 }}
+              style={{ color: "#475569", position: "relative", zIndex: 1 }} // Slate 600
             >
               {meta.label}
             </span>
             <span
               className="text-3xl font-black tracking-tighter leading-none mt-1"
-              style={{ color: css("--fgb-navy"), position: "relative", zIndex: 1 }}
+              style={{ color: "#0f172a", position: "relative", zIndex: 1 }} // Slate 900
             >
               {formatValue(value)}
             </span>
             <span
               className="text-[9px] font-semibold mt-0.5"
-              style={{ color: css("--lens-unit"), position: "relative", zIndex: 1 }}
+              style={{ color: "#64748b", position: "relative", zIndex: 1 }} // Slate 500
             >
               {meta.unit}
             </span>
