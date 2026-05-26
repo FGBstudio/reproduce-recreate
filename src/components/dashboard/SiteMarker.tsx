@@ -12,17 +12,20 @@ export type ProjectSection = "overview" | "energy" | "air" | "water";
 interface SiteMarkerProps {
   project: Project;
   clientRole: ClientRole;
+  brandLogo?: string;
   onMarkerClick: (project: Project) => void;
   onSphereClick: (project: Project, section: ProjectSection) => void;
 }
 
-const SPHERE_META: Record<
-  Exclude<ProjectSection, "overview">,
-  { icon: typeof Zap; iconTint: string; label: string; unit: string }
+type MetricSection = Exclude<ProjectSection, "overview">;
+
+const METRIC_META: Record<
+  MetricSection,
+  { icon: typeof Zap; accent: string; ring: string; label: string; unit: string }
 > = {
-  energy: { icon: Zap,     iconTint: "text-amber-500",  label: "Load", unit: "kW"  },
-  air:    { icon: Wind,    iconTint: "text-sky-500",    label: "CO₂",  unit: "ppm" },
-  water:  { icon: Droplet, iconTint: "text-blue-500",   label: "Flow", unit: "L/m" },
+  energy: { icon: Zap,     accent: "#f97316", ring: "#10b981", label: "Main Power", unit: "kW"  },
+  air:    { icon: Wind,    accent: "#0ea5e9", ring: "#22d3ee", label: "Air CO₂",    unit: "ppm" },
+  water:  { icon: Droplet, accent: "#3b82f6", ring: "#60a5fa", label: "Water Flow", unit: "L/m" },
 };
 
 const formatValue = (v: number | undefined | null): string => {
@@ -33,19 +36,192 @@ const formatValue = (v: number | undefined | null): string => {
   return v.toFixed(2);
 };
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.02 } },
-  exit: { opacity: 0, transition: { staggerChildren: 0.04, staggerDirection: -1 } },
+/* ------------------------- MapMetricRadar widget ------------------------- */
+
+const WIDGET_PX = 280;        // rendered size on screen
+const VB = 600;               // SVG viewBox (matches user spec)
+const CIRCLE_R = 180;
+const CX = 300;
+const CY = 300;
+const FOCUS_X = 580;          // focal distance from center along +x = 280 SVG units
+const FOCUS_Y = 300;
+const CONE_HALF_ANGLE_DEG = 25;
+const SCALE = WIDGET_PX / VB;
+const FOCUS_OFFSET_PX = (FOCUS_X - CX) * SCALE; // px distance from widget center to focal point
+
+const conePath = (() => {
+  const a = CONE_HALF_ANGLE_DEG * (Math.PI / 180);
+  const p1x = CX + CIRCLE_R * Math.cos(-a);
+  const p1y = CY + CIRCLE_R * Math.sin(-a);
+  const p2x = CX + CIRCLE_R * Math.cos(a);
+  const p2y = CY + CIRCLE_R * Math.sin(a);
+  return `M ${FOCUS_X} ${FOCUS_Y} L ${p1x} ${p1y} A ${CIRCLE_R} ${CIRCLE_R} 0 0 0 ${p2x} ${p2y} Z`;
+})();
+
+interface RadarProps {
+  section: MetricSection;
+  value: number | undefined;
+  rotationDeg: number;           // direction from widget center to marker (deg)
+  backgroundImage?: string;
+  brandLogo?: string;
+  onClick: () => void;
+  index: number;
+}
+
+const formatValue = (v: number | undefined | null): string => {
+  if (v === undefined || v === null || !Number.isFinite(v)) return "—";
+  if (v >= 100) return v.toFixed(0);
+  if (v >= 10) return v.toFixed(1);
+  return v.toFixed(2);
 };
 
-const sphereVariants = {
-  hidden: { opacity: 0, scale: 0.3, y: 8 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 320, damping: 24 } },
-  exit: { opacity: 0, scale: 0.3, y: 8, transition: { duration: 0.15 } },
+const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLogo, onClick, index }: RadarProps) => {
+  const meta = METRIC_META[section];
+  const Icon = meta.icon;
+  const ringR = 82;
+  const ringC = 2 * Math.PI * ringR;
+
+  return (
+    <motion.button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      initial={{ opacity: 0, scale: 0.6 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.15 } }}
+      transition={{ type: "spring", stiffness: 260, damping: 22, delay: index * 0.05 }}
+      className="absolute pointer-events-auto cursor-pointer"
+      style={{
+        width: WIDGET_PX,
+        height: WIDGET_PX,
+        left: `calc(50% - ${WIDGET_PX / 2}px)`,
+        top: `calc(50% - ${WIDGET_PX / 2}px)`,
+        background: 0,
+        border: 0,
+        padding: 0,
+      }}
+      aria-label={`Apri sezione ${section}`}
+    >
+      {/* Inner rotated frame: rotation aligns focal point with the marker */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `rotate(${rotationDeg}deg)`,
+          transformOrigin: "50% 50%",
+        }}
+      >
+        <div
+          className="relative w-full h-full rounded-[28px] overflow-hidden border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.55)]"
+          style={{ background: "#0a0f0c" }}
+        >
+          {/* grid */}
+          <div
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+              backgroundSize: "28px 28px",
+              backgroundPosition: "center",
+            }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_10%,_#0a0f0c_90%)] pointer-events-none" />
+
+          {/* Background image OR brand logo pattern, masked to circle */}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none z-0"
+            style={{
+              width: (CIRCLE_R * 2) * SCALE,
+              height: (CIRCLE_R * 2) * SCALE,
+              ...(backgroundImage
+                ? {
+                    backgroundImage: `url(${backgroundImage})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    opacity: 0.45,
+                    mixBlendMode: "luminosity" as const,
+                  }
+                : brandLogo
+                ? {
+                    backgroundImage: `url(${brandLogo})`,
+                    backgroundRepeat: "space",
+                    backgroundSize: "60px",
+                    backgroundPosition: "center",
+                    opacity: 0.18,
+                  }
+                : { backgroundColor: "rgba(255,255,255,0.04)" }),
+            }}
+          />
+
+          {/* SVG geometries */}
+          <svg
+            viewBox={`0 0 ${VB} ${VB}`}
+            className="absolute inset-0 w-full h-full z-10 pointer-events-none overflow-visible"
+          >
+            <motion.path
+              d={conePath}
+              fill="rgba(255,255,255,0.05)"
+              stroke="rgba(255,255,255,0.28)"
+              strokeWidth={1.5}
+              strokeDasharray="6 6"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.9, ease: "easeOut" }}
+              style={{ transformOrigin: `${FOCUS_X}px ${FOCUS_Y}px` }}
+            />
+            <motion.circle
+              cx={CX}
+              cy={CY}
+              r={CIRCLE_R}
+              fill={`${meta.accent}59`}
+              stroke={`${meta.accent}80`}
+              strokeWidth={2}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.7, type: "spring", bounce: 0.4 }}
+            />
+          </svg>
+
+          {/* Counter-rotated central card so value reads upright */}
+          <div
+            className="absolute z-30 inset-0 flex items-center justify-center"
+            style={{ transform: `rotate(${-rotationDeg}deg)` }}
+          >
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.25, duration: 0.5 }}
+              className="relative bg-white rounded-full shadow-[0_18px_40px_rgba(0,0,0,0.45)] flex flex-col items-center justify-center text-center"
+              style={{ width: 120, height: 120, padding: 14 }}
+            >
+              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
+                <circle cx="60" cy="60" r="54" stroke="#f1f5f9" strokeWidth="5" fill="none" />
+                <motion.circle
+                  cx="60" cy="60" r="54"
+                  stroke={meta.ring} strokeWidth="5" fill="none" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 54}
+                  initial={{ strokeDashoffset: 2 * Math.PI * 54 }}
+                  animate={{ strokeDashoffset: (2 * Math.PI * 54) * 0.25 }}
+                  transition={{ delay: 0.6, duration: 1.1, ease: "easeOut" }}
+                />
+              </svg>
+              <Icon className="w-3.5 h-3.5 mb-0.5" style={{ color: meta.accent }} strokeWidth={2.4} />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.18em] leading-none">
+                {meta.label}
+              </span>
+              <span className="text-2xl font-black text-gray-900 tracking-tighter leading-none mt-1">
+                {formatValue(value)}
+              </span>
+              <span className="text-[9px] font-semibold text-gray-400 mt-0.5">{meta.unit}</span>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </motion.button>
+  );
 };
 
-export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }: SiteMarkerProps) => {
+/* --------------------------- SiteMarker wrapper -------------------------- */
+
+export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSphereClick }: SiteMarkerProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
@@ -67,8 +243,8 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
     closeTimer.current = window.setTimeout(() => setIsHovered(false), 150);
   }, []);
 
-  const activeSpheres = (project.monitoring || []).filter((m): m is MonitoringType =>
-    m === "energy" || m === "air" || m === "water"
+  const activeSpheres = (project.monitoring || []).filter(
+    (m): m is MetricSection => m === "energy" || m === "air" || m === "water"
   );
 
   const valueFor = (section: Exclude<ProjectSection, "overview">): number | undefined => {
@@ -86,11 +262,26 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
     return undefined;
   };
 
-  const handleSphereClick = (e: React.MouseEvent, section: Exclude<ProjectSection, "overview">) => {
-    e.stopPropagation();
+  const handleSectionClick = (section: MetricSection) => {
     const target: ProjectSection = clientRole === "STORE_USER" ? "overview" : section;
     onSphereClick(project, target);
   };
+
+  /**
+   * Fan widgets in an arc ABOVE the marker. Each widget is placed so that the
+   * cone's focal point coincides with the marker center.
+   *
+   *   widgetCenter = marker − FOCUS_OFFSET_PX * (cos θ, sin θ)
+   *
+   * where θ is the direction from widget center → marker (the rotation we
+   * apply to the widget so its cone aims at the marker).
+   */
+  const arcAngles = (n: number): number[] => {
+    if (n <= 1) return [90]; // straight down from widget → marker is below
+    if (n === 2) return [70, 110];
+    return [55, 90, 125];
+  };
+  const angles = arcAngles(activeSpheres.length);
 
   return (
     <div
@@ -99,56 +290,53 @@ export const SiteMarker = ({ project, clientRole, onMarkerClick, onSphereClick }
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
-      {/* Spheres overlay */}
+      {/* Radar widgets overlay — anchored on marker, fanned upward */}
       <AnimatePresence>
         {isHovered && activeSpheres.length > 0 && (
           <motion.div
-            key="spheres"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
+            key="radars"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             style={{
               position: "absolute",
-              bottom: "100%",
               left: "50%",
-              transform: "translateX(-50%)",
-              marginBottom: 12,
-              transformOrigin: "bottom center",
-              display: "flex",
-              gap: 10,
-              pointerEvents: "auto",
+              top: "50%",
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+              zIndex: 50,
             }}
           >
-            {activeSpheres.map((section) => {
-              const meta = SPHERE_META[section];
-              const Icon = meta.icon;
-              const value = valueFor(section);
+            {activeSpheres.map((section, i) => {
+              const thetaDeg = angles[i] ?? 90;
+              const theta = thetaDeg * (Math.PI / 180);
+              // Widget center offset from marker (marker is "below" widget along θ)
+              const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
+              const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
               return (
-                <motion.button
+                <div
                   key={section}
-                  variants={sphereVariants}
-                  style={{ transformOrigin: "bottom center" }}
-                  onClick={(e) => handleSphereClick(e, section)}
-                  aria-label={`Apri sezione ${section} di ${project.name}`}
-                  className={[
-                    "w-[68px] h-[68px] rounded-full",
-                    "bg-white/80 dark:bg-white/85 backdrop-blur-2xl",
-                    "border border-white/60",
-                    "shadow-[0_8px_24px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.9)]",
-                    "flex flex-col items-center justify-center gap-[2px]",
-                    "cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-white/95",
-                    "ring-1 ring-black/5",
-                  ].join(" ")}
+                  style={{
+                    position: "absolute",
+                    left: dx,
+                    top: dy,
+                    width: 0,
+                    height: 0,
+                    pointerEvents: "auto",
+                  }}
                 >
-                  <Icon className={`w-[14px] h-[14px] ${meta.iconTint}`} strokeWidth={2.4} />
-                  <div className="text-[13px] font-semibold text-neutral-900 leading-none tracking-tight">
-                    {formatValue(value)}
-                  </div>
-                  <div className="text-[8px] font-medium uppercase tracking-[0.08em] text-neutral-500 leading-none">
-                    {meta.unit}
-                  </div>
-                </motion.button>
+                  <MapMetricRadar
+                    section={section}
+                    value={valueFor(section)}
+                    rotationDeg={thetaDeg - 0} // align cone (default +x) to point at marker
+                    backgroundImage={project.img || undefined}
+                    brandLogo={brandLogo}
+                    onClick={() => handleSectionClick(section)}
+                    index={i}
+                  />
+                </div>
               );
             })}
           </motion.div>
