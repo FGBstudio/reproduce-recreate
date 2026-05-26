@@ -412,7 +412,7 @@ const SLIDES: SlideData[] = [
     ),
   },
   {
-    title: "Your path to ESG excellence. Precisely measured.",
+    title: "Your path to Sustainability excellence. Precisely measured.",
     sub: "Real-time updated scores for global certifications.",
     cta: "Monitor your certifications",
     backTitle: "Turn compliance into competitive advantage.",
