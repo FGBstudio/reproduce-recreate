@@ -72,8 +72,8 @@ interface RadarProps {
 const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLogo, onClick, index }: RadarProps) => {
   const meta = METRIC_META[section];
   const Icon = meta.icon;
-  const CARD = 132;
-  const RING_R = 60;
+  const CARD = 140;
+  const RING_R = 64;
   const RING_C = 2 * Math.PI * RING_R;
 
   return (
@@ -110,7 +110,7 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
           />
         </svg>
 
-        {/* Circular lens stack — background pattern BEHIND, data card ON TOP */}
+        {/* LENS — clipped circle with background image/pattern + tint + ring */}
         <div
           className="absolute rounded-full overflow-hidden pointer-events-auto cursor-pointer"
           onClick={(e) => { e.stopPropagation(); onClick(); }}
@@ -123,10 +123,9 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
             top: (CY - CIRCLE_R) * SCALE,
             background: "#ffffff",
             boxShadow: `0 20px 40px rgba(0,40,56,0.45), 0 0 0 2.5px ${meta.accent}, inset 0 0 0 1px rgba(255,255,255,0.5)`,
-            zIndex: 1,
+            zIndex: 10,
           }}
         >
-          {/* Layer 1: image OR brand logo pattern OR neutral */}
           {backgroundImage ? (
             <div
               className="absolute inset-0"
@@ -134,8 +133,7 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
                 backgroundImage: `url(${backgroundImage})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
-                opacity: 0.55,
-                zIndex: 1,
+                opacity: 0.45,
               }}
             />
           ) : brandLogo ? (
@@ -144,51 +142,50 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
               style={{
                 backgroundImage: `url(${brandLogo})`,
                 backgroundRepeat: "repeat",
-                backgroundSize: "70px 70px",
-                opacity: 0.18,
-                zIndex: 1,
+                backgroundSize: "80px 80px",
+                opacity: 0.15,
               }}
             />
           ) : null}
 
-          {/* Layer 2: FGB radial tint */}
           <div
             className="absolute inset-0"
             style={{
-              background: `radial-gradient(circle at 50% 50%, ${meta.accent}22 0%, ${meta.accent}12 60%, ${meta.accent}05 100%)`,
-              zIndex: 2,
+              background: `radial-gradient(circle at 50% 50%, ${meta.accent}22 0%, ${meta.accent}10 60%, transparent 100%)`,
             }}
           />
 
-          {/* Layer 3: inner white hairline ring */}
           <div
             className="absolute rounded-full pointer-events-none"
             style={{
               inset: 6,
               border: "1px solid rgba(255,255,255,0.55)",
-              zIndex: 3,
             }}
           />
+        </div>
 
-          {/* Layer 4: counter-rotated central data card */}
+        {/* CENTRAL CARD — sibling of the lens, always above, counter-rotated */}
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ zIndex: 30 }}
+        >
           <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ transform: `rotate(${-rotationDeg}deg)`, zIndex: 4 }}
+            style={{ transform: `rotate(${-rotationDeg}deg)` }}
+            className="pointer-events-auto"
           >
             <motion.div
               initial={{ y: 8, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.45 }}
-              className="relative rounded-full flex flex-col items-center justify-center text-center"
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              className="relative rounded-full flex flex-col items-center justify-center text-center cursor-pointer"
               style={{
                 width: CARD,
                 height: CARD,
                 padding: 14,
-                background: "rgba(255,255,255,0.95)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                boxShadow: `0 14px 36px rgba(0,40,56,0.35), inset 0 1px 0 rgba(255,255,255,0.9)`,
-                border: `1px solid ${meta.accent}66`,
+                background: "#ffffff",
+                boxShadow: `0 20px 40px rgba(0,40,56,0.45), inset 0 1px 0 rgba(255,255,255,0.9)`,
+                border: `1px solid ${meta.accent}44`,
               }}
             >
               <svg
@@ -196,13 +193,13 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
                 viewBox={`0 0 ${CARD} ${CARD}`}
                 style={{ transform: "rotate(-90deg)" }}
               >
-                <circle cx={CARD / 2} cy={CARD / 2} r={RING_R} stroke="#eef2f4" strokeWidth={4} fill="none" />
+                <circle cx={CARD / 2} cy={CARD / 2} r={RING_R} stroke="#eef2f4" strokeWidth={5} fill="none" />
                 <motion.circle
                   cx={CARD / 2}
                   cy={CARD / 2}
                   r={RING_R}
                   stroke={meta.ring}
-                  strokeWidth={4}
+                  strokeWidth={5}
                   fill="none"
                   strokeLinecap="round"
                   strokeDasharray={RING_C}
@@ -213,18 +210,18 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
               </svg>
               <Icon className="w-4 h-4 mb-1" style={{ color: meta.accent }} strokeWidth={2.4} />
               <span
-                className="text-[8px] font-bold uppercase leading-none"
-                style={{ color: "#5b6770", letterSpacing: "0.18em" }}
+                className="text-[9px] font-bold uppercase leading-none"
+                style={{ color: "#64748b", letterSpacing: "0.18em" }}
               >
                 {meta.label}
               </span>
               <span
-                className="text-2xl font-black tracking-tighter leading-none mt-1"
+                className="text-3xl font-black tracking-tighter leading-none mt-1"
                 style={{ color: "#002838" }}
               >
                 {formatValue(value)}
               </span>
-              <span className="text-[9px] font-semibold mt-0.5" style={{ color: "#8a96a0" }}>
+              <span className="text-[9px] font-semibold mt-0.5" style={{ color: "#94a3b8" }}>
                 {meta.unit}
               </span>
             </motion.div>
