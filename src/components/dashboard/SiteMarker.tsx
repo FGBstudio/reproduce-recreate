@@ -68,13 +68,6 @@ interface RadarProps {
   index: number;
 }
 
-const formatValue = (v: number | undefined | null): string => {
-  if (v === undefined || v === null || !Number.isFinite(v)) return "—";
-  if (v >= 100) return v.toFixed(0);
-  if (v >= 10) return v.toFixed(1);
-  return v.toFixed(2);
-};
-
 const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLogo, onClick, index }: RadarProps) => {
   const meta = METRIC_META[section];
   const Icon = meta.icon;
