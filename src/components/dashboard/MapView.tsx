@@ -194,6 +194,22 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
   return (
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="absolute inset-0" />
+
+      {/* React portals into each Leaflet marker host */}
+      {visibleProjects.map((p) => {
+        const host = portalHosts[String(p.id)];
+        if (!host) return null;
+        return createPortal(
+          <SiteMarker
+            key={p.id}
+            project={p}
+            clientRole={clientRole}
+            onMarkerClick={onProjectSelect}
+            onSphereClick={handleSphereClick}
+          />,
+          host
+        );
+      })}
       
       {/* Overlay gradient for better UI integration - stronger on mobile for nav visibility */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/60 md:from-background/40 via-transparent to-background/40 md:to-background/30" />
