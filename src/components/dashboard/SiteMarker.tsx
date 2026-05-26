@@ -19,14 +19,18 @@ interface SiteMarkerProps {
 
 type MetricSection = Exclude<ProjectSection, "overview">;
 
+/** Design-system token helpers — keep hsl() outside of Tailwind class scope */
+const css  = (v: string) => `hsl(var(${v}))`;
+const cssA = (v: string, a: number) => `hsl(var(${v}) / ${a})`;
+
 const METRIC_META: Record<
   MetricSection,
-  { icon: typeof Zap; accent: string; ring: string; label: string; unit: string }
+  { icon: typeof Zap; accentVar: string; ringVar: string; label: string; unit: string }
 > = {
-  // FGB palette: gold #c0a062, teal #004d61, navy #002838
-  energy: { icon: Zap,     accent: "#c0a062", ring: "#c0a062", label: "Main Power", unit: "kW"  },
-  air:    { icon: Wind,    accent: "#004d61", ring: "#0a6e85", label: "Air CO₂",    unit: "ppm" },
-  water:  { icon: Droplet, accent: "#002838", ring: "#1a5a73", label: "Water Flow", unit: "L/m" },
+  // FGB palette via semantic HSL tokens (see index.css)
+  energy: { icon: Zap,     accentVar: "--fgb-gold", ringVar: "--fgb-gold",      label: "Main Power", unit: "kW"  },
+  air:    { icon: Wind,    accentVar: "--fgb-teal", ringVar: "--fgb-teal-ring", label: "Air CO₂",    unit: "ppm" },
+  water:  { icon: Droplet, accentVar: "--fgb-navy", ringVar: "--fgb-navy-ring", label: "Water Flow", unit: "L/m" },
 };
 
 const formatValue = (v: number | undefined | null): string => {
