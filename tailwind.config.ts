@@ -57,6 +57,17 @@ export default {
           accent: "hsl(var(--fgb-accent))",
           glass: "hsl(var(--fgb-glass))",
           surface: "hsl(var(--fgb-surface))",
+          gold: "hsl(var(--fgb-gold))",
+          teal: "hsl(var(--fgb-teal))",
+          "teal-ring": "hsl(var(--fgb-teal-ring))",
+          navy: "hsl(var(--fgb-navy))",
+          "navy-ring": "hsl(var(--fgb-navy-ring))",
+        },
+        lens: {
+          card: "hsl(var(--lens-card))",
+          "ring-track": "hsl(var(--lens-ring-track))",
+          label: "hsl(var(--lens-label))",
+          unit: "hsl(var(--lens-unit))",
         },
         emerald: {
           DEFAULT: "hsl(var(--emerald))",
