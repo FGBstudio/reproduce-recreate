@@ -23,9 +23,10 @@ const METRIC_META: Record<
   MetricSection,
   { icon: typeof Zap; accent: string; ring: string; label: string; unit: string }
 > = {
-  energy: { icon: Zap,     accent: "#f97316", ring: "#10b981", label: "Main Power", unit: "kW"  },
-  air:    { icon: Wind,    accent: "#0ea5e9", ring: "#22d3ee", label: "Air CO₂",    unit: "ppm" },
-  water:  { icon: Droplet, accent: "#3b82f6", ring: "#60a5fa", label: "Water Flow", unit: "L/m" },
+  // FGB palette: gold #c0a062, teal #004d61, navy #002838
+  energy: { icon: Zap,     accent: "#c0a062", ring: "#c0a062", label: "Main Power", unit: "kW"  },
+  air:    { icon: Wind,    accent: "#004d61", ring: "#0a6e85", label: "Air CO₂",    unit: "ppm" },
+  water:  { icon: Droplet, accent: "#002838", ring: "#1a5a73", label: "Water Flow", unit: "L/m" },
 };
 
 const formatValue = (v: number | undefined | null): string => {
@@ -71,8 +72,6 @@ interface RadarProps {
 const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLogo, onClick, index }: RadarProps) => {
   const meta = METRIC_META[section];
   const Icon = meta.icon;
-  const ringR = 82;
-  const ringC = 2 * Math.PI * ringR;
 
   return (
     <motion.button
@@ -88,7 +87,7 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
         height: WIDGET_PX,
         left: `calc(50% - ${WIDGET_PX / 2}px)`,
         top: `calc(50% - ${WIDGET_PX / 2}px)`,
-        background: 0,
+        background: "transparent",
         border: 0,
         padding: 0,
       }}
@@ -102,108 +101,147 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
           transformOrigin: "50% 50%",
         }}
       >
-        <div
-          className="relative w-full h-full rounded-[28px] overflow-hidden border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.55)]"
-          style={{ background: "#0a0f0c" }}
-        >
-          {/* grid */}
-          <div
-            className="absolute inset-0 opacity-20 pointer-events-none"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-              backgroundSize: "28px 28px",
-              backgroundPosition: "center",
-            }}
-          />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_10%,_#0a0f0c_90%)] pointer-events-none" />
-
-          {/* Background image OR brand logo pattern, masked to circle */}
-          <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none z-0"
-            style={{
-              width: (CIRCLE_R * 2) * SCALE,
-              height: (CIRCLE_R * 2) * SCALE,
-              ...(backgroundImage
-                ? {
-                    backgroundImage: `url(${backgroundImage})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                    opacity: 0.45,
-                    mixBlendMode: "luminosity" as const,
-                  }
-                : brandLogo
-                ? {
-                    backgroundImage: `url(${brandLogo})`,
-                    backgroundRepeat: "space",
-                    backgroundSize: "60px",
-                    backgroundPosition: "center",
-                    opacity: 0.18,
-                  }
-                : { backgroundColor: "rgba(255,255,255,0.04)" }),
-            }}
-          />
-
-          {/* SVG geometries */}
+        {/* Floating circular lens — no rectangular container */}
+        <div className="relative w-full h-full">
+          {/* SVG: cone (beam) + circular lens */}
           <svg
             viewBox={`0 0 ${VB} ${VB}`}
-            className="absolute inset-0 w-full h-full z-10 pointer-events-none overflow-visible"
+            className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+            style={{ filter: "drop-shadow(0 20px 40px rgba(0,40,56,0.45))" }}
           >
+            <defs>
+              <radialGradient id={`lens-bg-${section}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor={`${meta.accent}33`} />
+                <stop offset="70%" stopColor={`${meta.accent}1f`} />
+                <stop offset="100%" stopColor={`${meta.accent}10`} />
+              </radialGradient>
+              <clipPath id={`lens-clip-${section}`}>
+                <circle cx={CX} cy={CY} r={CIRCLE_R} />
+              </clipPath>
+            </defs>
+
+            {/* Optical beam from marker focal point to the lens */}
             <motion.path
               d={conePath}
-              fill="rgba(255,255,255,0.05)"
-              stroke="rgba(255,255,255,0.28)"
-              strokeWidth={1.5}
-              strokeDasharray="6 6"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.9, ease: "easeOut" }}
-              style={{ transformOrigin: `${FOCUS_X}px ${FOCUS_Y}px` }}
+              fill={`${meta.accent}1a`}
+              stroke={`${meta.accent}66`}
+              strokeWidth={1.25}
+              strokeDasharray="5 5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
             />
+
+            {/* Image/logo background INSIDE the lens (clipped to circle) */}
+            <g clipPath={`url(#lens-clip-${section})`}>
+              <rect x={CX - CIRCLE_R} y={CY - CIRCLE_R} width={CIRCLE_R * 2} height={CIRCLE_R * 2} fill="#ffffff" />
+              {backgroundImage ? (
+                <image
+                  href={backgroundImage}
+                  x={CX - CIRCLE_R}
+                  y={CY - CIRCLE_R}
+                  width={CIRCLE_R * 2}
+                  height={CIRCLE_R * 2}
+                  preserveAspectRatio="xMidYMid slice"
+                  opacity={0.55}
+                />
+              ) : brandLogo ? (
+                <>
+                  {Array.from({ length: 4 }).map((_, row) =>
+                    Array.from({ length: 4 }).map((__, col) => (
+                      <image
+                        key={`${row}-${col}`}
+                        href={brandLogo}
+                        x={CX - CIRCLE_R + col * 90 + 10}
+                        y={CY - CIRCLE_R + row * 90 + 10}
+                        width={70}
+                        height={70}
+                        opacity={0.18}
+                      />
+                    ))
+                  )}
+                </>
+              ) : null}
+              {/* tint with FGB accent */}
+              <rect
+                x={CX - CIRCLE_R}
+                y={CY - CIRCLE_R}
+                width={CIRCLE_R * 2}
+                height={CIRCLE_R * 2}
+                fill={`url(#lens-bg-${section})`}
+              />
+            </g>
+
+            {/* Lens border (gold/teal accent ring) */}
             <motion.circle
               cx={CX}
               cy={CY}
               r={CIRCLE_R}
-              fill={`${meta.accent}59`}
-              stroke={`${meta.accent}80`}
-              strokeWidth={2}
-              initial={{ scale: 0, opacity: 0 }}
+              fill="none"
+              stroke={meta.accent}
+              strokeWidth={2.5}
+              initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.7, type: "spring", bounce: 0.4 }}
+              transition={{ duration: 0.5, type: "spring", bounce: 0.35 }}
+              style={{ transformOrigin: `${CX}px ${CY}px` }}
+            />
+            <circle
+              cx={CX}
+              cy={CY}
+              r={CIRCLE_R - 6}
+              fill="none"
+              stroke="#ffffff"
+              strokeOpacity={0.4}
+              strokeWidth={1}
             />
           </svg>
 
-          {/* Counter-rotated central card so value reads upright */}
+          {/* Counter-rotated central card so text always reads upright */}
           <div
-            className="absolute z-30 inset-0 flex items-center justify-center"
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ transform: `rotate(${-rotationDeg}deg)` }}
           >
             <motion.div
-              initial={{ y: 10, opacity: 0 }}
+              initial={{ y: 8, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.25, duration: 0.5 }}
-              className="relative bg-white rounded-full shadow-[0_18px_40px_rgba(0,0,0,0.45)] flex flex-col items-center justify-center text-center"
-              style={{ width: 120, height: 120, padding: 14 }}
+              transition={{ delay: 0.2, duration: 0.45 }}
+              className="relative rounded-full flex flex-col items-center justify-center text-center backdrop-blur-xl"
+              style={{
+                width: 124,
+                height: 124,
+                padding: 14,
+                background: "rgba(255,255,255,0.92)",
+                boxShadow: "0 14px 36px rgba(0,40,56,0.35), inset 0 1px 0 rgba(255,255,255,0.9)",
+                border: `1px solid ${meta.accent}55`,
+              }}
             >
               <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
-                <circle cx="60" cy="60" r="54" stroke="#f1f5f9" strokeWidth="5" fill="none" />
+                <circle cx="62" cy="62" r="56" stroke="#eef2f4" strokeWidth="4" fill="none" />
                 <motion.circle
-                  cx="60" cy="60" r="54"
-                  stroke={meta.ring} strokeWidth="5" fill="none" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 54}
-                  initial={{ strokeDashoffset: 2 * Math.PI * 54 }}
-                  animate={{ strokeDashoffset: (2 * Math.PI * 54) * 0.25 }}
-                  transition={{ delay: 0.6, duration: 1.1, ease: "easeOut" }}
+                  cx="62" cy="62" r="56"
+                  stroke={meta.ring} strokeWidth="4" fill="none" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 56}
+                  initial={{ strokeDashoffset: 2 * Math.PI * 56 }}
+                  animate={{ strokeDashoffset: (2 * Math.PI * 56) * 0.25 }}
+                  transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
                 />
               </svg>
-              <Icon className="w-3.5 h-3.5 mb-0.5" style={{ color: meta.accent }} strokeWidth={2.4} />
-              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.18em] leading-none">
+              <Icon className="w-4 h-4 mb-1" style={{ color: meta.accent }} strokeWidth={2.4} />
+              <span
+                className="text-[8px] font-bold uppercase tracking-[0.18em] leading-none"
+                style={{ color: "#5b6770" }}
+              >
                 {meta.label}
               </span>
-              <span className="text-2xl font-black text-gray-900 tracking-tighter leading-none mt-1">
+              <span
+                className="text-2xl font-black tracking-tighter leading-none mt-1"
+                style={{ color: "#002838" }}
+              >
                 {formatValue(value)}
               </span>
-              <span className="text-[9px] font-semibold text-gray-400 mt-0.5">{meta.unit}</span>
+              <span className="text-[9px] font-semibold mt-0.5" style={{ color: "#8a96a0" }}>
+                {meta.unit}
+              </span>
             </motion.div>
           </div>
         </div>
