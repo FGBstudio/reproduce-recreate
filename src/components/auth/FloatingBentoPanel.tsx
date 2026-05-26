@@ -600,7 +600,7 @@ const FloatingBentoPanel: React.FC = () => {
         <ul
           ref={carouselRef}
           onScroll={handleScroll}
-          className="fb-scroll flex overflow-x-auto snap-x snap-mandatory gap-6 px-[6vw] w-full items-center py-10"
+          className="fb-scroll flex overflow-x-auto snap-x snap-mandatory gap-6 px-[6vw] w-full items-center pt-8 pb-2"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {SLIDES.map((s, i) => (
@@ -628,7 +628,7 @@ const FloatingBentoPanel: React.FC = () => {
 
         {/* nav pill */}
         {expandedIndex === null && (
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-10 z-30 flex items-center gap-5 px-5 py-2.5 rounded-full bg-white border border-black/[0.06] shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-3 z-30 flex items-center gap-5 px-5 py-2.5 rounded-full bg-white border border-black/[0.06] shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
             <button
               onClick={() => carouselRef.current?.scrollBy({ left: -window.innerWidth * 0.6, behavior: "smooth" })}
               className="hover:opacity-100 opacity-60 transition-opacity"
@@ -657,6 +657,12 @@ const FloatingBentoPanel: React.FC = () => {
             </button>
           </div>
         )}
+
+        {/* Bottom fade: morbida sfumatura verso la sezione dashboard sottostante */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-24 z-20"
+          style={{ background: `linear-gradient(to top, ${BG} 0%, ${BG} 30%, rgba(251,251,253,0) 100%)` }}
+        />
       </section>
 
       {/* Pricing & lead gen */}
