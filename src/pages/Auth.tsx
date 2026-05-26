@@ -389,7 +389,7 @@ const Auth = () => {
 
         <footer className="p-[clamp(0.75rem,1.5vh,1.5rem)] pb-[max(1rem,env(safe-area-inset-bottom))] text-center shrink-0">
           <div className="mt-8 flex flex-col items-center justify-center space-y-4">
-            <div className="flex space-x-8 text-center border-b border-white/90 pb-4">
+            <div className="flex space-x-8 text-center border-b border-white/500 pb-4">
               <div className="flex flex-col items-center">
                 <span className="text-white/70 font-bold text-2xl">60</span>
                 <span className="text-white/80 font-mono text-xs uppercase tracking-wider">countries</span>
