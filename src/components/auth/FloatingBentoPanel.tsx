@@ -426,14 +426,20 @@ const SLIDES: SlideData[] = [
     backVideo: "/videos/report.mp4",
     visual: (
       <div className="grid grid-cols-2 md:grid-cols-4 items-center justify-items-center gap-x-8 md:gap-x-10 gap-y-10 md:gap-y-12 w-full max-w-[600px] mx-auto">
-        <img src="/leed_logo.png" alt="LEED" className="h-16 object-contain" />
-        <img src="/breeam_logo.png" alt="BREEAM" className="h-12 object-contain opacity-80" />
-        <img src="/well_logo.png" alt="WELL" className="h-12 object-contain opacity-80" />
-        <img src="/life_logo.png" alt="LIFE" className="h-12 object-contain opacity-80" />
-        <img src="/fitwel_logo.png" alt="fitwel" className="h-12 object-contain opacity-80" />
-        <img src="/logo_gresb.png" alt="GRESB" className="h-12 object-contain opacity-80" />
-        <img src="/Logo_ESG.png" alt="ESG" className="h-12 object-contain opacity-80" />
-        <img src="/envision.png" alt="envision" className="h-12 object-contain opacity-80" />
+        {[
+          { src: "/leed_logo.png", alt: "LEED" },
+          { src: "/breeam_logo.png", alt: "BREEAM" },
+          { src: "/well_logo.png", alt: "WELL" },
+          { src: "/life_logo.png", alt: "LIFE" },
+          { src: "/fitwel_logo.png", alt: "fitwel" },
+          { src: "/logo_gresb.png", alt: "GRESB" },
+          { src: "/Logo_ESG.png", alt: "ESG" },
+          { src: "/envision.png", alt: "envision" },
+        ].map((logo) => (
+          <div key={logo.alt} className="flex items-center justify-center h-14 w-28">
+            <img src={logo.src} alt={logo.alt} className="max-h-full max-w-full object-contain opacity-80" />
+          </div>
+        ))}
       </div>
     ),
   },
