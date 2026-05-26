@@ -72,164 +72,149 @@ interface RadarProps {
 const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLogo, onClick, index }: RadarProps) => {
   const meta = METRIC_META[section];
   const Icon = meta.icon;
+  const CARD = 132;
+  const RING_R = 60;
+  const RING_C = 2 * Math.PI * RING_R;
 
   return (
-    <motion.button
-      type="button"
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
+    <motion.div
       initial={{ opacity: 0, scale: 0.6 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.15 } }}
       transition={{ type: "spring", stiffness: 260, damping: 22, delay: index * 0.05 }}
-      className="absolute pointer-events-auto cursor-pointer"
+      className="absolute pointer-events-none"
       style={{
         width: WIDGET_PX,
         height: WIDGET_PX,
         left: `calc(50% - ${WIDGET_PX / 2}px)`,
         top: `calc(50% - ${WIDGET_PX / 2}px)`,
-        background: "transparent",
-        border: 0,
-        padding: 0,
       }}
-      aria-label={`Apri sezione ${section}`}
     >
-      {/* Inner rotated frame: rotation aligns focal point with the marker */}
+      {/* Rotated frame so the cone focal point lands on the marker */}
       <div
         className="absolute inset-0"
-        style={{
-          transform: `rotate(${rotationDeg}deg)`,
-          transformOrigin: "50% 50%",
-        }}
+        style={{ transform: `rotate(${rotationDeg}deg)`, transformOrigin: "50% 50%" }}
       >
-        {/* Floating circular lens — no rectangular container */}
-        <div className="relative w-full h-full">
-          {/* SVG: cone (beam) + circular lens */}
-          <svg
-            viewBox={`0 0 ${VB} ${VB}`}
-            className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
-            style={{ filter: "drop-shadow(0 20px 40px rgba(0,40,56,0.45))" }}
-          >
-            <defs>
-              <radialGradient id={`lens-bg-${section}`} cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor={`${meta.accent}33`} />
-                <stop offset="70%" stopColor={`${meta.accent}1f`} />
-                <stop offset="100%" stopColor={`${meta.accent}10`} />
-              </radialGradient>
-              <clipPath id={`lens-clip-${section}`}>
-                <circle cx={CX} cy={CY} r={CIRCLE_R} />
-              </clipPath>
-            </defs>
+        {/* Cone beam (behind everything) */}
+        <svg
+          viewBox={`0 0 ${VB} ${VB}`}
+          className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+          style={{ zIndex: 0 }}
+        >
+          <path
+            d={conePath}
+            fill={`${meta.accent}1f`}
+            stroke={`${meta.accent}55`}
+            strokeWidth={1.25}
+            strokeDasharray="6 6"
+          />
+        </svg>
 
-            {/* Optical beam from marker focal point to the lens */}
-            <motion.path
-              d={conePath}
-              fill={`${meta.accent}1a`}
-              stroke={`${meta.accent}66`}
-              strokeWidth={1.25}
-              strokeDasharray="5 5"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+        {/* Circular lens stack — background pattern BEHIND, data card ON TOP */}
+        <div
+          className="absolute rounded-full overflow-hidden pointer-events-auto cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          role="button"
+          aria-label={`Apri sezione ${section}`}
+          style={{
+            width: (CIRCLE_R * 2) * SCALE,
+            height: (CIRCLE_R * 2) * SCALE,
+            left: (CX - CIRCLE_R) * SCALE,
+            top: (CY - CIRCLE_R) * SCALE,
+            background: "#ffffff",
+            boxShadow: `0 20px 40px rgba(0,40,56,0.45), 0 0 0 2.5px ${meta.accent}, inset 0 0 0 1px rgba(255,255,255,0.5)`,
+            zIndex: 1,
+          }}
+        >
+          {/* Layer 1: image OR brand logo pattern OR neutral */}
+          {backgroundImage ? (
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url(${backgroundImage})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                opacity: 0.55,
+                zIndex: 1,
+              }}
             />
-
-            {/* Image/logo background INSIDE the lens (clipped to circle) */}
-            <g clipPath={`url(#lens-clip-${section})`}>
-              <rect x={CX - CIRCLE_R} y={CY - CIRCLE_R} width={CIRCLE_R * 2} height={CIRCLE_R * 2} fill="#ffffff" />
-              {backgroundImage ? (
-                <image
-                  href={backgroundImage}
-                  x={CX - CIRCLE_R}
-                  y={CY - CIRCLE_R}
-                  width={CIRCLE_R * 2}
-                  height={CIRCLE_R * 2}
-                  preserveAspectRatio="xMidYMid slice"
-                  opacity={0.55}
-                />
-              ) : brandLogo ? (
-                <>
-                  {Array.from({ length: 4 }).map((_, row) =>
-                    Array.from({ length: 4 }).map((__, col) => (
-                      <image
-                        key={`${row}-${col}`}
-                        href={brandLogo}
-                        x={CX - CIRCLE_R + col * 90 + 10}
-                        y={CY - CIRCLE_R + row * 90 + 10}
-                        width={70}
-                        height={70}
-                        opacity={0.18}
-                      />
-                    ))
-                  )}
-                </>
-              ) : null}
-              {/* tint with FGB accent */}
-              <rect
-                x={CX - CIRCLE_R}
-                y={CY - CIRCLE_R}
-                width={CIRCLE_R * 2}
-                height={CIRCLE_R * 2}
-                fill={`url(#lens-bg-${section})`}
-              />
-            </g>
-
-            {/* Lens border (gold/teal accent ring) */}
-            <motion.circle
-              cx={CX}
-              cy={CY}
-              r={CIRCLE_R}
-              fill="none"
-              stroke={meta.accent}
-              strokeWidth={2.5}
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, type: "spring", bounce: 0.35 }}
-              style={{ transformOrigin: `${CX}px ${CY}px` }}
+          ) : brandLogo ? (
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url(${brandLogo})`,
+                backgroundRepeat: "repeat",
+                backgroundSize: "70px 70px",
+                opacity: 0.18,
+                zIndex: 1,
+              }}
             />
-            <circle
-              cx={CX}
-              cy={CY}
-              r={CIRCLE_R - 6}
-              fill="none"
-              stroke="#ffffff"
-              strokeOpacity={0.4}
-              strokeWidth={1}
-            />
-          </svg>
+          ) : null}
 
-          {/* Counter-rotated central card so text always reads upright */}
+          {/* Layer 2: FGB radial tint */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(circle at 50% 50%, ${meta.accent}22 0%, ${meta.accent}12 60%, ${meta.accent}05 100%)`,
+              zIndex: 2,
+            }}
+          />
+
+          {/* Layer 3: inner white hairline ring */}
+          <div
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              inset: 6,
+              border: "1px solid rgba(255,255,255,0.55)",
+              zIndex: 3,
+            }}
+          />
+
+          {/* Layer 4: counter-rotated central data card */}
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ transform: `rotate(${-rotationDeg}deg)`, zIndex: 30 }}
+            style={{ transform: `rotate(${-rotationDeg}deg)`, zIndex: 4 }}
           >
             <motion.div
               initial={{ y: 8, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.45 }}
-              className="relative rounded-full flex flex-col items-center justify-center text-center backdrop-blur-xl"
+              className="relative rounded-full flex flex-col items-center justify-center text-center"
               style={{
-                width: 124,
-                height: 124,
+                width: CARD,
+                height: CARD,
                 padding: 14,
-                background: "rgba(255,255,255,0.92)",
-                boxShadow: "0 14px 36px rgba(0,40,56,0.35), inset 0 1px 0 rgba(255,255,255,0.9)",
-                border: `1px solid ${meta.accent}55`,
+                background: "rgba(255,255,255,0.95)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                boxShadow: `0 14px 36px rgba(0,40,56,0.35), inset 0 1px 0 rgba(255,255,255,0.9)`,
+                border: `1px solid ${meta.accent}66`,
               }}
             >
-              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
-                <circle cx="62" cy="62" r="56" stroke="#eef2f4" strokeWidth="4" fill="none" />
+              <svg
+                className="absolute inset-0 pointer-events-none"
+                viewBox={`0 0 ${CARD} ${CARD}`}
+                style={{ transform: "rotate(-90deg)" }}
+              >
+                <circle cx={CARD / 2} cy={CARD / 2} r={RING_R} stroke="#eef2f4" strokeWidth={4} fill="none" />
                 <motion.circle
-                  cx="62" cy="62" r="56"
-                  stroke={meta.ring} strokeWidth="4" fill="none" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 56}
-                  initial={{ strokeDashoffset: 2 * Math.PI * 56 }}
-                  animate={{ strokeDashoffset: (2 * Math.PI * 56) * 0.25 }}
+                  cx={CARD / 2}
+                  cy={CARD / 2}
+                  r={RING_R}
+                  stroke={meta.ring}
+                  strokeWidth={4}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={RING_C}
+                  initial={{ strokeDashoffset: RING_C }}
+                  animate={{ strokeDashoffset: RING_C * 0.25 }}
                   transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
                 />
               </svg>
               <Icon className="w-4 h-4 mb-1" style={{ color: meta.accent }} strokeWidth={2.4} />
               <span
-                className="text-[8px] font-bold uppercase tracking-[0.18em] leading-none"
-                style={{ color: "#5b6770" }}
+                className="text-[8px] font-bold uppercase leading-none"
+                style={{ color: "#5b6770", letterSpacing: "0.18em" }}
               >
                 {meta.label}
               </span>
@@ -246,7 +231,7 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
           </div>
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 };
 
