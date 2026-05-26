@@ -199,11 +199,13 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
       {visibleProjects.map((p) => {
         const host = portalHosts[String(p.id)];
         if (!host) return null;
+        const brand = brands.find((b) => b.id === p.brandId);
         return createPortal(
           <SiteMarker
             key={p.id}
             project={p}
             clientRole={clientRole}
+            brandLogo={brand?.logo}
             onMarkerClick={onProjectSelect}
             onSphereClick={handleSphereClick}
           />,
