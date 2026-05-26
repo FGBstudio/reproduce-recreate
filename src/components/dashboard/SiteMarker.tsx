@@ -32,26 +32,30 @@ const METRIC_META: Record<
 const formatValue = (v: number | undefined | null): string => {
   if (v === undefined || v === null || !Number.isFinite(v)) return "—";
   if (v >= 1000) return v.toFixed(0);
-  if (v >= 100) return v.toFixed(0);
-  if (v >= 10) return v.toFixed(1);
+  if (v >= 100)  return v.toFixed(0);
+  if (v >= 10)   return v.toFixed(1);
   return v.toFixed(2);
 };
 
-/* ------------------------- MapMetricRadar widget ------------------------- */
+/* ─────────────────────────── geometry constants ─────────────────────────── */
 
-const WIDGET_PX = 340;        // rendered size on screen
-const VB = 600;               // SVG viewBox (matches user spec)
-const CIRCLE_R = 180;
-const CX = 300;
-const CY = 300;
-const FOCUS_X = 580;          // focal distance from center along +x = 280 SVG units
-const FOCUS_Y = 300;
-const CONE_HALF_ANGLE_DEG = 25;
-const SCALE = WIDGET_PX / VB;
-const FOCUS_OFFSET_PX = (FOCUS_X - CX) * SCALE; // px distance from widget center to focal point
+const WIDGET_PX            = 340;        // rendered size on screen (px)
+const VB                   = 600;        // SVG viewBox side
+const CIRCLE_R             = 180;        // lens radius in VB units
+const CX                   = 300;
+const CY                   = 300;
+const FOCUS_X              = 580;        // cone focal point along +x
+const FOCUS_Y              = 300;
+const CONE_HALF_ANGLE_DEG  = 25;
+const SCALE                = WIDGET_PX / VB;
+const FOCUS_OFFSET_PX      = (FOCUS_X - CX) * SCALE;
+
+const LENS_D = (CIRCLE_R * 2) * SCALE;  // lens diameter in px
+const LENS_L = (CX - CIRCLE_R) * SCALE; // lens left offset in px
+const LENS_T = (CY - CIRCLE_R) * SCALE; // lens top offset in px
 
 const conePath = (() => {
-  const a = CONE_HALF_ANGLE_DEG * (Math.PI / 180);
+  const a  = CONE_HALF_ANGLE_DEG * (Math.PI / 180);
   const p1x = CX + CIRCLE_R * Math.cos(-a);
   const p1y = CY + CIRCLE_R * Math.sin(-a);
   const p2x = CX + CIRCLE_R * Math.cos(a);
@@ -59,22 +63,33 @@ const conePath = (() => {
   return `M ${FOCUS_X} ${FOCUS_Y} L ${p1x} ${p1y} A ${CIRCLE_R} ${CIRCLE_R} 0 0 0 ${p2x} ${p2y} Z`;
 })();
 
+/* ────────────────────────── MapMetricRadar widget ───────────────────────── */
+
+const CARD_SIZE = 140;
+const RING_R    = 56;
+const RING_C    = 2 * Math.PI * RING_R;
+
 interface RadarProps {
-  section: MetricSection;
-  value: number | undefined;
-  rotationDeg: number;           // direction from widget center to marker (deg)
+  section:         MetricSection;
+  value:           number | undefined;
+  rotationDeg:     number;
   backgroundImage?: string;
-  brandLogo?: string;
-  onClick: () => void;
-  index: number;
+  brandLogo?:      string;
+  onClick:         () => void;
+  index:           number;
 }
 
-const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLogo, onClick, index }: RadarProps) => {
+const MapMetricRadar = ({
+  section,
+  value,
+  rotationDeg,
+  backgroundImage,
+  brandLogo,
+  onClick,
+  index,
+}: RadarProps) => {
   const meta = METRIC_META[section];
   const Icon = meta.icon;
-  const CARD = 140;
-  const RING_R = 64;
-  const RING_C = 2 * Math.PI * RING_R;
 
   return (
     <motion.div
@@ -84,90 +99,181 @@ const MapMetricRadar = ({ section, value, rotationDeg, backgroundImage, brandLog
       transition={{ type: "spring", stiffness: 260, damping: 22, delay: index * 0.05 }}
       className="absolute pointer-events-none"
       style={{
-        width: WIDGET_PX,
-        height: WIDGET_PX,
-        left: `calc(50% - ${WIDGET_PX / 2}px)`,
-        top: `calc(50% - ${WIDGET_PX / 2}px)`,
-        transform: `rotate(${rotationDeg}deg)`, // Ruota tutto il widget
+        width:     WIDGET_PX,
+        height:    WIDGET_PX,
+        left:      `calc(50% - ${WIDGET_PX / 2}px)`,
+        top:       `calc(50% - ${WIDGET_PX / 2}px)`,
+        transform: `rotate(${rotationDeg}deg)`,
       }}
     >
-      {/* 1. CONE (Z-index: -10) */}
+      {/* ── CONE ── rendered as a separate SVG behind the lens (zIndex: -1) */}
       <svg
         viewBox={`0 0 ${VB} ${VB}`}
         className="absolute inset-0 w-full h-full"
-        style={{ zIndex: -10, overflow: "visible" }}
+        style={{ zIndex: -1, overflow: "visible", pointerEvents: "none" }}
       >
-        <path d={conePath} fill={`${meta.accent}1f`} stroke={`${meta.accent}55`} strokeWidth={1.25} strokeDasharray="6 6" />
+        <path
+          d={conePath}
+          fill={`${meta.accent}1f`}
+          stroke={`${meta.accent}55`}
+          strokeWidth={1.25}
+          strokeDasharray="6 6"
+        />
       </svg>
 
-      {/* 2. LENTE (Z-index: 10, Isolation per i layer interni) */}
+      {/* ── LENS ── circular container; overflow:hidden clips all layers */}
       <div
         className="absolute rounded-full overflow-hidden pointer-events-auto cursor-pointer"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         role="button"
+        aria-label={`${meta.label} lens`}
         style={{
-          width: (CIRCLE_R * 2) * SCALE,
-          height: (CIRCLE_R * 2) * SCALE,
-          left: (CX - CIRCLE_R) * SCALE,
-          top: (CY - CIRCLE_R) * SCALE,
-          isolation: "isolate", // Crea un nuovo contesto di stacking
-          boxShadow: `0 20px 40px rgba(0,40,56,0.45), 0 0 0 2.5px ${meta.accent}, inset 0 0 0 1px rgba(255,255,255,0.5)`,
+          width:     LENS_D,
+          height:    LENS_D,
+          left:      LENS_L,
+          top:       LENS_T,
           background: "#ffffff",
+          boxShadow:  `0 20px 40px rgba(0,40,56,0.45), 0 0 0 2.5px ${meta.accent}, inset 0 0 0 1px rgba(255,255,255,0.5)`,
+          /* No isolation:isolate — we use explicit z-index layers instead */
         }}
       >
-        {/* Layer: Background / Pattern (Z: 0) */}
-        <div className="absolute inset-0 z-0">
-           {backgroundImage ? (
-            <div className="absolute inset-0" style={{ backgroundImage: `url(${backgroundImage})`, backgroundSize: "cover", backgroundPosition: "center", opacity: 0.45 }} />
-          ) : brandLogo ? (
-            <div className="absolute inset-0" style={{ backgroundImage: `url(${brandLogo})`, backgroundRepeat: "repeat", backgroundSize: "80px 80px", opacity: 0.15 }} />
-          ) : null}
-        </div>
+        {/* ── Layer z-10: background image or brand logo pattern
+            Counter-rotated so it always appears upright regardless
+            of how the outer widget is rotated.                           */}
+        {(backgroundImage || brandLogo) && (
+          <div
+            className="absolute inset-0 rounded-full overflow-hidden"
+            style={{
+              zIndex:    10,
+              transform: `rotate(${-rotationDeg}deg)`,
+            }}
+          >
+            {backgroundImage ? (
+              <div
+                style={{
+                  position:           "absolute",
+                  inset:              0,
+                  backgroundImage:    `url(${backgroundImage})`,
+                  backgroundSize:     "cover",
+                  backgroundPosition: "center",
+                  opacity:            0.42,
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  position:           "absolute",
+                  inset:              0,
+                  backgroundImage:    `url(${brandLogo})`,
+                  backgroundRepeat:   "repeat",
+                  backgroundSize:     "80px 80px",
+                  opacity:            0.12,
+                }}
+              />
+            )}
+          </div>
+        )}
 
-        {/* Layer: Tint (Z: 10) */}
-        <div className="absolute inset-0 z-10" style={{ background: `radial-gradient(circle at 50% 50%, ${meta.accent}22 0%, ${meta.accent}10 60%, transparent 100%)` }} />
+        {/* ── Layer z-20: very subtle radial FGB tint */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            zIndex:     20,
+            background: `radial-gradient(circle at 50% 50%, ${meta.accent}22 0%, ${meta.accent}08 60%, transparent 100%)`,
+            pointerEvents: "none",
+          }}
+        />
 
-        {/* Layer: Ring interno (Z: 20) */}
-        <div className="absolute inset-2 z-20 rounded-full border border-white/55 pointer-events-none" />
+        {/* ── Layer z-30: inner border ring */}
+        <div
+          className="absolute inset-2 rounded-full border border-white/40"
+          style={{ zIndex: 30, pointerEvents: "none" }}
+        />
 
-        {/* Layer: CARD CENTRALE (Z: 30) - Counter-rotated per stare dritta */}
-        <div 
-          className="absolute inset-0 z-30 flex items-center justify-center"
-          style={{ transform: `rotate(${-rotationDeg}deg)` }}
+        {/* ── Layer z-40: central metric card, counter-rotated so text is upright */}
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{
+            zIndex:    40,
+            transform: `rotate(${-rotationDeg}deg)`,
+          }}
         >
-           <div className="w-[140px] h-[140px] rounded-full bg-white flex flex-col items-center justify-center shadow-lg border border-opacity-20" style={{ borderColor: meta.accent }}>
-              <svg className="absolute inset-0 pointer-events-none" viewBox={`0 0 ${CARD} ${CARD}`} style={{ transform: "rotate(-90deg)" }}>
-                <circle cx={CARD / 2} cy={CARD / 2} r={RING_R} stroke="#eef2f4" strokeWidth={5} fill="none" />
-                <motion.circle
-                  cx={CARD / 2} cy={CARD / 2} r={RING_R}
-                  stroke={meta.ring} strokeWidth={5} fill="none" strokeLinecap="round"
-                  strokeDasharray={RING_C}
-                  initial={{ strokeDashoffset: RING_C }}
-                  animate={{ strokeDashoffset: RING_C * 0.25 }}
-                  transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
-                />
-              </svg>
-              <Icon className="w-4 h-4 mb-1" style={{ color: meta.accent }} strokeWidth={2.4} />
-              <span className="text-[9px] font-bold uppercase leading-none tracking-[0.18em]" style={{ color: "#64748b" }}>{meta.label}</span>
-              <span className="text-3xl font-black tracking-tighter leading-none mt-1" style={{ color: "#002838" }}>{formatValue(value)}</span>
-              <span className="text-[9px] font-semibold mt-0.5" style={{ color: "#94a3b8" }}>{meta.unit}</span>
-           </div>
+          {/* Card shell */}
+          <div
+            className="relative flex flex-col items-center justify-center rounded-full bg-white shadow-xl"
+            style={{
+              width:  CARD_SIZE,
+              height: CARD_SIZE,
+              border: `1.5px solid ${meta.accent}33`,
+            }}
+          >
+            {/* Progress ring (behind text via z-index) */}
+            <svg
+              className="absolute inset-0 pointer-events-none"
+              viewBox={`0 0 ${CARD_SIZE} ${CARD_SIZE}`}
+              style={{ zIndex: 0, transform: "rotate(-90deg)" }}
+            >
+              <circle
+                cx={CARD_SIZE / 2} cy={CARD_SIZE / 2} r={RING_R}
+                stroke="#eef2f4" strokeWidth={5} fill="none"
+              />
+              <motion.circle
+                cx={CARD_SIZE / 2} cy={CARD_SIZE / 2} r={RING_R}
+                stroke={meta.ring} strokeWidth={5} fill="none" strokeLinecap="round"
+                strokeDasharray={RING_C}
+                initial={{ strokeDashoffset: RING_C }}
+                animate={{ strokeDashoffset: RING_C * 0.25 }}
+                transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
+              />
+            </svg>
+
+            {/* Text content (above the SVG ring via relative z-10) */}
+            <Icon
+              className="w-4 h-4 mb-1"
+              style={{ color: meta.accent, position: "relative", zIndex: 1 }}
+              strokeWidth={2.4}
+            />
+            <span
+              className="text-[9px] font-bold uppercase leading-none tracking-[0.18em]"
+              style={{ color: "#64748b", position: "relative", zIndex: 1 }}
+            >
+              {meta.label}
+            </span>
+            <span
+              className="text-3xl font-black tracking-tighter leading-none mt-1"
+              style={{ color: "#002838", position: "relative", zIndex: 1 }}
+            >
+              {formatValue(value)}
+            </span>
+            <span
+              className="text-[9px] font-semibold mt-0.5"
+              style={{ color: "#94a3b8", position: "relative", zIndex: 1 }}
+            >
+              {meta.unit}
+            </span>
+          </div>
         </div>
       </div>
     </motion.div>
   );
 };
 
-/* --------------------------- SiteMarker wrapper -------------------------- */
+/* ──────────────────────────── SiteMarker wrapper ────────────────────────── */
 
-export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSphereClick }: SiteMarkerProps) => {
+export const SiteMarker = ({
+  project,
+  clientRole,
+  brandLogo,
+  onMarkerClick,
+  onSphereClick,
+}: SiteMarkerProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
-  // Fetch realtime data only while hovered (siteId undefined when not hovered disables the hooks)
+  // Fetch real-time data only while hovered
   const siteIdForFetch = isHovered ? project.siteId : undefined;
   const latest = useRealTimeLatestData(siteIdForFetch);
-  const power = useEnergyPowerByCategory(siteIdForFetch);
+  const power   = useEnergyPowerByCategory(siteIdForFetch);
 
   const handleEnter = useCallback(() => {
     if (closeTimer.current) {
@@ -186,7 +292,7 @@ export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSp
     (m): m is MetricSection => m === "energy" || m === "air" || m === "water"
   );
 
-  const valueFor = (section: Exclude<ProjectSection, "overview">): number | undefined => {
+  const valueFor = (section: MetricSection): number | undefined => {
     if (section === "energy") {
       return power.totalGeneral ?? undefined;
     }
@@ -201,37 +307,46 @@ export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSp
     return undefined;
   };
 
+  /**
+   * Click on a specific lens opens that section of the site dashboard.
+   * STORE_USER is always redirected to overview.
+   */
   const handleSectionClick = (section: MetricSection) => {
     const target: ProjectSection = clientRole === "STORE_USER" ? "overview" : section;
     onSphereClick(project, target);
   };
 
   /**
-   * Fan widgets in an arc ABOVE the marker. Each widget is placed so that the
-   * cone's focal point coincides with the marker center.
+   * Fan widgets in an arc around the marker. Each widget is placed so that the
+   * cone's focal point coincides with the marker centre.
    *
-   *   widgetCenter = marker − FOCUS_OFFSET_PX * (cos θ, sin θ)
+   *   widgetCenter = markerCenter − FOCUS_OFFSET_PX · (cos θ, sin θ)
    *
-   * where θ is the direction from widget center → marker (the rotation we
-   * apply to the widget so its cone aims at the marker).
+   * θ = direction from widget center → marker (screen coords: 0°=right, 90°=down).
    */
   const arcAngles = (n: number): number[] => {
-    // Angle = direction (deg) from widget center → marker, in standard
-    // screen coords (0°=right, 90°=down, 270°=up).
-    if (n <= 1) return [270]; // widget directly above marker
-    if (n === 2) return [210, 330]; // 120° apart, both above marker
-    return [90, 210, 330]; // 120° apart: below, upper-right, upper-left
+    if (n <= 1) return [270];          // single widget: directly above
+    if (n === 2) return [210, 330];    // two widgets: upper-left, upper-right
+    return [90, 210, 330];             // three: below, upper-right, upper-left
   };
   const angles = arcAngles(activeSpheres.length);
 
   return (
     <div
       className="site-marker-wrapper"
-      style={{ position: "relative", width: 58, height: 58, pointerEvents: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{
+        position:       "relative",
+        width:          58,
+        height:         58,
+        pointerEvents:  "auto",
+        display:        "flex",
+        alignItems:     "center",
+        justifyContent: "center",
+      }}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
-      {/* Radar widgets overlay — anchored on marker, fanned upward */}
+      {/* ── Radar lens overlay — anchored on marker, fanned outward ── */}
       <AnimatePresence>
         {isHovered && activeSpheres.length > 0 && (
           <motion.div
@@ -241,37 +356,38 @@ export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSp
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              width: 0,
-              height: 0,
+              position:      "absolute",
+              left:          "50%",
+              top:           "50%",
+              width:         0,
+              height:        0,
               pointerEvents: "none",
-              zIndex: 50,
+              zIndex:        50,
             }}
           >
             {activeSpheres.map((section, i) => {
               const thetaDeg = angles[i] ?? 90;
-              const theta = thetaDeg * (Math.PI / 180);
-              // Widget center offset from marker (marker is "below" widget along θ)
+              const theta    = thetaDeg * (Math.PI / 180);
+              // Widget centre offset so cone focal point aligns with marker
               const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
               const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
+
               return (
                 <div
                   key={section}
                   style={{
-                    position: "absolute",
-                    left: dx,
-                    top: dy,
-                    width: 0,
-                    height: 0,
+                    position:      "absolute",
+                    left:          dx,
+                    top:           dy,
+                    width:         0,
+                    height:        0,
                     pointerEvents: "auto",
                   }}
                 >
                   <MapMetricRadar
                     section={section}
                     value={valueFor(section)}
-                    rotationDeg={thetaDeg - 0} // align cone (default +x) to point at marker
+                    rotationDeg={thetaDeg}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
                     onClick={() => handleSectionClick(section)}
@@ -284,31 +400,31 @@ export const SiteMarker = ({ project, clientRole, brandLogo, onMarkerClick, onSp
         )}
       </AnimatePresence>
 
-      {/* Marker pin */}
+      {/* ── Marker pin — click opens site Overview ── */}
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onMarkerClick(project);
+          onMarkerClick(project); // Index.tsx handles setSelectedProject + section "overview"
         }}
         title={project.name}
         style={{
-          width: 36,
-          height: 36,
+          width:      36,
+          height:     36,
           background: "transparent",
-          border: "none",
-          padding: 0,
-          cursor: "pointer",
-          display: "block",
+          border:     "none",
+          padding:    0,
+          cursor:     "pointer",
+          display:    "block",
         }}
       >
         <img
           src={markerPinIcon}
           alt={project.name}
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3))",
+            width:      "100%",
+            height:     "100%",
+            objectFit:  "contain",
+            filter:     "drop-shadow(0 4px 6px rgba(0,0,0,0.3))",
             transition: "transform 0.2s ease",
           }}
         />
