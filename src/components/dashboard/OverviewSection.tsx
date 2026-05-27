@@ -749,12 +749,20 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   // Calcolo score per gli Alert sul Fingerprint (100 = perfetto, degrada con gli allarmi)
   const alertFingerprintScore = alertStatus.hasAlerts ? Math.max(0, 100 - (alertStatus.criticalCount * 25 + alertStatus.warningCount * 10)) : 100;
 
+  const verdict = useMemo(() => buildFingerprintVerdict({
+    overall: overallStatus.score,
+    energy: { score: energyStatus.score, enabled: moduleConfig.energy.enabled },
+    air:    { score: airStatus.score,    enabled: moduleConfig.air.enabled },
+    water:  { score: waterStatus.score,  enabled: moduleConfig.water.enabled },
+    alerts: alertStatus,
+  }), [overallStatus.score, energyStatus.score, airStatus.score, waterStatus.score, moduleConfig, alertStatus]);
+
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-8">
       {/* ── NUOVO LAYOUT ORIZZONTALE TOP (ScoreHero + Fingerprint) ── */}
       <div className="flex flex-col xl:flex-row gap-4 mb-4 md:mb-6">
         <ScoreHero
-          className="flex-1"
+          className="xl:flex-[2] min-w-0"
           score={overallStatus.score}
           level={overallStatus.level}
           isLive={overallStatus.isLive}
@@ -770,7 +778,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
           onModuleClick={(mod: string) => onNavigate && onNavigate(mod)}
         />
 
-        <Card className="xl:w-[320px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
+        <Card className="xl:flex-1 xl:min-w-[380px] xl:max-w-[460px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
           <div className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-2 w-full text-center">Site Fingerprint</div>
           <BuildingFingerprint
             level={overallStatus.level}
@@ -782,6 +790,14 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
               alerts: { label: "Alerts", value: alertFingerprintScore },
             }}
           />
+          <div className="w-full mt-3 pt-3 border-t border-gray-100 flex flex-col items-center text-center">
+            <div className={`text-sm font-semibold leading-tight ${STATUS_TOKENS[verdict.tone].textColor}`}>
+              {verdict.headline}
+            </div>
+            <div className="text-[11px] text-gray-500 leading-snug mt-1 px-2">
+              {verdict.reason}
+            </div>
+          </div>
         </Card>
       </div>
       
