@@ -249,22 +249,6 @@ function BuildingFingerprint({ axes, level }: any) {
   const center = size / 2;
   const radius = size / 2 - 25;
 
-  // LOGICA IA: Analisi sintetica per identificare il problema principale
-  const getInsight = () => {
-    if (level === "GOOD") return "Tutto ottimizzato.";
-    if (level === "OK") return "Performance regolare.";
-    
-    // Confronta i valori dei moduli attivi per trovare il collo di bottiglia
-    const modules = [
-      { val: axes.energy.value, msg: "Consumi energetici alti" },
-      { val: axes.air.value, msg: "Ventila l'ambiente" },
-      { val: axes.water.value, msg: "Anomalie idriche" }
-    ].filter(m => m.val > 0);
-
-    const worst = modules.reduce((prev, curr) => (curr.val < prev.val ? curr : prev), modules[0]);
-    return worst.val < 50 ? worst.msg : "Parametri fuori soglia.";
-  };
-
   const axisKeys = ["score", "energy", "air", "water", "alerts"];
   const angles = axisKeys.map((_, i) => (Math.PI * 2 * i) / 5 - Math.PI / 2);
 
@@ -274,38 +258,45 @@ function BuildingFingerprint({ axes, level }: any) {
   };
 
   const pathData = axisKeys.map((key, i) => getPoint(axes[key].value, angles[i])).join(" L ") + " Z";
-  const theme = {
+
+  const colorTokens = {
     GOOD: { fill: "#10b981", stroke: "#059669" },
     OK: { fill: "#3b82f6", stroke: "#2563eb" },
     WARNING: { fill: "#f59e0b", stroke: "#d97706" },
     CRITICAL: { fill: "#ef4444", stroke: "#dc2626" },
-  }[level as keyof typeof theme] || { fill: "#10b981", stroke: "#059669" };
+  };
+  const theme = colorTokens[level as keyof typeof colorTokens] || colorTokens.GOOD;
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full h-full">
+    <div className="relative flex items-center justify-center w-full h-full">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+        {/* Web Background */}
         {[0.2, 0.4, 0.6, 0.8, 1].map(scale => (
           <polygon key={scale} points={axisKeys.map((_, i) => getPoint(scale * 100, angles[i])).join(" ")} fill="none" stroke="#f3f4f6" strokeWidth="1" />
         ))}
+        {/* Axis Lines */}
         {angles.map((a, i) => (
           <line key={i} x1={center} y1={center} x2={center + radius * Math.cos(a)} y2={center + radius * Math.sin(a)} stroke="#e5e7eb" strokeWidth="1" />
         ))}
+        {/* Data Polygon */}
         <polygon points={pathData} fill={theme.fill} fillOpacity="0.15" stroke={theme.stroke} strokeWidth="2" style={{ transition: "all 1s cubic-bezier(0.16,1,0.3,1)" }} />
+        {/* Data Dots */}
         {axisKeys.map((key, i) => (
           <circle key={`dot-${i}`} cx={getPoint(axes[key].value, angles[i]).split(',')[0]} cy={getPoint(axes[key].value, angles[i]).split(',')[1]} r="3" fill={theme.stroke} stroke="#ffffff" strokeWidth="1.5" />
         ))}
+        {/* Labels */}
         {axisKeys.map((key, i) => {
           const textR = radius + 16;
-          return <text key={key} x={center + textR * Math.cos(angles[i])} y={center + textR * Math.sin(angles[i])} fontSize="9" fill="#9ca3af" textAnchor="middle" dominantBaseline="middle" className="font-semibold uppercase tracking-wider">{axes[key].label}</text>;
+          const x = center + textR * Math.cos(angles[i]);
+          const y = center + textR * Math.sin(angles[i]);
+          const isDisabled = axes[key].value === 0 && key !== "score" && key !== "alerts";
+          return (
+            <text key={key} x={x} y={y} fontSize="9" fill={isDisabled ? "#d1d5db" : "#9ca3af"} textAnchor="middle" dominantBaseline="middle" className="font-semibold uppercase tracking-wider select-none">
+              {axes[key].label}
+            </text>
+          );
         })}
       </svg>
-      
-      {/* Pillola IA dinamica */}
-      <div className="mt-4 px-3 py-1 bg-slate-50 rounded-full border border-slate-100 shadow-sm">
-        <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-          {getInsight()}
-        </p>
-      </div>
     </div>
   );
 }
