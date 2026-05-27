@@ -90,6 +90,49 @@ const STATUS_TOKENS: Record<StatusLevel, { word: string; trackColor: string; rin
 };
 
 // ─────────────────────────────────────────────
+// Fingerprint verdict — short headline + reason
+// ─────────────────────────────────────────────
+
+interface VerdictInput {
+  overall: number;
+  energy: { score: number; enabled: boolean };
+  air:    { score: number; enabled: boolean };
+  water:  { score: number; enabled: boolean };
+  alerts: { hasAlerts: boolean; criticalCount: number; warningCount: number };
+}
+
+interface Verdict { headline: string; reason: string; tone: StatusLevel }
+
+function buildFingerprintVerdict(v: VerdictInput): Verdict {
+  if (v.alerts.criticalCount > 0) {
+    return {
+      headline: "Critical Issue Detected",
+      reason: `${v.alerts.criticalCount} critical alert${v.alerts.criticalCount > 1 ? "s" : ""} need immediate attention.`,
+      tone: "CRITICAL",
+    };
+  }
+  if (v.air.enabled && v.air.score < 50) {
+    return { headline: "Ventilate the Room", reason: "Indoor air quality is degrading — increase ventilation.", tone: "WARNING" };
+  }
+  if (v.energy.enabled && v.energy.score < 50) {
+    return { headline: "Consumption a Bit High", reason: "Energy usage is above the expected baseline.", tone: "WARNING" };
+  }
+  if (v.water.enabled && v.water.score < 50) {
+    return { headline: "Water Flow Anomaly", reason: "Detected water consumption is outside the normal range.", tone: "WARNING" };
+  }
+  if (v.alerts.warningCount > 2) {
+    return { headline: "Multiple Warnings Active", reason: "Several non-critical anomalies are currently open.", tone: "WARNING" };
+  }
+  if (v.overall >= 85) {
+    return { headline: "All Good", reason: "All monitored modules are within their optimal range.", tone: "GOOD" };
+  }
+  if (v.overall >= 65) {
+    return { headline: "Operating Normally", reason: "Performance is stable, with minor room for improvement.", tone: "OK" };
+  }
+  return { headline: "Needs Attention", reason: "Multiple modules are below their target performance.", tone: "WARNING" };
+}
+
+// ─────────────────────────────────────────────
 // Hooks for ScoreHero
 // ─────────────────────────────────────────────
 
