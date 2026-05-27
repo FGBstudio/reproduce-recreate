@@ -1,68 +1,55 @@
-## Modifiche a `src/components/dashboard/OverviewSection.tsx`
+## Goal
 
-### 1. Riproporzionamento orizzontale (riga ~703)
+Sostituire l'attuale verdetto statico del Site Fingerprint ("Critical Issue Detected — 2 critical alerts need immediate attention.") con un messaggio **specifico e generato dall'IA** che reagisce alla telemetria reale del sito:
 
-Layout `flex flex-col xl:flex-row`:
+- CO2 alta → "Open a window — CO2 is reaching 1200 ppm"
+- Potenza sopra baseline → "Turn down the AC — HVAC load is 35% above usual"
+- Allarme leak → "Possible water leak detected on the main line"
+- Tutto OK → frase rassicurante contestuale
 
-- `ScoreHero`: rimuovere `flex-1`, dargli `xl:flex-[2]` (più stretto)
-- `Card` Fingerprint: da `xl:w-[320px]` → `xl:flex-1 xl:min-w-[380px] xl:max-w-[460px]` (più larga per ospitare il testo AI)
+Headline breve (≤6 parole) + reason di 1 riga, sempre in inglese, tono coerente con lo score.
 
-### 2. Overall Performance — non ho chiesto la sfumatura dark ho chiestpo la sfumatura nell'angolo del colore dello stato quyindi se è ok la sfumatura sarà azzurra mentre se è good sarà verde, warning gialla e critical rossa.
+## What to build
 
-Refactor di `ScoreHero` (riga ~191):
+### 1. Edge function `fingerprint-verdict` (nuova)
 
-- tutto il refacto deve essere organizzato di conseguenza, mantenendo la versione chiara non dark
+`supabase/functions/fingerprint-verdict/index.ts`, sullo stesso pattern di `energy-diagnosis`:
 
-Nessun nuovo token CSS necessario: si riusano `--fgb-navy` / `--fgb-teal` già definiti.
+- Input JSON: `{ siteName, language, overall, modules:{energy,air,water}, alerts:{critical,warning,topAlerts[]}, telemetry:{ co2, temperature, humidity, voc, pm25, powerKw, baselinePowerKw, hvacKw, lightingKw, waterFlow, leakDetected } }`
+- Modello: `google/gemini-3-flash-preview` via Lovable AI Gateway (`LOVABLE_API_KEY`).
+- Structured output (tool calling) → `{ headline: string (max 6 words), reason: string (max 110 chars), tone: 'GOOD'|'OK'|'WARNING'|'CRITICAL' }`.
+- System prompt: facility manager esperto, deve citare la metrica che pesa di più (es. valore CO2, % sopra baseline), proporre azione concreta, niente fluff.
+- Gestione 429/402 come `energy-diagnosis`.
 
-### 3. Fingerprint con verdetto AI
+### 2. Hook `useFingerprintVerdict` (nuovo)
 
-Nuova sezione testuale nel `Card` Fingerprint (riga ~721), sotto il radar:
+`src/hooks/useFingerprintVerdict.ts`:
 
-```text
-[ Site Fingerprint ]
-[  radar chart  ]
-─────────────────
-HEADLINE (es. "All Good", "Ventilate the Room", "Consumption a Bit High")
-sottotesto breve (1 riga) con il "perché" basato sugli score
-```
+- React Query, key = `['fingerprint-verdict', siteId, bucketedSignature]` dove `bucketedSignature` arrotonda i valori (CO2 a step di 100 ppm, kW a step di 1, score a step di 5) così la stessa risposta viene riusata e l'AI non viene chiamata ad ogni re-render.
+- `staleTime: 5 min`, `refetchInterval: 10 min`.
+- Fallback: se l'edge function fallisce o `siteId` mancante, ritorna il verdetto rule-based attuale (`buildFingerprintVerdict`) così la UI non resta mai vuota.
 
-#### Logica del verdetto (pure function locale, niente chiamate AI)
+### 3. Cablaggio in `OverviewSection.tsx`
 
-Nuovo helper `function buildFingerprintVerdict({ overall, energy, air, water, alerts, moduleConfig })` che ritorna `{ headline: string; reason: string; tone: StatusLevel }`. Regole, valutate in ordine di priorità:
+- Raccogliere i segnali telemetrici già disponibili nel componente (CO2, temp, humidity, power kW corrente vs media, alert critici/warning, leak) e passarli all'hook.
+- Sostituire la `useMemo(buildFingerprintVerdict…)` con `const { data: verdict } = useFingerprintVerdict(...)`, mantenendo `buildFingerprintVerdict` come fallback locale.
+- Nessuna modifica al layout: rimangono `headline` + `reason` sotto il radar, stessi token di colore (`STATUS_TOKENS[verdict.tone].textColor`).
+- Mentre l'AI sta caricando, mostriamo il verdetto rule-based (no flicker, no spinner).
 
-1. `alerts.criticalCount > 0` → `"Critical Issue Detected"` / `"X critical alerts need immediate attention."`
-2. `air.enabled && air.score < 50` → `"Ventilate the Room"` / `"Indoor air quality is degrading — increase ventilation."`
-3. `energy.enabled && energy.score < 50` → `"Consumption a Bit High"` / `"Energy usage is above the expected baseline."`
-4. `water.enabled && water.score < 50` → `"Water Flow Anomaly"` / `"Detected water consumption is outside the normal range."`
-5. `alerts.warningCount > 2` → `"Multiple Warnings Active"` / `"Several non-critical anomalies are open."`
-6. `overall >= 85` → `"All Good"` / `"All monitored modules are within optimal range."`
-7. `overall >= 65` → `"Operating Normally"` / `"Performance is stable, with minor room for improvement."`
-8. fallback → `"Needs Attention"` / `"Multiple modules are below their target performance."`
+### 4. Config
 
-Rendering:
+- Aggiungere `fingerprint-verdict` in `supabase/config.toml` con `verify_jwt = false` (come `energy-diagnosis`).
+- Nessun nuovo secret: `LOVABLE_API_KEY` è già disponibile in tutti gli edge env.
 
-- Headline: `text-sm font-semibold` con colore in base a `tone` (riusa `STATUS_TOKENS[tone].textColor`)
-- Reason: `text-[11px] text-gray-500 leading-snug text-center mt-1`
+## Out of scope
 
-### 4. Cablaggio
+- Nessun cambio al radar chart, al layout della card, ai colori, allo ScoreHero o agli altri componenti.
+- Nessun cambio alle soglie di score o alle metriche di telemetria.
+- Nessuna nuova migration / RLS / tabella.
 
-Nel componente principale (riga ~700), calcolare:
+## Files touched
 
-```ts
-const verdict = buildFingerprintVerdict({
-  overall: overallStatus.score,
-  energy: { score: energyStatus.score, enabled: moduleConfig.energy.enabled },
-  air:    { score: airStatus.score,    enabled: moduleConfig.air.enabled },
-  water:  { score: waterStatus.score,  enabled: moduleConfig.water.enabled },
-  alerts: alertStatus,
-});
-```
-
-e passarlo a `BuildingFingerprint` come prop `verdict` (oppure renderizzarlo inline nella `Card` sotto il radar — preferito, meno refactor).
-
-### File toccati
-
-- `src/components/dashboard/OverviewSection.tsx` — unico file modificato.
-
-Nessuna modifica a logica dati, hook, o altri componenti. Nessun nuovo token globale.
+- new: `supabase/functions/fingerprint-verdict/index.ts`
+- new: `src/hooks/useFingerprintVerdict.ts`
+- edit: `src/components/dashboard/OverviewSection.tsx` (solo wiring del verdetto, ~15 righe)
+- edit: `supabase/config.toml` (1 voce)

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.geo-timezone]
 verify_jwt = false
+
+[functions.fingerprint-verdict]
+verify_jwt = false
