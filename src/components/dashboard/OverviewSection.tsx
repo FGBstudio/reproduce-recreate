@@ -90,6 +90,49 @@ const STATUS_TOKENS: Record<StatusLevel, { word: string; trackColor: string; rin
 };
 
 // ─────────────────────────────────────────────
+// Fingerprint verdict — short headline + reason
+// ─────────────────────────────────────────────
+
+interface VerdictInput {
+  overall: number;
+  energy: { score: number; enabled: boolean };
+  air:    { score: number; enabled: boolean };
+  water:  { score: number; enabled: boolean };
+  alerts: { hasAlerts: boolean; criticalCount: number; warningCount: number };
+}
+
+interface Verdict { headline: string; reason: string; tone: StatusLevel }
+
+function buildFingerprintVerdict(v: VerdictInput): Verdict {
+  if (v.alerts.criticalCount > 0) {
+    return {
+      headline: "Critical Issue Detected",
+      reason: `${v.alerts.criticalCount} critical alert${v.alerts.criticalCount > 1 ? "s" : ""} need immediate attention.`,
+      tone: "CRITICAL",
+    };
+  }
+  if (v.air.enabled && v.air.score < 50) {
+    return { headline: "Ventilate the Room", reason: "Indoor air quality is degrading — increase ventilation.", tone: "WARNING" };
+  }
+  if (v.energy.enabled && v.energy.score < 50) {
+    return { headline: "Consumption a Bit High", reason: "Energy usage is above the expected baseline.", tone: "WARNING" };
+  }
+  if (v.water.enabled && v.water.score < 50) {
+    return { headline: "Water Flow Anomaly", reason: "Detected water consumption is outside the normal range.", tone: "WARNING" };
+  }
+  if (v.alerts.warningCount > 2) {
+    return { headline: "Multiple Warnings Active", reason: "Several non-critical anomalies are currently open.", tone: "WARNING" };
+  }
+  if (v.overall >= 85) {
+    return { headline: "All Good", reason: "All monitored modules are within their optimal range.", tone: "GOOD" };
+  }
+  if (v.overall >= 65) {
+    return { headline: "Operating Normally", reason: "Performance is stable, with minor room for improvement.", tone: "OK" };
+  }
+  return { headline: "Needs Attention", reason: "Multiple modules are below their target performance.", tone: "WARNING" };
+}
+
+// ─────────────────────────────────────────────
 // Hooks for ScoreHero
 // ─────────────────────────────────────────────
 
@@ -194,8 +237,17 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
   const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
 
   return (
-    <Card className={`bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
-      <div className={`flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-6 h-full`}>
+    <Card className={`relative overflow-hidden bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
+      {/* Status-colored corner glow (echoes the dark-gradient screenshot, kept on a light card) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -right-24 w-[340px] h-[340px] rounded-full opacity-70"
+        style={{
+          background: `radial-gradient(circle at center, ${tokens.ringColor}40 0%, ${tokens.ringColor}1a 45%, transparent 72%)`,
+          filter: "blur(6px)",
+        }}
+      />
+      <div className={`relative flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-6 h-full`}>
         {/* ── LEFT: Ring + status text ── */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
@@ -697,12 +749,20 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   // Calcolo score per gli Alert sul Fingerprint (100 = perfetto, degrada con gli allarmi)
   const alertFingerprintScore = alertStatus.hasAlerts ? Math.max(0, 100 - (alertStatus.criticalCount * 25 + alertStatus.warningCount * 10)) : 100;
 
+  const verdict = useMemo(() => buildFingerprintVerdict({
+    overall: overallStatus.score,
+    energy: { score: energyStatus.score, enabled: moduleConfig.energy.enabled },
+    air:    { score: airStatus.score,    enabled: moduleConfig.air.enabled },
+    water:  { score: waterStatus.score,  enabled: moduleConfig.water.enabled },
+    alerts: alertStatus,
+  }), [overallStatus.score, energyStatus.score, airStatus.score, waterStatus.score, moduleConfig, alertStatus]);
+
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-8">
       {/* ── NUOVO LAYOUT ORIZZONTALE TOP (ScoreHero + Fingerprint) ── */}
       <div className="flex flex-col xl:flex-row gap-4 mb-4 md:mb-6">
         <ScoreHero
-          className="flex-1"
+          className="xl:flex-[2] min-w-0"
           score={overallStatus.score}
           level={overallStatus.level}
           isLive={overallStatus.isLive}
@@ -718,7 +778,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
           onModuleClick={(mod: string) => onNavigate && onNavigate(mod)}
         />
 
-        <Card className="xl:w-[320px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
+        <Card className="xl:flex-1 xl:min-w-[380px] xl:max-w-[460px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
           <div className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-2 w-full text-center">Site Fingerprint</div>
           <BuildingFingerprint
             level={overallStatus.level}
@@ -730,6 +790,14 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
               alerts: { label: "Alerts", value: alertFingerprintScore },
             }}
           />
+          <div className="w-full mt-3 pt-3 border-t border-gray-100 flex flex-col items-center text-center">
+            <div className={`text-sm font-semibold leading-tight ${STATUS_TOKENS[verdict.tone].textColor}`}>
+              {verdict.headline}
+            </div>
+            <div className="text-[11px] text-gray-500 leading-snug mt-1 px-2">
+              {verdict.reason}
+            </div>
+          </div>
         </Card>
       </div>
       
