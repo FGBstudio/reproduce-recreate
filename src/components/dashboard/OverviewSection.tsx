@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+"use client";
+
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Project } from "@/lib/data";
 import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal, AlertTriangle, ArrowUpRight, RotateCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +13,10 @@ import { EVSWidget } from "./EVSWidget";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
+
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -35,6 +41,10 @@ interface OverviewSectionProps {
   onNavigate?: (tab: string) => void;
   benchmarkMatrix?: any[];
 }
+
+// ─────────────────────────────────────────────
+// Logic & Tokens
+// ─────────────────────────────────────────────
 
 const getStatusLevel = (score: number): StatusLevel => {
   if (score >= 80) return "GOOD";
@@ -86,100 +96,186 @@ const MODULE_WEIGHTS = {
   water: 0.15,
 };
 
-// ==========================================
-// OVERALL CARD
-// ==========================================
-const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData, alertStatus, liveData, timePeriod, periodLabel, onActivateModule }: any) => {
-  const { t } = useLanguage();
-  return (
-    <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
-      <CardContent className="p-4 md:p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}>
-              <Activity className="w-7 h-7 md:w-8 md:h-8" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-                  {status.isLive ? "LIVE" : "Offline"}
-                </Badge>
-                <DataSourceBadge isRealData={isRealData} size="sm" />
-              </div>
-              <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>
-                {status.level}
-              </div>
-              <div className="text-base text-gray-500 font-medium uppercase tracking-wide">
-                {t('overview.overall_performance')}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 md:gap-8">
-            <div className="text-center">
-              <div className={`text-3xl md:text-4xl font-bold ${getStatusColor(status.level)}`}>{status.score}</div>
-              <div className="text-base text-gray-500">{t('overview.score')}</div>
-            </div>
-            <div className="hidden md:block h-12 w-px bg-gray-200" />
-            <EVSWidget
-              modules={{
-                energy: { enabled: moduleConfig.energy.enabled, hasLiveData: liveData.isRealData && liveData.metrics['energy.power_kw'] != null },
-                air: { enabled: moduleConfig.air.enabled, hasLiveData: liveData.isRealData && liveData.metrics['iaq.co2'] != null },
-                water: { enabled: moduleConfig.water.enabled, hasLiveData: liveData.isRealData && liveData.metrics['water.flow_rate'] != null },
-              }}
-              onActivateModule={onActivateModule}
-            />
-            <div className="hidden md:block h-12 w-px bg-gray-200" />
-            <div className="flex gap-4">
-              {moduleConfig.energy.enabled && (
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-1"><Zap className="w-5 h-5 text-amber-600" /></div>
-                  <div className="text-lg font-semibold text-gray-800">{energyScore}</div>
-                  <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.energy * 100)}%</div>
-                </div>
-              )}
-              {moduleConfig.air.enabled && (
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-1"><Wind className="w-5 h-5 text-blue-600" /></div>
-                  <div className="text-lg font-semibold text-gray-800">{airScore}</div>
-                  <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.air * 100)}%</div>
-                </div>
-              )}
-              {moduleConfig.water.enabled && (
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center mx-auto mb-1"><Droplet className="w-5 h-5 text-cyan-600" /></div>
-                  <div className="text-lg font-semibold text-gray-800">{waterScore}</div>
-                  <div className="text-[9px] text-gray-400">{Math.round(MODULE_WEIGHTS.water * 100)}%</div>
-                </div>
-              )}
-            </div>
-            <div className="hidden md:block h-12 w-px bg-gray-200" />
-            {alertStatus.hasAlerts ? (
-              <div className="text-center bg-red-50 rounded-xl px-4 py-2">
-                <div className="flex items-center gap-1 justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-500" />
-                  <span className="text-4xl md:text-3xl font-bold text-red-600">{alertStatus.criticalCount + alertStatus.warningCount}</span>
-                </div>
-                <div className="text-[10px] text-red-700 font-medium uppercase tracking-wide">
-                  {alertStatus.criticalCount > 0 ? `${alertStatus.criticalCount} critical` : ''}{alertStatus.criticalCount > 0 && alertStatus.warningCount > 0 ? ' + ' : ''}{alertStatus.warningCount > 0 ? `${alertStatus.warningCount} warning` : ''}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center bg-emerald-50 rounded-xl px-4 py-2">
-                <div className="text-4xl md:text-3xl font-bold text-emerald-600">0</div>
-                <div className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">{t('overview.active_alerts')}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+const STATUS_TOKENS: Record<StatusLevel, {
+  word: string; trackColor: string; ringColor: string; ringBg: string; textColor: string; modIconBg: string; modIconText: string;
+}> = {
+  GOOD: { word: "Good", trackColor: "bg-emerald-500", ringColor: "#1D9E75", ringBg: "#E1F5EE", textColor: "text-emerald-600", modIconBg: "bg-emerald-50", modIconText: "text-emerald-700" },
+  OK: { word: "Ok", trackColor: "bg-blue-500", ringColor: "#378ADD", ringBg: "#E6F1FB", textColor: "text-blue-600", modIconBg: "bg-blue-50", modIconText: "text-blue-700" },
+  WARNING: { word: "Warning", trackColor: "bg-amber-500", ringColor: "#EF9F27", ringBg: "#FAEEDA", textColor: "text-amber-600", modIconBg: "bg-amber-50", modIconText: "text-amber-700" },
+  CRITICAL: { word: "Critical", trackColor: "bg-red-500", ringColor: "#E24B4A", ringBg: "#FCEBEB", textColor: "text-red-600", modIconBg: "bg-red-50", modIconText: "text-red-700" },
 };
 
-// ==========================================
+// ─────────────────────────────────────────────
+// Hooks for ScoreHero
+// ─────────────────────────────────────────────
+
+function useCountUp(target: number, duration = 1100): number {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const start = performance.now();
+    const from = 0;
+    function step(now: number) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(from + (target - from) * eased));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    }
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+
+  return value;
+}
+
+function useDelayedTrue(delay = 60): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setReady(true), delay);
+    return () => clearTimeout(id);
+  }, [delay]);
+  return ready;
+}
+
+// ─────────────────────────────────────────────
+// ScoreHero Sub-components
+// ─────────────────────────────────────────────
+
+const RING_R = 31;
+const RING_CIRC = 2 * Math.PI * RING_R;
+
+function ScoreRing({ score, level, animatedScore }: { score: number; level: StatusLevel; animatedScore: number }) {
+  const tokens = STATUS_TOKENS[level];
+  const mounted = useDelayedTrue(60);
+  const offset = mounted ? RING_CIRC * (1 - score / 100) : RING_CIRC;
+
+  return (
+    <div className="relative flex-shrink-0" style={{ width: 80, height: 80 }}>
+      <svg width={80} height={80} viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
+        <circle cx={40} cy={40} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={7} />
+        <circle cx={40} cy={40} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={7} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className={`text-xl font-medium leading-none tracking-tight ${tokens.textColor}`} aria-live="polite" aria-label={`Score ${animatedScore}`}>{animatedScore}</span>
+        <span className="text-[9px] uppercase tracking-widest text-gray-400 mt-0.5">score</span>
+      </div>
+    </div>
+  );
+}
+
+function TrackBar({ score, level }: { score: number; level: StatusLevel }) {
+  const tokens = STATUS_TOKENS[level];
+  const mounted = useDelayedTrue(80);
+  return (
+    <div className="flex items-center gap-2 mt-1.5">
+      <div className="h-[3px] w-[160px] rounded-full bg-gray-100 overflow-hidden">
+        <div className={`h-full rounded-full ${tokens.trackColor}`} style={{ width: mounted ? `${score}%` : "0%", transition: "width 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
+      </div>
+      <span className="text-[11px] text-gray-400 tabular-nums">{score} / 100</span>
+    </div>
+  );
+}
+
+function ModPill({ icon, label, score, enabled, isLive, level, onClick }: any) {
+  const tokens = STATUS_TOKENS[level];
+  const active = enabled && isLive;
+  return (
+    <button
+      onClick={onClick} disabled={!onClick}
+      className={["flex flex-col items-center gap-1 min-w-[52px] group", onClick ? "cursor-pointer" : "cursor-default"].join(" ")}
+    >
+      <div className={["w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all duration-200", active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-gray-300 border-gray-100"].join(" ")}>
+        {icon}
+      </div>
+      <span className={["text-[13px] font-medium tabular-nums leading-none", active ? "text-gray-800" : "text-gray-300"].join(" ")}>{active ? score : "—"}</span>
+      <span className="text-[9px] uppercase tracking-wider text-gray-400">{label}</span>
+    </button>
+  );
+}
+
+function ModSep() {
+  return <div className="w-px h-8 bg-gray-100 self-center flex-shrink-0" aria-hidden="true" />;
+}
+
+function LiveBadge({ isLive }: { isLive: boolean }) {
+  return (
+    <span className={["inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase", isLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-400 border border-gray-200"].join(" ")}>
+      <span className={["w-1.5 h-1.5 rounded-full flex-shrink-0", isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-300"].join(" ")} aria-hidden="true" />
+      {isLive ? "Live" : "Offline"}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ScoreHero Component (Replaces OverallCard)
+// ─────────────────────────────────────────────
+
+function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules, onModuleClick, className = "", isRealData, alertStatus }: any) {
+  const tokens = STATUS_TOKENS[level];
+  const animatedScore = useCountUp(score, 1100);
+
+  const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
+
+  return (
+    <Card className={`bg-white border ${getStatusBorderColor(level)} shadow-lg transition-all hover:shadow-xl col-span-full mb-2`}>
+      <div className={["flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-5", className].join(" ")}>
+        
+        {/* ── LEFT: Ring + status text ── */}
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <ScoreRing score={score} level={level} animatedScore={animatedScore} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">{periodLabel}</span>
+              <LiveBadge isLive={isLive} />
+              <DataSourceBadge isRealData={isRealData} size="sm" />
+            </div>
+            <div className={["text-[26px] md:text-[28px] font-medium leading-none tracking-tight", tokens.textColor].join(" ")}>
+              {tokens.word}
+            </div>
+            <div className="text-[12px] text-gray-500 mt-1 leading-snug">
+              Overall performance
+              {peerPercentile != null && (<> · Top <strong className="font-medium text-gray-700">{peerPercentile}%</strong> of monitored buildings</>)}
+            </div>
+            <TrackBar score={score} level={level} />
+          </div>
+        </div>
+
+        {/* ── DIVIDER (md+) ── */}
+        <div className="hidden md:block w-px h-12 bg-gray-100 flex-shrink-0" aria-hidden="true" />
+
+        {/* ── RIGHT: Module pills + Alerts ── */}
+        <div className="flex items-center gap-3 md:gap-4 flex-shrink-0">
+          <ModPill icon={<Zap className="w-4 h-4" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} />
+          <ModSep />
+          <ModPill icon={<Wind className="w-4 h-4" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} />
+          <ModSep />
+          <ModPill icon={<Droplet className="w-4 h-4" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} />
+          
+          <ModSep />
+          
+          {/* Alert Status Injected into the new design to prevent feature loss */}
+          <div className="flex flex-col items-center gap-1 min-w-[52px]">
+            <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+              {alertStatus.hasAlerts ? <AlertTriangle className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
+            </div>
+            <span className={`text-[13px] font-medium tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-emerald-600'}`}>
+              {alertStatus.hasAlerts ? alertStatus.criticalCount + alertStatus.warningCount : "0"}
+            </span>
+            <span className="text-[9px] uppercase tracking-wider text-gray-400">Alerts</span>
+          </div>
+        </div>
+
+      </div>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────
 // FLIPPABLE EXECUTIVE CARDS
-// ==========================================
+// ─────────────────────────────────────────────
 const easeCurve = "cubic-bezier(0.25, 1, 0.5, 1)";
 
 // --- ENERGY CARD ---
@@ -238,7 +334,6 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
   const currentPower = readings.totalPower;
   const isCriticalVal = threshold && currentPower != null && currentPower > threshold;
   
-  // LOGICA MIGLIORATA: Calcolo Delta SEMPRE attivo, anche per la media giornaliera di "Oggi"
   const avgPower = averageData?.totalGeneral;
   const showAvg = avgPower != null && currentPower != null;
   const powerDelta = showAvg ? ((currentPower - avgPower) / avgPower) * 100 : 0;
@@ -275,7 +370,6 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
               <span className="text-sm font-bold text-gray-500">kW</span>
             </div>
             
-            {/* Contesto Dinamico SEMPRE ATTIVO (Live vs Media Periodo Selezionato) */}
             {showAvg ? (
               <div className="flex items-center gap-2 text-xs mb-1">
                 <span className="text-gray-500 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgPower, 1)} kW</span></span>
@@ -391,7 +485,6 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
               <span className="text-sm font-bold text-gray-500">ppm</span>
             </div>
 
-            {/* Contesto Dinamico Aria */}
             {showAvgCo2 ? (
               <div className="flex items-center gap-2 text-xs mb-1">
                 <span className="text-gray-500 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgCo2, 0)} ppm</span></span>
@@ -518,9 +611,9 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
 };
 
 
-// ==========================================
+// ─────────────────────────────────────────────
 // MAIN COMPONENT EXPORT
-// ==========================================
+// ─────────────────────────────────────────────
 export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
   
@@ -579,10 +672,21 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        <OverallCard
-          status={overallStatus} moduleConfig={moduleConfig} energyScore={energyStatus.score} airScore={airStatus.score} waterScore={waterStatus.score}
-          isRealData={liveData.isRealData || powerLatest.isRealData} alertStatus={alertStatus} liveData={liveData} timePeriod={timePeriod} periodLabel={periodLabel}
-          onActivateModule={(module: string) => onNavigate && onNavigate(module)}
+        {/* Nuovo ScoreHero che rimpiazza OverallCard */}
+        <ScoreHero
+          score={overallStatus.score}
+          level={overallStatus.level}
+          isLive={overallStatus.isLive}
+          periodLabel={periodLabel}
+          isRealData={liveData.isRealData || powerLatest.isRealData}
+          alertStatus={alertStatus}
+          timePeriod={timePeriod}
+          modules={{
+            energy: { score: energyStatus.score, enabled: moduleConfig.energy.enabled, isLive: energyStatus.isLive },
+            air:    { score: airStatus.score,    enabled: moduleConfig.air.enabled,    isLive: airStatus.isLive    },
+            water:  { score: waterStatus.score,  enabled: moduleConfig.water.enabled,  isLive: waterStatus.isLive  },
+          }}
+          onModuleClick={(mod: string) => onNavigate && onNavigate(mod)}
         />
         
         <EnergyCard
@@ -592,16 +696,4 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         />
         <AirCard
           status={airStatus} enabled={moduleConfig.air.enabled} project={project} onClick={moduleConfig.air.enabled ? () => onNavigate && onNavigate("air") : undefined}
-          liveData={{ metrics: liveData.metrics, isLoading: liveData.isLoading, isRealData: true }} averageMetrics={airAverages} periodLabel={periodLabel}
-          isFlipped={flippedCards.air} onToggleFlip={(e: React.MouseEvent) => toggleFlip('air', e)}
-        />
-        <WaterCard
-          status={waterStatus} enabled={moduleConfig.water.enabled} onClick={moduleConfig.water.enabled ? () => onNavigate && onNavigate("water") : undefined} liveData={liveData}
-          isFlipped={flippedCards.water} onToggleFlip={(e: React.MouseEvent) => toggleFlip('water', e)}
-        />
-      </div>
-    </div>
-  );
-};
-
-export default OverviewSection;
+          liveData={{ metrics: liveData.
