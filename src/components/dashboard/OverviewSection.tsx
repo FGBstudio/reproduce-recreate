@@ -2,20 +2,19 @@
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Project } from "@/lib/data";
-import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, Thermometer, Gauge, Fan, Lightbulb, Plug, MoreHorizontal, AlertTriangle, ArrowUpRight, RotateCcw } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, AlertTriangle, ArrowUpRight, RotateCcw, Fan, Lightbulb, Plug, MoreHorizontal } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { useThresholdAlerts, getMetricStatus, type ThresholdAlert } from "@/hooks/useThresholdAlerts";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
-import { EVSWidget } from "./EVSWidget";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 
 // ─────────────────────────────────────────────
-// Types
+// Types & Config
 // ─────────────────────────────────────────────
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
@@ -41,10 +40,6 @@ interface OverviewSectionProps {
   onNavigate?: (tab: string) => void;
   benchmarkMatrix?: any[];
 }
-
-// ─────────────────────────────────────────────
-// Logic & Tokens
-// ─────────────────────────────────────────────
 
 const getStatusLevel = (score: number): StatusLevel => {
   if (score >= 80) return "GOOD";
@@ -80,25 +75,14 @@ const getStatusIconBg = (level: StatusLevel) => {
   }
 };
 
-const getLiveBadgeColor = (isLive: boolean) => {
-  return isLive ? "bg-emerald-500 text-white" : "bg-gray-400 text-white";
-};
+const getLiveBadgeColor = (isLive: boolean) => isLive ? "bg-emerald-500 text-white" : "bg-gray-400 text-white";
 
-const formatMaybe = (value: number | undefined, digits = 1) =>
-  typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
+const formatMaybe = (value: number | undefined, digits = 1) => typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
+const formatMaybeInt = (value: number | undefined) => typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "—";
 
-const formatMaybeInt = (value: number | undefined) =>
-  typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "—";
+const MODULE_WEIGHTS = { energy: 0.80, air: 0.05, water: 0.15 };
 
-const MODULE_WEIGHTS = {
-  energy: 0.80,
-  air: 0.05,
-  water: 0.15,
-};
-
-const STATUS_TOKENS: Record<StatusLevel, {
-  word: string; trackColor: string; ringColor: string; ringBg: string; textColor: string; modIconBg: string; modIconText: string;
-}> = {
+const STATUS_TOKENS: Record<StatusLevel, { word: string; trackColor: string; ringColor: string; ringBg: string; textColor: string; modIconBg: string; modIconText: string; }> = {
   GOOD: { word: "Good", trackColor: "bg-emerald-500", ringColor: "#1D9E75", ringBg: "#E1F5EE", textColor: "text-emerald-600", modIconBg: "bg-emerald-50", modIconText: "text-emerald-700" },
   OK: { word: "Ok", trackColor: "bg-blue-500", ringColor: "#378ADD", ringBg: "#E6F1FB", textColor: "text-blue-600", modIconBg: "bg-blue-50", modIconText: "text-blue-700" },
   WARNING: { word: "Warning", trackColor: "bg-amber-500", ringColor: "#EF9F27", ringBg: "#FAEEDA", textColor: "text-amber-600", modIconBg: "bg-amber-50", modIconText: "text-amber-700" },
@@ -159,7 +143,7 @@ function ScoreRing({ score, level, animatedScore }: { score: number; level: Stat
         <circle cx={40} cy={40} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={7} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className={`text-xl font-medium leading-none tracking-tight ${tokens.textColor}`} aria-live="polite" aria-label={`Score ${animatedScore}`}>{animatedScore}</span>
+        <span className={`text-xl font-medium leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
         <span className="text-[9px] uppercase tracking-widest text-gray-400 mt-0.5">score</span>
       </div>
     </div>
@@ -183,27 +167,22 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick }: any) {
   const tokens = STATUS_TOKENS[level];
   const active = enabled && isLive;
   return (
-    <button
-      onClick={onClick} disabled={!onClick}
-      className={["flex flex-col items-center gap-1 min-w-[52px] group", onClick ? "cursor-pointer" : "cursor-default"].join(" ")}
-    >
-      <div className={["w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all duration-200", active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-gray-300 border-gray-100"].join(" ")}>
+    <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-1 min-w-[52px] group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
+      <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-gray-300 border-gray-100"}`}>
         {icon}
       </div>
-      <span className={["text-[13px] font-medium tabular-nums leading-none", active ? "text-gray-800" : "text-gray-300"].join(" ")}>{active ? score : "—"}</span>
+      <span className={`text-[13px] font-medium tabular-nums leading-none ${active ? "text-gray-800" : "text-gray-300"}`}>{active ? score : "—"}</span>
       <span className="text-[9px] uppercase tracking-wider text-gray-400">{label}</span>
     </button>
   );
 }
 
-function ModSep() {
-  return <div className="w-px h-8 bg-gray-100 self-center flex-shrink-0" aria-hidden="true" />;
-}
+function ModSep() { return <div className="w-px h-8 bg-gray-100 self-center flex-shrink-0" aria-hidden="true" />; }
 
 function LiveBadge({ isLive }: { isLive: boolean }) {
   return (
-    <span className={["inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase", isLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-400 border border-gray-200"].join(" ")}>
-      <span className={["w-1.5 h-1.5 rounded-full flex-shrink-0", isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-300"].join(" ")} aria-hidden="true" />
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase ${isLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-400 border border-gray-200"}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-300"}`} aria-hidden="true" />
       {isLive ? "Live" : "Offline"}
     </span>
   );
@@ -216,13 +195,11 @@ function LiveBadge({ isLive }: { isLive: boolean }) {
 function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules, onModuleClick, className = "", isRealData, alertStatus }: any) {
   const tokens = STATUS_TOKENS[level];
   const animatedScore = useCountUp(score, 1100);
-
   const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
 
   return (
     <Card className={`bg-white border ${getStatusBorderColor(level)} shadow-lg transition-all hover:shadow-xl col-span-full mb-2`}>
-      <div className={["flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-5", className].join(" ")}>
-        
+      <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-5 ${className}`}>
         {/* ── LEFT: Ring + status text ── */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
@@ -232,12 +209,11 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
               <LiveBadge isLive={isLive} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
-            <div className={["text-[26px] md:text-[28px] font-medium leading-none tracking-tight", tokens.textColor].join(" ")}>
+            <div className={`text-[26px] md:text-[28px] font-medium leading-none tracking-tight ${tokens.textColor}`}>
               {tokens.word}
             </div>
             <div className="text-[12px] text-gray-500 mt-1 leading-snug">
-              Overall performance
-              {peerPercentile != null && (<> · Top <strong className="font-medium text-gray-700">{peerPercentile}%</strong> of monitored buildings</>)}
+              Overall performance {peerPercentile != null && (<> · Top <strong className="font-medium text-gray-700">{peerPercentile}%</strong> of monitored buildings</>)}
             </div>
             <TrackBar score={score} level={level} />
           </div>
@@ -253,10 +229,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           <ModPill icon={<Wind className="w-4 h-4" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} />
           <ModSep />
           <ModPill icon={<Droplet className="w-4 h-4" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} />
-          
           <ModSep />
-          
-          {/* Alert Status Injected into the new design to prevent feature loss */}
           <div className="flex flex-col items-center gap-1 min-w-[52px]">
             <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
               {alertStatus.hasAlerts ? <AlertTriangle className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
@@ -267,7 +240,6 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
             <span className="text-[9px] uppercase tracking-wider text-gray-400">Alerts</span>
           </div>
         </div>
-
       </div>
     </Card>
   );
@@ -342,7 +314,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
       <div
-        className="w-full h-full cursor-pointer transition-transform duration-[800ms] shadow-sm hover:shadow-lg rounded-xl"
+        className="w-full h-full cursor-pointer transition-transform duration-700 shadow-sm hover:shadow-lg rounded-xl"
         style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0)", transitionTimingFunction: easeCurve }}
         onClick={onClick}
       >
@@ -461,7 +433,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
       <div
-        className="w-full h-full cursor-pointer transition-transform duration-[800ms] shadow-sm hover:shadow-lg rounded-xl"
+        className="w-full h-full cursor-pointer transition-transform duration-700 shadow-sm hover:shadow-lg rounded-xl"
         style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0)", transitionTimingFunction: easeCurve }}
         onClick={onClick}
       >
@@ -558,7 +530,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
       <div
-        className="w-full h-full cursor-pointer transition-transform duration-[800ms] shadow-sm hover:shadow-lg rounded-xl"
+        className="w-full h-full cursor-pointer transition-transform duration-700 shadow-sm hover:shadow-lg rounded-xl"
         style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0)", transitionTimingFunction: easeCurve }}
         onClick={onClick}
       >
@@ -610,14 +582,12 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
   );
 };
 
-
 // ─────────────────────────────────────────────
 // MAIN COMPONENT EXPORT
 // ─────────────────────────────────────────────
 export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
   
-  // DATI LIVE SEMPRE PRESENTI
   const liveData = useRealTimeLatestData(project.siteId);
   const powerLatest = useEnergyPowerByCategory(project.siteId);
 
@@ -636,7 +606,6 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
 
   const { thresholds } = useSiteThresholds(project.siteId);
   
-  // Gli score e gli status si basano SEMPRE sui dati live
   const isAnythingStale = powerLatest.isStale || liveData.isStale;
   const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics, { isStale: isAnythingStale, staleMessage: t('overview.stale_data') });
 
@@ -672,7 +641,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        {/* Nuovo ScoreHero che rimpiazza OverallCard */}
+        
         <ScoreHero
           score={overallStatus.score}
           level={overallStatus.level}
@@ -696,4 +665,16 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         />
         <AirCard
           status={airStatus} enabled={moduleConfig.air.enabled} project={project} onClick={moduleConfig.air.enabled ? () => onNavigate && onNavigate("air") : undefined}
-          liveData={{ metrics: liveData.
+          liveData={{ metrics: liveData.metrics, isLoading: liveData.isLoading, isRealData: true }} averageMetrics={airAverages} periodLabel={periodLabel}
+          isFlipped={flippedCards.air} onToggleFlip={(e: React.MouseEvent) => toggleFlip('air', e)}
+        />
+        <WaterCard
+          status={waterStatus} enabled={moduleConfig.water.enabled} onClick={moduleConfig.water.enabled ? () => onNavigate && onNavigate("water") : undefined} liveData={liveData}
+          isFlipped={flippedCards.water} onToggleFlip={(e: React.MouseEvent) => toggleFlip('water', e)}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default OverviewSection;
