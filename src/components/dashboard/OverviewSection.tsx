@@ -12,6 +12,7 @@ import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
+import { useFingerprintVerdict } from "@/hooks/useFingerprintVerdict";
 
 // ─────────────────────────────────────────────
 // Types & Config
@@ -749,13 +750,41 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   // Calcolo score per gli Alert sul Fingerprint (100 = perfetto, degrada con gli allarmi)
   const alertFingerprintScore = alertStatus.hasAlerts ? Math.max(0, 100 - (alertStatus.criticalCount * 25 + alertStatus.warningCount * 10)) : 100;
 
-  const verdict = useMemo(() => buildFingerprintVerdict({
+  const ruleVerdict = useMemo(() => buildFingerprintVerdict({
     overall: overallStatus.score,
     energy: { score: energyStatus.score, enabled: moduleConfig.energy.enabled },
     air:    { score: airStatus.score,    enabled: moduleConfig.air.enabled },
     water:  { score: waterStatus.score,  enabled: moduleConfig.water.enabled },
     alerts: alertStatus,
   }), [overallStatus.score, energyStatus.score, airStatus.score, waterStatus.score, moduleConfig, alertStatus]);
+
+  const verdict = useFingerprintVerdict({
+    siteId: project.siteId,
+    siteName: project.name,
+    overall: overallStatus.score,
+    modules: {
+      energy: { enabled: moduleConfig.energy.enabled, score: energyStatus.score },
+      air:    { enabled: moduleConfig.air.enabled,    score: airStatus.score },
+      water:  { enabled: moduleConfig.water.enabled,  score: waterStatus.score },
+    },
+    alerts: { critical: alertStatus.criticalCount, warning: alertStatus.warningCount },
+    telemetry: {
+      co2:         liveData.metrics['iaq.co2'] ?? liveData.metrics['co2'] ?? null,
+      temperature: liveData.metrics['env.temperature'] ?? liveData.metrics['temperature'] ?? null,
+      humidity:    liveData.metrics['env.humidity'] ?? liveData.metrics['humidity'] ?? null,
+      voc:         liveData.metrics['iaq.voc'] ?? liveData.metrics['voc'] ?? null,
+      pm25:        liveData.metrics['iaq.pm25'] ?? liveData.metrics['pm25'] ?? null,
+      powerKw:         powerLatest.isRealData ? (powerLatest.totalGeneral ?? null) : null,
+      baselinePowerKw: energyAverages?.averagePowerKw ?? energyAverages?.avgPowerKw ?? null,
+      hvacKw:          powerLatest.isRealData ? (powerLatest.totalHvac ?? null) : null,
+      lightingKw:      powerLatest.isRealData ? (powerLatest.totalLighting ?? null) : null,
+      waterFlow:       liveData.metrics['water.flow_rate'] ?? null,
+      leakDetected:    (alertStatus.alerts || []).some((a: any) =>
+        typeof a?.metric === 'string' && a.metric.toLowerCase().includes('leak')
+      ),
+    },
+    fallback: ruleVerdict,
+  });
 
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-8">
