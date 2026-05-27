@@ -188,18 +188,14 @@ function LiveBadge({ isLive }: { isLive: boolean }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// ScoreHero Component (Replaces OverallCard)
-// ─────────────────────────────────────────────
-
 function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules, onModuleClick, className = "", isRealData, alertStatus }: any) {
   const tokens = STATUS_TOKENS[level];
   const animatedScore = useCountUp(score, 1100);
   const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
 
   return (
-    <Card className={`bg-white border ${getStatusBorderColor(level)} shadow-lg transition-all hover:shadow-xl col-span-full mb-2`}>
-      <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-5 ${className}`}>
+    <Card className={`bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
+      <div className={`flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-6 h-full`}>
         {/* ── LEFT: Ring + status text ── */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
@@ -219,11 +215,11 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           </div>
         </div>
 
-        {/* ── DIVIDER (md+) ── */}
-        <div className="hidden md:block w-px h-12 bg-gray-100 flex-shrink-0" aria-hidden="true" />
+        {/* ── DIVIDER (xl+) ── */}
+        <div className="hidden xl:block w-px h-16 bg-gray-100 flex-shrink-0" aria-hidden="true" />
 
         {/* ── RIGHT: Module pills + Alerts ── */}
-        <div className="flex items-center gap-3 md:gap-4 flex-shrink-0">
+        <div className="flex items-center gap-3 md:gap-4 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
           <ModPill icon={<Zap className="w-4 h-4" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} />
           <ModSep />
           <ModPill icon={<Wind className="w-4 h-4" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} />
@@ -246,7 +242,67 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
 }
 
 // ─────────────────────────────────────────────
-// FLIPPABLE EXECUTIVE CARDS
+// Building Fingerprint (Radar Chart)
+// ─────────────────────────────────────────────
+function BuildingFingerprint({ axes, level }: any) {
+  const size = 160;
+  const center = size / 2;
+  const radius = size / 2 - 25;
+
+  const axisKeys = ["score", "energy", "air", "water", "alerts"];
+  const angles = axisKeys.map((_, i) => (Math.PI * 2 * i) / 5 - Math.PI / 2);
+
+  const getPoint = (val: number, angle: number) => {
+    const r = (Math.max(0, Math.min(100, val)) / 100) * radius;
+    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+  };
+
+  const pathData = axisKeys.map((key, i) => getPoint(axes[key].value, angles[i])).join(" L ") + " Z";
+
+  const colorTokens = {
+    GOOD: { fill: "#10b981", stroke: "#059669" },
+    OK: { fill: "#3b82f6", stroke: "#2563eb" },
+    WARNING: { fill: "#f59e0b", stroke: "#d97706" },
+    CRITICAL: { fill: "#ef4444", stroke: "#dc2626" },
+  };
+  const theme = colorTokens[level as keyof typeof colorTokens] || colorTokens.GOOD;
+
+  return (
+    <div className="relative flex items-center justify-center w-full h-full">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+        {/* Web Background */}
+        {[0.2, 0.4, 0.6, 0.8, 1].map(scale => (
+          <polygon key={scale} points={axisKeys.map((_, i) => getPoint(scale * 100, angles[i])).join(" ")} fill="none" stroke="#f3f4f6" strokeWidth="1" />
+        ))}
+        {/* Axis Lines */}
+        {angles.map((a, i) => (
+          <line key={i} x1={center} y1={center} x2={center + radius * Math.cos(a)} y2={center + radius * Math.sin(a)} stroke="#e5e7eb" strokeWidth="1" />
+        ))}
+        {/* Data Polygon */}
+        <polygon points={pathData} fill={theme.fill} fillOpacity="0.15" stroke={theme.stroke} strokeWidth="2" style={{ transition: "all 1s cubic-bezier(0.16,1,0.3,1)" }} />
+        {/* Data Dots */}
+        {axisKeys.map((key, i) => (
+          <circle key={`dot-${i}`} cx={getPoint(axes[key].value, angles[i]).split(',')[0]} cy={getPoint(axes[key].value, angles[i]).split(',')[1]} r="3" fill={theme.stroke} stroke="#ffffff" strokeWidth="1.5" />
+        ))}
+        {/* Labels */}
+        {axisKeys.map((key, i) => {
+          const textR = radius + 16;
+          const x = center + textR * Math.cos(angles[i]);
+          const y = center + textR * Math.sin(angles[i]);
+          const isDisabled = axes[key].value === 0 && key !== "score" && key !== "alerts";
+          return (
+            <text key={key} x={x} y={y} fontSize="9" fill={isDisabled ? "#d1d5db" : "#9ca3af"} textAnchor="middle" dominantBaseline="middle" className="font-semibold uppercase tracking-wider select-none">
+              {axes[key].label}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// FLIPPABLE EXECUTIVE CARDS (Custom Logic Maintained)
 // ─────────────────────────────────────────────
 const easeCurve = "cubic-bezier(0.25, 1, 0.5, 1)";
 
@@ -638,11 +694,15 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
     return { score: avgScore, level: getStatusLevel(avgScore), isLive: totalWeight > 0 };
   }, [moduleConfig, energyStatus, airStatus, waterStatus]);
 
+  // Calcolo score per gli Alert sul Fingerprint (100 = perfetto, degrada con gli allarmi)
+  const alertFingerprintScore = alertStatus.hasAlerts ? Math.max(0, 100 - (alertStatus.criticalCount * 25 + alertStatus.warningCount * 10)) : 100;
+
   return (
-    <div className="px-3 md:px-16 mb-4 md:mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        
+    <div className="px-3 md:px-16 mb-4 md:mb-8">
+      {/* ── NUOVO LAYOUT ORIZZONTALE TOP (ScoreHero + Fingerprint) ── */}
+      <div className="flex flex-col xl:flex-row gap-4 mb-4 md:mb-6">
         <ScoreHero
+          className="flex-1"
           score={overallStatus.score}
           level={overallStatus.level}
           isLive={overallStatus.isLive}
@@ -657,7 +717,24 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
           }}
           onModuleClick={(mod: string) => onNavigate && onNavigate(mod)}
         />
-        
+
+        <Card className="xl:w-[320px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
+          <div className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-2 w-full text-center">Site Fingerprint</div>
+          <BuildingFingerprint
+            level={overallStatus.level}
+            axes={{
+              score:  { label: "Score",  value: overallStatus.score },
+              energy: { label: "Energy", value: moduleConfig.energy.enabled ? energyStatus.score : 0 },
+              air:    { label: "Air",    value: moduleConfig.air.enabled ? airStatus.score : 0 },
+              water:  { label: "Water",  value: moduleConfig.water.enabled ? waterStatus.score : 0 },
+              alerts: { label: "Alerts", value: alertFingerprintScore },
+            }}
+          />
+        </Card>
+      </div>
+      
+      {/* ── 3 EXECUTIVE CARDS ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <EnergyCard
           status={energyStatus} enabled={moduleConfig.energy.enabled} onClick={moduleConfig.energy.enabled ? () => onNavigate && onNavigate("energy") : undefined}
           powerData={powerLatest} averageData={energyAverages} threshold={thresholds?.energy_power_limit_kw} periodLabel={periodLabel} project={project} benchmarkMatrix={benchmarkMatrix}
