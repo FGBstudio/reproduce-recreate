@@ -776,8 +776,8 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
       pm25:        liveData.metrics['iaq.pm25'] ?? liveData.metrics['pm25'] ?? null,
       powerKw:         powerLatest.isRealData ? (powerLatest.totalGeneral ?? null) : null,
       baselinePowerKw: energyAverages?.averagePowerKw ?? energyAverages?.avgPowerKw ?? null,
-      hvacKw:          powerLatest.isRealData ? (powerLatest.totalHvac ?? null) : null,
-      lightingKw:      powerLatest.isRealData ? (powerLatest.totalLighting ?? null) : null,
+      hvacKw:          powerLatest.isRealData ? (powerLatest.hvac ?? null) : null,
+      lightingKw:      powerLatest.isRealData ? (powerLatest.lighting ?? null) : null,
       waterFlow:       liveData.metrics['water.flow_rate'] ?? null,
       leakDetected:    (alertStatus.alerts || []).some((a: any) =>
         typeof a?.metric === 'string' && a.metric.toLowerCase().includes('leak')
