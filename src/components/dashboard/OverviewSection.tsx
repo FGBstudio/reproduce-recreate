@@ -194,8 +194,17 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
   const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
 
   return (
-    <Card className={`bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
-      <div className={`flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-6 h-full`}>
+    <Card className={`relative overflow-hidden bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
+      {/* Status-colored corner glow (echoes the dark-gradient screenshot, kept on a light card) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -right-24 w-[340px] h-[340px] rounded-full opacity-70"
+        style={{
+          background: `radial-gradient(circle at center, ${tokens.ringColor}40 0%, ${tokens.ringColor}1a 45%, transparent 72%)`,
+          filter: "blur(6px)",
+        }}
+      />
+      <div className={`relative flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-6 h-full`}>
         {/* ── LEFT: Ring + status text ── */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
