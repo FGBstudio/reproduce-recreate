@@ -87,11 +87,10 @@ const MODULE_WEIGHTS = {
 };
 
 // ==========================================
-// OVERALL CARD (Mantenuta inalterata)
+// OVERALL CARD
 // ==========================================
 const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, isRealData, alertStatus, liveData, timePeriod, periodLabel, onActivateModule }: any) => {
   const { t } = useLanguage();
-  const isToday = timePeriod === 'today';
   return (
     <Card className={`bg-white border ${getStatusBorderColor(status.level)} shadow-lg transition-all hover:shadow-xl col-span-full`}>
       <CardContent className="p-4 md:p-6">
@@ -103,7 +102,7 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-                  {isToday ? (status.isLive ? "LIVE" : "Offline") : periodLabel}
+                  {status.isLive ? "LIVE" : "Offline"}
                 </Badge>
                 <DataSourceBadge isRealData={isRealData} size="sm" />
               </div>
@@ -171,14 +170,6 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
                 <div className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">{t('overview.active_alerts')}</div>
               </div>
             )}
-            <div className="hidden md:block h-12 w-px bg-gray-200" />
-            <div className="text-center">
-              <div className="flex items-center gap-1 text-emerald-600">
-                <TrendingUp className="w-5 h-5" />
-                <span className="text-lg font-semibold">+5%</span>
-              </div>
-              <div className="text-base text-gray-500">{t('overview.vs_last_period')}</div>
-            </div>
           </div>
         </div>
       </CardContent>
@@ -192,9 +183,8 @@ const OverallCard = ({ status, moduleConfig, energyScore, airScore, waterScore, 
 const easeCurve = "cubic-bezier(0.25, 1, 0.5, 1)";
 
 // --- ENERGY CARD ---
-const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod, periodLabel, project, benchmarkMatrix, isFlipped, onToggleFlip }: any) => {
+const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshold, periodLabel, project, benchmarkMatrix, isFlipped, onToggleFlip }: any) => {
   const { t } = useLanguage();
-  const isToday = timePeriod === 'today';
   
   const readings = useMemo(() => {
     if (!powerData?.isRealData && !powerData?.isStale) {
@@ -245,7 +235,14 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
   );
 
   const isStale = powerData?.isStale ?? false;
-  const isCriticalVal = threshold && readings.totalPower != null && readings.totalPower > threshold;
+  const currentPower = readings.totalPower;
+  const isCriticalVal = threshold && currentPower != null && currentPower > threshold;
+  
+  // LOGICA MIGLIORATA: Calcolo Delta SEMPRE attivo, anche per la media giornaliera di "Oggi"
+  const avgPower = averageData?.totalGeneral;
+  const showAvg = avgPower != null && currentPower != null;
+  const powerDelta = showAvg ? ((currentPower - avgPower) / avgPower) * 100 : 0;
+  const isPowerHigher = powerDelta > 0;
 
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
@@ -262,7 +259,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
                 <Zap className="w-5 h-5" />
               </div>
               <Badge className={`${isStale ? 'bg-amber-500 text-white' : getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-                {isToday ? (isStale ? 'STALE' : 'LIVE') : periodLabel}
+                {isStale ? 'STALE' : 'LIVE'}
               </Badge>
             </div>
             <div className="text-right">
@@ -273,13 +270,29 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
           
           <div className="mt-4">
             <div className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-1">{t('overview.energy_performance')}</div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className={`text-5xl font-black tracking-tighter ${isCriticalVal ? 'text-red-500' : 'text-gray-900'}`}>{formatMaybe(readings.totalPower, 1)}</span>
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className={`text-5xl font-black tracking-tighter ${isCriticalVal ? 'text-red-500' : 'text-gray-900'}`}>{formatMaybe(currentPower, 1)}</span>
               <span className="text-sm font-bold text-gray-500">kW</span>
             </div>
-            <div className="text-xs font-medium text-gray-500">
-               {isToday ? t('overview.current_consumption') : t('overview.avg_consumption')} {threshold && <span className="font-bold text-gray-700"> • {t('overview.limit')}: {threshold.toFixed(1)} kW</span>}
-            </div>
+            
+            {/* Contesto Dinamico SEMPRE ATTIVO (Live vs Media Periodo Selezionato) */}
+            {showAvg ? (
+              <div className="flex items-center gap-2 text-xs mb-1">
+                <span className="text-gray-500 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgPower, 1)} kW</span></span>
+                <span className={`flex items-center font-bold px-1.5 py-0.5 rounded-full ${isPowerHigher ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {isPowerHigher ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
+                  {Math.abs(powerDelta).toFixed(1)}%
+                </span>
+              </div>
+            ) : (
+              <div className="text-xs font-medium text-gray-500 mb-1">Analisi media in corso...</div>
+            )}
+
+            {threshold && (
+               <div className="text-xs font-medium text-gray-500 mt-1 pt-1 border-t border-gray-100">
+                  {t('overview.limit')}: <span className="font-bold text-gray-700">{threshold.toFixed(1)} kW</span>
+               </div>
+            )}
           </div>
 
           <div className="mt-auto pt-4 flex justify-between items-end">
@@ -298,7 +311,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
         {/* RETRO */}
         <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-gray-50 ${getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-            <span className="text-sm font-bold tracking-tight text-gray-900 uppercase">Load Distribution</span>
+            <span className="text-sm font-bold tracking-tight text-gray-900 uppercase">Live Load Distribution</span>
             <ArrowUpRight className="w-5 h-5 text-gray-400" />
           </div>
           
@@ -322,19 +335,18 @@ const EnergyCard = ({ status, enabled, onClick, powerData, threshold, timePeriod
 };
 
 // --- AIR CARD ---
-const AirCard = ({ status, enabled, onClick, liveData, alerts, timePeriod, periodLabel, isFlipped, onToggleFlip }: any) => {
+const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLabel, isFlipped, onToggleFlip }: any) => {
   const { t } = useLanguage();
-  const isToday = timePeriod === 'today';
   
   const readings = useMemo(() => {
     const m = !!liveData?.isRealData ? liveData!.metrics : {};
     return {
-      co2: { value: m['iaq.co2'], unit: "ppm" },
-      tvoc: { value: m['iaq.voc'], unit: "ppb" },
-      pm25: { value: m['iaq.pm25'], unit: "µg/m³" },
-      pm10: { value: m['iaq.pm10'], unit: "µg/m³" },
-      temp: { value: m['env.temperature'], unit: "°C" },
-      humidity: { value: m['env.humidity'], unit: "%" },
+      co2: { value: m['iaq.co2'] ?? m['co2'], unit: "ppm" },
+      tvoc: { value: m['iaq.voc'] ?? m['tvoc'], unit: "ppb" },
+      pm25: { value: m['iaq.pm25'] ?? m['pm25'], unit: "µg/m³" },
+      pm10: { value: m['iaq.pm10'] ?? m['pm10'], unit: "µg/m³" },
+      temp: { value: m['env.temperature'] ?? m['temperature'], unit: "°C" },
+      humidity: { value: m['env.humidity'] ?? m['humidity'], unit: "%" },
     };
   }, [liveData]);
 
@@ -345,6 +357,12 @@ const AirCard = ({ status, enabled, onClick, liveData, alerts, timePeriod, perio
       <div className="text-base uppercase tracking-wide">Indoor Air Quality</div>
     </div>
   );
+
+  const currentCo2 = readings.co2.value;
+  const avgCo2 = averageMetrics?.['iaq.co2'] ?? averageMetrics?.['co2'];
+  const showAvgCo2 = avgCo2 != null && currentCo2 != null;
+  const co2Delta = showAvgCo2 ? ((currentCo2 - avgCo2) / avgCo2) * 100 : 0;
+  const isCo2Higher = co2Delta > 0;
 
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
@@ -358,7 +376,7 @@ const AirCard = ({ status, enabled, onClick, liveData, alerts, timePeriod, perio
           <div className="flex items-center justify-between mb-auto">
             <div className="flex items-center gap-2">
               <div className={`w-10 h-10 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}><Wind className="w-5 h-5" /></div>
-              <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>{isToday ? 'LIVE' : periodLabel}</Badge>
+              <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>LIVE</Badge>
             </div>
             <div className="text-right">
               <div className={`text-xl font-bold ${getStatusColor(status.level)}`}>{status.level}</div>
@@ -368,11 +386,27 @@ const AirCard = ({ status, enabled, onClick, liveData, alerts, timePeriod, perio
           
           <div className="mt-4">
             <div className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-1">{t('overview.indoor_air_quality')}</div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-5xl font-black tracking-tighter text-gray-900">{formatMaybe(readings.co2.value, 0)}</span>
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-5xl font-black tracking-tighter text-gray-900">{formatMaybe(currentCo2, 0)}</span>
               <span className="text-sm font-bold text-gray-500">ppm</span>
             </div>
-            <div className="text-xs font-medium text-gray-500">Main Proxy: <span className="font-bold text-gray-700">Carbon Dioxide (CO₂)</span></div>
+
+            {/* Contesto Dinamico Aria */}
+            {showAvgCo2 ? (
+              <div className="flex items-center gap-2 text-xs mb-1">
+                <span className="text-gray-500 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgCo2, 0)} ppm</span></span>
+                <span className={`flex items-center font-bold px-1.5 py-0.5 rounded-full ${isCo2Higher ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {isCo2Higher ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
+                  {Math.abs(co2Delta).toFixed(1)}%
+                </span>
+              </div>
+            ) : (
+              <div className="text-xs font-medium text-gray-500 mb-1">Analisi media in corso...</div>
+            )}
+
+            <div className="text-xs font-medium text-gray-500 mt-1 pt-1 border-t border-gray-100">
+              Main Proxy: <span className="font-bold text-gray-700">Carbon Dioxide (CO₂)</span>
+            </div>
           </div>
 
           <div className="mt-auto pt-4 flex justify-end">
@@ -383,7 +417,7 @@ const AirCard = ({ status, enabled, onClick, liveData, alerts, timePeriod, perio
         {/* RETRO */}
         <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-gray-50 ${getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-            <span className="text-sm font-bold tracking-tight text-gray-900 uppercase">{t('overview.monitored_params')}</span>
+            <span className="text-sm font-bold tracking-tight text-gray-900 uppercase">Live Gas Diagnostics</span>
             <ArrowUpRight className="w-5 h-5 text-gray-400" />
           </div>
           
@@ -450,11 +484,11 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
           
           <div className="mt-4">
             <div className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-1">{t('overview.water_consumption_title')}</div>
-            <div className="flex items-baseline gap-2 mb-2">
+            <div className="flex items-baseline gap-2 mb-1">
               <span className="text-5xl font-black tracking-tighter text-gray-900">{formatMaybeInt(readings.dailyConsumption)}</span>
               <span className="text-sm font-bold text-gray-500">L/day</span>
             </div>
-            <div className="text-xs font-medium text-emerald-600 flex items-center gap-1"><TrendingDown className="w-3 h-3"/> -4% vs baseline</div>
+            <div className="text-xs font-medium text-emerald-600 flex items-center gap-1"><TrendingDown className="w-3 h-3"/> Dato istantaneo LIVE</div>
           </div>
 
           <div className="mt-auto pt-4 flex justify-end">
@@ -489,6 +523,8 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
 // ==========================================
 export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
+  
+  // DATI LIVE SEMPRE PRESENTI
   const liveData = useRealTimeLatestData(project.siteId);
   const powerLatest = useEnergyPowerByCategory(project.siteId);
 
@@ -498,10 +534,6 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
     setFlippedCards(prev => ({ ...prev, [card]: !prev[card] }));
   };
 
-  const isToday = timePeriod === 'today';
-  const activeAirMetrics = isToday ? liveData.metrics : (airAverages || liveData.metrics);
-  const activePowerData = isToday ? powerLatest : (energyAverages || powerLatest);
-
   const periodLabel = useMemo(() => {
     const labels: Record<string, string> = { today: language === 'it' ? 'Oggi' : 'Today', week: language === 'it' ? 'Settimana' : 'Week', month: language === 'it' ? 'Mese' : 'Month', year: language === 'it' ? 'Anno' : 'Year' };
     if (labels[timePeriod]) return labels[timePeriod];
@@ -510,22 +542,24 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   }, [timePeriod, dateRange, language]);
 
   const { thresholds } = useSiteThresholds(project.siteId);
-  const isAnythingStale = activePowerData.isStale || liveData.isStale;
-  const alertStatus = useThresholdAlerts(project.siteId, activeAirMetrics, { isStale: isAnythingStale, staleMessage: t('overview.stale_data') });
+  
+  // Gli score e gli status si basano SEMPRE sui dati live
+  const isAnythingStale = powerLatest.isStale || liveData.isStale;
+  const alertStatus = useThresholdAlerts(project.siteId, liveData.metrics, { isStale: isAnythingStale, staleMessage: t('overview.stale_data') });
 
   const energyStatus = useMemo<ModuleStatus>(() => {
-    const powerKw = activePowerData.totalGeneral;
-    if (typeof powerKw !== 'number' || !activePowerData.isRealData) return { score: 0, level: getStatusLevel(0), isLive: false };
+    const powerKw = powerLatest.totalGeneral;
+    if (typeof powerKw !== 'number' || !powerLatest.isRealData) return { score: 0, level: getStatusLevel(0), isLive: false };
     const efficiency = Math.min(100, Math.max(0, 100 - (powerKw / 100) * 20));
-    return { score: Math.round(efficiency), level: getStatusLevel(Math.round(efficiency)), isLive: !activePowerData.isStale, lastUpdate: activePowerData.lastUpdate };
-  }, [activePowerData]);
+    return { score: Math.round(efficiency), level: getStatusLevel(Math.round(efficiency)), isLive: !powerLatest.isStale, lastUpdate: powerLatest.lastUpdate };
+  }, [powerLatest]);
 
   const airStatus = useMemo<ModuleStatus>(() => {
-    const co2 = activeAirMetrics['iaq.co2'];
+    const co2 = liveData.metrics['iaq.co2'] ?? liveData.metrics['co2'];
     if (typeof co2 !== 'number') return { score: 0, level: getStatusLevel(0), isLive: false };
     const score = Math.round(Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100)));
     return { score, level: getStatusLevel(score), isLive: true };
-  }, [activeAirMetrics]);
+  }, [liveData.metrics]);
 
   const waterStatus = useMemo<ModuleStatus>(() => {
     const flowRate = liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined;
@@ -547,18 +581,18 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <OverallCard
           status={overallStatus} moduleConfig={moduleConfig} energyScore={energyStatus.score} airScore={airStatus.score} waterScore={waterStatus.score}
-          isRealData={liveData.isRealData || activePowerData.isRealData} alertStatus={alertStatus} liveData={liveData} timePeriod={timePeriod} periodLabel={periodLabel}
+          isRealData={liveData.isRealData || powerLatest.isRealData} alertStatus={alertStatus} liveData={liveData} timePeriod={timePeriod} periodLabel={periodLabel}
           onActivateModule={(module: string) => onNavigate && onNavigate(module)}
         />
         
         <EnergyCard
           status={energyStatus} enabled={moduleConfig.energy.enabled} onClick={moduleConfig.energy.enabled ? () => onNavigate && onNavigate("energy") : undefined}
-          powerData={activePowerData} threshold={thresholds?.energy_power_limit_kw} timePeriod={timePeriod} periodLabel={periodLabel} project={project} benchmarkMatrix={benchmarkMatrix}
+          powerData={powerLatest} averageData={energyAverages} threshold={thresholds?.energy_power_limit_kw} periodLabel={periodLabel} project={project} benchmarkMatrix={benchmarkMatrix}
           isFlipped={flippedCards.energy} onToggleFlip={(e: React.MouseEvent) => toggleFlip('energy', e)}
         />
         <AirCard
           status={airStatus} enabled={moduleConfig.air.enabled} project={project} onClick={moduleConfig.air.enabled ? () => onNavigate && onNavigate("air") : undefined}
-          liveData={{ metrics: activeAirMetrics, isLoading: liveData.isLoading, isRealData: true }} alerts={alertStatus.alerts} timePeriod={timePeriod} periodLabel={periodLabel}
+          liveData={{ metrics: liveData.metrics, isLoading: liveData.isLoading, isRealData: true }} averageMetrics={airAverages} periodLabel={periodLabel}
           isFlipped={flippedCards.air} onToggleFlip={(e: React.MouseEvent) => toggleFlip('air', e)}
         />
         <WaterCard
