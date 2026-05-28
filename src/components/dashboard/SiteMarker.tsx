@@ -5,6 +5,8 @@ import { Project, MonitoringType } from "@/lib/data";
 import { ClientRole } from "@/hooks/useUserScope";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
+import { useProjectCertifications } from "@/hooks/useProjectCertifications";
+import { CertificationType } from "@/lib/types/admin";
 import markerPinIcon from "@/assets/marker.png";
 
 export type ProjectSection = "overview" | "energy" | "air" | "water" | "certifications";
@@ -39,6 +41,13 @@ const formatValue = (v: number | undefined | null): string => {
   if (v >= 100)  return v.toFixed(0);
   if (v >= 10)   return v.toFixed(1);
   return v.toFixed(2);
+};
+
+/** Logo asset map per certification type. Types without a logo fall back to the Award icon. */
+const CERT_LOGOS: Partial<Record<CertificationType, string>> = {
+  LEED:   "/leed_logo.png",
+  WELL:   "/well_logo.png",
+  BREEAM: "/breeam_logo.png",
 };
 
 /* ─────────────────────────── geometry constants ─────────────────────────── */
@@ -79,7 +88,7 @@ interface RadarProps {
   rotationDeg:     number;
   backgroundImage?: string;
   brandLogo?:      string;
-  customIconImg?:  string; // NUOVA PROP per passare l'immagine LEED o WELL
+  customIconImgs?: string[]; // Loghi certificazioni (LEED/WELL/BREEAM/…) — uno o più
   onClick:         () => void;
   index:           number;
 }
@@ -90,7 +99,7 @@ const MapMetricRadar = ({
   rotationDeg,
   backgroundImage,
   brandLogo,
-  customIconImg,
+  customIconImgs,
   onClick,
   index,
 }: RadarProps) => {
@@ -98,6 +107,23 @@ const MapMetricRadar = ({
   const Icon = meta.icon;
   const accent     = css(meta.accentVar);
   const ringColor  = css(meta.ringVar);
+
+  const hasLogos       = !!customIconImgs && customIconImgs.length > 0;
+  const isMultiLogo    = hasLogos && customIconImgs!.length >= 2;
+  const isCertifications = section === "certifications";
+  // Per la sfera certificazioni con loghi reali nascondiamo il numero mock e il ring di progress.
+  const showNumericValue = !(isCertifications && hasLogos);
+  const showProgressRing = !(isCertifications && hasLogos);
+
+  // Dimensione dinamica dei loghi in base al numero
+  const logoHeightClass = (() => {
+    if (!hasLogos) return "h-8";
+    const n = customIconImgs!.length;
+    if (n === 1) return "h-9";
+    if (n === 2) return "h-7";
+    if (n === 3) return "h-6";
+    return "h-5"; // 4+
+  })();
 
   return (
     <motion.div
@@ -223,7 +249,7 @@ const MapMetricRadar = ({
             }}
           >
             {/* Progress ring */}
-            <svg
+            {showProgressRing && <svg
               className="absolute inset-0 pointer-events-none"
               viewBox={`0 0 ${CARD_SIZE} ${CARD_SIZE}`}
               style={{ zIndex: 0, transform: "rotate(-90deg)" }}
@@ -240,15 +266,23 @@ const MapMetricRadar = ({
                 animate={{ strokeDashoffset: RING_C * 0.25 }}
                 transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
               />
-            </svg>
+            </svg>}
 
-            {/* SE C'E' IMMAGINE CUSTOM (LEED/WELL) MOSTRA QUELLA, ALTRIMENTI L'ICONA NORMALE */}
-            {customIconImg ? (
-              <img 
-                src={customIconImg} 
-                alt="Certification" 
-                className="h-8 w-auto mb-1 relative z-10 object-contain drop-shadow-sm" 
-              />
+            {/* Loghi certificazioni o icona standard */}
+            {hasLogos ? (
+              <div
+                className="flex items-center justify-center flex-wrap gap-1 mb-1 relative z-10"
+                style={{ maxWidth: 92 }}
+              >
+                {customIconImgs!.map((src, i) => (
+                  <img
+                    key={`${src}-${i}`}
+                    src={src}
+                    alt="Certification logo"
+                    className={`${logoHeightClass} w-auto object-contain drop-shadow-sm`}
+                  />
+                ))}
+              </div>
             ) : (
               <Icon
                 className="w-4 h-4 mb-1"
@@ -261,20 +295,31 @@ const MapMetricRadar = ({
               className="text-[9px] font-bold uppercase leading-none tracking-[0.18em]"
               style={{ color: "#475569", position: "relative", zIndex: 1 }}
             >
-              {meta.label}
+              {isCertifications && hasLogos ? "Certifications" : meta.label}
             </span>
-            <span
-              className="text-3xl font-black tracking-tighter leading-none mt-1"
-              style={{ color: "#0f172a", position: "relative", zIndex: 1 }}
-            >
-              {formatValue(value)}
-            </span>
-            <span
-              className="text-[9px] font-semibold mt-0.5"
-              style={{ color: "#64748b", position: "relative", zIndex: 1 }}
-            >
-              {meta.unit}
-            </span>
+            {showNumericValue ? (
+              <>
+                <span
+                  className="text-3xl font-black tracking-tighter leading-none mt-1"
+                  style={{ color: "#0f172a", position: "relative", zIndex: 1 }}
+                >
+                  {formatValue(value)}
+                </span>
+                <span
+                  className="text-[9px] font-semibold mt-0.5"
+                  style={{ color: "#64748b", position: "relative", zIndex: 1 }}
+                >
+                  {meta.unit}
+                </span>
+              </>
+            ) : (
+              <span
+                className="text-[10px] font-semibold mt-1"
+                style={{ color: "#64748b", position: "relative", zIndex: 1 }}
+              >
+                {customIconImgs!.length} active
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -293,6 +338,12 @@ export const SiteMarker = ({
 }: SiteMarkerProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const closeTimer = useRef<number | null>(null);
+
+  // Certificazioni configurate via Admin (LEED/WELL/BREEAM/…)
+  const certTypes = useProjectCertifications(project);
+  const certLogos = certTypes
+    .map((t) => CERT_LOGOS[t])
+    .filter((src): src is string => !!src);
 
   // Fetch real-time data only while hovered
   const siteIdForFetch = isHovered ? project.siteId : undefined;
@@ -313,19 +364,14 @@ export const SiteMarker = ({
   }, []);
 
 
-  // --- STRINGA SICURA DEL PROGETTO (Crash-proof) ---
-  // Trasformiamo l'oggetto project in stringa per cercare comodamente "leed" o "well" in qualsiasi campo
-  const safeProjectString = (() => {
-    try { return JSON.stringify(project).toLowerCase(); } catch (e) { return ""; }
-  })();
-  const hasCertifications = safeProjectString.includes("leed") || safeProjectString.includes("well");
-
   // Costruiamo l'array delle sfere attive
-  const activeSpheres = (project.monitoring || []).filter(
-    (m): m is MetricSection => m === "energy" || m === "air" || m === "water" || m === "certifications"
+  const activeSpheres: MetricSection[] = ((project.monitoring || []) as string[]).filter(
+    (m): m is MetricSection =>
+      m === "energy" || m === "air" || m === "water" || m === "certifications"
   );
 
-  // FORZATURA MAGICA: Se troviamo leed/well nel DB ma "certifications" non è elencato nel monitoring array, lo forziamo noi dentro.
+  // Se il sito ha almeno una certificazione configurata, forziamo la sfera "certifications".
+  const hasCertifications = certTypes.length > 0;
   if (hasCertifications && !activeSpheres.includes("certifications")) {
     activeSpheres.push("certifications");
   }
@@ -403,15 +449,11 @@ export const SiteMarker = ({
               const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
               const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
 
-              // CALCOLO IMMAGINE LEED O WELL
-              let customImg = undefined;
-              if (section === "certifications") {
-                if (safeProjectString.includes("leed")) {
-                  customImg = "/LEED.png";
-                } else if (safeProjectString.includes("well")) {
-                  customImg = "/WELL.png";
-                }
-              }
+              // Loghi certificazioni reali (multipli supportati)
+              const customImgs =
+                section === "certifications" && certLogos.length > 0
+                  ? certLogos
+                  : undefined;
 
               return (
                 <div
@@ -431,7 +473,7 @@ export const SiteMarker = ({
                     rotationDeg={thetaDeg}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
-                    customIconImg={customImg} // Passa la path al componente
+                    customIconImgs={customImgs}
                     onClick={() => handleSectionClick(section)}
                     index={i}
                   />
