@@ -1,14 +1,13 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Wind, Droplet, Award } from "lucide-react";
+import { Zap, Wind, Droplet } from "lucide-react";
 import { Project, MonitoringType } from "@/lib/data";
 import { ClientRole } from "@/hooks/useUserScope";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import markerPinIcon from "@/assets/marker.png";
-import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 
-export type ProjectSection = "overview" | "energy" | "air" | "water" | "certifications";
+export type ProjectSection = "overview" | "energy" | "air" | "water";
 
 interface SiteMarkerProps {
   project: Project;
@@ -32,7 +31,6 @@ const METRIC_META: Record<
   energy: { icon: Zap,     accentVar: "--fgb-gold", ringVar: "--fgb-gold",      label: "Main Power", unit: "kW"  },
   air:    { icon: Wind,    accentVar: "--fgb-teal", ringVar: "--fgb-teal-ring", label: "Air CO₂",    unit: "ppm" },
   water:  { icon: Droplet, accentVar: "--fgb-navy", ringVar: "--fgb-navy-ring", label: "Water Flow", unit: "L/m" },
-  certifications: { icon: Award, accentVar: "--fgb-emerald", ringVar: "--fgb-emerald-ring", label: "Cert. Score", unit: "Pts" },
 };
 
 const formatValue = (v: number | undefined | null): string => {
@@ -294,7 +292,6 @@ export const SiteMarker = ({
   const siteIdForFetch = isHovered ? project.siteId : undefined;
   const latest = useRealTimeLatestData(siteIdForFetch);
   const power   = useEnergyPowerByCategory(siteIdForFetch);
-  const certs   = useProjectCertifications(siteIdForFetch);
 
   const handleEnter = useCallback(() => {
     if (closeTimer.current) {
@@ -310,7 +307,7 @@ export const SiteMarker = ({
   }, []);
 
   const activeSpheres = (project.monitoring || []).filter(
-    (m): m is MetricSection => m === "energy" || m === "air" || m === "water" || m === "certifications"
+    (m): m is MetricSection => m === "energy" || m === "air" || m === "water"
   );
 
   const valueFor = (section: MetricSection): number | undefined => {
@@ -324,12 +321,6 @@ export const SiteMarker = ({
     if (section === "water") {
       const m = latest.metrics;
       return m["water.flow_lpm"] ?? m["water.flow"] ?? m["water_flow"] ?? m["flow"];
-    }
-    if (section === "certifications") {
-      // Calculate total points across all certifications for this project
-      if (!certs.certifications || certs.certifications.length === 0) return undefined;
-      const totalPoints = certs.certifications.reduce((sum, c) => sum + (c.points_achieved || 0), 0);
-      return totalPoints > 0 ? totalPoints : undefined;
     }
     return undefined;
   };
@@ -346,18 +337,14 @@ export const SiteMarker = ({
    * Fan widgets in an arc around the marker. Each widget is placed so that the
    * cone's focal point coincides with the marker centre.
    *
-   * widgetCenter = markerCenter − FOCUS_OFFSET_PX · (cos θ, sin θ)
+   *   widgetCenter = markerCenter − FOCUS_OFFSET_PX · (cos θ, sin θ)
    *
    * θ = direction from widget center → marker (screen coords: 0°=right, 90°=down).
    */
   const arcAngles = (n: number): number[] => {
     if (n <= 1) return [270];          // single widget: directly above
     if (n === 2) return [210, 330];    // two widgets: upper-left, upper-right
-    if (n === 3) return [90, 210, 330];// three: below, upper-right, upper-left
-    if (n === 4) return [45, 135, 225, 315]; // four widgets: form an "X"
-    
-    // Fallback for n > 4
-    return Array.from({ length: n }, (_, i) => (360 / n) * i);
+    return [90, 210, 330];             // three: below, upper-right, upper-left
   };
   const angles = arcAngles(activeSpheres.length);
 
