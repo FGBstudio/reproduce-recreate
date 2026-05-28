@@ -32,18 +32,18 @@ export function buildSteps(ctx: StepContext): TourStep[] {
 
   steps.push({
     id: "welcome",
-    title: "Benvenuto in FGB Monitoring",
+    title: "Welcome to FGB Monitoring World",
     body:
-      "Ti accompagno per un giro guidato. Vedrai una <strong>freccia animata</strong> muoversi sullo schermo: segui i suoi passaggi o clicca tu stesso quando ti invito a farlo.",
+      "I will take you on a guided tour. You will see an animated arrow moving across the screen: follow its steps or click yourself when I prompt you to do so.",
     placement: "center",
     action: "highlight",
   });
 
   steps.push({
     id: "search",
-    title: "Cerca un sito",
+    title: "Search for a Site",
     body:
-      "Da qui puoi raggiungere qualsiasi struttura: digita il nome o l'indirizzo per saltare direttamente alla scheda del sito.",
+      "From here, you can reach any facility: type the name or address to jump directly to the site's profile. Each sphere represents a monitored building.",
     selector: '[data-tour="header-search"]',
     placement: "bottom",
     action: "highlight",
@@ -51,9 +51,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
 
   steps.push({
     id: "map",
-    title: "La mappa interattiva",
+    title: "The interactive map",
     body:
-      "Ogni sfera è un edificio monitorato. <strong style=\"color:#0a7d7a\">Verde</strong> ok · <strong style=\"color:#f0a020\">Ambra</strong> anomalia · <strong style=\"color:#e8523a\">Rosso</strong> offline.",
+      "Each marker is a monitored site. moving over there will show the istant features of the of the site - Power | CO₂ | Water | Awards",
     selector: '[data-tour="map"]',
     placement: "left",
     action: "highlight",
@@ -61,9 +61,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
 
   steps.push({
     id: "region-buttons",
-    title: "Cambia continente",
+    title: "Change Region",
     body:
-      "Con un click filtri la mappa per area geografica. La freccia cliccherà <strong>Europa</strong> per te — guarda come la mappa si riposiziona.",
+      "With one click, you can filter the map by geographical area. The arrow will click Europe for you — watch as the map repositions itself.",
     selector: '[data-tour="region-buttons"]',
     placement: "top",
     action: "click",
@@ -72,9 +72,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
 
   steps.push({
     id: "module-filters",
-    title: "Filtri per modulo",
+    title: "Filter by module",
     body:
-      "Mostra o nascondi i siti in base ai moduli attivi: <strong>Energia · Aria · Acqua</strong>. Utile per concentrarti solo su quello che stai analizzando.",
+      "Show or hide sites based on active modules: <strong>Energy · Air · Water</strong>. This is useful for focusing only on what you are currently analyzing.",
     selector: '[data-tour="module-filters"]',
     placement: "top",
     action: "highlight",
@@ -87,9 +87,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
   ) {
     steps.push({
       id: "scope",
-      title: "Gruppo e Brand",
+      title: "Group and Brand",
       body:
-        "Restringi la vista a un singolo <strong>gruppo</strong> o <strong>brand</strong>. Mappa e KPI si aggiornano di conseguenza.",
+        "Narrow your view to a single <strong>group</strong> or <strong>brand</strong>. The map and KPIs will update accordingly.",
       selector: '[data-tour="scope-selectors"]',
       placement: "top",
       action: "highlight",
@@ -100,9 +100,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
   if (ctx.modules.energy) {
     steps.push({
       id: "mod-energy",
-      title: "Modulo Energia",
+      title: "Energy Module",
       body:
-        "All'interno di un sito troverai <strong>kW live</strong>, split giorno/notte, ripartizione HVAC vs illuminazione, e lo storico kWh — tutto per ogni struttura.",
+        "Within a site, you will find <strong>live kW</strong>, day/night split, HVAC vs. lighting breakdown, and historical kWh — all for every facility",
       placement: "center",
       action: "highlight",
     });
@@ -110,9 +110,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
   if (ctx.modules.air) {
     steps.push({
       id: "mod-air",
-      title: "Modulo Aria",
+      title: "Air Module",
       body:
-        "<strong>CO₂, VOC, PM2.5</strong> e temperatura confrontati con le soglie WHO, con timeseries per dispositivo e diagnostica avanzata.",
+        "<strong>CO₂, VOC, PM2.5</strong> and temperature compared against WHO thresholds, with time series per device and advanced diagnostics.",
       placement: "center",
       action: "highlight",
     });
@@ -120,9 +120,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
   if (ctx.modules.water) {
     steps.push({
       id: "mod-water",
-      title: "Modulo Acqua",
+      title: "Water Module",
       body:
-        "Flusso, consumi e <strong>leak detection</strong> con alert istantaneo quando un sito si discosta dal proprio baseline.",
+        "Flow, consumption, and leak detection with instant alerts when a site deviates from its baseline",
       placement: "center",
       action: "highlight",
     });
@@ -130,9 +130,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
   if (ctx.modules.certification) {
     steps.push({
       id: "mod-cert",
-      title: "Certificazioni",
+      title: "Certifications",
       body:
-        "Scorecard di <strong>LEED, BREEAM, WELL</strong> sito per sito: livello attuale, gap e prossimi milestone.",
+        "<strong>LEED, BREEAM, WELL</strong> scorecards site by site: current level, gaps, and upcoming milestones",
       placement: "center",
       action: "highlight",
     });
@@ -140,9 +140,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
 
   steps.push({
     id: "profile",
-    title: "Profilo, alert e aiuto",
+    title: "Profile, Alerts, and Help",
     body:
-      "Il tuo <strong>avatar</strong> apre preferenze, notifiche e FAQ. Da lì potrai sempre <strong>riavviare questo tour</strong> dal tab Aiuto.",
+      "Your <strong>avatar</strong> opens preferences, notifications, and FAQs. From there, you can always <strong>restart this tour</strong>via the Help tab.",
     selector: '[data-tour="profile-button"]',
     placement: "bottom",
     action: "highlight",
@@ -150,9 +150,9 @@ export function buildSteps(ctx: StepContext): TourStep[] {
 
   steps.push({
     id: "finish",
-    title: "Sei pronto.",
+    title: "You are ready.",
     body:
-      "Esplora liberamente. Per rivedere questa guida apri il tuo profilo e tocca <strong>Riavvia tour guidato</strong>. Buon lavoro.",
+      "Explore freely. To review this guide, open your profile and tap <strong>Restart guided tour</strong>. Enjoy your work.",
     placement: "center",
     action: "highlight",
   });
