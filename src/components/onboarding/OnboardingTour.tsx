@@ -447,7 +447,7 @@ export const OnboardingTour: React.FC = () => {
                   className="text-[12px] font-medium transition-colors disabled:opacity-30"
                   style={{ color: SUB }}
                 >
-                  ← Indietro
+                  ← Back
                 </button>
                 {/* Auto-play toggle */}
                 <label
@@ -470,7 +470,7 @@ export const OnboardingTour: React.FC = () => {
                   className="px-4 py-2 rounded-full text-[12px] font-medium transition-colors hover:bg-black/[0.04]"
                   style={{ color: INK, border: `1px solid ${BORDER}` }}
                 >
-                  Salta tour
+                  Jump tour
                 </button>
                 <motion.button
                   whileHover={{ y: -1 }}
@@ -479,7 +479,7 @@ export const OnboardingTour: React.FC = () => {
                   className="px-5 py-2 rounded-full text-[12px] font-semibold text-white shadow-sm"
                   style={{ background: ACCENT }}
                 >
-                  {isLast ? "Fine" : "Avanti →"}
+                  {isLast ? "Fine" : "Next →"}
                 </motion.button>
               </div>
             </div>
