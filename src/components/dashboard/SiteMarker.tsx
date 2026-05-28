@@ -1,13 +1,14 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Wind, Droplet } from "lucide-react";
+import { Zap, Wind, Droplet, Award } from "lucide-react";
 import { Project, MonitoringType } from "@/lib/data";
 import { ClientRole } from "@/hooks/useUserScope";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import markerPinIcon from "@/assets/marker.png";
 
-export type ProjectSection = "overview" | "energy" | "air" | "water";
+// 1. Aggiunto "certifications" alle sezioni possibili
+export type ProjectSection = "overview" | "energy" | "air" | "water" | "certifications";
 
 interface SiteMarkerProps {
   project: Project;
@@ -23,14 +24,16 @@ type MetricSection = Exclude<ProjectSection, "overview">;
 const css  = (v: string) => `hsl(var(${v}))`;
 const cssA = (v: string, a: number) => `hsl(var(${v}) / ${a})`;
 
+// 2. Aggiunto l'Award e i token visivi per la sezione certificazioni
 const METRIC_META: Record<
   MetricSection,
   { icon: typeof Zap; accentVar: string; ringVar: string; label: string; unit: string }
 > = {
   // FGB palette via semantic HSL tokens (see index.css)
-  energy: { icon: Zap,     accentVar: "--fgb-gold", ringVar: "--fgb-gold",      label: "Main Power", unit: "kW"  },
-  air:    { icon: Wind,    accentVar: "--fgb-teal", ringVar: "--fgb-teal-ring", label: "Air CO₂",    unit: "ppm" },
-  water:  { icon: Droplet, accentVar: "--fgb-navy", ringVar: "--fgb-navy-ring", label: "Water Flow", unit: "L/m" },
+  energy: { icon: Zap,     accentVar: "--fgb-gold", ringVar: "--fgb-gold",       label: "Main Power", unit: "kW"  },
+  air:    { icon: Wind,    accentVar: "--fgb-teal", ringVar: "--fgb-teal-ring",  label: "Air CO₂",    unit: "ppm" },
+  water:  { icon: Droplet, accentVar: "--fgb-navy", ringVar: "--fgb-navy-ring",  label: "Water Flow", unit: "L/m" },
+  certifications: { icon: Award, accentVar: "--fgb-emerald", ringVar: "--fgb-emerald-ring", label: "Cert. Score", unit: "Pts" },
 };
 
 const formatValue = (v: number | undefined | null): string => {
@@ -99,7 +102,6 @@ const MapMetricRadar = ({
 
   return (
     <motion.div
-      // 1. ROOT CAUSE FIX: Passa la rotazione direttamente a Framer Motion, non al CSS 'transform'
       initial={{ opacity: 0, scale: 0.6, rotate: rotationDeg }}
       animate={{ opacity: 1, scale: 1, rotate: rotationDeg }}
       exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.15 } }}
@@ -130,7 +132,6 @@ const MapMetricRadar = ({
       {/* ── LENS ── */}
       <div
         className="absolute rounded-full pointer-events-auto cursor-pointer"
-        // ROOT CAUSE FIX: Leaflet ruba i click. onPointerDown bypassa la mappa.
         onPointerDown={(e) => { e.stopPropagation(); onClick(); }}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         role="button"
@@ -151,7 +152,6 @@ const MapMetricRadar = ({
           <div
             className="absolute flex items-center justify-center"
             style={{
-              // 2. ROOT CAUSE FIX: Maggiorato al 150% per evitare angoli tagliati durante la contro-rotazione
               width: "150%",
               height: "150%",
               left: "-25%",
@@ -191,7 +191,6 @@ const MapMetricRadar = ({
           className="absolute inset-0 rounded-full"
           style={{
             zIndex: 20,
-            // 3. ROOT CAUSE FIX: Blur nativo sopra il pattern z-10
             backdropFilter: "blur(6px)",
             WebkitBackdropFilter: "blur(6px)",
             background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
@@ -219,7 +218,6 @@ const MapMetricRadar = ({
               width: CARD_SIZE,
               height: CARD_SIZE,
               border: `1.5px solid rgba(255, 255, 255, 0.4)`,
-              // 4. ROOT CAUSE FIX: Trasparenza intenzionale bianca + extra blur
               backgroundColor: "rgba(255, 255, 255, 0.85)", 
               backdropFilter: "blur(4px)",
               WebkitBackdropFilter: "blur(4px)",
@@ -306,10 +304,12 @@ export const SiteMarker = ({
     closeTimer.current = window.setTimeout(() => setIsHovered(false), 150);
   }, []);
 
+  // 3. Aggiunta logica per includere "certifications" se presente nel project
   const activeSpheres = (project.monitoring || []).filter(
-    (m): m is MetricSection => m === "energy" || m === "air" || m === "water"
+    (m): m is MetricSection => m === "energy" || m === "air" || m === "water" || m === "certifications"
   );
 
+  // 4. Collegamento logico (senza hook finti). Pesca dal database se in project, altrimenti N/A.
   const valueFor = (section: MetricSection): number | undefined => {
     if (section === "energy") {
       return power.totalGeneral ?? undefined;
@@ -322,29 +322,30 @@ export const SiteMarker = ({
       const m = latest.metrics;
       return m["water.flow_lpm"] ?? m["water.flow"] ?? m["water_flow"] ?? m["flow"];
     }
+    if (section === "certifications") {
+      // QUI va inserito il punteggio delle certificazioni. Al momento ritorna undefined (che verrà visualizzato come "—")
+      return undefined;
+    }
     return undefined;
   };
 
   /**
    * Click on a specific lens opens that section of the site dashboard.
-   * STORE_USER is always redirected to overview.
    */
   const handleSectionClick = (section: MetricSection) => {
     onSphereClick(project, section);
   };
 
   /**
-   * Fan widgets in an arc around the marker. Each widget is placed so that the
-   * cone's focal point coincides with the marker centre.
-   *
-   *   widgetCenter = markerCenter − FOCUS_OFFSET_PX · (cos θ, sin θ)
-   *
-   * θ = direction from widget center → marker (screen coords: 0°=right, 90°=down).
+   * 5. Geometria aggiornata per supportare 4 sfere senza accavallarsi (Croce a X)
    */
   const arcAngles = (n: number): number[] => {
-    if (n <= 1) return [270];          // single widget: directly above
-    if (n === 2) return [210, 330];    // two widgets: upper-left, upper-right
-    return [90, 210, 330];             // three: below, upper-right, upper-left
+    if (n <= 1) return [270];          // 1 widget: direttamente sopra
+    if (n === 2) return [210, 330];    // 2 widget: in alto a sinistra, in alto a destra
+    if (n === 3) return [90, 210, 330];// 3 widget: sotto, in alto a dx, in alto a sx
+    if (n === 4) return [45, 135, 225, 315]; // 4 widget: Formano una "X" per non coprire il pin centrale
+    
+    return Array.from({ length: n }, (_, i) => (360 / n) * i);
   };
   const angles = arcAngles(activeSpheres.length);
 
