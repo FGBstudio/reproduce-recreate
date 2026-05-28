@@ -267,7 +267,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           {/* Logo + Title */}
           <div className="flex flex-col items-center gap-3 mb-5">
             {displayEntity.logo ? (
-              <img src={displayEntity.logo} alt={displayEntity.name} className="h-12 object-contain opacity-90 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.95)] bg-white/5 backdrop-blur-[1px] rounded-xl p-1.5" />
+              <img src={displayEntity.logo} alt={displayEntity.name} className="h-12 object-contain opacity-90 bg-white/5 rounded-xl p-2 shadow-[0_0_35px_rgba(255,255,255,0.2)] border border-white/5 transition-all duration-300" />
             ) : (
               <div className="h-12 w-12 rounded-xl bg-white/10 border border-white/5 flex items-center justify-center text-foreground font-bold text-base shadow-inner">
                 {displayEntity.name.substring(0, 2).toUpperCase()}
@@ -492,7 +492,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {showScatter && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
-                  <h4 className="text-lg font-semibold text-foreground">
+                  <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">
                     {t('brand.efficiency_vs_comfort')}
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
@@ -560,7 +560,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {showLeaderboards && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
-                  <h4 className="text-lg font-semibold text-foreground">
+                  <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">
                     {t('brand.site_leaderboard')}
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
@@ -633,7 +633,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {showHealthMatrix && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
-                  <h4 className="text-lg font-semibold text-foreground">
+                  <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">
                     {t('brand.system_health')}
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-medium">LIVE</span>
@@ -701,7 +701,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-5 h-5 text-muted-foreground" />
-                <h4 className="text-lg font-semibold text-foreground">
+                <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">
                   {t('brand.site_directory')}
                 </h4>
               </div>
