@@ -539,8 +539,18 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                           return (
                             <div className="glass-panel rounded-lg p-3 text-sm border border-white/10">
                               <p className="font-semibold text-foreground mb-1.5">{d.name}</p>
-                              <p className="text-muted-foreground">⚡ {(d.kwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MWh</p>
-                              <p className="text-muted-foreground">💨 {d.co2} ppm CO₂</p>
+                              
+                              {/* Sostituzione Energia con icona Zap */}
+                              <p className="text-muted-foreground flex items-center gap-1.5 py-0.5">
+                                <Zap className="w-3.5 h-3.5 text-amber-500 inline-block shrink-0" aria-hidden="true" /> 
+                                <span>{(d.kwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MWh</span>
+                              </p>
+                              
+                              {/* Sostituzione Aria con icona Wind */}
+                              <p className="text-muted-foreground flex items-center gap-1.5 py-0.5">
+                                <Wind className="w-3.5 h-3.5 text-blue-500 inline-block shrink-0" aria-hidden="true" /> 
+                                <span>{d.co2} ppm CO₂</span>
+                              </p>
                             </div>
                           );
                         }}
