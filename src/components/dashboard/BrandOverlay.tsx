@@ -582,8 +582,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {/* Energy leaderboard */}
                   {filterEnergy && energyLeaderboard.length > 0 && (
                     <div className="flex flex-col min-h-0">
-                      <p className="text-base text-muted-foreground uppercase tracking-wider mb-3 font-medium">
-                        ⚡ {t('brand.energy_consumption_label')}
+                      <p className="text-base text-muted-foreground uppercase tracking-wider mb-3 font-medium flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-amber-500 shrink-0" /> {t('brand.energy_consumption_label')}
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
@@ -610,8 +610,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {/* Air leaderboard */}
                   {filterAir && airLeaderboard.length > 0 && (
                     <div className="flex flex-col min-h-0">
-                      <p className="text-base text-muted-foreground uppercase tracking-wider mb-3 font-medium">
-                        💨 {t('brand.air_quality_co2')}
+                      <p className="text-base text-muted-foreground uppercase tracking-wider mb-3 font-medium flex items-center gap-1.5">
+                        <Wind className="w-4 h-4 text-blue-500 shrink-0" /> {t('brand.air_quality_co2')}
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
@@ -665,11 +665,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   ))}
                 </div>
                 {/* Header */}
-                <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1 shrink-0">
+                <div className="grid grid-cols-[1fr_70px_70px_70px] gap-2 mb-2 px-1 shrink-0 items-center">
                   <span className="text-xs text-muted-foreground uppercase font-medium">{t('brand.site')}</span>
-                  {filterEnergy && <span className="text-lg text-muted-foreground uppercase text-center">⚡</span>}
+                  {filterEnergy && <span className="flex justify-center"><Zap className="w-4 h-4 text-muted-foreground" /></span>}
                   {!filterEnergy && <span />}
-                  {filterAir && <span className="text-lg text-muted-foreground uppercase text-center">💨</span>}
+                  {filterAir && <span className="flex justify-center"><Wind className="w-4 h-4 text-muted-foreground" /></span>}
                   {!filterAir && <span />}
                   <span className="text-lg text-muted-foreground uppercase text-center">⚠️</span>
                 </div>
@@ -827,7 +827,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Energy Leaderboard */}
               {filterEnergy && energyLeaderboard.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">⚡ {t('brand.energy_leaderboard')}</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5"><Zap className="w-4 h-4 text-amber-500 shrink-0" /> {t('brand.energy_leaderboard')}</h4>
                   <div className="space-y-2">
                     {energyLeaderboard.map((s, i) => {
                       const maxVal = energyLeaderboard[0]?.value || 1;
@@ -852,7 +852,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Air Leaderboard */}
               {filterAir && airLeaderboard.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">💨 {t('brand.co2_leaderboard')}</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5"><Wind className="w-4 h-4 text-blue-500 shrink-0" /> {t('brand.co2_leaderboard')}</h4>
                   <div className="space-y-2">
                     {airLeaderboard.map((s, i) => {
                       const maxVal = airLeaderboard[0]?.value || 1;
@@ -884,8 +884,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         <Circle className={`w-2 h-2 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
                         <span className="text-xs text-foreground flex-1 truncate">{site.name}</span>
                         <div className="flex items-center gap-1">
-                          {filterEnergy && <div className={`w-5 h-5 rounded ${healthStatusColors[site.energy.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-white">⚡</span></div>}
-                          {filterAir && <div className={`w-5 h-5 rounded ${healthStatusColors[site.air.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-white">💨</span></div>}
+                          {filterEnergy && <div className={`w-5 h-5 rounded ${healthStatusColors[site.energy.status]} flex items-center justify-center`}><Zap className="w-3 h-3 text-white" /></div>}
+                          {filterAir && <div className={`w-5 h-5 rounded ${healthStatusColors[site.air.status]} flex items-center justify-center`}><Wind className="w-3 h-3 text-white" /></div>}
                           <div className={`w-5 h-5 rounded ${healthStatusColors[site.alerts.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-white">⚠</span></div>
                         </div>
                       </div>
@@ -908,14 +908,25 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         <p className="text-[10px] text-muted-foreground">{site.city} · {site.region}</p>
                       </div>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${
-                        site.isOnline ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
-                          : site.hasData ? 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10'
-                          : 'border-red-400/30 text-red-400 bg-red-400/10'
+                        site.isOnline 
+                          ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
+                          : site.hasData 
+                            ? 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10'
+                            : 'border-red-400/30 text-red-400 bg-red-400/10'
                       }`}>
-                        {site.isOnline ? 'Online' : site.hasData ? 'Offline' : 'N/A'}
+                        {site.isOnline 
+                          ? 'Online' 
+                          : site.hasData 
+                            ? 'Offline' 
+                            : (language === 'it' ? 'N/A' : 'N/A')}
                       </span>
                     </div>
                   ))}
+                  {storeDirectory.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {language === 'it' ? 'Nessun sito disponibile' : 'No sites available'}
+                    </p>
+                  )}
                 </div>
               </div>
 
