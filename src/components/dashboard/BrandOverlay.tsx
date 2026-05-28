@@ -6,7 +6,7 @@ import {
   Cell, ReferenceLine, BarChart, Bar, Legend
 } from "recharts";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
-import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList } from "lucide-react";
+import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind} from "lucide-react";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
