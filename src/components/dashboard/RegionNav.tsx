@@ -207,7 +207,7 @@ const RegionNav = ({
         )}
 
         {/* Region Buttons */}
-        <div className="glass-panel rounded-full px-6 py-3 flex items-center gap-2">
+        <div className="glass-panel rounded-full px-6 py-3 flex items-center gap-2" data-tour="region-buttons">
           {visibleRegionButtons.map((btn) => (
             <button
               key={btn.code}
@@ -224,7 +224,7 @@ const RegionNav = ({
         </div>
 
         {/* Monitoring Filters */}
-        <div className="glass-panel rounded-full p-2 flex gap-2">
+        <div className="glass-panel rounded-full p-2 flex gap-2" data-tour="module-filters">
           {monitoringFilters.map(({ type, icon: Icon }) => {
             const isActive = activeFilters.includes(type);
             return (
