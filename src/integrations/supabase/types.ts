@@ -1289,6 +1289,7 @@ export type Database = {
           month_num: number
           other_pct: number
           plugs_pct: number
+          region: string
           typology: string
         }
         Insert: {
@@ -1301,6 +1302,7 @@ export type Database = {
           month_num: number
           other_pct: number
           plugs_pct: number
+          region: string
           typology: string
         }
         Update: {
@@ -1313,6 +1315,7 @@ export type Database = {
           month_num?: number
           other_pct?: number
           plugs_pct?: number
+          region?: string
           typology?: string
         }
         Relationships: []
