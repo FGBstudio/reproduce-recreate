@@ -2593,6 +2593,7 @@ export type Database = {
           job_title: string | null
           last_name: string | null
           notify_escalations_email: boolean
+          onboarding_completed_count: number
           phone: string | null
           updated_at: string | null
         }
@@ -2608,6 +2609,7 @@ export type Database = {
           job_title?: string | null
           last_name?: string | null
           notify_escalations_email?: boolean
+          onboarding_completed_count?: number
           phone?: string | null
           updated_at?: string | null
         }
@@ -2623,6 +2625,7 @@ export type Database = {
           job_title?: string | null
           last_name?: string | null
           notify_escalations_email?: boolean
+          onboarding_completed_count?: number
           phone?: string | null
           updated_at?: string | null
         }

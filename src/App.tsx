@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminDataProvider } from "@/contexts/AdminDataContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
+import OnboardingTour from "@/components/onboarding/OnboardingTour";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
@@ -22,9 +24,11 @@ const App = () => (
       <LanguageProvider>
       <AuthProvider>
         <AdminDataProvider>
+          <OnboardingProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <OnboardingTour />
             <HashRouter>
               <Routes>
                 {/* Public route - Auth page */}
@@ -49,6 +53,7 @@ const App = () => (
               </Routes>
             </HashRouter>
           </TooltipProvider>
+          </OnboardingProvider>
         </AdminDataProvider>
       </AuthProvider>
       </LanguageProvider>

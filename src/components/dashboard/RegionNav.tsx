@@ -80,6 +80,7 @@ const RegionNav = ({
       className={`fixed bottom-0 md:bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col md:flex-row items-center gap-2 md:gap-3 transition-transform duration-500 w-full md:w-auto ${
         visible ? "translate-y-0" : "translate-y-40"
       }`}
+      data-tour="region-nav"
     >
       {/* ── MOBILE: Bottom "plancia di comando" galleggiante ── */}
       <div
@@ -153,7 +154,7 @@ const RegionNav = ({
       <div className="hidden md:flex items-center gap-3" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Holding & Brand Filters */}
         {showSelectorsPanel && (
-          <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2">
+          <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2" data-tour="scope-selectors">
             {canSelectHolding && (
               <>
                 <Building2 className="w-4 h-4 text-muted-foreground" />

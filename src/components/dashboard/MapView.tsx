@@ -193,7 +193,7 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
 
   return (
     <div className="absolute inset-0 z-0">
-      <div ref={mapContainer} className="absolute inset-0" />
+      <div ref={mapContainer} className="absolute inset-0" data-tour="map" />
 
       {/* React portals into each Leaflet marker host */}
       {visibleProjects.map((p) => {

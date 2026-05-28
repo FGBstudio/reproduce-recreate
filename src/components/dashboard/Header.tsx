@@ -290,6 +290,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
                 onClick={handleSearchToggle}
                 className="glass-panel rounded-full p-2 hover:bg-fgb-light/50 transition-colors"
                 title={t("header.search_projects")}
+                data-tour="header-search"
               >
                 <Search className="w-4 h-4 text-fgb-accent" />
               </button>
