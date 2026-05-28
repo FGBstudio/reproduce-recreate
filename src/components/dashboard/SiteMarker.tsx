@@ -28,7 +28,6 @@ const METRIC_META: Record<
   MetricSection,
   { icon: typeof Zap; accentVar: string; ringVar: string; label: string; unit: string }
 > = {
-  // FGB palette via semantic HSL tokens (see index.css)
   energy: { icon: Zap,     accentVar: "--fgb-gold", ringVar: "--fgb-gold",       label: "Main Power", unit: "kW"  },
   air:    { icon: Wind,    accentVar: "--fgb-teal", ringVar: "--fgb-teal-ring",  label: "Air CO₂",    unit: "ppm" },
   water:  { icon: Droplet, accentVar: "--fgb-navy", ringVar: "--fgb-navy-ring",  label: "Water Flow", unit: "L/m" },
@@ -45,20 +44,20 @@ const formatValue = (v: number | undefined | null): string => {
 
 /* ─────────────────────────── geometry constants ─────────────────────────── */
 
-const WIDGET_PX            = 340;        // rendered size on screen (px)
-const VB                   = 600;        // SVG viewBox side
-const CIRCLE_R             = 180;        // lens radius in VB units
+const WIDGET_PX            = 340;
+const VB                   = 600;
+const CIRCLE_R             = 180;
 const CX                   = 300;
 const CY                   = 300;
-const FOCUS_X              = 580;        // cone focal point along +x
+const FOCUS_X              = 580;
 const FOCUS_Y              = 300;
 const CONE_HALF_ANGLE_DEG  = 25;
 const SCALE                = WIDGET_PX / VB;
 const FOCUS_OFFSET_PX      = (FOCUS_X - CX) * SCALE;
 
-const LENS_D = (CIRCLE_R * 2) * SCALE;  // lens diameter in px
-const LENS_L = (CX - CIRCLE_R) * SCALE; // lens left offset in px
-const LENS_T = (CY - CIRCLE_R) * SCALE; // lens top offset in px
+const LENS_D = (CIRCLE_R * 2) * SCALE;
+const LENS_L = (CX - CIRCLE_R) * SCALE;
+const LENS_T = (CY - CIRCLE_R) * SCALE;
 
 const conePath = (() => {
   const a  = CONE_HALF_ANGLE_DEG * (Math.PI / 180);
@@ -81,7 +80,7 @@ interface RadarProps {
   rotationDeg:     number;
   backgroundImage?: string;
   brandLogo?:      string;
-  customIconImg?:  string; // NUOVA PROP per forzare il logo LEED/WELL
+  customIconImg?:  string;
   onClick:         () => void;
   index:           number;
 }
@@ -158,7 +157,7 @@ const MapMetricRadar = ({
               left: "-25%",
               top: "-25%",
               zIndex: 10,
-              transform: `rotate(${-rotationDeg}deg)`, // Pattern sempre orizzontale
+              transform: `rotate(${-rotationDeg}deg)`,
             }}
           >
             {backgroundImage ? (
@@ -210,7 +209,7 @@ const MapMetricRadar = ({
           className="absolute inset-0 flex items-center justify-center"
           style={{
             zIndex: 40,
-            transform: `rotate(${-rotationDeg}deg)`, // Contenuti orizzontali
+            transform: `rotate(${-rotationDeg}deg)`,
           }}
         >
           <div
@@ -244,7 +243,7 @@ const MapMetricRadar = ({
               />
             </svg>
 
-            {/* SE C'È UN'IMMAGINE CUSTOM (LEED/WELL) MOSTRA QUELLA, ALTRIMENTI L'ICONA STANDARD */}
+            {/* Iniezione immagine custom (LEED/WELL) o icona standard */}
             {customIconImg ? (
               <img 
                 src={customIconImg} 
@@ -320,17 +319,19 @@ export const SiteMarker = ({
   );
 
   const valueFor = (section: MetricSection): number | undefined => {
-    if (section === "energy") return power.totalGeneral ?? undefined;
+    if (section === "energy") {
+      return power.totalGeneral ?? undefined;
+    }
     if (section === "air") {
-      const m = latest.metrics;
+      const m = latest?.metrics || {};
       return m["iaq.co2"] ?? m["co2"] ?? m["CO2"];
     }
     if (section === "water") {
-      const m = latest.metrics;
+      const m = latest?.metrics || {};
       return m["water.flow_lpm"] ?? m["water.flow"] ?? m["water_flow"] ?? m["flow"];
     }
     if (section === "certifications") {
-      if (!certs.certifications || certs.certifications.length === 0) return undefined;
+      if (!certs?.certifications || certs.certifications.length === 0) return undefined;
       const totalPoints = certs.certifications.reduce((sum, c) => sum + (c.points_achieved || 0), 0);
       return totalPoints > 0 ? totalPoints : undefined;
     }
@@ -389,14 +390,18 @@ export const SiteMarker = ({
               const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
               const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
 
-              // IDENTIFICA IL LOGO DA INIETTARE SE LA SEZIONE È CERTIFICATIONS
+              // Identifica il logo in modo "crash-proof" leggendo l'intero oggetto JSON in stringa
               let customImg = undefined;
               if (section === "certifications" && certs?.certifications) {
-                const certNames = certs.certifications.map(c => (c.name || "").toLowerCase());
-                if (certNames.some(n => n.includes("leed"))) {
-                  customImg = "/LEED.png";
-                } else if (certNames.some(n => n.includes("well"))) {
-                  customImg = "/WELL.png";
+                try {
+                  const safeString = JSON.stringify(certs.certifications).toLowerCase();
+                  if (safeString.includes("leed")) {
+                    customImg = "/LEED.png";
+                  } else if (safeString.includes("well")) {
+                    customImg = "/WELL.png";
+                  }
+                } catch (e) {
+                  // Fallback silenzioso se JSON.stringify fallisce su strutture circolari (raro)
                 }
               }
 
@@ -418,7 +423,7 @@ export const SiteMarker = ({
                     rotationDeg={thetaDeg}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
-                    customIconImg={customImg} // Passiamo l'immagine custom al radar
+                    customIconImg={customImg}
                     onClick={() => handleSectionClick(section)}
                     index={i}
                   />
