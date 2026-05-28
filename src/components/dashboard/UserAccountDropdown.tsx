@@ -124,7 +124,10 @@ export const UserAccountDropdown = () => {
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 md:gap-3 glass-panel rounded-full px-3 md:px-4 py-1.5 md:py-2 cursor-pointer hover:bg-fgb-light/50 transition-colors">
+          <button
+            data-tour="profile-button"
+            className="flex items-center gap-2 md:gap-3 glass-panel rounded-full px-3 md:px-4 py-1.5 md:py-2 cursor-pointer hover:bg-fgb-light/50 transition-colors"
+          >
             <span className="text-xs md:text-sm font-medium text-foreground hidden sm:block">
               {displayName}
             </span>

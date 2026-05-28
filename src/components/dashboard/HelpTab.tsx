@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Search, Mail } from 'lucide-react';
+import { Search, Mail, PlayCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useOnboarding } from '@/contexts/OnboardingContext';
 
 interface Faq {
   q: string;
@@ -70,6 +71,7 @@ export const HelpTab = () => {
   const { language } = useLanguage();
   const [query, setQuery] = useState('');
   const lang = (language === 'it' ? 'it' : 'en') as 'it' | 'en';
+  const { start } = useOnboarding();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -86,6 +88,18 @@ export const HelpTab = () => {
 
   return (
     <div className="flex flex-col gap-3">
+      <button
+        onClick={() => start('manual')}
+        className="w-full flex items-center justify-center gap-2 h-9 rounded-lg text-[12px] font-semibold transition-colors"
+        style={{
+          background: 'hsl(var(--fgb-accent))',
+          color: 'hsl(var(--fgb-base))',
+        }}
+      >
+        <PlayCircle className="w-3.5 h-3.5" />
+        {lang === 'it' ? 'Riavvia il tour guidato' : 'Restart guided tour'}
+      </button>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
