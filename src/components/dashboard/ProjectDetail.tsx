@@ -259,27 +259,38 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const [isSimulationMode, setIsSimulationMode] = useState(false);
   const [siteTypology, setSiteTypology] = useState<string>('office');
   const [siteClimateZone, setSiteClimateZone] = useState<string>('4A');
+  const [siteTimezone, setSiteTimezone] = useState<string>(project?.timezone || 'UTC');
+  const [siteRegion, setSiteRegion] = useState<string>('EMEA');
   const [benchmarkMatrix, setBenchmarkMatrix] = useState<any[]>([]);
 
-  // Query sites table for typology and climate zone when siteId is active
+  // Sync siteTimezone when project changes initially
+  useEffect(() => {
+    setSiteTimezone(project?.timezone || 'UTC');
+  }, [project?.id, project?.timezone]);
+
+  // Query sites table for typology, climate zone, timezone, and region when siteId is active
   useEffect(() => {
     if (!project?.siteId || !isSupabaseConfigured || !supabase) {
       setSiteTypology('office');
       setSiteClimateZone('4A');
+      setSiteTimezone(project?.timezone || 'UTC');
+      setSiteRegion('EMEA');
       return;
     }
     supabase
       .from('sites')
-      .select('typology, climate_zone')
+      .select('typology, climate_zone, timezone, region')
       .eq('id', project.siteId)
       .single()
       .then(({ data, error }) => {
         if (!error && data) {
           if (data.typology) setSiteTypology(data.typology.toLowerCase());
           if (data.climate_zone) setSiteClimateZone(data.climate_zone);
+          if (data.timezone) setSiteTimezone(data.timezone);
+          if (data.region) setSiteRegion(data.region);
         }
       });
-  }, [project?.siteId]);
+  }, [project?.siteId, project?.timezone]);
 
   // Fetch matching benchmark splits matrix from energy_benchmarks table
   useEffect(() => {
@@ -292,12 +303,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       .select('month_num, day_type, hour_num, hvac_pct, lighting_pct, plugs_pct, other_pct')
       .eq('typology', siteTypology)
       .eq('climate_zone', siteClimateZone)
+      .eq('region', siteRegion)
       .then(({ data, error }) => {
         if (!error && data) {
           setBenchmarkMatrix(data);
         }
       });
-  }, [siteTypology, siteClimateZone]);
+  }, [siteTypology, siteClimateZone, siteRegion]);
 
   // Memoized hourly index for O(1) lookups: key = "month|day_type|hour"
   const hourlyBenchmarksMap = useMemo(() => {
@@ -417,8 +429,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   
   // Dynamic data based on time period - use real-time data if available, otherwise mock
   // Fetch real-time telemetry for this project's site
-  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange, project?.timezone);
-  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange, project?.timezone);
+  const realTimeEnergy = useRealTimeEnergyData(project?.siteId, timePeriod, dateRange, siteTimezone);
+  const projectTelemetry = useProjectTelemetry(project?.siteId, timePeriod, dateRange, siteTimezone);
 
   // ---------------------------------------------------------------------------
   // Air module: multi-device selection (per ambiente/location)
@@ -936,7 +948,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Heatmap logic for Air Dashboard
   const airHeatmapGrid = useMemo(() => {
     const rawData = airTimeseriesResp?.data || [];
-    const tz = resolveTimezone(project?.timezone);
+    const tz = resolveTimezone(siteTimezone);
     const bucketMap = new Map<string, { sum: number; count: number }>();
     
     // Filter by active metric
@@ -979,7 +991,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     }
 
     return { rows, cols, valueMap, scale: { min, max }, isYearView: false };
-  }, [airTimeseriesResp, activeAirHeatmapMetric, airStart, airEnd, project?.timezone]);
+  }, [airTimeseriesResp, activeAirHeatmapMetric, airStart, airEnd, siteTimezone]);
 
   // ---------------------------------------------------------------------------
   // Indoor averages from timeseries (time-period aware) for PM2.5, PM10, CO, O3
@@ -1046,7 +1058,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       };
       
       // Resolve site timezone for chart labels
-      const siteTz = resolveTimezone(project?.timezone);
+      const siteTz = resolveTimezone(siteTimezone);
 
       /**
        * Label formatting using SITE timezone (not browser locale):
@@ -1072,7 +1084,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
       return Array.from(map.values());
     },
-    [airTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
+    [airTimeseriesResp, timePeriod, timeRange.bucket, siteTimezone]
   );
   
   // Always call hooks unconditionally to comply with React rules
@@ -1403,7 +1415,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
       // C. Chiave Raggruppamento Temporale
       const tsKey = dateObj.toISOString();
-      const siteTz = resolveTimezone(project?.timezone);
+      const siteTz = resolveTimezone(siteTimezone);
       
       // Inizializza l'oggetto per questo timestamp se non esiste
       if (!groupedMap.has(tsKey)) {
@@ -1452,7 +1464,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
     // Apply virtual splits if simulation mode is active and site has only general meters in category view
     if (isSimulationMode && hasOnlyGeneralMeters && energyViewMode === 'category') {
-      const siteTz = resolveTimezone(project?.timezone);
+      const siteTz = resolveTimezone(siteTimezone);
       const lat = project?.lat ?? 45.0; // default to mid-latitude Northern Hemisphere
       const isSouthern = lat < 0;
       const isEquatorial = Math.abs(lat) <= 15;
@@ -1483,17 +1495,21 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           if (found) pct = found;
         }
 
-        // 2. Seasonal Daylight lighting factor calculation
+        // 2. Seasonal Daylight lighting factor calculation (only applicable to offices with natural light access)
         let daylightFactor = 1.0;
-        const hNoon = 13.0; // Solar noon around 13:00
-        // Day-length half-width (varies sinusoidally between 3.5h and 6.5h) aligned with season
-        const wDaylight = 5.0 + 1.5 * Math.sin(((queryMonth - 4) * Math.PI) / 6);
-        const hourDiff = Math.abs(p.hour - hNoon);
+        const isOffice = siteTypology === 'office' || siteTypology === 'office+retail';
         
-        if (hourDiff < wDaylight) {
-          const intensity = Math.cos((hourDiff * Math.PI) / (2 * wDaylight));
-          // Scale lighting down by up to 40% at peak sunlight
-          daylightFactor = 1.0 - 0.40 * intensity;
+        if (isOffice) {
+          const hNoon = 13.0; // Solar noon around 13:00
+          // Day-length half-width (varies sinusoidally between 3.5h and 6.5h) aligned with season
+          const wDaylight = 5.0 + 1.5 * Math.sin(((queryMonth - 4) * Math.PI) / 6);
+          const hourDiff = Math.abs(p.hour - hNoon);
+          
+          if (hourDiff < wDaylight) {
+            const intensity = Math.cos((hourDiff * Math.PI) / (2 * wDaylight));
+            // Scale lighting down by up to 40% at peak sunlight
+            daylightFactor = 1.0 - 0.40 * intensity;
+          }
         }
 
         // 3. Real-time temperature & humidity HVAC weather scaling
@@ -1554,7 +1570,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     timePeriod,
     energyViewMode,
     deviceMap,
-    project?.timezone,
+    siteTimezone,
     project?.lat,
     timeRange.bucket,
     isSimulationMode,
@@ -1648,7 +1664,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       const filtered = points.filter((p) => p.metric === metric);
       if (filtered.length === 0) return [] as Array<Record<string, unknown>>;
 
-      const siteTz = resolveTimezone(project?.timezone);
+      const siteTz = resolveTimezone(siteTimezone);
 
       const labelOf = (ts: Date) => {
         return formatChartLabel(ts, timeRange.bucket, siteTz, timePeriod as any);
@@ -1662,7 +1678,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
       return Array.from(byLabel.entries()).map(([label, value]) => ({ label, value }));
     },
-    [energyTimeseriesResp, timePeriod, timeRange.bucket, project?.timezone]
+    [energyTimeseriesResp, timePeriod, timeRange.bucket, siteTimezone]
   );
 
 // 1. SAFE DATA CALCULATION: Daily breakdown for the Fullscreen Bar Chart
@@ -1670,7 +1686,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const rawData = energyTimeseriesResp?.data;
     if (!rawData || !Array.isArray(rawData) || rawData.length === 0) return [];
 
-    const siteTz = resolveTimezone(project?.timezone);
+    const siteTz = resolveTimezone(siteTimezone);
     const DAY_START = 8; 
     const DAY_END = 20;
 
@@ -1710,7 +1726,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     });
 
     return Array.from(map.values()).sort((a, b) => a.ts - b.ts);
-  }, [energyTimeseriesResp, project?.timezone, timeRange.bucket, timePeriod, deviceMap]);  // 2. RING WIDGET SUMMARY: Calculates the totals for the circular dial
+  }, [energyTimeseriesResp, siteTimezone, timeRange.bucket, timePeriod, deviceMap]);
+
+  // 2. RING WIDGET SUMMARY: Calculates the totals for the circular dial
   const dayNightSummary = useMemo(() => {
     let dayTotal = 0;
     let nightTotal = 0;
@@ -2276,7 +2294,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
     const isYearView = timePeriod === 'year';
-    const tz = resolveTimezone(project?.timezone);
+    const tz = resolveTimezone(siteTimezone);
 
     // Step 1: Aggregate all points by (device, hourBucket/dayBucket) → sum kWh
     // This handles sub-hourly data (e.g., 30min records) by summing into the hour bucket
@@ -2359,7 +2377,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     }
 
     return { rows, cols, valueMap: bucketMap, scale, isYearView };
-  }, [heatmapResp, timePeriod, heatmapConfig, project?.timezone]);
+  }, [heatmapResp, timePeriod, heatmapConfig, siteTimezone]);
 
   const heatmapLegendColors = useMemo(
     () => [
@@ -2423,7 +2441,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         if (val <= 0) return;
 
         const date = new Date(d.ts_bucket || d.ts);
-        const siteTz = resolveTimezone(project?.timezone);
+        const siteTz = resolveTimezone(siteTimezone);
         const p = getPartsInTz(date, siteTz);
         let key: string;
         let label: string;
@@ -2497,7 +2515,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         data: chartData, 
         summary: { diffPct, status, totalActual, totalAverage } 
     };
-  }, [energyTimeseriesResp, project, timePeriod, deviceMap]);
+  }, [energyTimeseriesResp, project, timePeriod, deviceMap, siteTimezone]);
 
   // --- 8. WIDGET: POWER CONSUMPTION (Real-time Donut kW) ---
   // Uses shared hook energyPowerBreakdown (from useEnergyPowerByCategory)
@@ -2511,7 +2529,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       let pct = { hvac_pct: 0.40, lighting_pct: 0.25, plugs_pct: 0.20, other_pct: 0.15 };
       if (benchmarkMatrix && benchmarkMatrix.length > 0 && rawBreakdown.lastUpdate) {
         try {
-          const siteTz = resolveTimezone(project?.timezone);
+          const siteTz = resolveTimezone(siteTimezone);
           const dateObj = new Date(rawBreakdown.lastUpdate);
           if (!isNaN(dateObj.getTime())) {
             const p = getPartsInTz(dateObj, siteTz);
@@ -2535,15 +2553,19 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               row.day_type === dayType
             );
 
-            // 2. Seasonal Daylight Factor
+            // 2. Seasonal Daylight Factor (only applicable to offices with natural light access)
             let daylightFactor = 1.0;
-            const hNoon = 13.0; // Solar noon
-            const wDaylight = 5.0 + 1.5 * Math.sin(((queryMonth - 4) * Math.PI) / 6);
-            const hourDiff = Math.abs(p.hour - hNoon);
+            const isOffice = siteTypology === 'office' || siteTypology === 'office+retail';
             
-            if (hourDiff < wDaylight) {
-              const intensity = Math.cos((hourDiff * Math.PI) / (2 * wDaylight));
-              daylightFactor = 1.0 - 0.40 * intensity;
+            if (isOffice) {
+              const hNoon = 13.0; // Solar noon
+              const wDaylight = 5.0 + 1.5 * Math.sin(((queryMonth - 4) * Math.PI) / 6);
+              const hourDiff = Math.abs(p.hour - hNoon);
+              
+              if (hourDiff < wDaylight) {
+                const intensity = Math.cos((hourDiff * Math.PI) / (2 * wDaylight));
+                daylightFactor = 1.0 - 0.40 * intensity;
+              }
             }
 
             // 3. Real-time temperature & humidity HVAC weather scaling
@@ -2610,7 +2632,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     }
 
     return rawBreakdown;
-  }, [timePeriod, energyPowerBreakdown, energyPeriodAverages, isSimulationMode, hasOnlyGeneralMeters, benchmarkMatrix, project?.timezone, project?.lat, findClosestWeather]);
+  }, [timePeriod, energyPowerBreakdown, energyPeriodAverages, isSimulationMode, hasOnlyGeneralMeters, benchmarkMatrix, siteTimezone, project?.lat, findClosestWeather]);
 
   // B. Elaborazione Dati per il Donut Chart
   const powerDistributionData = useMemo(() => {
@@ -2673,7 +2695,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
         // Determina il Bucket (X-Axis)
         const date = new Date(d.ts_bucket || d.ts);
-        const siteTz = resolveTimezone(project?.timezone);
+        const siteTz = resolveTimezone(siteTimezone);
         const p = getPartsInTz(date, siteTz);
         let timeKey = '';
         let label = '';
@@ -2763,7 +2785,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const sortedKeys = Array.from(foundKeys).sort();
 
     return { data: finalData, keys: sortedKeys };
-  }, [energyTimeseriesResp, energyViewMode, deviceMap, timePeriod, timeRange.bucket]);
+  }, [energyTimeseriesResp, energyViewMode, deviceMap, timePeriod, timeRange.bucket, siteTimezone]);
 
   // Helper per colori barre (Category o Device palette)
   const getBarColor = (key: string, index: number) => {
@@ -3440,7 +3462,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {activeDashboard === "overview" && (
               <div className="w-full flex-shrink-0 overflow-y-auto pb-4 px-4 md:px-0">
                 <OverviewSection 
-                  project={project} 
+                  project={project ? { ...project, timezone: siteTimezone } : null} 
                   moduleConfig={resolvedModuleConfig} 
                   timePeriod={timePeriod}
                   dateRange={dateRange}
