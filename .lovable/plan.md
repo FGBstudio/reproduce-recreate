@@ -1,55 +1,79 @@
+
 ## Goal
 
-Sostituire l'attuale verdetto statico del Site Fingerprint ("Critical Issue Detected — 2 critical alerts need immediate attention.") con un messaggio **specifico e generato dall'IA** che reagisce alla telemetria reale del sito:
+A polished, FGB-style guided tour that introduces a new client to the platform. Auto-runs on the first two sessions, then becomes opt-in from the user profile. The set of steps adapts to the user's scope (Holding / Brand / Site) and to the modules enabled on the site they can access (Energy, Air, Water, Certifications).
 
-- CO2 alta → "Open a window — CO2 is reaching 1200 ppm"
-- Potenza sopra baseline → "Turn down the AC — HVAC load is 35% above usual"
-- Allarme leak → "Possible water leak detected on the main line"
-- Tutto OK → frase rassicurante contestuale
+The visual language follows `FloatingBentoPanel.tsx` (soft Apple-style surfaces, ACCENT teal, rounded radius, framer-motion easing) combined with the spotlight + tooltip mechanic shown in the reference HTML (`ob-ring`, `ob-tip`, progress pips, Back / Skip / Next, ✕).
 
-Headline breve (≤6 parole) + reason di 1 riga, sempre in inglese, tono coerente con lo score.
+## UX flow
 
-## What to build
+1. After login, the dashboard mounts. If the user's onboarding counter is `< 2`, the tour auto-starts ~700 ms after the layout is ready (so target elements exist).
+2. Each step:
+   - dims the page with a soft backdrop,
+   - draws a glowing rounded "ring" around the highlighted element (with smooth position transition between steps),
+   - shows a floating tooltip card with: step tag ("Step n of N"), title, short body (supports **bold**), progress pips, `← Back`, `Skip tour`, `Next →`,
+   - the underlined element stays interactive only when needed; otherwise pointer-events on the backdrop block accidental clicks.
+3. On the final step the button becomes `Finish`. On Skip or Finish the counter is incremented; tour closes with a fade.
+4. A persistent "Take the tour" entry lives in the Profile dropdown (Help tab) and re-runs the same flow on demand without touching the counter limit.
 
-### 1. Edge function `fingerprint-verdict` (nuova)
+## Step catalogue (adapted at runtime)
 
-`supabase/functions/fingerprint-verdict/index.ts`, sullo stesso pattern di `energy-diagnosis`:
+Base steps (always shown):
+1. Welcome — centered card, no target.
+2. Top navigation / search (Header).
+3. Region nav (`RegionNav`).
+4. World map and site markers (`MapView`).
+5. Profile menu (avatar in Header) — theme, alerts, help.
 
-- Input JSON: `{ siteName, language, overall, modules:{energy,air,water}, alerts:{critical,warning,topAlerts[]}, telemetry:{ co2, temperature, humidity, voc, pm25, powerKw, baselinePowerKw, hvacKw, lightingKw, waterFlow, leakDetected } }`
-- Modello: `google/gemini-3-flash-preview` via Lovable AI Gateway (`LOVABLE_API_KEY`).
-- Structured output (tool calling) → `{ headline: string (max 6 words), reason: string (max 110 chars), tone: 'GOOD'|'OK'|'WARNING'|'CRITICAL' }`.
-- System prompt: facility manager esperto, deve citare la metrica che pesa di più (es. valore CO2, % sopra baseline), proporre azione concreta, niente fluff.
-- Gestione 429/402 come `energy-diagnosis`.
+Conditional steps:
+- If `clientRole !== 'STORE_USER'`: Brand / Holding overlays step.
+- When a site is opened (or for STORE_USER on auto-opened site): Overview / Score Hero + Fingerprint.
+- Per enabled module on the site (`useProjectModuleConfig`):
+  - `energy.enabled` → Energy section.
+  - `air.enabled` → Air Quality section.
+  - `water.enabled` → Water section.
+  - `certification.enabled` → Certifications widget.
+- Closing step: "You're set — re-open this tour anytime from your profile".
 
-### 2. Hook `useFingerprintVerdict` (nuovo)
+Each step is a small object: `{ id, titleKey, bodyKey, targetSelector?, placement, requires?: (ctx) => boolean }`. A registry composes the active list from user scope + module flags before starting.
 
-`src/hooks/useFingerprintVerdict.ts`:
+## Files to add / edit
 
-- React Query, key = `['fingerprint-verdict', siteId, bucketedSignature]` dove `bucketedSignature` arrotonda i valori (CO2 a step di 100 ppm, kW a step di 1, score a step di 5) così la stessa risposta viene riusata e l'AI non viene chiamata ad ogni re-render.
-- `staleTime: 5 min`, `refetchInterval: 10 min`.
-- Fallback: se l'edge function fallisce o `siteId` mancante, ritorna il verdetto rule-based attuale (`buildFingerprintVerdict`) così la UI non resta mai vuota.
+New
+- `src/components/onboarding/OnboardingTour.tsx` — the spotlight + tooltip overlay, framer-motion animated, listens to a context to know current step / open state. Uses `getBoundingClientRect` + a `ResizeObserver` / `requestAnimationFrame` loop to keep the ring locked to the target on scroll/resize. Auto-scrolls the target into view (`scrollIntoView({ block: 'center' })`) before highlighting.
+- `src/components/onboarding/onboardingSteps.ts` — step registry and `buildSteps(ctx)` that filters by role + module flags + i18n.
+- `src/contexts/OnboardingContext.tsx` — provider exposing `{ isActive, start(reason), stop(), next(), prev(), currentStep, steps }`. Reads `onboarding_completed_count` from `profiles` via `useAuth`, increments it on completion / skip via `updateProfile`. Auto-starts when count < 2 and user has finished loading.
+- `src/hooks/useOnboardingTargets.ts` — small helper exporting target selector constants (e.g. `TOUR.HEADER_SEARCH = 'data-tour="header-search"'`) so we don't sprinkle magic strings.
 
-### 3. Cablaggio in `OverviewSection.tsx`
+Edited
+- `src/App.tsx` — wrap routes in `<OnboardingProvider>` and render `<OnboardingTour />` inside the providers (after `AdminDataProvider`, before `Toaster`).
+- `src/components/dashboard/Header.tsx`, `RegionNav.tsx`, `MapView.tsx`, `BrandOverlay.tsx`, `OverviewSection.tsx`, energy/air/water/certifications widgets, `UserAccountDropdown.tsx` — add `data-tour="..."` attributes to the elements each step targets. No behavioral changes.
+- `src/components/dashboard/HelpTab.tsx` (inside the Profile dropdown) — add a primary "Restart guided tour" button that calls `start('manual')`.
+- `src/contexts/AuthContext.tsx` — extend `UserProfile` typing + `updateProfile` payload to include `onboarding_completed_count` (read in `fetchUserData` select).
+- `src/lib/types/admin.ts` — add `onboarding_completed_count?: number` to `UserProfile`.
 
-- Raccogliere i segnali telemetrici già disponibili nel componente (CO2, temp, humidity, power kW corrente vs media, alert critici/warning, leak) e passarli all'hook.
-- Sostituire la `useMemo(buildFingerprintVerdict…)` con `const { data: verdict } = useFingerprintVerdict(...)`, mantenendo `buildFingerprintVerdict` come fallback locale.
-- Nessuna modifica al layout: rimangono `headline` + `reason` sotto il radar, stessi token di colore (`STATUS_TOKENS[verdict.tone].textColor`).
-- Mentre l'AI sta caricando, mostriamo il verdetto rule-based (no flicker, no spinner).
+## Database
 
-### 4. Config
+One migration adds an integer counter to `profiles`:
 
-- Aggiungere `fingerprint-verdict` in `supabase/config.toml` con `verify_jwt = false` (come `energy-diagnosis`).
-- Nessun nuovo secret: `LOVABLE_API_KEY` è già disponibile in tutti gli edge env.
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS onboarding_completed_count integer NOT NULL DEFAULT 0;
+```
+
+No new RLS work — existing `profiles` policies already let a user read/update their own row.
+
+## Visual spec (matches FloatingBentoPanel + reference)
+
+- Backdrop: `bg-black/55 backdrop-blur-[2px]`, fade 220 ms.
+- Ring: 2 px solid `hsl(var(--fgb-accent))`, `border-radius: 14px`, animated `box-shadow` pulse `0 0 0 4px → 10px` over 2.5 s, position transition `cubic-bezier(0.16,1,0.3,1)` 400 ms.
+- Tooltip card: 306 px wide, rounded-2xl, `bg-[hsl(var(--popover))]/95 backdrop-blur-xl`, 1 px accent-tinted border, soft shadow; small rotated arrow per placement (`up`/`dn`/`lt`/`rt`).
+- Header row: uppercase mono tag `Step n of N` (teal pill) + ✕.
+- Progress pips: 3 px height, gap 4 px, `done` = teal, `cur` = teal/50.
+- Buttons: `Skip` ghost outline, `Next/Finish` teal solid with `-translate-y-px` hover, framer-motion micro-bounce.
+- Center "Welcome" step: no ring; tooltip becomes a wider 420 px card centered with the ring hidden.
 
 ## Out of scope
 
-- Nessun cambio al radar chart, al layout della card, ai colori, allo ScoreHero o agli altri componenti.
-- Nessun cambio alle soglie di score o alle metriche di telemetria.
-- Nessuna nuova migration / RLS / tabella.
-
-## Files touched
-
-- new: `supabase/functions/fingerprint-verdict/index.ts`
-- new: `src/hooks/useFingerprintVerdict.ts`
-- edit: `src/components/dashboard/OverviewSection.tsx` (solo wiring del verdetto, ~15 righe)
-- edit: `supabase/config.toml` (1 voce)
+- No analytics events, no new translations beyond the strings the tour itself needs, no changes to existing widgets' behavior — only `data-tour` hooks are added.
+- No changes to authentication, routing, or module-enable logic.
