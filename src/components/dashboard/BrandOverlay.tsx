@@ -267,7 +267,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           {/* Logo + Title */}
           <div className="flex flex-col items-center gap-3 mb-5">
             {displayEntity.logo ? (
-              <img src={displayEntity.logo} alt={displayEntity.name} className="h-12 object-contain opacity-90" />
+              <img src={displayEntity.logo} alt={displayEntity.name} className="h-12 object-contain opacity-90 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.95)] bg-white/5 backdrop-blur-[1px] rounded-xl p-1.5 />
             ) : (
               <div className="h-12 w-12 rounded-xl bg-white/10 border border-white/5 flex items-center justify-center text-foreground font-bold text-base shadow-inner">
                 {displayEntity.name.substring(0, 2).toUpperCase()}
