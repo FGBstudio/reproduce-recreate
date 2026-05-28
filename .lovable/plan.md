@@ -1,79 +1,100 @@
+# Guided Onboarding Tour — Redesign
 
-## Goal
+Make the tour feel like an Apple-style assistant: light glass surface, teal accent (`#0a7d7a`), large breathing typography, and an animated "ghost cursor" that actually drives the user through the app, click by click.
 
-A polished, FGB-style guided tour that introduces a new client to the platform. Auto-runs on the first two sessions, then becomes opt-in from the user profile. The set of steps adapts to the user's scope (Holding / Brand / Site) and to the modules enabled on the site they can access (Energy, Air, Water, Certifications).
+## 1. Visual redesign (FloatingBentoPanel language)
 
-The visual language follows `FloatingBentoPanel.tsx` (soft Apple-style surfaces, ACCENT teal, rounded radius, framer-motion easing) combined with the spotlight + tooltip mechanic shown in the reference HTML (`ob-ring`, `ob-tip`, progress pips, Back / Skip / Next, ✕).
+New tokens used inside the tour:
 
-## UX flow
+- Surface: `#ffffff` with `backdrop-blur(20px)` + soft halo gradient `rgba(10,125,122,0.08)`
+- Ink `#1d1d1f`, Sub `#86868b`, Accent `#0a7d7a`
+- Radius `28px`, shadow `0 20px 50px rgba(0,0,0,0.06)`, border `1px solid rgba(0,0,0,0.06)`
+- Easing `[0.25, 1, 0.5, 1]`, durations 0.45–0.7s
+- Typography: heading `clamp(1.25rem, 1.8vw, 1.6rem)` semibold tracking-tight; body `15px` `#86868b` leading-relaxed
+- Card width `min(520px, 92vw)` — clearly bigger than current 320px
 
-1. After login, the dashboard mounts. If the user's onboarding counter is `< 2`, the tour auto-starts ~700 ms after the layout is ready (so target elements exist).
-2. Each step:
-   - dims the page with a soft backdrop,
-   - draws a glowing rounded "ring" around the highlighted element (with smooth position transition between steps),
-   - shows a floating tooltip card with: step tag ("Step n of N"), title, short body (supports **bold**), progress pips, `← Back`, `Skip tour`, `Next →`,
-   - the underlined element stays interactive only when needed; otherwise pointer-events on the backdrop block accidental clicks.
-3. On the final step the button becomes `Finish`. On Skip or Finish the counter is incremented; tour closes with a fade.
-4. A persistent "Take the tour" entry lives in the Profile dropdown (Help tab) and re-runs the same flow on demand without touching the counter limit.
+Backdrop becomes a light glass wash (`rgba(255,255,255,0.55)` + blur) instead of dark, so the underlying app stays readable. Spotlight ring becomes `2px solid accent` with a soft 6px halo (`accent/18`) and the gentle pulse from the bento style, not the current heavy navy ring.
 
-## Step catalogue (adapted at runtime)
+Progress: replaces pips with a thin segmented teal rail + "Step N / M" pill in mono. Buttons: pill `Next` (filled accent, white text), ghost `Skip`, subtle `← Back`.
 
-Base steps (always shown):
-1. Welcome — centered card, no target.
-2. Top navigation / search (Header).
-3. Region nav (`RegionNav`).
-4. World map and site markers (`MapView`).
-5. Profile menu (avatar in Header) — theme, alerts, help.
+## 2. Animated ghost cursor + click-driven flow
 
-Conditional steps:
-- If `clientRole !== 'STORE_USER'`: Brand / Holding overlays step.
-- When a site is opened (or for STORE_USER on auto-opened site): Overview / Score Hero + Fingerprint.
-- Per enabled module on the site (`useProjectModuleConfig`):
-  - `energy.enabled` → Energy section.
-  - `air.enabled` → Air Quality section.
-  - `water.enabled` → Water section.
-  - `certification.enabled` → Certifications widget.
-- Closing step: "You're set — re-open this tour anytime from your profile".
+New `GhostCursor` overlay (SVG arrow + soft teal halo + click ripple). On each interactive step the tour:
 
-Each step is a small object: `{ id, titleKey, bodyKey, targetSelector?, placement, requires?: (ctx) => boolean }`. A registry composes the active list from user scope + module flags before starting.
+1. Reads the target's `getBoundingClientRect()`.
+2. Springs the cursor from its current position to the target center (Framer Motion spring, ~700ms).
+3. Plays a click ripple.
+4. EITHER waits for the user to actually click the highlighted element (`pointer-events` carved out via a transparent "hole" in the backdrop using an SVG mask) — preferred — OR auto-clicks after a short delay if the user hesitates (3.5s).
+5. After the click, the route/section changes, the tour waits for the new target selector to appear (`MutationObserver`, max 4s), then advances to the next step.
 
-## Files to add / edit
+The card moves with the cursor — when the cursor lands top-left, the card slides bottom-right, etc. Card never covers the spotlight.
 
-New
-- `src/components/onboarding/OnboardingTour.tsx` — the spotlight + tooltip overlay, framer-motion animated, listens to a context to know current step / open state. Uses `getBoundingClientRect` + a `ResizeObserver` / `requestAnimationFrame` loop to keep the ring locked to the target on scroll/resize. Auto-scrolls the target into view (`scrollIntoView({ block: 'center' })`) before highlighting.
-- `src/components/onboarding/onboardingSteps.ts` — step registry and `buildSteps(ctx)` that filters by role + module flags + i18n.
-- `src/contexts/OnboardingContext.tsx` — provider exposing `{ isActive, start(reason), stop(), next(), prev(), currentStep, steps }`. Reads `onboarding_completed_count` from `profiles` via `useAuth`, increments it on completion / skip via `updateProfile`. Auto-starts when count < 2 and user has finished loading.
-- `src/hooks/useOnboardingTargets.ts` — small helper exporting target selector constants (e.g. `TOUR.HEADER_SEARCH = 'data-tour="header-search"'`) so we don't sprinkle magic strings.
+A small "Auto-play / Manual" toggle in the card lets the user pick: in auto-play the tour drives itself (cursor + simulated clicks), in manual it just waits for the real click.
 
-Edited
-- `src/App.tsx` — wrap routes in `<OnboardingProvider>` and render `<OnboardingTour />` inside the providers (after `AdminDataProvider`, before `Toaster`).
-- `src/components/dashboard/Header.tsx`, `RegionNav.tsx`, `MapView.tsx`, `BrandOverlay.tsx`, `OverviewSection.tsx`, energy/air/water/certifications widgets, `UserAccountDropdown.tsx` — add `data-tour="..."` attributes to the elements each step targets. No behavioral changes.
-- `src/components/dashboard/HelpTab.tsx` (inside the Profile dropdown) — add a primary "Restart guided tour" button that calls `start('manual')`.
-- `src/contexts/AuthContext.tsx` — extend `UserProfile` typing + `updateProfile` payload to include `onboarding_completed_count` (read in `fetchUserData` select).
-- `src/lib/types/admin.ts` — add `onboarding_completed_count?: number` to `UserProfile`.
+## 3. New step graph (per-page, per-module)
 
-## Database
+Steps now include `action` and `awaitSelector` so they can chain across routes. Filtered by role + enabled modules.
 
-One migration adds an integer counter to `profiles`:
+Hero / Map page:
 
-```sql
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS onboarding_completed_count integer NOT NULL DEFAULT 0;
-```
+1. Welcome card (centered, no target) — "Let me show you around."
+2. Header search → cursor hovers, user/agent clicks → opens search.
+3. Region nav → click `EU` → map filters update.
+4. Module filter chips (`Energy / Air / Water`) → toggle Energy off then on.
+5. Pick a site marker → click → opens `ProjectDetail`.
 
-No new RLS work — existing `profiles` policies already let a user read/update their own row.
+Inside ProjectDetail (only the modules enabled for the scope):
+6. Overview KPIs — explain the 80/15/5 scoring.
+7. Energy tab → cursor clicks tab → explain heatmap + day/night.
+8. Air tab → click → explain CO₂/PM2.5 vs WHO lines.
+9. Water tab → click → explain leak detection.
+10. Certifications widget → click → scorecard explained.
+11. PDF report button → highlight (no click).
+12. Close site → cursor clicks `X`.
 
-## Visual spec (matches FloatingBentoPanel + reference)
+Profile:
+13. Click avatar → opens dropdown.
+14. Highlight "Restart guided tour" inside the Help tab.
+15. Final card — "You're all set."
 
-- Backdrop: `bg-black/55 backdrop-blur-[2px]`, fade 220 ms.
-- Ring: 2 px solid `hsl(var(--fgb-accent))`, `border-radius: 14px`, animated `box-shadow` pulse `0 0 0 4px → 10px` over 2.5 s, position transition `cubic-bezier(0.16,1,0.3,1)` 400 ms.
-- Tooltip card: 306 px wide, rounded-2xl, `bg-[hsl(var(--popover))]/95 backdrop-blur-xl`, 1 px accent-tinted border, soft shadow; small rotated arrow per placement (`up`/`dn`/`lt`/`rt`).
-- Header row: uppercase mono tag `Step n of N` (teal pill) + ✕.
-- Progress pips: 3 px height, gap 4 px, `done` = teal, `cur` = teal/50.
-- Buttons: `Skip` ghost outline, `Next/Finish` teal solid with `-translate-y-px` hover, framer-motion micro-bounce.
-- Center "Welcome" step: no ring; tooltip becomes a wider 420 px card centered with the ring hidden.
+Each step adds `awaitSelector` so the tour waits for the new DOM before continuing. Steps missing in current DOM are skipped silently (already done) but with a smooth fade rather than a jump.
 
-## Out of scope
+## 4. Files
 
-- No analytics events, no new translations beyond the strings the tour itself needs, no changes to existing widgets' behavior — only `data-tour` hooks are added.
-- No changes to authentication, routing, or module-enable logic.
+New:
+
+- `src/components/onboarding/GhostCursor.tsx` — animated cursor + click ripple.
+- `src/components/onboarding/SpotlightMask.tsx` — SVG mask backdrop with a rounded cutout that lets real clicks reach the target.
+- `src/components/onboarding/TourCard.tsx` — new bento-styled card (extracted from `OnboardingTour`).
+
+Rewritten:
+
+- `src/components/onboarding/OnboardingTour.tsx` — orchestrates cursor + mask + card, handles `awaitSelector` and click-through.
+- `src/components/onboarding/onboardingSteps.ts` — adds `action: 'click' | 'highlight' | 'wait'`, `awaitSelector`, `autoAdvanceMs`; new module-deep steps.
+
+Edited (only to add `data-tour` anchors — no behavior change):
+
+- `src/components/dashboard/Header.tsx` (search input, already done)
+- `src/components/dashboard/RegionNav.tsx` (region buttons, module chips)
+- `src/components/dashboard/MapView.tsx` (first marker → `data-tour="first-site-marker"`)
+- `src/components/dashboard/ProjectDetail.tsx` (tabs: `data-tour="tab-energy|air|water|certifications"`, close button, PDF button, KPI row)
+- `src/components/dashboard/UserAccountDropdown.tsx` (already done)
+- `src/components/dashboard/HelpTab.tsx` (restart button, already done)
+
+Untouched:
+
+- `OnboardingContext.tsx` (auto-start logic + count persistence stays as-is)
+- Database, AuthContext typing, App.tsx wiring (already in place)
+
+## 5. Out of scope
+
+- No new modules, no business-logic changes, no analytics.
+- No new translations beyond tour copy.
+- No changes to auto-start rules (still `< 2` runs, restart from Help).
+
+## Technical notes
+
+- Click-through is implemented with an SVG `<mask>` over a full-screen `<rect>`, punching a rounded-rect hole at the target rect; the masked overlay has `pointer-events: none` inside the hole, `auto` outside.
+- `awaitSelector` uses a `MutationObserver` on `document.body` with a 4s timeout; on timeout the step is skipped.
+- Ghost cursor uses Framer `useSpring` for `x`/`y` with `stiffness: 120, damping: 18`.
+- All colors via the existing palette / inline tokens to match `FloatingBentoPanel.tsx`; no new Tailwind tokens needed.

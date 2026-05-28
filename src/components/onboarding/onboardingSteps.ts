@@ -1,14 +1,21 @@
 import type { ClientRole } from "@/hooks/useUserScope";
 
 export type StepPlacement = "top" | "bottom" | "left" | "right" | "center";
+export type StepAction = "highlight" | "click" | "wait";
 
 export interface TourStep {
   id: string;
   title: string;
-  body: string; // supports <strong>
+  body: string; // supports inline <strong>/<span style="...">
   /** CSS selector for the highlighted element. Omit for centered welcome / closing card. */
   selector?: string;
   placement?: StepPlacement;
+  /** What the ghost cursor should do on this step. */
+  action?: StepAction;
+  /** After action completes, wait for this selector to appear before advancing. */
+  awaitSelector?: string;
+  /** Force auto-advance after N ms even if user does nothing (only when action === "click"). */
+  autoAdvanceMs?: number;
 }
 
 export interface StepContext {
@@ -25,92 +32,129 @@ export function buildSteps(ctx: StepContext): TourStep[] {
 
   steps.push({
     id: "welcome",
-    title: "Welcome to FGB Monitoring",
-    body: "Your command centre for <strong>energy</strong>, <strong>air</strong> and <strong>water</strong>. Live data, one place. Take the quick tour — you can re-open it anytime from your profile.",
+    title: "Benvenuto in FGB Monitoring",
+    body:
+      "Ti accompagno per un giro guidato. Vedrai una <strong>freccia animata</strong> muoversi sullo schermo: segui i suoi passaggi o clicca tu stesso quando ti invito a farlo.",
     placement: "center",
+    action: "highlight",
   });
 
   steps.push({
     id: "search",
-    title: "Jump to any site",
-    body: "Use <strong>Search</strong> to instantly open any site you have access to — type the name or the address.",
+    title: "Cerca un sito",
+    body:
+      "Da qui puoi raggiungere qualsiasi struttura: digita il nome o l'indirizzo per saltare direttamente alla scheda del sito.",
     selector: '[data-tour="header-search"]',
     placement: "bottom",
+    action: "highlight",
   });
 
   steps.push({
     id: "map",
-    title: "Interactive Map",
-    body: "Each pin is a building. <strong style=\"color:#00C49A\">Green</strong> ok · <strong style=\"color:#F0A020\">Orange</strong> anomaly · <strong style=\"color:#E8523A\">Red</strong> offline. Click a pin to drill into the site.",
+    title: "La mappa interattiva",
+    body:
+      "Ogni sfera è un edificio monitorato. <strong style=\"color:#0a7d7a\">Verde</strong> ok · <strong style=\"color:#f0a020\">Ambra</strong> anomalia · <strong style=\"color:#e8523a\">Rosso</strong> offline.",
     selector: '[data-tour="map"]',
-    placement: "right",
+    placement: "left",
+    action: "highlight",
   });
 
   steps.push({
-    id: "regions",
-    title: "Regions & Filters",
-    body: "Switch <strong>continent</strong> and toggle <strong>Energy · Air · Water</strong> layers to focus on what matters now.",
-    selector: '[data-tour="region-nav"]',
+    id: "region-buttons",
+    title: "Cambia continente",
+    body:
+      "Con un click filtri la mappa per area geografica. La freccia cliccherà <strong>Europa</strong> per te — guarda come la mappa si riposiziona.",
+    selector: '[data-tour="region-buttons"]',
     placement: "top",
+    action: "click",
+    autoAdvanceMs: 4500,
   });
 
-  if (ctx.clientRole === "ADMIN_FGB" || ctx.clientRole === "USER_FGB" || ctx.clientRole === "ADMIN_HOLDING") {
+  steps.push({
+    id: "module-filters",
+    title: "Filtri per modulo",
+    body:
+      "Mostra o nascondi i siti in base ai moduli attivi: <strong>Energia · Aria · Acqua</strong>. Utile per concentrarti solo su quello che stai analizzando.",
+    selector: '[data-tour="module-filters"]',
+    placement: "top",
+    action: "highlight",
+  });
+
+  if (
+    ctx.clientRole === "ADMIN_FGB" ||
+    ctx.clientRole === "USER_FGB" ||
+    ctx.clientRole === "ADMIN_HOLDING"
+  ) {
     steps.push({
       id: "scope",
-      title: "Group & Brand",
-      body: "Narrow the view to a specific <strong>group</strong> or <strong>brand</strong>. Your KPIs and the map will follow your selection.",
+      title: "Gruppo e Brand",
+      body:
+        "Restringi la vista a un singolo <strong>gruppo</strong> o <strong>brand</strong>. Mappa e KPI si aggiornano di conseguenza.",
       selector: '[data-tour="scope-selectors"]',
       placement: "top",
+      action: "highlight",
     });
   }
 
-  // Module-aware steps (shown when the module is enabled for the user's scope)
+  // Module-aware narrative steps (centered cards — no deep DOM coupling needed)
   if (ctx.modules.energy) {
     steps.push({
       id: "mod-energy",
-      title: "Energy Module",
-      body: "Live <strong>kW</strong>, day/night split, HVAC vs lighting breakdown and historical kWh — all per site. Open any site to dive in.",
+      title: "Modulo Energia",
+      body:
+        "All'interno di un sito troverai <strong>kW live</strong>, split giorno/notte, ripartizione HVAC vs illuminazione, e lo storico kWh — tutto per ogni struttura.",
       placement: "center",
+      action: "highlight",
     });
   }
   if (ctx.modules.air) {
     steps.push({
       id: "mod-air",
-      title: "Air Quality Module",
-      body: "Indoor <strong>CO₂, VOC, PM2.5</strong> and temperature against WHO thresholds, with per-device timeseries and diagnostics.",
+      title: "Modulo Aria",
+      body:
+        "<strong>CO₂, VOC, PM2.5</strong> e temperatura confrontati con le soglie WHO, con timeseries per dispositivo e diagnostica avanzata.",
       placement: "center",
+      action: "highlight",
     });
   }
   if (ctx.modules.water) {
     steps.push({
       id: "mod-water",
-      title: "Water Module",
-      body: "Flow, consumption and <strong>leak detection</strong> with instant alerts when a site behaves outside its baseline.",
+      title: "Modulo Acqua",
+      body:
+        "Flusso, consumi e <strong>leak detection</strong> con alert istantaneo quando un sito si discosta dal proprio baseline.",
       placement: "center",
+      action: "highlight",
     });
   }
   if (ctx.modules.certification) {
     steps.push({
       id: "mod-cert",
-      title: "Certifications",
-      body: "Track <strong>LEED, BREEAM, WELL</strong> scorecards site-by-site — current level, gaps and next milestones.",
+      title: "Certificazioni",
+      body:
+        "Scorecard di <strong>LEED, BREEAM, WELL</strong> sito per sito: livello attuale, gap e prossimi milestone.",
       placement: "center",
+      action: "highlight",
     });
   }
 
   steps.push({
     id: "profile",
-    title: "Profile, Alerts & Help",
-    body: "Your <strong>avatar</strong> opens preferences, notifications and FAQs. You can restart this tour anytime from the <strong>Help</strong> tab.",
+    title: "Profilo, alert e aiuto",
+    body:
+      "Il tuo <strong>avatar</strong> apre preferenze, notifiche e FAQ. Da lì potrai sempre <strong>riavviare questo tour</strong> dal tab Aiuto.",
     selector: '[data-tour="profile-button"]',
     placement: "bottom",
+    action: "highlight",
   });
 
   steps.push({
     id: "finish",
-    title: "You're all set",
-    body: "Explore freely. Any time you want a refresher, open your profile and tap <strong>Restart guided tour</strong>.",
+    title: "Sei pronto.",
+    body:
+      "Esplora liberamente. Per rivedere questa guida apri il tuo profilo e tocca <strong>Riavvia tour guidato</strong>. Buon lavoro.",
     placement: "center",
+    action: "highlight",
   });
 
   return steps;

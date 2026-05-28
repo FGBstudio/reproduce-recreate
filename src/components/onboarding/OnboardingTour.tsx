@@ -1,13 +1,21 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useSpring, useTransform } from "framer-motion";
+import { X, MousePointer2 } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import type { StepPlacement } from "./onboardingSteps";
 
-const ACCENT = "hsl(var(--fgb-accent))";
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+/* ── tokens (mirror FloatingBentoPanel.tsx) ─────────────────────────── */
+const INK = "#1d1d1f";
+const SUB = "#86868b";
+const ACCENT = "#0a7d7a";
+const ACCENT_SOFT = "rgba(10,125,122,0.18)";
+const SURFACE = "rgba(255,255,255,0.92)";
+const BORDER = "rgba(0,0,0,0.06)";
+const EASE: [number, number, number, number] = [0.25, 1, 0.5, 1];
 
 interface Rect { top: number; left: number; width: number; height: number }
+
+/* ── helpers ────────────────────────────────────────────────────────── */
 
 function useTargetRect(selector: string | undefined): Rect | null {
   const [rect, setRect] = useState<Rect | null>(null);
@@ -24,7 +32,7 @@ function useTargetRect(selector: string | undefined): Rect | null {
       setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
     };
 
-    // Scroll target into view first
+    // Scroll target into view before locking on
     const el = document.querySelector(selector) as HTMLElement | null;
     if (el && typeof el.scrollIntoView === "function") {
       try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch {}
@@ -51,8 +59,8 @@ function useTargetRect(selector: string | undefined): Rect | null {
   return rect;
 }
 
-function computeTooltipPos(rect: Rect | null, placement: StepPlacement, tipW = 320, tipH = 220) {
-  const margin = 14;
+function computeCardPos(rect: Rect | null, placement: StepPlacement, tipW: number, tipH: number) {
+  const margin = 18;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
@@ -91,194 +99,399 @@ function computeTooltipPos(rect: Rect | null, placement: StepPlacement, tipW = 3
       break;
   }
 
-  // Clamp to viewport
   top = Math.max(16, Math.min(vh - tipH - 16, top));
   left = Math.max(16, Math.min(vw - tipW - 16, left));
   return { top, left, arrow };
 }
 
+/* ── Ghost cursor ───────────────────────────────────────────────────── */
+const GhostCursor: React.FC<{ x: number; y: number; clicking: boolean }> = ({ x, y, clicking }) => {
+  const sx = useSpring(x, { stiffness: 110, damping: 18, mass: 0.6 });
+  const sy = useSpring(y, { stiffness: 110, damping: 18, mass: 0.6 });
+  useEffect(() => { sx.set(x); }, [x, sx]);
+  useEffect(() => { sy.set(y); }, [y, sy]);
+  const tx = useTransform(sx, (v) => `${v}px`);
+  const ty = useTransform(sy, (v) => `${v}px`);
+
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none fixed z-[9300]"
+      style={{ left: tx as unknown as string, top: ty as unknown as string, transform: "translate(-6px,-4px)" }}
+    >
+      {/* halo */}
+      <motion.div
+        className="absolute -inset-3 rounded-full"
+        style={{ background: ACCENT_SOFT }}
+        animate={{ scale: clicking ? [1, 1.8, 1] : 1, opacity: clicking ? [0.6, 0, 0.6] : 0.5 }}
+        transition={{ duration: 0.55, ease: EASE }}
+      />
+      <MousePointer2 className="relative w-5 h-5" style={{ color: ACCENT, fill: "white", strokeWidth: 1.5 }} />
+      {/* click ripple */}
+      <AnimatePresence>
+        {clicking && (
+          <motion.span
+            key="ripple"
+            className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{ border: `2px solid ${ACCENT}` }}
+            initial={{ width: 8, height: 8, opacity: 0.9 }}
+            animate={{ width: 64, height: 64, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: EASE }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+/* ── Spotlight mask (light backdrop with rounded cutout, click-through hole) ── */
+const SpotlightMask: React.FC<{ rect: Rect | null }> = ({ rect }) => {
+  const [vp, setVp] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  useEffect(() => {
+    const onR = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", onR);
+    return () => window.removeEventListener("resize", onR);
+  }, []);
+
+  const padding = 8;
+  const radius = 16;
+
+  return (
+    <svg
+      className="fixed inset-0 z-[9180]"
+      width={vp.w}
+      height={vp.h}
+      style={{ pointerEvents: "none" }}
+    >
+      <defs>
+        <mask id="ob-spot-mask">
+          <rect x="0" y="0" width={vp.w} height={vp.h} fill="white" />
+          {rect && (
+            <rect
+              x={rect.left - padding}
+              y={rect.top - padding}
+              width={rect.width + padding * 2}
+              height={rect.height + padding * 2}
+              rx={radius}
+              ry={radius}
+              fill="black"
+            />
+          )}
+        </mask>
+      </defs>
+      {/* Light wash — keeps the page legible, unlike a dark overlay */}
+      <rect
+        x="0"
+        y="0"
+        width={vp.w}
+        height={vp.h}
+        fill="rgba(245,247,248,0.55)"
+        mask="url(#ob-spot-mask)"
+        style={{ pointerEvents: "auto" }}
+      />
+    </svg>
+  );
+};
+
+/* ── Tour ───────────────────────────────────────────────────────────── */
 export const OnboardingTour: React.FC = () => {
   const { isActive, steps, index, currentStep, next, prev, stop } = useOnboarding();
 
-  // Skip steps whose selector is missing from the DOM (defensive).
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [clicking, setClicking] = useState(false);
+  const advancedRef = useRef(false);
+
+  // Skip steps whose selector is missing (defensive)
   useEffect(() => {
-    if (!isActive || !currentStep?.selector) return;
-    const el = document.querySelector(currentStep.selector);
-    if (!el) {
-      // Advance silently — selector is not on this page.
-      const t = window.setTimeout(() => next(), 250);
-      return () => window.clearTimeout(t);
-    }
+    if (!isActive || !currentStep) return;
+    advancedRef.current = false;
+    if (!currentStep.selector) return;
+    let cancelled = false;
+    // Wait briefly for selector — covers SPA route changes
+    const start = Date.now();
+    const check = () => {
+      if (cancelled) return;
+      const el = document.querySelector(currentStep.selector!);
+      if (el) return;
+      if (Date.now() - start > 1500) { next(); return; }
+      setTimeout(check, 80);
+    };
+    check();
+    return () => { cancelled = true; };
   }, [isActive, currentStep, next]);
 
   const rect = useTargetRect(currentStep?.selector);
   const placement = currentStep?.placement ?? "center";
-  const TIP_W = placement === "center" ? 420 : 320;
-  const TIP_H = 240;
-  const pos = computeTooltipPos(rect, placement, TIP_W, TIP_H);
+  const TIP_W = placement === "center" ? 480 : 380;
+  const TIP_H = 260;
+  const pos = computeCardPos(rect, placement, TIP_W, TIP_H);
+
+  // Ghost cursor position — defaults to off-screen so it springs in
+  const cursorX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+  const cursorY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+
+  // Auto-click behaviour for "click" steps
+  useEffect(() => {
+    if (!isActive || !currentStep || currentStep.action !== "click") return;
+    if (!autoPlay) return;
+    if (!rect || !currentStep.selector) return;
+
+    const delay = currentStep.autoAdvanceMs ?? 2600;
+    const t1 = window.setTimeout(() => setClicking(true), delay - 500);
+    const t2 = window.setTimeout(() => {
+      // Try to click the underlying target — first child button if any
+      const el = document.querySelector(currentStep.selector!) as HTMLElement | null;
+      if (el) {
+        const clickable =
+          el.matches("button,a,input,select,[role='button']")
+            ? el
+            : (el.querySelector("button,a,[role='button']") as HTMLElement | null) ?? el;
+        try { clickable.click(); } catch {}
+      }
+      setClicking(false);
+      if (!advancedRef.current) {
+        advancedRef.current = true;
+        window.setTimeout(() => next(), 800);
+      }
+    }, delay);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, [isActive, currentStep, rect, autoPlay, next]);
+
+  // If user manually clicks the highlighted element, advance
+  useEffect(() => {
+    if (!isActive || !currentStep || currentStep.action !== "click" || !currentStep.selector) return;
+    const el = document.querySelector(currentStep.selector) as HTMLElement | null;
+    if (!el) return;
+    const onClick = () => {
+      if (advancedRef.current) return;
+      advancedRef.current = true;
+      setClicking(true);
+      window.setTimeout(() => { setClicking(false); next(); }, 500);
+    };
+    el.addEventListener("click", onClick, true);
+    return () => el.removeEventListener("click", onClick, true);
+  }, [isActive, currentStep, next]);
 
   if (!isActive || !currentStep) return null;
 
   const total = steps.length;
   const isLast = index >= total - 1;
   const isFirst = index === 0;
+  const isClickStep = currentStep.action === "click";
 
   return (
     <AnimatePresence>
       <motion.div
         key="ob-root"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        transition={{ duration: 0.22 }}
-        className="fixed inset-0 z-[9200]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.28, ease: EASE }}
+        className="fixed inset-0 z-[9100]"
         aria-live="polite"
       >
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
-          onClick={() => stop()}
-        />
+        {/* Light spotlight mask (full backdrop with rounded cutout over target) */}
+        <SpotlightMask rect={rect} />
 
-        {/* Spotlight ring */}
+        {/* Spotlight ring (drawn above the mask) */}
         {rect && currentStep.selector && (
           <motion.div
             aria-hidden
             initial={false}
             animate={{
-              top: rect.top - 6,
-              left: rect.left - 6,
-              width: rect.width + 12,
-              height: rect.height + 12,
+              top: rect.top - 8,
+              left: rect.left - 8,
+              width: rect.width + 16,
+              height: rect.height + 16,
             }}
-            transition={{ duration: 0.4, ease: EASE }}
-            className="pointer-events-none fixed rounded-[14px]"
+            transition={{ duration: 0.45, ease: EASE }}
+            className="pointer-events-none fixed z-[9190] rounded-2xl"
             style={{
               border: `2px solid ${ACCENT}`,
-              boxShadow: `0 0 0 4px hsl(var(--fgb-accent) / 0.18), 0 0 0 9999px rgba(0,0,0,0.0)`,
-              animation: "obPulse 2.4s ease-in-out infinite",
+              boxShadow: `0 0 0 6px ${ACCENT_SOFT}, 0 20px 50px rgba(0,0,0,0.10)`,
+              animation: "obPulseLight 2.6s ease-in-out infinite",
             }}
           />
         )}
 
-        {/* Tooltip card */}
+        {/* Ghost cursor */}
+        {rect && currentStep.selector && (
+          <GhostCursor x={cursorX} y={cursorY} clicking={clicking} />
+        )}
+
+        {/* Card */}
         <motion.div
           key={currentStep.id}
-          initial={{ opacity: 0, y: 8, scale: 0.98 }}
+          initial={{ opacity: 0, y: 10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 8, scale: 0.98 }}
-          transition={{ duration: 0.28, ease: EASE }}
-          className="fixed rounded-2xl border shadow-2xl"
+          exit={{ opacity: 0, y: 10, scale: 0.98 }}
+          transition={{ duration: 0.4, ease: EASE }}
+          className="fixed z-[9210] rounded-[28px]"
           style={{
             top: pos.top,
             left: pos.left,
             width: TIP_W,
-            background: "hsl(var(--popover) / 0.96)",
-            borderColor: "hsl(var(--fgb-accent) / 0.3)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+            background: SURFACE,
+            border: `1px solid ${BORDER}`,
+            boxShadow: "0 24px 60px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.04)",
+            backdropFilter: "blur(22px)",
+            WebkitBackdropFilter: "blur(22px)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* soft teal halo behind card */}
+          <div
+            aria-hidden
+            className="absolute -inset-px rounded-[28px] pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(10,125,122,0.08), transparent 60%)",
+            }}
+          />
+
           {/* Arrow */}
           {pos.arrow !== "none" && rect && (
             <span
               aria-hidden
-              className="absolute w-3 h-3 rotate-45"
+              className="absolute w-3.5 h-3.5 rotate-45"
               style={{
-                background: "hsl(var(--popover) / 0.96)",
-                borderTop: pos.arrow === "up" ? `1.5px solid hsl(var(--fgb-accent) / 0.3)` : "none",
-                borderLeft: pos.arrow === "up" || pos.arrow === "lt" ? `1.5px solid hsl(var(--fgb-accent) / 0.3)` : "none",
-                borderBottom: pos.arrow === "dn" ? `1.5px solid hsl(var(--fgb-accent) / 0.3)` : "none",
-                borderRight: pos.arrow === "rt" || pos.arrow === "dn" ? `1.5px solid hsl(var(--fgb-accent) / 0.3)` : "none",
-                top: pos.arrow === "up" ? -7 : pos.arrow === "dn" ? "auto" : "50%",
-                bottom: pos.arrow === "dn" ? -7 : "auto",
-                left: pos.arrow === "lt" ? -7 : pos.arrow === "rt" ? "auto" : "50%",
-                right: pos.arrow === "rt" ? -7 : "auto",
-                transform: (pos.arrow === "up" || pos.arrow === "dn")
-                  ? "translateX(-50%) rotate(45deg)"
-                  : "translateY(-50%) rotate(45deg)",
+                background: SURFACE,
+                borderTop: pos.arrow === "up" ? `1px solid ${BORDER}` : "none",
+                borderLeft: pos.arrow === "up" || pos.arrow === "lt" ? `1px solid ${BORDER}` : "none",
+                borderBottom: pos.arrow === "dn" ? `1px solid ${BORDER}` : "none",
+                borderRight: pos.arrow === "rt" || pos.arrow === "dn" ? `1px solid ${BORDER}` : "none",
+                top: pos.arrow === "up" ? -8 : pos.arrow === "dn" ? "auto" : "50%",
+                bottom: pos.arrow === "dn" ? -8 : "auto",
+                left: pos.arrow === "lt" ? -8 : pos.arrow === "rt" ? "auto" : "50%",
+                right: pos.arrow === "rt" ? -8 : "auto",
+                transform:
+                  pos.arrow === "up" || pos.arrow === "dn"
+                    ? "translateX(-50%) rotate(45deg)"
+                    : "translateY(-50%) rotate(45deg)",
               }}
             />
           )}
 
-          <div className="px-5 pt-4 pb-4">
+          <div className="relative px-7 pt-6 pb-5">
             {/* Header */}
-            <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center justify-between mb-4">
               <span
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.08em]"
+                className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.16em]"
                 style={{
                   color: ACCENT,
-                  background: "hsl(var(--fgb-accent) / 0.12)",
-                  border: `1px solid hsl(var(--fgb-accent) / 0.25)`,
-                  fontFamily: "var(--font-mono, ui-monospace)",
+                  background: `${ACCENT}14`,
+                  border: `1px solid ${ACCENT}33`,
                 }}
               >
-                Step {index + 1} of {total}
+                Step {index + 1} / {total}
               </span>
               <button
                 onClick={() => stop()}
                 aria-label="Close tour"
-                className="w-6 h-6 rounded-md border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 flex items-center justify-center transition-colors"
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-black/[0.04]"
+                style={{ color: SUB, border: `1px solid ${BORDER}` }}
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* Title + body */}
-            <h3 className="text-[15px] font-bold text-foreground leading-tight mb-1.5">
+            <h3
+              className="font-semibold tracking-tight leading-tight mb-2"
+              style={{ color: INK, fontSize: "clamp(1.15rem, 1.6vw, 1.45rem)" }}
+            >
               {currentStep.title}
             </h3>
             <p
-              className="text-[12px] text-muted-foreground leading-[1.6] mb-3.5"
+              className="leading-relaxed"
+              style={{ color: SUB, fontSize: 14 }}
               dangerouslySetInnerHTML={{ __html: currentStep.body }}
             />
 
-            {/* Progress pips */}
-            <div className="flex gap-1 mb-3.5">
+            {/* Click-prompt hint */}
+            {isClickStep && (
+              <div
+                className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium"
+                style={{ background: `${ACCENT}10`, color: ACCENT, border: `1px solid ${ACCENT}22` }}
+              >
+                <MousePointer2 className="w-3 h-3" />
+                {autoPlay ? "La freccia cliccherà tra poco — o fallo tu" : "Clicca l'elemento evidenziato"}
+              </div>
+            )}
+
+            {/* Progress rail */}
+            <div className="mt-5 flex gap-1.5">
               {steps.map((_, i) => (
                 <span
                   key={i}
                   className="flex-1 h-[3px] rounded-full transition-colors"
                   style={{
                     background:
-                      i < index ? ACCENT
-                        : i === index ? `hsl(var(--fgb-accent) / 0.5)`
-                          : "hsl(var(--muted-foreground) / 0.18)",
+                      i < index
+                        ? ACCENT
+                        : i === index
+                        ? `${ACCENT}80`
+                        : "rgba(0,0,0,0.08)",
                   }}
                 />
               ))}
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between gap-2">
-              <button
-                onClick={prev}
-                disabled={isFirst}
-                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:text-muted-foreground"
-              >
-                ← Back
-              </button>
-              <div className="flex gap-1.5">
+            <div className="mt-5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={prev}
+                  disabled={isFirst}
+                  className="text-[12px] font-medium transition-colors disabled:opacity-30"
+                  style={{ color: SUB }}
+                >
+                  ← Indietro
+                </button>
+                {/* Auto-play toggle */}
+                <label
+                  className="hidden sm:flex items-center gap-1.5 text-[11px] cursor-pointer select-none"
+                  style={{ color: SUB }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={autoPlay}
+                    onChange={(e) => setAutoPlay(e.target.checked)}
+                    className="accent-current"
+                    style={{ accentColor: ACCENT }}
+                  />
+                  Auto-play
+                </label>
+              </div>
+              <div className="flex gap-2">
                 <button
                   onClick={() => stop()}
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-medium border border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+                  className="px-4 py-2 rounded-full text-[12px] font-medium transition-colors hover:bg-black/[0.04]"
+                  style={{ color: INK, border: `1px solid ${BORDER}` }}
                 >
-                  Skip tour
+                  Salta tour
                 </button>
                 <motion.button
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={next}
-                  className="px-4 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
-                  style={{ background: ACCENT, color: "hsl(var(--fgb-base))" }}
+                  className="px-5 py-2 rounded-full text-[12px] font-semibold text-white shadow-sm"
+                  style={{ background: ACCENT }}
                 >
-                  {isLast ? "Finish" : "Next →"}
+                  {isLast ? "Fine" : "Avanti →"}
                 </motion.button>
               </div>
             </div>
           </div>
         </motion.div>
 
-        <style>{`@keyframes obPulse{0%,100%{box-shadow:0 0 0 4px hsl(var(--fgb-accent)/0.18);}50%{box-shadow:0 0 0 10px hsl(var(--fgb-accent)/0.06);}}`}</style>
+        <style>{`
+          @keyframes obPulseLight {
+            0%,100% { box-shadow: 0 0 0 6px ${ACCENT_SOFT}, 0 20px 50px rgba(0,0,0,0.10); }
+            50%     { box-shadow: 0 0 0 14px rgba(10,125,122,0.06), 0 20px 50px rgba(0,0,0,0.10); }
+          }
+        `}</style>
       </motion.div>
     </AnimatePresence>
   );
