@@ -6,8 +6,8 @@ import { ClientRole } from "@/hooks/useUserScope";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import markerPinIcon from "@/assets/marker.png";
+import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 
-// 1. Aggiunto "certifications" alle sezioni possibili
 export type ProjectSection = "overview" | "energy" | "air" | "water" | "certifications";
 
 interface SiteMarkerProps {
@@ -24,7 +24,6 @@ type MetricSection = Exclude<ProjectSection, "overview">;
 const css  = (v: string) => `hsl(var(${v}))`;
 const cssA = (v: string, a: number) => `hsl(var(${v}) / ${a})`;
 
-// 2. Aggiunto l'Award e i token visivi per la sezione certificazioni
 const METRIC_META: Record<
   MetricSection,
   { icon: typeof Zap; accentVar: string; ringVar: string; label: string; unit: string }
@@ -82,6 +81,7 @@ interface RadarProps {
   rotationDeg:     number;
   backgroundImage?: string;
   brandLogo?:      string;
+  customIconImg?:  string; // NUOVA PROP per forzare il logo LEED/WELL
   onClick:         () => void;
   index:           number;
 }
@@ -92,6 +92,7 @@ const MapMetricRadar = ({
   rotationDeg,
   backgroundImage,
   brandLogo,
+  customIconImg,
   onClick,
   index,
 }: RadarProps) => {
@@ -147,7 +148,7 @@ const MapMetricRadar = ({
           transform: "translateZ(0)",
         }}
       >
-        {/* ── Layer z-10: Brand Pattern (Scollegato dalla rotazione) ── */}
+        {/* ── Layer z-10: Brand Pattern ── */}
         {(backgroundImage || brandLogo) && (
           <div
             className="absolute flex items-center justify-center"
@@ -243,27 +244,36 @@ const MapMetricRadar = ({
               />
             </svg>
 
-            {/* Testo scuro ad alto contrasto per fondo chiaro */}
-            <Icon
-              className="w-4 h-4 mb-1"
-              style={{ color: accent, position: "relative", zIndex: 1 }}
-              strokeWidth={2.4}
-            />
+            {/* SE C'È UN'IMMAGINE CUSTOM (LEED/WELL) MOSTRA QUELLA, ALTRIMENTI L'ICONA STANDARD */}
+            {customIconImg ? (
+              <img 
+                src={customIconImg} 
+                alt="Certification" 
+                className="h-8 w-auto mb-1 relative z-10 object-contain drop-shadow-sm" 
+              />
+            ) : (
+              <Icon
+                className="w-4 h-4 mb-1"
+                style={{ color: accent, position: "relative", zIndex: 1 }}
+                strokeWidth={2.4}
+              />
+            )}
+
             <span
               className="text-[9px] font-bold uppercase leading-none tracking-[0.18em]"
-              style={{ color: "#475569", position: "relative", zIndex: 1 }} // Slate 600
+              style={{ color: "#475569", position: "relative", zIndex: 1 }}
             >
               {meta.label}
             </span>
             <span
               className="text-3xl font-black tracking-tighter leading-none mt-1"
-              style={{ color: "#0f172a", position: "relative", zIndex: 1 }} // Slate 900
+              style={{ color: "#0f172a", position: "relative", zIndex: 1 }}
             >
               {formatValue(value)}
             </span>
             <span
               className="text-[9px] font-semibold mt-0.5"
-              style={{ color: "#64748b", position: "relative", zIndex: 1 }} // Slate 500
+              style={{ color: "#64748b", position: "relative", zIndex: 1 }}
             >
               {meta.unit}
             </span>
@@ -290,6 +300,7 @@ export const SiteMarker = ({
   const siteIdForFetch = isHovered ? project.siteId : undefined;
   const latest = useRealTimeLatestData(siteIdForFetch);
   const power   = useEnergyPowerByCategory(siteIdForFetch);
+  const certs   = useProjectCertifications(siteIdForFetch);
 
   const handleEnter = useCallback(() => {
     if (closeTimer.current) {
@@ -304,16 +315,12 @@ export const SiteMarker = ({
     closeTimer.current = window.setTimeout(() => setIsHovered(false), 150);
   }, []);
 
-  // 3. Aggiunta logica per includere "certifications" se presente nel project
   const activeSpheres = (project.monitoring || []).filter(
     (m): m is MetricSection => m === "energy" || m === "air" || m === "water" || m === "certifications"
   );
 
-  // 4. Collegamento logico (senza hook finti). Pesca dal database se in project, altrimenti N/A.
   const valueFor = (section: MetricSection): number | undefined => {
-    if (section === "energy") {
-      return power.totalGeneral ?? undefined;
-    }
+    if (section === "energy") return power.totalGeneral ?? undefined;
     if (section === "air") {
       const m = latest.metrics;
       return m["iaq.co2"] ?? m["co2"] ?? m["CO2"];
@@ -323,28 +330,22 @@ export const SiteMarker = ({
       return m["water.flow_lpm"] ?? m["water.flow"] ?? m["water_flow"] ?? m["flow"];
     }
     if (section === "certifications") {
-      // QUI va inserito il punteggio delle certificazioni. Al momento ritorna undefined (che verrà visualizzato come "—")
-      return undefined;
+      if (!certs.certifications || certs.certifications.length === 0) return undefined;
+      const totalPoints = certs.certifications.reduce((sum, c) => sum + (c.points_achieved || 0), 0);
+      return totalPoints > 0 ? totalPoints : undefined;
     }
     return undefined;
   };
 
-  /**
-   * Click on a specific lens opens that section of the site dashboard.
-   */
   const handleSectionClick = (section: MetricSection) => {
     onSphereClick(project, section);
   };
 
-  /**
-   * 5. Geometria aggiornata per supportare 4 sfere senza accavallarsi (Croce a X)
-   */
   const arcAngles = (n: number): number[] => {
-    if (n <= 1) return [270];          // 1 widget: direttamente sopra
-    if (n === 2) return [210, 330];    // 2 widget: in alto a sinistra, in alto a destra
-    if (n === 3) return [90, 210, 330];// 3 widget: sotto, in alto a dx, in alto a sx
-    if (n === 4) return [45, 135, 225, 315]; // 4 widget: Formano una "X" per non coprire il pin centrale
-    
+    if (n <= 1) return [270];          // single widget: directly above
+    if (n === 2) return [210, 330];    // two widgets: upper-left, upper-right
+    if (n === 3) return [90, 210, 330];// three: below, upper-right, upper-left
+    if (n === 4) return [45, 135, 225, 315]; // four widgets: form an "X"
     return Array.from({ length: n }, (_, i) => (360 / n) * i);
   };
   const angles = arcAngles(activeSpheres.length);
@@ -364,7 +365,6 @@ export const SiteMarker = ({
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
-      {/* ── Radar lens overlay — anchored on marker, fanned outward ── */}
       <AnimatePresence>
         {isHovered && activeSpheres.length > 0 && (
           <motion.div
@@ -386,9 +386,19 @@ export const SiteMarker = ({
             {activeSpheres.map((section, i) => {
               const thetaDeg = angles[i] ?? 90;
               const theta    = thetaDeg * (Math.PI / 180);
-              // Widget centre offset so cone focal point aligns with marker
               const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
               const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
+
+              // IDENTIFICA IL LOGO DA INIETTARE SE LA SEZIONE È CERTIFICATIONS
+              let customImg = undefined;
+              if (section === "certifications" && certs?.certifications) {
+                const certNames = certs.certifications.map(c => (c.name || "").toLowerCase());
+                if (certNames.some(n => n.includes("leed"))) {
+                  customImg = "/LEED.png";
+                } else if (certNames.some(n => n.includes("well"))) {
+                  customImg = "/WELL.png";
+                }
+              }
 
               return (
                 <div
@@ -408,6 +418,7 @@ export const SiteMarker = ({
                     rotationDeg={thetaDeg}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
+                    customIconImg={customImg} // Passiamo l'immagine custom al radar
                     onClick={() => handleSectionClick(section)}
                     index={i}
                   />
@@ -418,17 +429,9 @@ export const SiteMarker = ({
         )}
       </AnimatePresence>
 
-      {/* ── Marker pin — click opens site Overview ── */}
       <button
-        // ROOT CAUSE FIX: Protezione eventi Leaflet
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          onMarkerClick(project); 
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onMarkerClick(project); 
-        }}
+        onPointerDown={(e) => { e.stopPropagation(); onMarkerClick(project); }}
+        onClick={(e) => { e.stopPropagation(); onMarkerClick(project); }}
         title={project.name}
         style={{
           width:      36,
