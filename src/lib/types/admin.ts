@@ -14,6 +14,7 @@ export interface UserProfile {
   company?: string;
   job_title?: string;
   phone?: string;
+  onboarding_completed_count?: number;
   created_at?: string;
   updated_at?: string;
 }
