@@ -365,8 +365,9 @@ export const SiteMarker = ({
 
 
   // Costruiamo l'array delle sfere attive
-  const activeSpheres = (project.monitoring || []).filter(
-    (m): m is MetricSection => m === "energy" || m === "air" || m === "water" || m === "certifications"
+  const activeSpheres: MetricSection[] = ((project.monitoring || []) as string[]).filter(
+    (m): m is MetricSection =>
+      m === "energy" || m === "air" || m === "water" || m === "certifications"
   );
 
   // Se il sito ha almeno una certificazione configurata, forziamo la sfera "certifications".
