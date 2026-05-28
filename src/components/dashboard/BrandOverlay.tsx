@@ -274,7 +274,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </div>
             )}
             <div className="min-w-0">
-              <h3 className="text-lg font-bold text-foreground truncate leading-tight">{displayEntity.name}</h3>
+              {/* <h3 className="text-lg font-bold text-foreground truncate leading-tight">{displayEntity.name}</h3> */}
               <p className="text-[10px] text-fgb-accent uppercase tracking-widest mt-1 font-medium">
                 {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
               </p>
