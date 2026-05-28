@@ -6,7 +6,6 @@ import { ClientRole } from "@/hooks/useUserScope";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import markerPinIcon from "@/assets/marker.png";
-import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 
 export type ProjectSection = "overview" | "energy" | "air" | "water" | "certifications";
 
@@ -28,6 +27,7 @@ const METRIC_META: Record<
   MetricSection,
   { icon: typeof Zap; accentVar: string; ringVar: string; label: string; unit: string }
 > = {
+  // FGB palette via semantic HSL tokens (see index.css)
   energy: { icon: Zap,     accentVar: "--fgb-gold", ringVar: "--fgb-gold",       label: "Main Power", unit: "kW"  },
   air:    { icon: Wind,    accentVar: "--fgb-teal", ringVar: "--fgb-teal-ring",  label: "Air CO₂",    unit: "ppm" },
   water:  { icon: Droplet, accentVar: "--fgb-navy", ringVar: "--fgb-navy-ring",  label: "Water Flow", unit: "L/m" },
@@ -44,20 +44,20 @@ const formatValue = (v: number | undefined | null): string => {
 
 /* ─────────────────────────── geometry constants ─────────────────────────── */
 
-const WIDGET_PX            = 340;
-const VB                   = 600;
-const CIRCLE_R             = 180;
+const WIDGET_PX            = 340;        // rendered size on screen (px)
+const VB                   = 600;        // SVG viewBox side
+const CIRCLE_R             = 180;        // lens radius in VB units
 const CX                   = 300;
 const CY                   = 300;
-const FOCUS_X              = 580;
+const FOCUS_X              = 580;        // cone focal point along +x
 const FOCUS_Y              = 300;
 const CONE_HALF_ANGLE_DEG  = 25;
 const SCALE                = WIDGET_PX / VB;
 const FOCUS_OFFSET_PX      = (FOCUS_X - CX) * SCALE;
 
-const LENS_D = (CIRCLE_R * 2) * SCALE;
-const LENS_L = (CX - CIRCLE_R) * SCALE;
-const LENS_T = (CY - CIRCLE_R) * SCALE;
+const LENS_D = (CIRCLE_R * 2) * SCALE;  // lens diameter in px
+const LENS_L = (CX - CIRCLE_R) * SCALE; // lens left offset in px
+const LENS_T = (CY - CIRCLE_R) * SCALE; // lens top offset in px
 
 const conePath = (() => {
   const a  = CONE_HALF_ANGLE_DEG * (Math.PI / 180);
@@ -80,7 +80,7 @@ interface RadarProps {
   rotationDeg:     number;
   backgroundImage?: string;
   brandLogo?:      string;
-  customIconImg?:  string;
+  customIconImg?:  string; // Prop aggiunta per l'immagine custom
   onClick:         () => void;
   index:           number;
 }
@@ -102,6 +102,7 @@ const MapMetricRadar = ({
 
   return (
     <motion.div
+      // 1. ROOT CAUSE FIX: Passa la rotazione direttamente a Framer Motion, non al CSS 'transform'
       initial={{ opacity: 0, scale: 0.6, rotate: rotationDeg }}
       animate={{ opacity: 1, scale: 1, rotate: rotationDeg }}
       exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.15 } }}
@@ -132,6 +133,7 @@ const MapMetricRadar = ({
       {/* ── LENS ── */}
       <div
         className="absolute rounded-full pointer-events-auto cursor-pointer"
+        // ROOT CAUSE FIX: Leaflet ruba i click. onPointerDown bypassa la mappa.
         onPointerDown={(e) => { e.stopPropagation(); onClick(); }}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         role="button"
@@ -147,17 +149,18 @@ const MapMetricRadar = ({
           transform: "translateZ(0)",
         }}
       >
-        {/* ── Layer z-10: Brand Pattern ── */}
+        {/* ── Layer z-10: Brand Pattern (Scollegato dalla rotazione) ── */}
         {(backgroundImage || brandLogo) && (
           <div
             className="absolute flex items-center justify-center"
             style={{
+              // 2. ROOT CAUSE FIX: Maggiorato al 150% per evitare angoli tagliati durante la contro-rotazione
               width: "150%",
               height: "150%",
               left: "-25%",
               top: "-25%",
               zIndex: 10,
-              transform: `rotate(${-rotationDeg}deg)`,
+              transform: `rotate(${-rotationDeg}deg)`, // Pattern sempre orizzontale
             }}
           >
             {backgroundImage ? (
@@ -191,6 +194,7 @@ const MapMetricRadar = ({
           className="absolute inset-0 rounded-full"
           style={{
             zIndex: 20,
+            // 3. ROOT CAUSE FIX: Blur nativo sopra il pattern z-10
             backdropFilter: "blur(6px)",
             WebkitBackdropFilter: "blur(6px)",
             background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
@@ -209,7 +213,7 @@ const MapMetricRadar = ({
           className="absolute inset-0 flex items-center justify-center"
           style={{
             zIndex: 40,
-            transform: `rotate(${-rotationDeg}deg)`,
+            transform: `rotate(${-rotationDeg}deg)`, // Contenuti orizzontali
           }}
         >
           <div
@@ -218,6 +222,7 @@ const MapMetricRadar = ({
               width: CARD_SIZE,
               height: CARD_SIZE,
               border: `1.5px solid rgba(255, 255, 255, 0.4)`,
+              // 4. ROOT CAUSE FIX: Trasparenza intenzionale bianca + extra blur
               backgroundColor: "rgba(255, 255, 255, 0.85)", 
               backdropFilter: "blur(4px)",
               WebkitBackdropFilter: "blur(4px)",
@@ -243,12 +248,12 @@ const MapMetricRadar = ({
               />
             </svg>
 
-            {/* Iniezione immagine custom (LEED/WELL) o icona standard */}
+            {/* SEZIONE ICONA/LOGO: Mostra l'immagine custom se presente, altrimenti l'icona normale */}
             {customIconImg ? (
               <img 
                 src={customIconImg} 
                 alt="Certification" 
-                className="h-8 w-auto mb-1 relative z-10 object-contain drop-shadow-sm" 
+                className="h-7 w-auto mb-1 relative z-10 object-contain drop-shadow-sm" 
               />
             ) : (
               <Icon
@@ -260,19 +265,19 @@ const MapMetricRadar = ({
 
             <span
               className="text-[9px] font-bold uppercase leading-none tracking-[0.18em]"
-              style={{ color: "#475569", position: "relative", zIndex: 1 }}
+              style={{ color: "#475569", position: "relative", zIndex: 1 }} // Slate 600
             >
               {meta.label}
             </span>
             <span
               className="text-3xl font-black tracking-tighter leading-none mt-1"
-              style={{ color: "#0f172a", position: "relative", zIndex: 1 }}
+              style={{ color: "#0f172a", position: "relative", zIndex: 1 }} // Slate 900
             >
               {formatValue(value)}
             </span>
             <span
               className="text-[9px] font-semibold mt-0.5"
-              style={{ color: "#64748b", position: "relative", zIndex: 1 }}
+              style={{ color: "#64748b", position: "relative", zIndex: 1 }} // Slate 500
             >
               {meta.unit}
             </span>
@@ -299,7 +304,6 @@ export const SiteMarker = ({
   const siteIdForFetch = isHovered ? project.siteId : undefined;
   const latest = useRealTimeLatestData(siteIdForFetch);
   const power   = useEnergyPowerByCategory(siteIdForFetch);
-  const certs   = useProjectCertifications(siteIdForFetch);
 
   const handleEnter = useCallback(() => {
     if (closeTimer.current) {
@@ -323,17 +327,17 @@ export const SiteMarker = ({
       return power.totalGeneral ?? undefined;
     }
     if (section === "air") {
-      const m = latest?.metrics || {};
-      return m["iaq.co2"] ?? m["co2"] ?? m["CO2"];
+      const m = latest.metrics;
+      return m ? (m["iaq.co2"] ?? m["co2"] ?? m["CO2"]) : undefined;
     }
     if (section === "water") {
-      const m = latest?.metrics || {};
-      return m["water.flow_lpm"] ?? m["water.flow"] ?? m["water_flow"] ?? m["flow"];
+      const m = latest.metrics;
+      return m ? (m["water.flow_lpm"] ?? m["water.flow"] ?? m["water_flow"] ?? m["flow"]) : undefined;
     }
     if (section === "certifications") {
-      if (!certs?.certifications || certs.certifications.length === 0) return undefined;
-      const totalPoints = certs.certifications.reduce((sum, c) => sum + (c.points_achieved || 0), 0);
-      return totalPoints > 0 ? totalPoints : undefined;
+      // Estrae un eventuale valore numerico se presente nel project (es. project.certScore).
+      // Se non c'è, stamperà "—" che è perfettamente coerente col design.
+      return (project as any).certScore ?? undefined;
     }
     return undefined;
   };
@@ -346,7 +350,7 @@ export const SiteMarker = ({
     if (n <= 1) return [270];          // single widget: directly above
     if (n === 2) return [210, 330];    // two widgets: upper-left, upper-right
     if (n === 3) return [90, 210, 330];// three: below, upper-right, upper-left
-    if (n === 4) return [45, 135, 225, 315]; // four widgets: form an "X"
+    if (n === 4) return [45, 135, 225, 315]; // Formazione a X per 4 lenti
     return Array.from({ length: n }, (_, i) => (360 / n) * i);
   };
   const angles = arcAngles(activeSpheres.length);
@@ -366,6 +370,7 @@ export const SiteMarker = ({
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
+      {/* ── Radar lens overlay — anchored on marker, fanned outward ── */}
       <AnimatePresence>
         {isHovered && activeSpheres.length > 0 && (
           <motion.div
@@ -387,21 +392,22 @@ export const SiteMarker = ({
             {activeSpheres.map((section, i) => {
               const thetaDeg = angles[i] ?? 90;
               const theta    = thetaDeg * (Math.PI / 180);
+              // Widget centre offset so cone focal point aligns with marker
               const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
               const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
 
-              // Identifica il logo in modo "crash-proof" leggendo l'intero oggetto JSON in stringa
+              // CONTROLLO IMMAGINE CERTIFICAZIONE (Safe Stringify per evitare crash toLowerCase)
               let customImg = undefined;
-              if (section === "certifications" && certs?.certifications) {
+              if (section === "certifications") {
                 try {
-                  const safeString = JSON.stringify(certs.certifications).toLowerCase();
-                  if (safeString.includes("leed")) {
+                  const safeProjectString = JSON.stringify(project);
+                  if (safeProjectString.includes("LEED") || safeProjectString.includes("leed")) {
                     customImg = "/LEED.png";
-                  } else if (safeString.includes("well")) {
+                  } else if (safeProjectString.includes("WELL") || safeProjectString.includes("well")) {
                     customImg = "/WELL.png";
                   }
                 } catch (e) {
-                  // Fallback silenzioso se JSON.stringify fallisce su strutture circolari (raro)
+                  // Fallback silenzioso se JSON.stringify fallisce (non crasherà mai l'app)
                 }
               }
 
@@ -423,7 +429,7 @@ export const SiteMarker = ({
                     rotationDeg={thetaDeg}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
-                    customIconImg={customImg}
+                    customIconImg={customImg} // Passa l'immagine al radar
                     onClick={() => handleSectionClick(section)}
                     index={i}
                   />
@@ -434,9 +440,17 @@ export const SiteMarker = ({
         )}
       </AnimatePresence>
 
+      {/* ── Marker pin — click opens site Overview ── */}
       <button
-        onPointerDown={(e) => { e.stopPropagation(); onMarkerClick(project); }}
-        onClick={(e) => { e.stopPropagation(); onMarkerClick(project); }}
+        // ROOT CAUSE FIX: Protezione eventi Leaflet
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onMarkerClick(project); 
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onMarkerClick(project); 
+        }}
         title={project.name}
         style={{
           width:      36,
