@@ -33,7 +33,7 @@ import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/component
 import { OverviewSection } from "./OverviewSection";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
-import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, parseTimestamp } from "@/lib/api";
+import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
@@ -657,6 +657,62 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     }
   );
   const energyTimeseriesResp = energyTimeseriesQuery.data;
+
+  // Weather timeseries query to retrieve actual temperature and humidity
+  const weatherTimeseriesQuery = useWeatherTimeseries(
+    {
+      site_id: project?.siteId || '',
+      start: timeRange.start.toISOString(),
+      end: timeRange.end.toISOString(),
+    },
+    {
+      enabled: isSupabaseConfigured && !!project?.siteId && isSimulationMode && hasOnlyGeneralMeters,
+    }
+  );
+  const weatherTimeseriesData = weatherTimeseriesQuery.data?.data;
+
+  // Helper to find closest weather telemetry point in time (handling timezone offsets and sample mismatches)
+  const findClosestWeather = useCallback((targetDate: Date) => {
+    if (!weatherTimeseriesData || weatherTimeseriesData.length === 0) {
+      return { temp: null, humidity: null };
+    }
+
+    const targetTime = targetDate.getTime();
+    let closestPoint: { temp: number | null; humidity: number | null; time: number } | null = null;
+    let minDiff = Infinity;
+
+    // Group weather points by timestamp to avoid separate lookups
+    const weatherPoints = new Map<string, { temp: number | null; humidity: number | null; time: number }>();
+    weatherTimeseriesData.forEach((point) => {
+      if (!point.ts_bucket) return;
+      const ts = point.ts_bucket;
+      const timeVal = new Date(ts).getTime();
+      const existing = weatherPoints.get(ts) || { temp: null, humidity: null, time: timeVal };
+      
+      if (point.metric === 'weather.temperature') {
+        existing.temp = point.value ?? point.value_avg ?? null;
+      } else if (point.metric === 'weather.humidity') {
+        existing.humidity = point.value ?? point.value_avg ?? null;
+      }
+      weatherPoints.set(ts, existing);
+    });
+
+    // Find the one with the smallest absolute time difference
+    for (const wp of weatherPoints.values()) {
+      const diff = Math.abs(wp.time - targetTime);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestPoint = wp;
+      }
+    }
+
+    // Only accept weather readings within a 2-hour window of the target date
+    if (closestPoint && minDiff <= 2 * 60 * 60 * 1000) {
+      return { temp: closestPoint.temp, humidity: closestPoint.humidity };
+    }
+
+    return { temp: null, humidity: null };
+  }, [weatherTimeseriesData]);
 
   // --- PREVIOUS PERIOD: Equivalent PTD (Period-To-Date) comparison ---
   const prevPeriodRange = useMemo(() => {
@@ -1397,30 +1453,94 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     // Apply virtual splits if simulation mode is active and site has only general meters in category view
     if (isSimulationMode && hasOnlyGeneralMeters && energyViewMode === 'category') {
       const siteTz = resolveTimezone(project?.timezone);
+      const lat = project?.lat ?? 45.0; // default to mid-latitude Northern Hemisphere
+      const isSouthern = lat < 0;
+      const isEquatorial = Math.abs(lat) <= 15;
+
       groupedMap.forEach((entry) => {
         const dateObj = new Date(entry.ts);
         const p = getPartsInTz(dateObj, siteTz);
         const isWeekend = p.weekday === 'Sat' || p.weekday === 'Sun';
         const day_type = isWeekend ? 'weekend' : 'weekday';
 
+        // 1. Latitude-Aware Hemisphere Phase Shift (query benchmarks by seasonally-shifted month)
+        let queryMonth = p.month;
+        if (isSouthern) {
+          queryMonth = p.month + 6;
+          if (queryMonth > 12) queryMonth -= 12;
+        }
+
         // High-quality fallback defaults (40% HVAC, 25% Lighting, 20% Plugs, 15% Other)
         let pct = { hvac_pct: 0.40, lighting_pct: 0.25, plugs_pct: 0.20, other_pct: 0.15 };
         
         if (timeRange.bucket === '1d') {
-          const key = `${p.month}|${day_type}`;
+          const key = `${queryMonth}|${day_type}`;
           const found = dailyBenchmarksMap.get(key);
           if (found) pct = found;
         } else {
-          const key = `${p.month}|${day_type}|${p.hour}`;
+          const key = `${queryMonth}|${day_type}|${p.hour}`;
           const found = hourlyBenchmarksMap.get(key);
           if (found) pct = found;
         }
 
+        // 2. Seasonal Daylight lighting factor calculation
+        let daylightFactor = 1.0;
+        const hNoon = 13.0; // Solar noon around 13:00
+        // Day-length half-width (varies sinusoidally between 3.5h and 6.5h) aligned with season
+        const wDaylight = 5.0 + 1.5 * Math.sin(((queryMonth - 4) * Math.PI) / 6);
+        const hourDiff = Math.abs(p.hour - hNoon);
+        
+        if (hourDiff < wDaylight) {
+          const intensity = Math.cos((hourDiff * Math.PI) / (2 * wDaylight));
+          // Scale lighting down by up to 40% at peak sunlight
+          daylightFactor = 1.0 - 0.40 * intensity;
+        }
+
+        // 3. Real-time temperature & humidity HVAC weather scaling
+        const weatherPoint = findClosestWeather(dateObj);
+        let weatherFactor = 1.0;
+
+        if (weatherPoint.temp !== null) {
+          const temp = weatherPoint.temp;
+          const humidity = weatherPoint.humidity ?? 50.0;
+          let coolingStress = 0;
+          let heatingStress = 0;
+
+          // 22°C cooling baseline, 18°C heating baseline
+          if (temp > 22.0) {
+            coolingStress = (temp - 22.0) * (1.0 + Math.max(0, humidity - 50.0) / 100.0);
+          } else if (temp < 18.0) {
+            heatingStress = 18.0 - temp;
+          }
+
+          // Equatorial Flattening: constant warm baseline cooling strain near the equator
+          if (isEquatorial) {
+            coolingStress = 5.0; // mild constant cooling strain
+            heatingStress = 0;
+          }
+
+          // Compute weather multiplier (+0.08 scaling per degree stress unit)
+          weatherFactor = 1.0 + 0.08 * coolingStress + 0.08 * heatingStress;
+        }
+
+        // Apply scaling multipliers to raw ratios
+        const rawHvac = pct.hvac_pct * weatherFactor;
+        const rawLighting = pct.lighting_pct * daylightFactor;
+        const rawPlugs = pct.plugs_pct;
+        const rawOther = pct.other_pct;
+
+        // 4. Dynamic Normalization (Ensuring sum equals exactly 1.000)
+        const totalRaw = rawHvac + rawLighting + rawPlugs + rawOther;
+        const hvacPctNormalized = Number((rawHvac / totalRaw).toFixed(3));
+        const lightingPctNormalized = Number((rawLighting / totalRaw).toFixed(3));
+        const plugsPctNormalized = Number((rawPlugs / totalRaw).toFixed(3));
+        const otherPctNormalized = Number((1.000 - (hvacPctNormalized + lightingPctNormalized + plugsPctNormalized)).toFixed(3));
+
         const totalGeneral = entry.General;
-        entry.HVAC = totalGeneral * pct.hvac_pct;
-        entry.Lighting = totalGeneral * pct.lighting_pct;
-        entry.Plugs = totalGeneral * pct.plugs_pct;
-        entry.Other = totalGeneral * pct.other_pct;
+        entry.HVAC = totalGeneral * hvacPctNormalized;
+        entry.Lighting = totalGeneral * lightingPctNormalized;
+        entry.Plugs = totalGeneral * plugsPctNormalized;
+        entry.Other = totalGeneral * otherPctNormalized;
         entry.General = 0; // Morph general completely into virtual splits
       });
     }
@@ -1435,11 +1555,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     energyViewMode,
     deviceMap,
     project?.timezone,
+    project?.lat,
     timeRange.bucket,
     isSimulationMode,
     hasOnlyGeneralMeters,
     hourlyBenchmarksMap,
-    dailyBenchmarksMap
+    dailyBenchmarksMap,
+    findClosestWeather
   ]);
 
   // ENERGY PERIOD AVERAGES for Overview Section
@@ -2396,19 +2518,79 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             const isWeekend = p.weekday === 'Sat' || p.weekday === 'Sun';
             const dayType = isWeekend ? 'weekend' : 'weekday';
             
+            const lat = project?.lat ?? 45.0;
+            const isSouthern = lat < 0;
+            const isEquatorial = Math.abs(lat) <= 15;
+
+            // 1. Latitude-Aware Hemisphere Phase Shift Month
+            let queryMonth = p.month;
+            if (isSouthern) {
+              queryMonth = p.month + 6;
+              if (queryMonth > 12) queryMonth -= 12;
+            }
+
             const found = benchmarkMatrix.find(row => 
-              Number(row.month_num) === p.month && 
+              Number(row.month_num) === queryMonth && 
               Number(row.hour_num) === p.hour && 
               row.day_type === dayType
             );
-            if (found) {
-              pct = {
-                hvac_pct: Number(found.hvac_pct),
-                lighting_pct: Number(found.lighting_pct),
-                plugs_pct: Number(found.plugs_pct),
-                other_pct: Number(found.other_pct)
-              };
+
+            // 2. Seasonal Daylight Factor
+            let daylightFactor = 1.0;
+            const hNoon = 13.0; // Solar noon
+            const wDaylight = 5.0 + 1.5 * Math.sin(((queryMonth - 4) * Math.PI) / 6);
+            const hourDiff = Math.abs(p.hour - hNoon);
+            
+            if (hourDiff < wDaylight) {
+              const intensity = Math.cos((hourDiff * Math.PI) / (2 * wDaylight));
+              daylightFactor = 1.0 - 0.40 * intensity;
             }
+
+            // 3. Real-time temperature & humidity HVAC weather scaling
+            const weatherPoint = findClosestWeather(dateObj);
+            let weatherFactor = 1.0;
+
+            if (weatherPoint.temp !== null) {
+              const temp = weatherPoint.temp;
+              const humidity = weatherPoint.humidity ?? 50.0;
+              let coolingStress = 0;
+              let heatingStress = 0;
+
+              if (temp > 22.0) {
+                coolingStress = (temp - 22.0) * (1.0 + Math.max(0, humidity - 50.0) / 100.0);
+              } else if (temp < 18.0) {
+                heatingStress = 18.0 - temp;
+              }
+
+              if (isEquatorial) {
+                coolingStress = 5.0;
+                heatingStress = 0;
+              }
+
+              weatherFactor = 1.0 + 0.08 * coolingStress + 0.08 * heatingStress;
+            }
+
+            let baseHvac = 0.40, baseLighting = 0.25, basePlugs = 0.20, baseOther = 0.15;
+            if (found) {
+              baseHvac = Number(found.hvac_pct);
+              baseLighting = Number(found.lighting_pct);
+              basePlugs = Number(found.plugs_pct);
+              baseOther = Number(found.other_pct);
+            }
+
+            const rawHvac = baseHvac * weatherFactor;
+            const rawLighting = baseLighting * daylightFactor;
+            const rawPlugs = basePlugs;
+            const rawOther = baseOther;
+
+            // 4. Dynamic Normalization (Ensuring sum equals exactly 1.000)
+            const totalRaw = rawHvac + rawLighting + rawPlugs + rawOther;
+            pct = {
+              hvac_pct: Number((rawHvac / totalRaw).toFixed(3)),
+              lighting_pct: Number((rawLighting / totalRaw).toFixed(3)),
+              plugs_pct: Number((rawPlugs / totalRaw).toFixed(3)),
+              other_pct: Number((1.000 - (Number((rawHvac / totalRaw).toFixed(3)) + Number((rawLighting / totalRaw).toFixed(3)) + Number((rawPlugs / totalRaw).toFixed(3)))).toFixed(3))
+            };
           }
         } catch (e) {
           console.error("Failed to calculate virtual split from benchmark matrix in activePowerBreakdown:", e);
@@ -2428,7 +2610,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     }
 
     return rawBreakdown;
-  }, [timePeriod, energyPowerBreakdown, energyPeriodAverages, isSimulationMode, hasOnlyGeneralMeters, benchmarkMatrix, project?.timezone]);
+  }, [timePeriod, energyPowerBreakdown, energyPeriodAverages, isSimulationMode, hasOnlyGeneralMeters, benchmarkMatrix, project?.timezone, project?.lat, findClosestWeather]);
 
   // B. Elaborazione Dati per il Donut Chart
   const powerDistributionData = useMemo(() => {
