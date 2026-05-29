@@ -72,7 +72,7 @@ export const NotificationsTab = () => {
         ) : (
           groupEntries.map(group => {
             const unreadInGroup = group.items.filter(i => !isRead(i.id)).length;
-            const isCollapsed = collapsed[group.name] ?? false;
+            const isCollapsed = collapsed[group.name] ?? true;
             const topSev = group.items.reduce<'critical' | 'warning' | 'info'>((acc, i) => {
               if (i.severity === 'critical') return 'critical';
               if (i.severity === 'warning' && acc !== 'critical') return 'warning';
