@@ -722,11 +722,14 @@ const FloatingBentoPanel: React.FC = () => {
         </div>
       </section>
 
-      {/* Final CTA */}
+      {/* Final CTA + Footer (grouped into one snap viewport) */}
+      <div
+        className="relative w-full min-h-[100dvh] snap-start flex flex-col"
+        style={{ background: SURFACE }}
+      >
       <section
         id="cta"
-        className="relative w-full min-h-[100dvh] snap-start flex items-center justify-center px-8 py-28"
-        style={{ background: SURFACE }}
+        className="relative w-full flex-1 flex items-center justify-center px-8 py-16"
       >
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -780,7 +783,7 @@ const FloatingBentoPanel: React.FC = () => {
 
       {/* Footer */}
       <footer
-        className="w-full border-t border-black/[0.06] px-8 py-10"
+        className="w-full border-t border-black/[0.06] px-8 py-6"
         style={{ background: SURFACE }}
       >
         <div className="w-full max-w-[1200px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-6">
@@ -807,6 +810,7 @@ const FloatingBentoPanel: React.FC = () => {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 };
