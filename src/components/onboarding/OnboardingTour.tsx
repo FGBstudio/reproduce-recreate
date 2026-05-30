@@ -224,7 +224,7 @@ export const OnboardingTour: React.FC = () => {
   const rect = useTargetRect(currentStep?.selector);
   const placement = currentStep?.placement ?? "center";
   const TIP_W = placement === "center" ? 480 : 380;
-  const TIP_H = 260;
+  const TIP_H = 360;
   const pos = computeCardPos(rect, placement, TIP_W, TIP_H);
 
   // Ghost cursor position — defaults to off-screen so it springs in
