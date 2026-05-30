@@ -1289,7 +1289,7 @@ export type Database = {
           month_num: number
           other_pct: number
           plugs_pct: number
-          region: string
+          region: string | null
           typology: string
         }
         Insert: {
@@ -1302,7 +1302,7 @@ export type Database = {
           month_num: number
           other_pct: number
           plugs_pct: number
-          region: string
+          region?: string | null
           typology: string
         }
         Update: {
@@ -1315,7 +1315,7 @@ export type Database = {
           month_num?: number
           other_pct?: number
           plugs_pct?: number
-          region?: string
+          region?: string | null
           typology?: string
         }
         Relationships: []
@@ -2360,6 +2360,7 @@ export type Database = {
           origin_location_id: string | null
           purchase_order_id: string | null
           shipment_type: string | null
+          shipped_by: string | null
           shipped_date: string | null
           status: string | null
           total_shipping_cost: number | null
@@ -2377,6 +2378,7 @@ export type Database = {
           origin_location_id?: string | null
           purchase_order_id?: string | null
           shipment_type?: string | null
+          shipped_by?: string | null
           shipped_date?: string | null
           status?: string | null
           total_shipping_cost?: number | null
@@ -2394,6 +2396,7 @@ export type Database = {
           origin_location_id?: string | null
           purchase_order_id?: string | null
           shipment_type?: string | null
+          shipped_by?: string | null
           shipped_date?: string | null
           status?: string | null
           total_shipping_cost?: number | null
@@ -2420,6 +2423,13 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "ops_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_shipments_shipped_by_fkey"
+            columns: ["shipped_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5189,10 +5199,12 @@ export type Database = {
         Args: { p_end_time: string; p_site_id: string; p_start_time: string }
         Returns: {
           climate_zone: string
+          humidity_pct: number
           hvac_kwh: number
           lighting_kwh: number
           other_kwh: number
           plugs_kwh: number
+          temp_c: number
           total_kwh: number
           ts_hour: string
           typology: string
