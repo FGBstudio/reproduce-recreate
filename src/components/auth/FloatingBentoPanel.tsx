@@ -570,8 +570,8 @@ const FloatingBentoPanel: React.FC = () => {
         <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-8 text-[13px] font-medium pointer-events-auto" style={{ color: INK }}>
           <button onClick={() => scrollToSection('solution')} className="hover:text-emerald-400 transition-colors">Our Solution</button>
           <button onClick={() => scrollToSection('values')} className="hover:text-emerald-400 transition-colors">Our Values</button>
-          <button onClick={() => scrollToSection('clients')} className="hover:text-emerald-400 transition-colors">Uffici</button>
           <button onClick={() => scrollToSection('pricing')} className="hover:text-emerald-400 transition-colors">Our Pricing</button>
+          <button onClick={() => scrollToSection('cta')} className="hover:text-emerald-400 transition-colors">Our Goal</button>
         </div>
 
         {/* TASTO REQUEST ACCESS (Mantenuto fisso a destra) */}
