@@ -36,7 +36,7 @@ export const useProjectCertifications = (project: Project | null): Certification
   return useMemo(() => {
     if (!project) return [];
 
-    const projectSiteId = (project as any).siteId as string | undefined;
+    const projectSiteId = project.siteId;
     if (projectSiteId) {
       const bySite = adminProjects.find(
         (ap) => ap.siteId === projectSiteId || ap.id === projectSiteId
