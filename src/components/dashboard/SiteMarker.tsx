@@ -147,8 +147,8 @@ const MapMetricRadar = ({
       >
         <path
           d={conePath}
-          fill={cssA(meta.accentVar, 0.12)}
-          stroke={cssA(meta.accentVar, 0.33)}
+          fill={cssA(meta.accentVar, section === "certifications" ? 0.05 : 0.12)}
+          stroke={cssA(meta.accentVar, section === "certifications" ? 0.16 : 0.33)}
           strokeWidth={1.25}
           strokeDasharray="6 6"
         />
@@ -367,12 +367,12 @@ export const SiteMarker = ({
   // Costruiamo l'array delle sfere attive
   const activeSpheres: MetricSection[] = ((project.monitoring || []) as string[]).filter(
     (m): m is MetricSection =>
-      m === "energy" || m === "air" || m === "water" || m === "certifications"
+      m === "energy" || m === "air" || m === "water"
   );
 
-  // Se il sito ha almeno una certificazione configurata, forziamo la sfera "certifications".
+  // La sfera "certifications" appare SOLO se ci sono certificazioni reali configurate via Admin.
   const hasCertifications = certTypes.length > 0;
-  if (hasCertifications && !activeSpheres.includes("certifications")) {
+  if (hasCertifications) {
     activeSpheres.push("certifications");
   }
 
