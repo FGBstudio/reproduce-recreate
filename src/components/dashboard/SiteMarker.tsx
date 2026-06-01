@@ -147,8 +147,8 @@ const MapMetricRadar = ({
       >
         <path
           d={conePath}
-          fill={cssA(meta.accentVar, 0.12)}
-          stroke={cssA(meta.accentVar, 0.33)}
+          fill={cssA(meta.accentVar, section === "certifications" ? 0.05 : 0.12)}
+          stroke={cssA(meta.accentVar, section === "certifications" ? 0.16 : 0.33)}
           strokeWidth={1.25}
           strokeDasharray="6 6"
         />
