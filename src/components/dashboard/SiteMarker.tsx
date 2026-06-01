@@ -367,12 +367,12 @@ export const SiteMarker = ({
   // Costruiamo l'array delle sfere attive
   const activeSpheres: MetricSection[] = ((project.monitoring || []) as string[]).filter(
     (m): m is MetricSection =>
-      m === "energy" || m === "air" || m === "water" || m === "certifications"
+      m === "energy" || m === "air" || m === "water"
   );
 
-  // Se il sito ha almeno una certificazione configurata, forziamo la sfera "certifications".
+  // La sfera "certifications" appare SOLO se ci sono certificazioni reali configurate via Admin.
   const hasCertifications = certTypes.length > 0;
-  if (hasCertifications && !activeSpheres.includes("certifications")) {
+  if (hasCertifications) {
     activeSpheres.push("certifications");
   }
 
