@@ -172,7 +172,7 @@ function useDelayedTrue(delay = 60): boolean {
 // ScoreHero Sub-components
 // ─────────────────────────────────────────────
 
-const RING_R = 31;
+const RING_R = 42;
 const RING_CIRC = 2 * Math.PI * RING_R;
 
 function ScoreRing({ score, level, animatedScore }: { score: number; level: StatusLevel; animatedScore: number }) {
@@ -181,14 +181,14 @@ function ScoreRing({ score, level, animatedScore }: { score: number; level: Stat
   const offset = mounted ? RING_CIRC * (1 - score / 100) : RING_CIRC;
 
   return (
-    <div className="relative flex-shrink-0" style={{ width: 80, height: 80 }}>
-      <svg width={80} height={80} viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
-        <circle cx={40} cy={40} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={7} />
-        <circle cx={40} cy={40} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={7} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
+    <div className="relative flex-shrink-0" style={{ width: 104, height: 104 }}>
+      <svg width={104} height={104} viewBox="0 0 104 104" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
+        <circle cx={52} cy={52} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={8} />
+        <circle cx={52} cy={52} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={8} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className={`text-xl font-medium leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
-        <span className="text-[9px] uppercase tracking-widest text-gray-400 mt-0.5">score</span>
+        <span className={`text-[28px] font-medium leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
+        <span className="text-[10px] uppercase tracking-widest text-gray-400 mt-1">score</span>
       </div>
     </div>
   );
@@ -198,11 +198,11 @@ function TrackBar({ score, level }: { score: number; level: StatusLevel }) {
   const tokens = STATUS_TOKENS[level];
   const mounted = useDelayedTrue(80);
   return (
-    <div className="flex items-center gap-2 mt-1.5">
-      <div className="h-[3px] w-[160px] rounded-full bg-gray-100 overflow-hidden">
+    <div className="flex items-center gap-2.5 mt-2.5">
+      <div className="h-[4px] w-[200px] rounded-full bg-gray-100 overflow-hidden">
         <div className={`h-full rounded-full ${tokens.trackColor}`} style={{ width: mounted ? `${score}%` : "0%", transition: "width 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
       </div>
-      <span className="text-[11px] text-gray-400 tabular-nums">{score} / 100</span>
+      <span className="text-[12px] text-gray-400 tabular-nums">{score} / 100</span>
     </div>
   );
 }
@@ -211,17 +211,17 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick }: any) {
   const tokens = STATUS_TOKENS[level];
   const active = enabled && isLive;
   return (
-    <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-1 min-w-[52px] group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
-      <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-gray-300 border-gray-100"}`}>
+    <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-1.5 min-w-[64px] group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
+      <div className={`w-12 h-12 rounded-[12px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-gray-300 border-gray-100"}`}>
         {icon}
       </div>
-      <span className={`text-[13px] font-medium tabular-nums leading-none ${active ? "text-gray-800" : "text-gray-300"}`}>{active ? score : "—"}</span>
-      <span className="text-[9px] uppercase tracking-wider text-gray-400">{label}</span>
+      <span className={`text-[16px] font-medium tabular-nums leading-none ${active ? "text-gray-800" : "text-gray-300"}`}>{active ? score : "—"}</span>
+      <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
     </button>
   );
 }
 
-function ModSep() { return <div className="w-px h-8 bg-gray-100 self-center flex-shrink-0" aria-hidden="true" />; }
+function ModSep() { return <div className="w-px h-10 bg-gray-100 self-center flex-shrink-0" aria-hidden="true" />; }
 
 function LiveBadge({ isLive }: { isLive: boolean }) {
   return (
@@ -258,10 +258,10 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
               <LiveBadge isLive={isLive} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
-            <div className={`text-[26px] md:text-[28px] font-medium leading-none tracking-tight ${tokens.textColor}`}>
+            <div className={`text-[30px] md:text-[34px] font-medium leading-none tracking-tight ${tokens.textColor}`}>
               {tokens.word}
             </div>
-            <div className="text-[12px] text-gray-500 mt-1 leading-snug">
+            <div className="text-[13px] text-gray-500 mt-1.5 leading-snug">
               Overall performance {peerPercentile != null && (<> · Top <strong className="font-medium text-gray-700">{peerPercentile}%</strong> of monitored buildings</>)}
             </div>
             <TrackBar score={score} level={level} />
@@ -269,24 +269,24 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
         </div>
 
         {/* ── DIVIDER (xl+) ── */}
-        <div className="hidden xl:block w-px h-16 bg-gray-100 flex-shrink-0" aria-hidden="true" />
+        <div className="hidden xl:block w-px h-20 bg-gray-100 flex-shrink-0" aria-hidden="true" />
 
         {/* ── RIGHT: Module pills + Alerts ── */}
-        <div className="flex items-center gap-3 md:gap-4 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
+        <div className="flex items-center gap-4 md:gap-5 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
           <ModPill icon={<Zap className="w-4 h-4" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} />
           <ModSep />
           <ModPill icon={<Wind className="w-4 h-4" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} />
           <ModSep />
           <ModPill icon={<Droplet className="w-4 h-4" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} />
           <ModSep />
-          <div className="flex flex-col items-center gap-1 min-w-[52px]">
-            <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-              {alertStatus.hasAlerts ? <AlertTriangle className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
+          <div className="flex flex-col items-center gap-1.5 min-w-[64px]">
+            <div className={`w-12 h-12 rounded-[12px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+              {alertStatus.hasAlerts ? <AlertTriangle className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
             </div>
-            <span className={`text-[13px] font-medium tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-emerald-600'}`}>
+            <span className={`text-[16px] font-medium tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-emerald-600'}`}>
               {alertStatus.hasAlerts ? alertStatus.criticalCount + alertStatus.warningCount : "0"}
             </span>
-            <span className="text-[9px] uppercase tracking-wider text-gray-400">Alerts</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400">Alerts</span>
           </div>
         </div>
       </div>
