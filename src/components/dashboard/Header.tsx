@@ -12,6 +12,8 @@ import { useAllProjects } from "@/hooks/useRealTimeData";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
+import { useWrapped } from "@/components/wrapped/WrappedContext";
+import { Sparkles } from "lucide-react";
 
 interface HeaderProps {
   userName?: string;
@@ -32,7 +34,50 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
 
   const { projects } = useAllProjects();
   const { clientRole, holdingId, brandId, siteId } = useUserScope();
-  const { brands } = useAdminData();
+  const { brands, sites, holdings } = useAdminData();
+  const { open: openWrapped } = useWrapped();
+
+  // Determine the wrapped scope based on the user's role
+  const launchWrapped = () => {
+    if (clientRole === 'STORE_USER' && siteId) {
+      const s = sites.find(x => x.id === siteId);
+      if (s) {
+        openWrapped({ kind: 'site', siteId: s.id, siteName: s.name, areaM2: s.area_m2 ?? s.areaSqm ?? null });
+        return;
+      }
+    }
+    if (clientRole === 'ADMIN_BRAND' && brandId) {
+      const b = brands.find(x => x.id === brandId);
+      const brandSites = sites.filter(s => s.brandId === brandId).map(s => ({
+        id: s.id, name: s.name, region: s.region, brandName: b?.name ?? null,
+        areaM2: s.area_m2 ?? s.areaSqm ?? null,
+      }));
+      if (brandSites.length) {
+        openWrapped({ kind: 'aggregate', label: b?.name ?? 'Brand', sites: brandSites });
+        return;
+      }
+    }
+    if (clientRole === 'ADMIN_HOLDING' && holdingId) {
+      const h = holdings.find(x => x.id === holdingId);
+      const allowedBrandIds = new Set(brands.filter(b => b.holdingId === holdingId).map(b => b.id));
+      const hSites = sites.filter(s => allowedBrandIds.has(s.brandId)).map(s => ({
+        id: s.id, name: s.name, region: s.region,
+        brandName: brands.find(b => b.id === s.brandId)?.name ?? null,
+        areaM2: s.area_m2 ?? s.areaSqm ?? null,
+      }));
+      if (hSites.length) {
+        openWrapped({ kind: 'aggregate', label: h?.name ?? 'Holding', sites: hSites });
+        return;
+      }
+    }
+    // FGB Admin / User → global
+    const all = sites.map(s => ({
+      id: s.id, name: s.name, region: s.region,
+      brandName: brands.find(b => b.id === s.brandId)?.name ?? null,
+      areaM2: s.area_m2 ?? s.areaSqm ?? null,
+    }));
+    openWrapped({ kind: 'admin-global', label: 'FGB Global', sites: all });
+  };
 
   // Restrict the searchable project list to what this user can actually access
   const scopedProjects = useMemo(() => {
@@ -299,6 +344,14 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
 
           {/* User Avatar, Language & Admin */}
           <div className="flex items-center gap-2 md:gap-3">
+            <button
+              onClick={launchWrapped}
+              className="glass-panel rounded-full px-3 py-2 flex items-center gap-1.5 hover:bg-fgb-light/50 transition-colors"
+              title="FGB Weekly Wrapped"
+            >
+              <Sparkles className="w-4 h-4 text-fgb-accent" />
+              <span className="text-xs font-medium text-foreground hidden md:inline">Wrapped</span>
+            </button>
             {/*
             <button
               onClick={toggleLanguage}
