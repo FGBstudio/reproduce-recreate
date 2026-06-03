@@ -5,7 +5,9 @@ import { useAllProjects } from "@/hooks/useRealTimeData";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ChevronDown, ChevronUp, Circle, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, Circle, Info, Sparkles } from "lucide-react";
+import { useWrapped } from "@/components/wrapped/WrappedContext";
+import { useAdminData } from "@/contexts/AdminDataContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -26,6 +28,8 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   
   // Get all projects (real + mock merged)
   const { projects: mergedProjects } = useAllProjects();
+  const { sites: adminSites, brands } = useAdminData();
+  const { open: openWrapped } = useWrapped();
 
   // Filter projects belonging to this region
   const regionProjects = useMemo(() => {
@@ -172,6 +176,24 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               {t('region.performance')}
             </div>
           </div>
+          <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const ids = new Set(regionProjects.map(p => p.siteId).filter(Boolean));
+              const sitesList = adminSites.filter(s => ids.has(s.id)).map(s => ({
+                id: s.id, name: s.name, region: s.region,
+                brandName: brands.find(b => b.id === s.brandId)?.name ?? null,
+                areaM2: s.area_m2 ?? s.areaSqm ?? null,
+              }));
+              if (sitesList.length === 0) return;
+              openWrapped({ kind: 'aggregate', label: `${region.name} region`, sites: sitesList });
+            }}
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            title="Play weekly Wrapped"
+            aria-label="Play weekly Wrapped"
+          >
+            <Sparkles className="w-4 h-4 text-fgb-accent" />
+          </button>
           {isMobile && (
             <button
               onClick={() => setCollapsed(c => !c)}
@@ -181,6 +203,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               {collapsed ? <ChevronDown className="w-5 h-5 text-foreground" /> : <ChevronUp className="w-5 h-5 text-foreground" />}
             </button>
           )}
+          </div>
         </div>
 
         {/* Collapsible content */}
