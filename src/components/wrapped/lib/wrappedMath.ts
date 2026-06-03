@@ -104,6 +104,157 @@ export function formatNumber(v: number | null | undefined, locale: string = 'it-
   return Math.round(v).toLocaleString(locale);
 }
 
+/* ─────────── Month range + label helpers ─────────── */
+
+export interface MonthRange {
+  start: Date;
+  end: Date;
+  startStr: string;
+  endStr: string;
+  label: string;
+  year: number;
+  month: number;
+}
+
+const MONTH_NAMES_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+export const MONTH_NAMES = MONTH_NAMES_EN;
+
+export function wrappedMonthRange(now: Date = new Date()): MonthRange {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const dayOfMonth = now.getUTCDate();
+  let year = y, month0 = m;
+  if (dayOfMonth <= 3) {
+    if (m === 0) { year = y - 1; month0 = 11; }
+    else { month0 = m - 1; }
+  }
+  const start = new Date(Date.UTC(year, month0, 1));
+  const end = new Date(Date.UTC(year, month0 + 1, 1));
+  const lastDay = new Date(end.getTime() - 86400000);
+  return {
+    start, end,
+    startStr: start.toISOString().slice(0, 10),
+    endStr: lastDay.toISOString().slice(0, 10),
+    label: `${MONTH_NAMES_EN[month0]} ${year}`,
+    year, month: month0 + 1,
+  };
+}
+
+export function previousYearMonthRange(ref: MonthRange): MonthRange {
+  const start = new Date(Date.UTC(ref.year - 1, ref.month - 1, 1));
+  const end = new Date(Date.UTC(ref.year - 1, ref.month, 1));
+  const lastDay = new Date(end.getTime() - 86400000);
+  return {
+    start, end,
+    startStr: start.toISOString().slice(0, 10),
+    endStr: lastDay.toISOString().slice(0, 10),
+    label: `${MONTH_NAMES_EN[ref.month - 1]} ${ref.year - 1}`,
+    year: ref.year - 1, month: ref.month,
+  };
+}
+
+export function previousMonthRange(ref: MonthRange): MonthRange {
+  const m0 = ref.month - 2;
+  const year = m0 < 0 ? ref.year - 1 : ref.year;
+  const month0 = (m0 + 12) % 12;
+  const start = new Date(Date.UTC(year, month0, 1));
+  const end = new Date(Date.UTC(year, month0 + 1, 1));
+  const lastDay = new Date(end.getTime() - 86400000);
+  return {
+    start, end,
+    startStr: start.toISOString().slice(0, 10),
+    endStr: lastDay.toISOString().slice(0, 10),
+    label: `${MONTH_NAMES_EN[month0]} ${year}`,
+    year, month: month0 + 1,
+  };
+}
+
+export function formatEuro(v: number | null | undefined): string {
+  if (v == null || !isFinite(v)) return '—';
+  return `€ ${Math.round(v).toLocaleString('it-IT')}`;
+}
+
+/* ─────────── Building archetype from hourly load profile ─────────── */
+
+export type ArchetypeKey = 'early-bird' | 'day-shift' | 'night-owl' | 'insomniac';
+export interface ArchetypeInfo {
+  key: ArchetypeKey;
+  name: string;
+  emoji: string;
+  caption: string;
+  description: string;
+  peakHour: number;
+}
+
+export function archetypeFromHourlyProfile(profile: (number | null)[]): ArchetypeInfo | null {
+  if (!profile || profile.length !== 24) return null;
+  const vals = profile.map(v => v ?? 0);
+  const present = profile.filter(v => v != null && (v as number) > 0).length;
+  if (present < 6) return null;
+  const total = vals.reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  const max = Math.max(...vals);
+  const positive = vals.filter(v => v > 0);
+  const min = positive.length ? Math.min(...positive) : 0;
+  const avg = total / 24;
+  const peakHour = vals.indexOf(max);
+  const flat = avg > 0 && (max - min) / avg < 0.6;
+
+  if (flat) {
+    return { key: 'insomniac', name: 'The Insomniac', emoji: '🌙',
+      caption: 'Always on. Flat load 24/7.',
+      description: 'Your consumption stays roughly constant day and night — typical of data centers, hospitals, or always-on facilities.',
+      peakHour };
+  }
+  if (peakHour >= 6 && peakHour <= 11) {
+    return { key: 'early-bird', name: 'The Early Bird', emoji: '🌅',
+      caption: 'Energy peaks in the morning.',
+      description: 'Mornings drive your usage — typical of retail openings, bakeries and offices ramping up early.',
+      peakHour };
+  }
+  if (peakHour >= 12 && peakHour <= 17) {
+    return { key: 'day-shift', name: 'The Day Shift', emoji: '☀️',
+      caption: 'Steady consumption through the afternoon.',
+      description: 'Your building hits its stride mid-day — classic office or workshop pattern.',
+      peakHour };
+  }
+  return { key: 'night-owl', name: 'The Night Owl', emoji: '🌃',
+    caption: 'Energy peaks in the evening.',
+    description: 'Evenings are your busiest hours — typical of restaurants, gyms and entertainment venues.',
+    peakHour };
+}
+
+/* ─────────── Real-life energy equivalences ─────────── */
+
+export interface EnergyEquiv {
+  icon: string;
+  value: number;
+  unit: string;
+  label: string;
+}
+
+const EQUIV_RATES: Array<{ icon: string; unit: string; label: string; perKwh: number }> = [
+  { icon: '☕', unit: '',     label: 'espressos',          perKwh: 1 / 0.015 },
+  { icon: '📱', unit: '',     label: 'phone charges',      perKwh: 1 / 0.012 },
+  { icon: '🚗', unit: 'km',   label: 'Tesla Model 3',      perKwh: 1 / 0.15 },
+  { icon: '🧺', unit: '',     label: 'laundry loads',      perKwh: 1 / 1.0 },
+  { icon: '💡', unit: 'h',    label: 'LED bulb',           perKwh: 1 / 0.087 },
+  { icon: '🍕', unit: '',     label: 'pizzas baked',       perKwh: 1 / 0.8 },
+];
+
+/** Deterministic pick of 3 equivalences seeded by siteId+month. */
+export function energyEquivalences(kwh: number, seed: string): EnergyEquiv[] {
+  if (!isFinite(kwh) || kwh <= 0) return [];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const start = h % EQUIV_RATES.length;
+  const pool = EQUIV_RATES.slice(start).concat(EQUIV_RATES.slice(0, start));
+  return [0, 1, 2].map(i => {
+    const r = pool[i];
+    return { icon: r.icon, label: r.label, unit: r.unit, value: Math.round(kwh * r.perKwh) };
+  });
+}
+
 function clamp(x: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, x));
 }
