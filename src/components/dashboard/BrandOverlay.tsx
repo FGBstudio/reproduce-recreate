@@ -7,6 +7,9 @@ import {
 } from "recharts";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
 import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind} from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { useWrapped } from "@/components/wrapped/WrappedContext";
+import { useAdminData } from "@/contexts/AdminDataContext";
 import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -31,6 +34,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   const { brands } = useAllBrands();
   const { holdings } = useAllHoldings();
   const { projects, isLoading: projectsLoading } = useAllProjects();
+  const { sites: adminSites } = useAdminData();
+  const { open: openWrapped } = useWrapped();
 
   const brand = useMemo(() => 
     selectedBrand ? brands.find(b => b.id === selectedBrand) : null
@@ -279,6 +284,23 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
               </p>
             </div>
+            <button
+              onClick={() => {
+                const ids = new Set(filteredProjects.map(p => p.siteId).filter(Boolean));
+                const sitesList = adminSites.filter(s => ids.has(s.id)).map(s => ({
+                  id: s.id, name: s.name, region: s.region,
+                  brandName: brand?.name ?? null,
+                  areaM2: s.area_m2 ?? s.areaSqm ?? null,
+                }));
+                if (sitesList.length === 0) return;
+                openWrapped({ kind: 'aggregate', label: displayEntity.name, sites: sitesList });
+              }}
+              className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              title="Play weekly Wrapped"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-fgb-accent" />
+              <span className="text-[10px] uppercase tracking-widest text-foreground">Weekly Wrapped</span>
+            </button>
           </div>
 
           {/* Real Data Indicator */}
