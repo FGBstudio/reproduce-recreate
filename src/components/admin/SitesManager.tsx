@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2, Award } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2, Award, Sparkles } from 'lucide-react';
 import { CertificationsDialog } from './CertificationsDialog';
 import { LEEDCertificationsDialog } from './LEEDCertificationsDialog';
 import { useAdminData } from '@/contexts/AdminDataContext';
+import { useWrapped } from '@/components/wrapped/WrappedContext';
 import { AdminSite, RegionCode } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
