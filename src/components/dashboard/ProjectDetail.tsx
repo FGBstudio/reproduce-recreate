@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, The
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
+import { useWrapped } from "@/components/wrapped/WrappedContext";
 import { formatChartLabel, resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 
 import {
