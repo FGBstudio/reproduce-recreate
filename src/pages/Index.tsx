@@ -7,6 +7,7 @@ import MapView from "@/components/dashboard/MapView";
 import ProjectDetail from "@/components/dashboard/ProjectDetail";
 import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
 import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
+import WrappedPlayer from "@/components/wrapped/WrappedPlayer";
 import { Project, MonitoringType } from "@/lib/data";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -281,6 +282,9 @@ const Index = () => {
           initialDashboard={initialSection as any}
         />
       )}
+
+      {/* FGB Weekly Wrapped — fullscreen overlay player */}
+      <WrappedPlayer />
     </div>
   );
 };
