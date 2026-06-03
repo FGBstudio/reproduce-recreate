@@ -40,6 +40,8 @@ export interface SiteWeeklyData {
     avgCo2Ppm: number | null;
     bestDay: { day: string; co2: number } | null;
     daysExcellent: number;       // days with avg CO₂ < 800
+    minPpm: number | null;
+    peakPpm: number | null;
   };
   alerts: {
     resolvedThisWeek: number;
@@ -160,6 +162,8 @@ async function fetchSiteWeekly(siteId: string, areaM2: number | null | undefined
   const airAvg = airAvgs.length ? airAvgs.reduce((a, b) => a + b, 0) / airAvgs.length : null;
   const bestAir = pickMin(airCur, true);
   const daysExcellent = airCur.filter(d => d.kwh != null && d.kwh < 800).length;
+  const minPpm = airAvgs.length ? Math.min(...airAvgs) : null;
+  const peakPpm = airAvgs.length ? Math.max(...airAvgs) : null;
 
   return {
     siteId,
@@ -185,6 +189,8 @@ async function fetchSiteWeekly(siteId: string, areaM2: number | null | undefined
       avgCo2Ppm: airAvg != null ? Math.round(airAvg) : null,
       bestDay: bestAir ? { day: bestAir.day, co2: Math.round(bestAir.kwh!) } : null,
       daysExcellent,
+      minPpm: minPpm != null ? Math.round(minPpm) : null,
+      peakPpm: peakPpm != null ? Math.round(peakPpm) : null,
     },
     alerts: { resolvedThisWeek: alerts.resolved, activeNow: alerts.active },
     hasAnyData: weekKwh != null || prevWeekKwh != null || airAvg != null,
