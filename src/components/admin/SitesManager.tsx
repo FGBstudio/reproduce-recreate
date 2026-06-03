@@ -433,6 +433,19 @@ export const SitesManager = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Play FGB Wrapped"
+                        onClick={() => openWrapped({
+                          kind: 'site',
+                          siteId: site.id,
+                          siteName: site.name,
+                          areaM2: site.area_m2 ?? site.areaSqm ?? null,
+                        })}
+                      >
+                        <Sparkles className="w-4 h-4 text-fgb-secondary" />
+                      </Button>
                       <Button variant="ghost" size="icon" title="Certificazione WELL" onClick={() => setCertDialogSite({ id: site.id, name: site.name })}>
                         <Award className="w-4 h-4 text-rose-500" />
                       </Button>
