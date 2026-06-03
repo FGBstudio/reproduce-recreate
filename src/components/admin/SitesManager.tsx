@@ -39,6 +39,7 @@ const defaultFormData = {
 
 export const SitesManager = () => {
   const { brands, sites, addSite, updateSite, deleteSite, getProjectsBySite } = useAdminData();
+  const { open: openWrapped } = useWrapped();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<AdminSite | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
