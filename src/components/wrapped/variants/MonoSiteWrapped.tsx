@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { useSiteWeeklyWrap } from '../hooks/useSiteWeeklyWrap';
+import { useSiteMonthlyWrap } from '../hooks/useSiteMonthlyWrap';
 import { overallScore } from '../lib/wrappedMath';
 import SlideWelcome from '../slides/SlideWelcome';
 import SlideScore from '../slides/SlideScore';
@@ -7,6 +7,7 @@ import SlideEnergy from '../slides/SlideEnergy';
 import SlideAir from '../slides/SlideAir';
 import SlideAlerts from '../slides/SlideAlerts';
 import SlideFun from '../slides/SlideFun';
+import SlideArchetype from '../slides/SlideArchetype';
 import SlideTreedom from '../slides/SlideTreedom';
 import SlideIdentity from '../slides/SlideIdentity';
 import SlideRecap from '../slides/SlideRecap';
@@ -22,7 +23,7 @@ interface Args {
 export function useMonoSiteSlides({ siteId, siteName, areaM2, onDownload, isDownloading }: Args): {
   slides: ReactNode[]; isLoading: boolean; isEmpty: boolean;
 } {
-  const { data, isLoading } = useSiteWeeklyWrap(siteId, areaM2);
+  const { data, isLoading } = useSiteMonthlyWrap(siteId, areaM2);
 
   if (isLoading || !data) return { slides: [], isLoading: true, isEmpty: false };
 
@@ -33,19 +34,36 @@ export function useMonoSiteSlides({ siteId, siteName, areaM2, onDownload, isDown
   });
 
   const slides: ReactNode[] = [
-    <SlideWelcome key="welcome" siteName={siteName} weekLabel={data.weekLabel} />,
+    <SlideWelcome key="welcome" siteName={siteName} weekLabel={data.monthLabel} badge="FGB Wrapped" />,
   ];
 
-  if (score != null) slides.push(<SlideScore key="score" score={score} />);
+  if (score != null) {
+    slides.push(
+      <SlideScore
+        key="score"
+        score={score}
+        yoy={data.energy.yoyKwh != null ? {
+          label: data.prevYearMonthLabel,
+          kwh: data.energy.yoyKwh,
+          deltaPct: data.energy.yoyDeltaPct,
+        } : null}
+      />
+    );
+  }
   if (data.energy.weekKwh != null) slides.push(<SlideEnergy key="energy" data={data} />);
-  if (data.air.avgCo2Ppm != null) slides.push(<SlideAir key="air" data={data} />);
+  if (data.air.avgCo2Ppm != null || (data.air.perMetric && data.air.perMetric.length > 0)) {
+    slides.push(<SlideAir key="air" data={data} />);
+  }
   if (data.alerts.activeNow > 0 || data.alerts.resolvedThisWeek > 0) {
     slides.push(<SlideAlerts key="alerts" data={data} />);
   }
-  if (data.energy.deltaPct != null && data.energy.deltaPct < 0) {
-    slides.push(<SlideFun key="fun" data={data} />);
+  if ((data.energy.monthKwh ?? data.energy.weekKwh ?? 0) > 0) {
+    slides.push(<SlideFun key="fun" data={data} seed={`${siteId}-${data.monthLabel}`} />);
   }
-  if ((data.co2.treesEquiv ?? 0) > 0) slides.push(<SlideTreedom key="trees" data={data} />);
+  if (data.energy.archetype) {
+    slides.push(<SlideArchetype key="archetype" data={data} />);
+  }
+  slides.push(<SlideTreedom key="trees" data={data} />);
   slides.push(<SlideIdentity key="identity" score={score} />);
   slides.push(
     <SlideRecap key="recap" data={data} siteName={siteName} onDownload={onDownload} isDownloading={isDownloading} />
