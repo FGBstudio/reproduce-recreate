@@ -1,39 +1,31 @@
-import { formatPct, formatNumber } from '../lib/wrappedMath';
-import type { SiteWeeklyData } from '../hooks/useSiteWeeklyWrap';
+import { Fragment } from 'react';
+import { formatNumber, formatKwh, energyEquivalences } from '../lib/wrappedMath';
+import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 
-const SlideFun = ({ data }: { data: SiteWeeklyData }) => {
-  const savedKwh = (data.energy.prevWeekKwh ?? 0) - (data.energy.weekKwh ?? 0);
-  const phones = Math.round(savedKwh * 100); // ≈ 0.01 kWh per full phone charge
-  const aptMonths = (savedKwh / 300).toFixed(1).replace('.', ','); // 300 kWh/month ≈ small apt
-  const co2Kg = Math.round(data.co2.savedKg ?? 0);
+const SlideFun = ({ data, seed }: { data: SiteMonthlyData; seed: string }) => {
+  const kwh = data.energy.monthKwh ?? data.energy.weekKwh ?? 0;
+  const equivs = energyEquivalences(kwh, seed);
 
   return (
     <div className="wr-slide on wr-bg-fun">
       <div className="wr-ey wr-a1" style={{ color: 'var(--teal)' }}>In numbers</div>
       <div className="wr-stat wr-a2 wr-asc" style={{ color: 'var(--teal)' }}>
-        {formatPct(data.energy.deltaPct)}
+        {formatKwh(kwh).split(' ')[0]}<sup>{formatKwh(kwh).split(' ')[1]}</sup>
       </div>
-      <div className="wr-sub wr-a3">Energy saved vs last week.<br/>That translates to…</div>
+      <div className="wr-sub wr-a3">You used enough energy to…</div>
       <div className="wr-fgrid wr-a4">
-        <div className="wr-fitem">
-          <div className="wr-fitem-ico">📱</div>
-          <div className="wr-fitem-v">{formatNumber(phones)}</div>
-          <div className="wr-fitem-l">phones<br/>charged</div>
-        </div>
-        <div className="wr-f-sep">·</div>
-        <div className="wr-fitem">
-          <div className="wr-fitem-ico">🏠</div>
-          <div className="wr-fitem-v">{aptMonths}</div>
-          <div className="wr-fitem-l">months apt<br/>powered</div>
-        </div>
-        <div className="wr-f-sep">·</div>
-        <div className="wr-fitem">
-          <div className="wr-fitem-ico">🌍</div>
-          <div className="wr-fitem-v">{formatNumber(co2Kg)} kg</div>
-          <div className="wr-fitem-l">CO₂ not<br/>emitted</div>
-        </div>
+        {equivs.map((e, i) => (
+          <Fragment key={e.label}>
+            {i > 0 && <div className="wr-f-sep">·</div>}
+            <div className="wr-fitem">
+              <div className="wr-fitem-ico">{e.icon}</div>
+              <div className="wr-fitem-v">{formatNumber(e.value)}{e.unit && ` ${e.unit}`}</div>
+              <div className="wr-fitem-l">{e.label}</div>
+            </div>
+          </Fragment>
+        ))}
       </div>
-      <div className="wr-cap wr-a5">Keep the streak — small choices, big impact.</div>
+      <div className="wr-cap wr-a5">A new way to look at kilowatt-hours.</div>
     </div>
   );
 };

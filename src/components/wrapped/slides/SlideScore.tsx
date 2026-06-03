@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
+import { formatKwh, formatPct } from '../lib/wrappedMath';
 
-interface Props { score: number; trend?: number[] | null; }
+interface Props {
+  score: number;
+  trend?: number[] | null;
+  yoy?: { label: string; kwh: number | null; deltaPct: number | null } | null;
+  bestEverScore?: { label: string; score: number } | null;
+}
 
-const SlideScore = ({ score, trend }: Props) => {
+const SlideScore = ({ score, trend, yoy, bestEverScore }: Props) => {
   const [animated, setAnimated] = useState(0);
   useEffect(() => {
     const t = setTimeout(() => setAnimated(score), 80);
@@ -44,6 +50,30 @@ const SlideScore = ({ score, trend }: Props) => {
       <div className="wr-sub wr-a2">
         {label}{pctTop && <> · <span style={{ color: 'var(--teal)' }}>{pctTop}</span></>}.
       </div>
+      {(yoy || bestEverScore) && (
+        <div className="wr-score-bench wr-a4">
+          {yoy && (
+            <div className="wr-sb-row">
+              <span className="wr-sb-lbl">Same month last year</span>
+              <span className="wr-sb-val">
+                {yoy.kwh != null ? formatKwh(yoy.kwh) : '—'}
+                {yoy.deltaPct != null && (
+                  <span style={{
+                    marginLeft: 8,
+                    color: yoy.deltaPct <= 0 ? 'var(--teal)' : 'var(--red)',
+                  }}>{formatPct(yoy.deltaPct)}</span>
+                )}
+              </span>
+            </div>
+          )}
+          {bestEverScore && (
+            <div className="wr-sb-row">
+              <span className="wr-sb-lbl">Your record</span>
+              <span className="wr-sb-val">{bestEverScore.score}/100 · {bestEverScore.label}</span>
+            </div>
+          )}
+        </div>
+      )}
       {trend && trend.length > 1 && (
         <>
           <div className="wr-month-bars wr-a4">

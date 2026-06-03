@@ -3,6 +3,7 @@
  * No new dependencies. Each builder writes an inline HTML doc themed for print.
  */
 import type { SiteWeeklyData } from '../hooks/useSiteWeeklyWrap';
+import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 import type { AggregateWeeklyData } from '../hooks/useAggregateWeeklyWrap';
 
 const fmt = (n: number | null) => (n == null ? '—' : Math.round(n).toLocaleString('it-IT'));
@@ -34,7 +35,7 @@ function openPrint(title: string, body: string) {
   w.document.close();
 }
 
-export function generateSitePdf(data: SiteWeeklyData, siteName: string) {
+export function generateSitePdf(data: SiteWeeklyData | SiteMonthlyData, siteName: string) {
   const body = `
     <div class="cover">
       <div class="fgb">FGB</div>
