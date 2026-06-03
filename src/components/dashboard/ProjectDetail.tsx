@@ -3233,6 +3233,23 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="hidden sm:inline">{t('pd.back_to_region')}</span>
         </button>
+        {/* Weekly Wrapped Button */}
+        {project?.siteId && (
+          <button
+            onClick={() => openWrapped({
+              kind: 'site',
+              siteId: project.siteId!,
+              siteName: project.name,
+              areaM2: project.area_m2 ?? null,
+            })}
+            className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-xs font-medium text-white transition-all cursor-pointer border border-white/10"
+            title="FGB Weekly Wrapped"
+            style={{ minHeight: 36 }}
+          >
+            <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-fgb-accent" />
+            <span className="hidden md:inline">Wrapped</span>
+          </button>
+        )}
         {/* Change Background Button */}
         <label className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-xs font-medium text-white transition-all cursor-pointer border border-white/10 ${isUploadingBg ? 'opacity-50 pointer-events-none' : ''}`}>
           {isUploadingBg ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <Image className="w-3.5 h-3.5 md:w-4 md:h-4" />}
