@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { formatNumber, formatKwh, energyEquivalences } from '../lib/wrappedMath';
 import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 
@@ -14,14 +15,14 @@ const SlideFun = ({ data, seed }: { data: SiteMonthlyData; seed: string }) => {
       <div className="wr-sub wr-a3">You used enough energy to…</div>
       <div className="wr-fgrid wr-a4">
         {equivs.map((e, i) => (
-          <>
-            {i > 0 && <div className="wr-f-sep" key={`sep-${i}`}>·</div>}
-            <div className="wr-fitem" key={e.label}>
+          <Fragment key={e.label}>
+            {i > 0 && <div className="wr-f-sep">·</div>}
+            <div className="wr-fitem">
               <div className="wr-fitem-ico">{e.icon}</div>
               <div className="wr-fitem-v">{formatNumber(e.value)}{e.unit && ` ${e.unit}`}</div>
               <div className="wr-fitem-l">{e.label}</div>
             </div>
-          </>
+          </Fragment>
         ))}
       </div>
       <div className="wr-cap wr-a5">A new way to look at kilowatt-hours.</div>

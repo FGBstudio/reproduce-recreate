@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 
 const WELL_GOLD = 800;
@@ -31,16 +32,16 @@ const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
       {perMetric.length > 0 && (
         <div className="wr-fgrid wr-a4" style={{ margin: '10px auto 8px' }}>
           {perMetric.map((m, i) => (
-            <>
-              {i > 0 && <div className="wr-f-sep" key={`sep-${m.metric}`}>·</div>}
-              <div className="wr-fitem" key={m.metric}>
+            <Fragment key={m.metric}>
+              {i > 0 && <div className="wr-f-sep">·</div>}
+              <div className="wr-fitem">
                 <div className="wr-fitem-ico" style={{ fontSize: 14, opacity: .6 }}>
                   {m.metric === 'co2' ? 'CO₂' : m.metric === 'voc' ? 'VOC' : 'PM2.5'}
                 </div>
                 <div className="wr-fitem-v" style={{ color: 'var(--blue)' }}>{m.avg ?? '—'}</div>
                 <div className="wr-fitem-l">{m.unit} · {m.hoursExcellent}h ok</div>
               </div>
-            </>
+            </Fragment>
           ))}
         </div>
       )}
