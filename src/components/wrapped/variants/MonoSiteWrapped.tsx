@@ -1,0 +1,55 @@
+import { ReactNode } from 'react';
+import { useSiteWeeklyWrap } from '../hooks/useSiteWeeklyWrap';
+import { overallScore } from '../lib/wrappedMath';
+import SlideWelcome from '../slides/SlideWelcome';
+import SlideScore from '../slides/SlideScore';
+import SlideEnergy from '../slides/SlideEnergy';
+import SlideAir from '../slides/SlideAir';
+import SlideAlerts from '../slides/SlideAlerts';
+import SlideFun from '../slides/SlideFun';
+import SlideTreedom from '../slides/SlideTreedom';
+import SlideIdentity from '../slides/SlideIdentity';
+import SlideRecap from '../slides/SlideRecap';
+
+interface Args {
+  siteId: string;
+  siteName: string;
+  areaM2: number | null | undefined;
+  onDownload: () => void;
+  isDownloading: boolean;
+}
+
+export function useMonoSiteSlides({ siteId, siteName, areaM2, onDownload, isDownloading }: Args): {
+  slides: ReactNode[]; isLoading: boolean; isEmpty: boolean;
+} {
+  const { data, isLoading } = useSiteWeeklyWrap(siteId, areaM2);
+
+  if (isLoading || !data) return { slides: [], isLoading: true, isEmpty: false };
+
+  const score = overallScore({
+    energyDeltaPct: data.energy.deltaPct,
+    waterDeltaPct: data.water.deltaPct,
+    airAvgCo2Ppm: data.air.avgCo2Ppm,
+  });
+
+  const slides: ReactNode[] = [
+    <SlideWelcome key="welcome" siteName={siteName} weekLabel={data.weekLabel} />,
+  ];
+
+  if (score != null) slides.push(<SlideScore key="score" score={score} />);
+  if (data.energy.weekKwh != null) slides.push(<SlideEnergy key="energy" data={data} />);
+  if (data.air.avgCo2Ppm != null) slides.push(<SlideAir key="air" data={data} />);
+  if (data.alerts.activeNow > 0 || data.alerts.resolvedThisWeek > 0) {
+    slides.push(<SlideAlerts key="alerts" data={data} />);
+  }
+  if (data.energy.deltaPct != null && data.energy.deltaPct < 0) {
+    slides.push(<SlideFun key="fun" data={data} />);
+  }
+  if ((data.co2.treesEquiv ?? 0) > 0) slides.push(<SlideTreedom key="trees" data={data} />);
+  slides.push(<SlideIdentity key="identity" score={score} />);
+  slides.push(
+    <SlideRecap key="recap" data={data} siteName={siteName} onDownload={onDownload} isDownloading={isDownloading} />
+  );
+
+  return { slides, isLoading: false, isEmpty: !data.hasAnyData };
+}
