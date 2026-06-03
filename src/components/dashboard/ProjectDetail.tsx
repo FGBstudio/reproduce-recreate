@@ -255,6 +255,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const { language, t } = useLanguage();
   const [expandedCert, setExpandedCert] = useState<string | null>(null);
   const [activeWidget, setActiveWidget] = useState<'active' | 'achieved' | 'progress' | 'audit' | null>(null);
+  const { open: openWrapped } = useWrapped();
 
   // AI Virtual Split states
   const [isSimulationMode, setIsSimulationMode] = useState(false);
