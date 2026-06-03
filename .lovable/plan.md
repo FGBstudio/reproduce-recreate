@@ -1,97 +1,110 @@
-## Espandere il Wrapped: slide fedeli all'HTML + variant per i 3 casi
+# Allineamento Wrapped mono-sito all'HTML di riferimento
 
-### 1. Caso A — Mono-sito (fedele al file HTML `fgb-wrapped-v3-5-2.html`)
+Obiettivo: ridurre il gap tra `fgb-wrapped-v3-5.html` e l'attuale player React per il caso A (singolo sito), mantenendo "no-fake-data" e RLS-safe. Nessun cambio a DB / migrazioni / dipendenze.
 
-Riporto le 10 slide del file HTML (S1-S10), adattate alla cadenza **settimanale** (richiesta utente) e ai dati reali presenti in `useSiteWeeklyWrap`. Ogni slide è **skippata** se i dati telemetrici sottostanti non esistono (policy "no fake data").
+## 1. Passaggio da settimanale a mensile
 
-Nuovi file in `src/components/wrapped/slides/`:
+- Nuovo hook `useSiteMonthlyWrap(siteId, areaM2)` parallelo all'esistente weekly (NON rimuovo il weekly: viene mantenuto perché l'aggregate/admin lo richiama).
+- Range: 1° → ultimo giorno del **mese corrente** (oppure mese precedente se siamo nei primi 3 giorni → più dati).
+- Output esteso vs weekly:
+  - `energy.daily[]` su tutto il mese
+  - `energy.weeks[]` (4–5 bucket lun-dom usati nella Recap)
+  - `energy.byCategory` `{ hvac, lighting, plugs, other }` in kWh + %
+  - `energy.hourlyProfile[24]` (kWh medi per ora)
+  - `energy.peakHour` (ora del picco mediano) → archetype
+  - `energy.yoy` (stesso mese anno precedente, se presente)
+  - `energy.bestMonthYtd` (miglior score YTD, se calcolabile)
+  - `air.hoursExcellent` (ore consecutive totali con CO2<800, VOC<limite, PM2.5<15)
+  - `air.metrics` `{ co2, voc, pm25 }` con avg e ore-eccellenti per metrica
+- Label slide 1 → `MMMM YYYY` invece di range ISO week.
 
-| # | File | Skip condition | Note |
-|---|------|----------------|------|
-| S1 | `SlideWelcome.tsx` *(già esiste, da rifinire per matchare l'HTML)* | mai | weekly label + nome sito |
-| S2 | `SlideScore.tsx` | mai (sempre calcolabile) | ring SVG con overall score (80% energy + 15% water + 5% air). Trend mini-bars settimanali se disponibili, altrimenti solo ring |
-| S3 | `SlideEnergy.tsx` *(già esiste)* | `energy.weekKwh == null` | stat principale + barre giornaliere (mantengo 7 giorni invece dei 4 weekly del mock) + compare bar settimana corrente vs precedente |
-| S4 | `SlideAir.tsx` | `air.avgCo2Ppm == null` | stat ppm + comparison bars (Yours / WELL 800 / Outdoor 420 / ASHRAE 1000) |
-| S5 | `SlideAlerts.tsx` | `alerts.activeNow == 0 && alerts.resolvedThisWeek == 0` | stat count + breakdown Active vs Resolved. Salto la lista per-alert con response time (dato non disponibile) |
-| S6 | `SlideBenchmark.tsx` | sempre skip in Caso A (richiede peer data non disponibile per singolo sito) | rimando: appare solo se in futuro caricheremo il rank tramite hook aggregato per il brand del sito |
-| S7 | `SlideFun.tsx` | `energy.deltaPct == null o >= 0` | stat % saved + equivalenze (📱 phones, 🏠 mesi appartamento, 🌍 kg CO₂). Formule: phones = savedKwh * 100, mesi = savedKwh / 300, CO₂ = savedKg |
-| S8 | `SlideTreedom.tsx` | `co2.treesEquiv <= 0` | "🌳" + numero alberi/anno equivalenti dal risparmio settimanale annualizzato |
-| S9 | `SlideIdentity.tsx` | mai | identità del sito basata su score: ≥90 "Fern", 75-89 "Oak", 60-74 "Bamboo", <60 "Cactus" — copy descrittiva, no data inventata |
-| S10 | `SlideRecap.tsx` *(già esiste, aggiornare per matchare HTML pcard)* | mai | card recap con KPI + bottone "Download weekly PDF" |
+## 2. Slide Score — back-of-card mono-sito-safe
 
-**Componenti grafici riusati dall'HTML**: ring SVG con gradient, barre verticali (`wr-vchart`), barre orizzontali comparison, lista equivalenze, tree icon. CSS extra in `wrapped.css` solo per ciò che manca (`.wr-cmp-bars`, `.wr-fgrid`, `.wr-month-bars`, palette `.wr-bg-fun`, `.wr-bg-identity`, `.wr-bg-benchmark`). Niente `flip-card` (la "data view" del back è ridondante: il dato è già nel front; lo skippiamo per mantenere il timing storytelling).
+Sostituire i benchmark "portfolio" con dati interni al sito:
+- "Stesso mese, anno scorso" → da `energy.yoy`
+- "Tuo record YTD" → da `energy.bestMonthYtd`
+- Se mancano (sito nuovo) → riga mostrata come "—" (no fake).
 
-### 2. Caso B — Multi-sito (Brand/Holding)
+## 3. Slide Energy — breakdown HVAC / Lighting / Plugs
 
-Nuovi file in `src/components/wrapped/slides/`:
+- Query su `devices` raggruppata per `category` (`hvac`, `lighting`, `plugs`, `general`) → sum kWh da `energy_daily`.
+- Render barra orizzontale a 3 segmenti con i colori dell'HTML (`--amber` HVAC, `--purple` Lighting, `--red` Plugs; resto in `--track`).
+- Copy: rimuovo "vs portfolio average", scrivo "vs tuo baseline" usando media mobile dei mesi precedenti se disponibile, altrimenti niente confronto.
 
-- `SlideAggWelcome.tsx` — "Your portfolio's Wrapped" + label brand/holding + n° sites
-- `SlideAggTotals.tsx` — Stat kWh totali settimana + delta vs settimana precedente + n° sites con dati
-- `SlideAggCO2.tsx` — Totale CO₂ saved + trees equivalenti
-- `SlideAggLeaderboard.tsx` — Top 5 sites per EUI ascendente (prima posizione `wr-li.gold`)
-- `SlideAggMostImproved.tsx` — Top 5 per `deltaPct` più negativo
-- `SlideAggRecap.tsx` — Card aggregata + bottone PDF settimanale
+## 4. Slide Air — ore eccellenti reali
 
-Skip rules: se `totals.weekKwh === 0` salto Totals/CO2; se `leaderboard.length === 0` salto Leaderboard; se `mostImproved.length === 0` salto Most Improved.
+- Query su `telemetry_hourly` (rollup orario esistente) per device `air_quality`, metriche `iaq.co2`, `iaq.voc`, `iaq.pm25` (mappature note in metric-normalization).
+- Conteggio ore in cui **tutte** le metriche disponibili sono sotto soglia (CO2<800, VOC<300, PM2.5<15).
+- Slide mostra: `Xh of excellent air` + tre micro-stat (CO2 / VOC / PM2.5) come nell'HTML.
+- Se manca rollup orario o sensore manca, fallback al conteggio "giorni eccellenti" attuale, con label diversa.
 
-### 3. Caso C — Admin globale (FGB Studio)
+## 5. Slide Fun — equivalenze a rotazione
 
-Nuovi file in `src/components/wrapped/slides/`:
+In `wrappedMath.ts`:
+- `energyEquivalences(kwh)` ritorna 3 oggetti scelti deterministicamente per `siteId+mese` (no random instabile fra render):
+  - Espressi (0.015 kWh)
+  - Ricariche smartphone (0.012 kWh)
+  - Km Tesla Model 3 (0.15 kWh)
+  - Lavatrici (1 kWh)
+- Slide Fun aggiornata per usare questi (sostituisce gli equivalenti attuali phones/apt).
 
-- `SlideGlobalWelcome.tsx` — "FGB's worldwide impact this week"
-- `SlideGlobalRegions.tsx` — 4 colonne `wr-vchart` per AMER / APAC / EU / MEA (kWh totali, delta %, CO₂ saved per regione, da `byRegion`)
-- `SlideGlobalImpact.tsx` — Stat: kg CO₂ totali risparmiati grazie a FGB nel mondo + alberi/anno equivalenti
-- `SlideGlobalLeaderboard.tsx` — Top 5 brand performers (raggruppo `data.sites` per `brandName`, ordino per delta% migliore)
-- `SlideGlobalRecap.tsx` — Card globale + PDF "FGB Global Weekly"
+## 6. Slide Identity — archetipo basato su load profile
 
-### 4. Variant components
+- Aggiunto `archetypeFromHourlyProfile(profile24)` in `wrappedMath.ts`:
+  - picco 06–11 → **The Early Bird**
+  - picco 12–17 → **The Day Shift**
+  - picco 18–23 → **The Night Owl**
+  - delta max/min < 25% media → **The Insomniac** (flat)
+- Slide `SlideIdentity` esistente diventa "tree persona" → rinominata internamente in due slide:
+  - `SlideArchetype` (archetipo edificio, dall'HTML)
+  - `SlideIdentity` esistente (Fern/Oak/Bamboo/Cactus) resta come slide di chiusura prima del recap.
+  Entrambe mostrate solo se i dati lo permettono.
 
-Nuova cartella `src/components/wrapped/variants/`:
+## 7. Slide Treedom — CO2 senza numeri fuorvianti
 
-- `MonoSiteWrapped.tsx` — usa `useSiteWeeklyWrap`. Ritorna `{ slides, isLoading, isEmpty }`. Sequenza: Welcome, Score, Energy?, Air?, Alerts?, Fun?, Treedom?, Identity, Recap.
-- `AggregateWrapped.tsx` — usa `useAggregateWeeklyWrap`. Sequenza: AggWelcome, AggTotals?, AggCO2?, AggLeaderboard?, AggMostImproved?, AggRecap.
-- `AdminGlobalWrapped.tsx` — usa `useAggregateWeeklyWrap` con tutti i sites. Sequenza: GlobalWelcome, GlobalRegions?, GlobalImpact?, GlobalLeaderboard?, GlobalRecap.
+- `savedKg` calcolato preferendo confronto **YoY** (`energy.yoy`) se presente; altrimenti vs mese precedente.
+- Se delta peggiorato → slide neutra ("Hai emesso X kg CO₂ questo mese") senza alberi.
+- Se delta migliorato → versione attuale (alberi equivalenti).
+- Nessun valore negativo presentato come "saved".
 
-Ogni variant gestisce internamente loading skeleton + onDownload (riceve dal player).
+## 8. Recap — tabella per settimane
 
-### 5. Refactor `WrappedPlayer.tsx`
+- `SlideRecap` mono-sito mostra tabella stile HTML: Week 1..5 con kWh, € (se prezzo unitario disponibile sulla site config; altrimenti colonna nascosta), CO2.
+- Footer card mantiene download PDF.
 
-- Estraggo `handleDownload` in **`lib/wrappedPdf.ts`** con 3 generatori (`generateSitePdf`, `generateAggregatePdf`, `generateGlobalPdf`) — tutti `window.open` + HTML inline + `window.print` (zero nuove dipendenze).
-- Player diventa "scemo": switch su `scope.kind` e renderizza il variant corretto; gestisce solo idx/auto-advance/rail/keyboard/splash/close.
-- Hook interno `useWrappedSlides(scope)` che ritorna `{ slides: ReactNode[], isLoading, isEmpty }` chiamando il variant giusto.
+## Variant + Player
 
-### 6. Math helpers (`lib/wrappedMath.ts`)
+- `MonoSiteWrapped.tsx` passa a `useSiteMonthlyWrap` e compone la nuova sequenza:
+  Welcome → Score → Energy(+breakdown) → Air → Alerts → Fun → Archetype → Treedom → Identity → Recap.
+- Ogni slide rimane skip-on-null per "no-fake-data".
+- `WrappedPlayer` invariato strutturalmente (continua a chiamare `useMonoSiteSlides`).
 
-Aggiungo:
+## File toccati
 
-- `overallScore({ energyDeltaPct, waterDeltaPct, airAvgCo2Ppm }): number 0–100` — pesi 80/15/5. Energy score = 100 - clamp(deltaPct, -50, 50) → premia delta negativi. Air score = 100 se ≤800ppm, decade lineare fino a 0 a 1500ppm. Water analogo a energy.
-- `identityForScore(score): { name, emoji, traits }` — Fern/Oak/Bamboo/Cactus.
-- `formatNumber(v, locale='it-IT')` — utility.
+**Nuovi**
+- `src/components/wrapped/hooks/useSiteMonthlyWrap.ts`
+- `src/components/wrapped/slides/SlideArchetype.tsx`
 
-### 7. CSS
+**Modificati**
+- `src/components/wrapped/lib/wrappedMath.ts` — `monthRange`, `archetypeFromHourlyProfile`, `energyEquivalences`, helpers YoY.
+- `src/components/wrapped/variants/MonoSiteWrapped.tsx` — usa monthly hook, nuova sequenza.
+- `src/components/wrapped/slides/SlideWelcome.tsx` — label mensile.
+- `src/components/wrapped/slides/SlideScore.tsx` — back-of-card YoY / record YTD.
+- `src/components/wrapped/slides/SlideEnergy.tsx` — barra breakdown + copy baseline.
+- `src/components/wrapped/slides/SlideAir.tsx` — `hoursExcellent` + tre micro-stat.
+- `src/components/wrapped/slides/SlideFun.tsx` — equivalenze a rotazione.
+- `src/components/wrapped/slides/SlideTreedom.tsx` — gating positivo / messaggio neutro.
+- `src/components/wrapped/slides/SlideRecap.tsx` — tabella settimanale del mese.
+- `src/components/wrapped/styles/wrapped.css` — classi `.hbar/.htrack/.hfill`, `.wr-archetype-*`, `.wr-recap-table`.
+- `src/components/wrapped/lib/wrappedPdf.ts` — copy/struttura coerente con la nuova sequenza.
 
-Aggiungo in `wrapped.css` solo classi non ancora presenti:
+**Invariati**
+- Aggregate / AdminGlobal variants e relativi slide.
+- `WrappedPlayer.tsx`, `WrappedContext.tsx`, `WrappedLauncherButton.tsx`.
+- DB, migrazioni, edge functions, deps.
 
-- `.wr-bg-fun`, `.wr-bg-identity`, `.wr-bg-benchmark`
-- `.wr-cmp-bars`, `.wr-cmp-row`, `.wr-cmp-track`, `.wr-cmp-fill`, `.wr-cmp-lbl`, `.wr-cmp-val` (per Air comparison)
-- `.wr-fgrid`, `.wr-fitem` (per S7 equivalenze)
-- `.wr-month-bars` (mini-trend Score)
-- Adattamento `.wr-vchart` per 4 colonne (regions globali)
+## Note / rischi
 
-### 8. File toccati / creati
-
-**new (slides):** `SlideScore.tsx`, `SlideAir.tsx`, `SlideAlerts.tsx`, `SlideFun.tsx`, `SlideTreedom.tsx`, `SlideIdentity.tsx`, `SlideAggWelcome.tsx`, `SlideAggTotals.tsx`, `SlideAggCO2.tsx`, `SlideAggLeaderboard.tsx`, `SlideAggMostImproved.tsx`, `SlideAggRecap.tsx`, `SlideGlobalWelcome.tsx`, `SlideGlobalRegions.tsx`, `SlideGlobalImpact.tsx`, `SlideGlobalLeaderboard.tsx`, `SlideGlobalRecap.tsx`
-
-**new (variants):** `variants/MonoSiteWrapped.tsx`, `variants/AggregateWrapped.tsx`, `variants/AdminGlobalWrapped.tsx`
-
-**new (lib):** `lib/wrappedPdf.ts`
-
-**edit:** `WrappedPlayer.tsx`, `lib/wrappedMath.ts`, `slides/SlideWelcome.tsx`, `slides/SlideRecap.tsx`, `styles/wrapped.css`, `hooks/useSiteWeeklyWrap.ts` *(aggiungo solo `airMinPpm` / `airPeakPpm` per S4 — già abbiamo le medie giornaliere, basta min/max)*
-
-**Nessun cambiamento DB, migration o dipendenza.**
-
-### Note importanti
-
-- **S6 Benchmark è skippato in questa iterazione** per Caso A: richiederebbe il rank vs altri sites del brand, che è un dato derivato dall'aggregate hook. Se vuoi includerlo, lo aggiungo come slide finale ma solo quando `useSiteWeeklyWrap` è arricchito da un fetch peer (extra query). Fammelo sapere e lo prevedo in un secondo step.
-- **Cadenza weekly confermata**: l'HTML è "May 2026 monthly" ma il sistema gira già su ISO week (`currentISOWeek` / `previousISOWeek`). Le slide diranno "this week" / "vs last week".
-- **Flip data view**: l'HTML originale ha un retro card cliccabile su ogni slide. Lo skippo perché complica il timing autoplay e il dato già appare nel front. Se lo vuoi lo aggiungo come `?` step nel player.
+- `telemetry_hourly` deve contenere metriche IAQ; se per un device non c'è VOC o PM2.5, l'algoritmo usa solo le metriche disponibili (no fake).
+- `energy.yoy` richiede 13 mesi di storia: per siti recenti la slide Score back-of-card e Treedom degradano a "—".
+- Tutte le slide continuano a essere skip se mancano i dati necessari.
