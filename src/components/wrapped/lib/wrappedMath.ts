@@ -97,3 +97,79 @@ export function dayName(dStr: string, lang: 'en' | 'it' = 'en'): string {
     : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return names[d.getUTCDay()];
 }
+
+/** Generic number formatter (it-IT by default). */
+export function formatNumber(v: number | null | undefined, locale: string = 'it-IT'): string {
+  if (v == null || !isFinite(v)) return '—';
+  return Math.round(v).toLocaleString(locale);
+}
+
+function clamp(x: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, x));
+}
+
+/**
+ * Overall performance score on 0–100, weighted 80% energy / 15% water / 5% air.
+ * - Energy: 100 when deltaPct <= -25%, 0 when deltaPct >= +25% (linear).
+ * - Water: same scale as energy.
+ * - Air: 100 when avg CO₂ <= 800 ppm, 0 at 1500 ppm (linear).
+ * If a metric is null its weight is redistributed across the remaining ones.
+ */
+export function overallScore(input: {
+  energyDeltaPct: number | null;
+  waterDeltaPct: number | null;
+  airAvgCo2Ppm: number | null;
+}): number | null {
+  const parts: { score: number; weight: number }[] = [];
+
+  if (input.energyDeltaPct != null) {
+    const d = clamp(input.energyDeltaPct, -25, 25);
+    parts.push({ score: 50 - d * 2, weight: 0.80 });
+  }
+  if (input.waterDeltaPct != null) {
+    const d = clamp(input.waterDeltaPct, -25, 25);
+    parts.push({ score: 50 - d * 2, weight: 0.15 });
+  }
+  if (input.airAvgCo2Ppm != null) {
+    const ppm = input.airAvgCo2Ppm;
+    let s: number;
+    if (ppm <= 800) s = 100;
+    else if (ppm >= 1500) s = 0;
+    else s = 100 - ((ppm - 800) / 700) * 100;
+    parts.push({ score: clamp(s, 0, 100), weight: 0.05 });
+  }
+
+  if (parts.length === 0) return null;
+  const totalW = parts.reduce((a, p) => a + p.weight, 0);
+  const score = parts.reduce((a, p) => a + p.score * (p.weight / totalW), 0);
+  return Math.round(clamp(score, 0, 100));
+}
+
+/** Identity avatar based on overall score. */
+export function identityForScore(score: number | null): { name: string; emoji: string; traits: string; description: string } {
+  if (score == null) return { name: 'Seedling', emoji: '🌱', traits: 'Just getting started.', description: 'Not enough data yet — your building is just starting its journey.' };
+  if (score >= 90) return {
+    name: 'Fern',
+    emoji: '🌿',
+    traits: 'Resilient. Efficient. Always green.',
+    description: 'A fern thrives quietly, purifies the air, and keeps going even when conditions aren\'t perfect.',
+  };
+  if (score >= 75) return {
+    name: 'Oak',
+    emoji: '🌳',
+    traits: 'Solid. Steady. Built to last.',
+    description: 'An oak grows slowly but surely, offering shade and stability through every season.',
+  };
+  if (score >= 60) return {
+    name: 'Bamboo',
+    emoji: '🎋',
+    traits: 'Flexible. Fast-growing. Improving.',
+    description: 'Bamboo bends with the wind and grows fast — your building is on a clear upward path.',
+  };
+  return {
+    name: 'Cactus',
+    emoji: '🌵',
+    traits: 'Tough. Surviving. Ready to bloom.',
+    description: 'A cactus weathers harsh conditions. There is room to improve — small adjustments will make a big impact.',
+  };
+}
