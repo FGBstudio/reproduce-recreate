@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import './styles/wrapped.css';
 import { useWrapped } from './WrappedContext';
-import { useSiteWeeklyWrap } from './hooks/useSiteWeeklyWrap';
+import { useSiteMonthlyWrap } from './hooks/useSiteMonthlyWrap';
 import { useAggregateWeeklyWrap } from './hooks/useAggregateWeeklyWrap';
 import { useMonoSiteSlides } from './variants/MonoSiteWrapped';
 import { useAggregateSlides } from './variants/AggregateWrapped';
@@ -22,7 +22,7 @@ const WrappedPlayer = () => {
   const siteId = scope?.kind === 'site' ? scope.siteId : null;
   const siteName = scope?.kind === 'site' ? scope.siteName : '';
   const areaM2 = scope?.kind === 'site' ? scope.areaM2 ?? null : null;
-  const siteQ = useSiteWeeklyWrap(siteId, areaM2);
+  const siteQ = useSiteMonthlyWrap(siteId, areaM2);
 
   const aggSites = scope && scope.kind !== 'site' ? scope.sites : [];
   const aggLabel = scope && scope.kind !== 'site' ? scope.label : '';
