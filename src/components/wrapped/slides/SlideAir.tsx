@@ -1,28 +1,49 @@
-import type { SiteWeeklyData } from '../hooks/useSiteWeeklyWrap';
+import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 
 const WELL_GOLD = 800;
 const ASHRAE_MAX = 1000;
 const OUTDOOR_REF = 420;
 const SCALE_MAX = 1200;
 
-const SlideAir = ({ data }: { data: SiteWeeklyData }) => {
+const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
   const avg = data.air.avgCo2Ppm!;
   const pct = (v: number) => Math.min(100, (v / SCALE_MAX) * 100);
   const headroom = WELL_GOLD - avg;
   const compliant = avg <= WELL_GOLD;
+  const hours = data.air.hoursExcellent;
+  const perMetric = data.air.perMetric ?? [];
 
   return (
     <div className="wr-slide on wr-bg-water">
       <div className="wr-ey wr-a1" style={{ color: 'var(--blue)' }}>🌬 Indoor Air Quality</div>
       <div className="wr-stat wr-a2 wr-asc" style={{ color: 'var(--blue)' }}>
-        {avg}<sup>ppm</sup>
+        {hours != null ? <>{hours}<sup>h</sup></> : <>{avg}<sup>ppm</sup></>}
       </div>
       <div className="wr-bd wr-a3">
-        Average CO₂ this week. WELL Gold limit is <strong>800 ppm.</strong>
-        {compliant
-          ? <> You stayed <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom / WELL_GOLD) * 100)}% below</strong> all week.</>
-          : <> You exceeded the limit by <strong style={{ color: 'var(--red)' }}>{Math.round(((avg - WELL_GOLD) / WELL_GOLD) * 100)}%.</strong></>}
+        {hours != null
+          ? <>of <strong>excellent air</strong> this month — all sensors within WELL/ASHRAE limits.</>
+          : <>Average CO₂ this month. WELL Gold limit is <strong>800 ppm.</strong>
+              {compliant
+                ? <> You stayed <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom / WELL_GOLD) * 100)}% below</strong> on average.</>
+                : <> You exceeded the limit by <strong style={{ color: 'var(--red)' }}>{Math.round(((avg - WELL_GOLD) / WELL_GOLD) * 100)}%.</strong></>}
+            </>}
       </div>
+      {perMetric.length > 0 && (
+        <div className="wr-fgrid wr-a4" style={{ margin: '10px auto 8px' }}>
+          {perMetric.map((m, i) => (
+            <>
+              {i > 0 && <div className="wr-f-sep" key={`sep-${m.metric}`}>·</div>}
+              <div className="wr-fitem" key={m.metric}>
+                <div className="wr-fitem-ico" style={{ fontSize: 14, opacity: .6 }}>
+                  {m.metric === 'co2' ? 'CO₂' : m.metric === 'voc' ? 'VOC' : 'PM2.5'}
+                </div>
+                <div className="wr-fitem-v" style={{ color: 'var(--blue)' }}>{m.avg ?? '—'}</div>
+                <div className="wr-fitem-l">{m.unit} · {m.hoursExcellent}h ok</div>
+              </div>
+            </>
+          ))}
+        </div>
+      )}
       <div className="wr-cmp-bars wr-a4">
         <div className="wr-cmp-row">
           <div className="wr-cmp-lbl">Your avg</div>

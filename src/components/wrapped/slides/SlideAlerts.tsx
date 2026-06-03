@@ -1,6 +1,6 @@
-import type { SiteWeeklyData } from '../hooks/useSiteWeeklyWrap';
+import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 
-const SlideAlerts = ({ data }: { data: SiteWeeklyData }) => {
+const SlideAlerts = ({ data }: { data: SiteMonthlyData }) => {
   const a = data.alerts;
   const total = a.activeNow + a.resolvedThisWeek;
   const allClear = a.activeNow === 0;
@@ -8,7 +8,7 @@ const SlideAlerts = ({ data }: { data: SiteWeeklyData }) => {
   return (
     <div className="wr-slide on wr-bg-alerts">
       <div className="wr-ey wr-a1" style={{ color: allClear ? 'var(--teal)' : 'var(--red)' }}>
-        Alerts this week
+        Alerts this month
       </div>
       <div className="wr-stat wr-a2 wr-asc" style={{ color: allClear ? 'var(--teal)' : 'var(--red)' }}>
         {total}
