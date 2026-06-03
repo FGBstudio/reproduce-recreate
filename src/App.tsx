@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import OnboardingTour from "@/components/onboarding/OnboardingTour";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { WrappedProvider } from "@/components/wrapped/WrappedContext";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
@@ -25,6 +26,7 @@ const App = () => (
       <AuthProvider>
         <AdminDataProvider>
           <OnboardingProvider>
+          <WrappedProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -53,6 +55,7 @@ const App = () => (
               </Routes>
             </HashRouter>
           </TooltipProvider>
+          </WrappedProvider>
           </OnboardingProvider>
         </AdminDataProvider>
       </AuthProvider>

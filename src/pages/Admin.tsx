@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard, Cpu, UserPlus, Inbox } from 'lucide-react';
+import { ArrowLeft, Building2, Tag, MapPin, FolderKanban, Users, Shield, GitBranch, UserCog, LayoutDashboard, Cpu, UserPlus, Inbox, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminData } from '@/contexts/AdminDataContext';
+import { useWrapped } from '@/components/wrapped/WrappedContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { HoldingsManager } from '@/components/admin/HoldingsManager';
@@ -22,6 +24,17 @@ const Admin = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { sites, brands } = useAdminData();
+  const { open: openWrapped } = useWrapped();
+
+  const launchGlobal = () => {
+    const sitesList = sites.map(s => ({
+      id: s.id, name: s.name, region: s.region,
+      brandName: brands.find(b => b.id === s.brandId)?.name ?? null,
+      areaM2: s.area_m2 ?? s.areaSqm ?? null,
+    }));
+    openWrapped({ kind: 'admin-global', label: 'FGB Global', sites: sitesList });
+  };
 
   const contentTabClass = "flex-1 overflow-y-auto h-full p-1 pb-32"; 
 
@@ -50,6 +63,10 @@ const Admin = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <Button onClick={launchGlobal} variant="outline" size="sm" className="gap-1.5 border-fgb-secondary/30 text-fgb-secondary hover:bg-fgb-secondary/10">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="hidden sm:inline">FGB Wrapped</span>
+                </Button>
                 <span className="text-sm text-slate-500 hidden sm:inline">
                   {user?.name}
                 </span>

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, Tag, Building2, ImageIcon, X, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Building2, ImageIcon, X, Loader2, Sparkles } from 'lucide-react';
 import { useAdminData } from '@/contexts/AdminDataContext';
+import { useWrapped } from '@/components/wrapped/WrappedContext';
 import { AdminBrand } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from '@/lib/supabase';
 
 export const BrandsManager = () => {
-  const { holdings, brands, addBrand, updateBrand, deleteBrand, getSitesByBrand } = useAdminData();
+  const { holdings, brands, sites, addBrand, updateBrand, deleteBrand, getSitesByBrand } = useAdminData();
+  const { open: openWrapped } = useWrapped();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<AdminBrand | null>(null);
   
@@ -285,6 +287,24 @@ export const BrandsManager = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Play FGB Wrapped"
+                        onClick={() => {
+                          const sitesList = sites
+                            .filter(s => s.brandId === brand.id)
+                            .map(s => ({
+                              id: s.id, name: s.name, region: s.region,
+                              brandName: brand.name,
+                              areaM2: s.area_m2 ?? s.areaSqm ?? null,
+                            }));
+                          if (sitesList.length === 0) return;
+                          openWrapped({ kind: 'aggregate', label: brand.name, sites: sitesList });
+                        }}
+                      >
+                        <Sparkles className="w-4 h-4 text-fgb-secondary" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(brand)}>
                         <Pencil className="w-4 h-4" />
                       </Button>

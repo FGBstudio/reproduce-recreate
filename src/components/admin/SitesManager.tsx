@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2, Award } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Tag, Globe, ImageIcon, X, Loader2, Award, Sparkles } from 'lucide-react';
 import { CertificationsDialog } from './CertificationsDialog';
 import { LEEDCertificationsDialog } from './LEEDCertificationsDialog';
 import { useAdminData } from '@/contexts/AdminDataContext';
+import { useWrapped } from '@/components/wrapped/WrappedContext';
 import { AdminSite, RegionCode } from '@/lib/types/admin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +39,7 @@ const defaultFormData = {
 
 export const SitesManager = () => {
   const { brands, sites, addSite, updateSite, deleteSite, getProjectsBySite } = useAdminData();
+  const { open: openWrapped } = useWrapped();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<AdminSite | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
@@ -431,6 +433,19 @@ export const SitesManager = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Play FGB Wrapped"
+                        onClick={() => openWrapped({
+                          kind: 'site',
+                          siteId: site.id,
+                          siteName: site.name,
+                          areaM2: site.area_m2 ?? site.areaSqm ?? null,
+                        })}
+                      >
+                        <Sparkles className="w-4 h-4 text-fgb-secondary" />
+                      </Button>
                       <Button variant="ghost" size="icon" title="Certificazione WELL" onClick={() => setCertDialogSite({ id: site.id, name: site.name })}>
                         <Award className="w-4 h-4 text-rose-500" />
                       </Button>
