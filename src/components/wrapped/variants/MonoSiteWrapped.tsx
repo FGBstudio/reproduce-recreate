@@ -6,6 +6,7 @@ import SlideScore from '../slides/SlideScore';
 import SlideEnergy from '../slides/SlideEnergy';
 import SlideAir from '../slides/SlideAir';
 import SlideAlerts from '../slides/SlideAlerts';
+import SlidePeerBenchmark from '../slides/SlidePeerBenchmark';
 import SlideFun from '../slides/SlideFun';
 import SlideArchetype from '../slides/SlideArchetype';
 import SlideTreedom from '../slides/SlideTreedom';
@@ -51,6 +52,9 @@ export function useMonoSiteSlides({ siteId, siteName, areaM2, onDownload, isDown
     );
   }
   if (data.energy.weekKwh != null) slides.push(<SlideEnergy key="energy" data={data} />);
+  if (data.peer && data.peer.total >= 2) {
+    slides.push(<SlidePeerBenchmark key="peer" data={data} />);
+  }
   if (
     data.hasAirDevices ||
     data.air.avgCo2Ppm != null ||
@@ -59,9 +63,8 @@ export function useMonoSiteSlides({ siteId, siteName, areaM2, onDownload, isDown
   ) {
     slides.push(<SlideAir key="air" data={data} />);
   }
-  if (data.alerts.activeNow > 0 || data.alerts.resolvedThisWeek > 0) {
-    slides.push(<SlideAlerts key="alerts" data={data} />);
-  }
+  // Always show alerts slide for mono-site — even "all clear" is a meaningful story.
+  slides.push(<SlideAlerts key="alerts" data={data} />);
   if ((data.energy.monthKwh ?? data.energy.weekKwh ?? 0) > 0) {
     slides.push(<SlideFun key="fun" data={data} seed={`${siteId}-${data.monthLabel}`} />);
   }
