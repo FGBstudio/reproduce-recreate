@@ -58,6 +58,7 @@ export interface SiteMonthlyData extends SiteWeeklyData {
   monthLabel: string;
   prevMonthLabel: string;
   prevYearMonthLabel: string;
+  hasAirDevices: boolean;
 
   energy: SiteWeeklyData['energy'] & {
     monthKwh: number | null;
@@ -347,6 +348,7 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
     airHourly,
     airDaily,
     alerts,
+    airDevicesCount,
   ] = await Promise.all([
     fetchEnergyDailyByCategory(siteId, cur.startStr, cur.endStr),
     fetchEnergyTotal(siteId, prev.startStr, prev.endStr),
@@ -355,6 +357,13 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
     fetchAirHourly(siteId, cur.startStr, cur.endStr),
     fetchAirDailyAvg(siteId, cur.startStr, cur.endStr),
     fetchAlerts(siteId, cur.startStr, cur.endStr),
+    (async () => {
+      if (!supabase) return 0;
+      const { count } = await supabase
+        .from('devices').select('id', { count: 'exact', head: true })
+        .eq('site_id', siteId).eq('device_type', 'air_quality');
+      return count ?? 0;
+    })(),
   ]);
 
   const monthKwh = totalKwh;
@@ -382,6 +391,7 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
     monthLabel: cur.label,
     prevMonthLabel: prev.label,
     prevYearMonthLabel: yoy.label,
+    hasAirDevices: (airDevicesCount ?? 0) > 0,
     energy: {
       weekKwh: monthKwh,
       prevWeekKwh: prevMonthKwh,

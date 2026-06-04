@@ -7,27 +7,36 @@ const OUTDOOR_REF = 420;
 const SCALE_MAX = 1200;
 
 const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
-  const avg = data.air.avgCo2Ppm!;
+  const avg = data.air.avgCo2Ppm;
   const pct = (v: number) => Math.min(100, (v / SCALE_MAX) * 100);
-  const headroom = WELL_GOLD - avg;
-  const compliant = avg <= WELL_GOLD;
+  const headroom = avg != null ? WELL_GOLD - avg : null;
+  const compliant = avg != null ? avg <= WELL_GOLD : null;
   const hours = data.air.hoursExcellent;
   const perMetric = data.air.perMetric ?? [];
+  const hasAnySignal = avg != null || hours != null || perMetric.length > 0;
 
   return (
     <div className="wr-slide on wr-bg-water">
       <div className="wr-ey wr-a1" style={{ color: 'var(--blue)' }}>🌬 Indoor Air Quality</div>
       <div className="wr-stat wr-a2 wr-asc" style={{ color: 'var(--blue)' }}>
-        {hours != null ? <>{hours}<sup>h</sup></> : <>{avg}<sup>ppm</sup></>}
+        {avg != null
+          ? <>{avg}<sup>ppm</sup></>
+          : hours != null
+            ? <>{hours}<sup>h</sup></>
+            : <>—</>}
       </div>
       <div className="wr-bd wr-a3">
-        {hours != null
-          ? <>of <strong>excellent air</strong> this month — all sensors within WELL/ASHRAE limits.</>
-          : <>Average CO₂ this month. WELL Gold limit is <strong>800 ppm.</strong>
-              {compliant
-                ? <> You stayed <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom / WELL_GOLD) * 100)}% below</strong> on average.</>
-                : <> You exceeded the limit by <strong style={{ color: 'var(--red)' }}>{Math.round(((avg - WELL_GOLD) / WELL_GOLD) * 100)}%.</strong></>}
-            </>}
+        {avg != null ? (
+          <>Average CO₂ — WELL Gold limit is <strong>800 ppm.</strong>{' '}
+            {compliant
+              ? <>You stayed <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom! / WELL_GOLD) * 100)}% below</strong> all month.</>
+              : <>You exceeded the limit by <strong style={{ color: 'var(--red)' }}>{Math.round(((avg - WELL_GOLD) / WELL_GOLD) * 100)}%.</strong></>}
+          </>
+        ) : hours != null ? (
+          <>of <strong>excellent air</strong> this month — all sensors within WELL/ASHRAE limits.</>
+        ) : (
+          <em>No indoor air readings for this month yet</em>
+        )}
       </div>
       {perMetric.length > 0 && (
         <div className="wr-fgrid wr-a4" style={{ margin: '10px auto 8px' }}>
@@ -45,11 +54,12 @@ const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
           ))}
         </div>
       )}
+      {hasAnySignal && (
       <div className="wr-cmp-bars wr-a4">
         <div className="wr-cmp-row">
           <div className="wr-cmp-lbl">Your avg</div>
-          <div className="wr-cmp-track"><div className="wr-cmp-fill" style={{ background: 'var(--blue)', width: `${pct(avg)}%` }} /></div>
-          <div className="wr-cmp-val" style={{ color: 'var(--blue)' }}>{avg} ppm</div>
+          <div className="wr-cmp-track"><div className="wr-cmp-fill" style={{ background: 'var(--blue)', width: `${avg != null ? pct(avg) : 0}%` }} /></div>
+          <div className="wr-cmp-val" style={{ color: 'var(--blue)' }}>{avg != null ? `${avg} ppm` : '—'}</div>
         </div>
         <div className="wr-cmp-row">
           <div className="wr-cmp-lbl">WELL Gold</div>
@@ -67,8 +77,10 @@ const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
           <div className="wr-cmp-val" style={{ opacity: .35 }}>1000 ppm</div>
         </div>
       </div>
+      )}
       <div className="wr-cap wr-a5">
-        {data.air.daysExcellent} excellent day{data.air.daysExcellent === 1 ? '' : 's'} · peak {data.air.peakPpm ?? '—'} ppm
+        {hours != null ? `${Math.round((hours / 720) * 100)}% of hours within WELL Gold · ${data.monthLabel}` :
+          `${data.air.daysExcellent} excellent day${data.air.daysExcellent === 1 ? '' : 's'} · peak ${data.air.peakPpm ?? '—'} ppm`}
       </div>
     </div>
   );
