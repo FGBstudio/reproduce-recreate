@@ -505,6 +505,7 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
     airDaily,
     alerts,
     airDevicesCount,
+    peer,
   ] = await Promise.all([
     fetchEnergyDailyByCategory(siteId, cur.startStr, cur.endStr),
     fetchEnergyTotal(siteId, prev.startStr, prev.endStr),
@@ -520,6 +521,7 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
         .eq('site_id', siteId).eq('device_type', 'air_quality');
       return count ?? 0;
     })(),
+    fetchPeerBenchmark(siteId, cur.startStr, cur.endStr, cur.label),
   ]);
 
   const monthKwh = totalKwh;
@@ -581,7 +583,14 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
       hoursExcellent: airHourly.hoursAllExcellent,
       perMetric: airHourly.perMetric,
     },
-    alerts: { resolvedThisWeek: alerts.resolved, activeNow: alerts.active },
+    alerts: {
+      resolvedThisWeek: alerts.resolved,
+      activeNow: alerts.active,
+      items: alerts.items,
+      countsBySeverity: alerts.countsBySeverity,
+      totalDurationMin: alerts.totalDurationMin,
+    },
+    peer,
     hasAnyData: monthKwh != null || prevMonthKwh != null || airDaily.avg != null,
   };
 }
