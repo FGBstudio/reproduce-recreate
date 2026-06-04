@@ -27,15 +27,15 @@ const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
       </div>
       <div className="wr-bd wr-a3">
         {avg != null ? (
-          <>Average CO₂ — WELL Gold limit is <strong>800 ppm.</strong>{' '}
+          <>Weekly average CO₂ — WELL Gold limit is <strong>800 ppm.</strong>{' '}
             {compliant
-              ? <>You stayed <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom! / WELL_GOLD) * 100)}% below</strong> all month.</>
+              ? <>You stayed <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom! / WELL_GOLD) * 100)}% below</strong> all week.</>
               : <>You exceeded the limit by <strong style={{ color: 'var(--red)' }}>{Math.round(((avg - WELL_GOLD) / WELL_GOLD) * 100)}%.</strong></>}
           </>
         ) : hours != null ? (
-          <>of <strong>excellent air</strong> this month — all sensors within WELL/ASHRAE limits.</>
+          <>of <strong>excellent air</strong> this week — all sensors within WELL/ASHRAE limits.</>
         ) : (
-          <em>No indoor air readings for this month yet</em>
+          <em>No indoor air readings for this week yet</em>
         )}
       </div>
       {perMetric.length > 0 && (
@@ -79,7 +79,7 @@ const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
       </div>
       )}
       <div className="wr-cap wr-a5">
-        {hours != null ? `${Math.round((hours / 720) * 100)}% of hours within WELL Gold · ${data.monthLabel}` :
+        {hours != null ? `${Math.round((hours / 168) * 100)}% of hours within WELL Gold · this week` :
           `${data.air.daysExcellent} excellent day${data.air.daysExcellent === 1 ? '' : 's'} · peak ${data.air.peakPpm ?? '—'} ppm`}
       </div>
     </div>
