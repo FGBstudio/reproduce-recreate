@@ -470,7 +470,7 @@ export const OnboardingTour: React.FC = () => {
                   className="px-4 py-2 rounded-full text-[12px] font-medium transition-colors hover:bg-black/[0.04]"
                   style={{ color: INK, border: `1px solid ${BORDER}` }}
                 >
-                  Jump tour
+                  Skip tour
                 </button>
                 <motion.button
                   whileHover={{ y: -1 }}
