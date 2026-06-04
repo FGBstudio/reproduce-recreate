@@ -117,7 +117,7 @@ const GhostCursor: React.FC<{ x: number; y: number; clicking: boolean }> = ({ x,
     <motion.div
       aria-hidden
       className="pointer-events-none fixed z-[9300]"
-      style={{ left: tx as unknown as string, top: ty as unknown as string, transform: "translate(-6px,-4px)" }}
+      style={{ display: "none", left: tx as unknown as string, top: ty as unknown as string, transform: "translate(-6px,-4px)" }}
     >
       {/* halo */}
       <motion.div
@@ -479,7 +479,7 @@ export const OnboardingTour: React.FC = () => {
                   className="px-5 py-2 rounded-full text-[12px] font-semibold text-white shadow-sm"
                   style={{ background: ACCENT }}
                 >
-                  {isLast ? "Fine" : "Next →"}
+                  {isLast ? "End" : "Next →"}
                 </motion.button>
               </div>
             </div>
