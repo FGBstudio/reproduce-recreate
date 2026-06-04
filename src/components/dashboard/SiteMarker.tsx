@@ -181,7 +181,7 @@ const MapMetricRadar = ({
               height: "150%",
               left: "-25%",
               top: "-25%",
-              zIndex: 10,
+              zIndex: 20,
               transform: `rotate(${-rotationDeg}deg)`,
             }}
           >
@@ -204,7 +204,7 @@ const MapMetricRadar = ({
                   backgroundImage: `url(${brandLogo})`,
                   backgroundRepeat: "repeat",
                   backgroundSize: "80px 80px",
-                  opacity: 0.35,
+                  opacity: 0.15,
                 }}
               />
             )}
@@ -215,9 +215,9 @@ const MapMetricRadar = ({
         <div
           className="absolute inset-0 rounded-full"
           style={{
-            zIndex: 20,
-            backdropFilter: "blur(1.5px)",
-            WebkitBackdropFilter: "blur(1.5px)",
+            zIndex: 10,
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
             pointerEvents: "none",
           }}
