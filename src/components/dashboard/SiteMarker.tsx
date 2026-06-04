@@ -204,7 +204,7 @@ const MapMetricRadar = ({
                   backgroundImage: `url(${brandLogo})`,
                   backgroundRepeat: "repeat",
                   backgroundSize: "80px 80px",
-                  opacity: 0.15,
+                  opacity: 0.35,
                 }}
               />
             )}
@@ -216,8 +216,8 @@ const MapMetricRadar = ({
           className="absolute inset-0 rounded-full"
           style={{
             zIndex: 20,
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
+            backdropFilter: "blur(3px)",
+            WebkitBackdropFilter: "blur(3px)",
             background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
             pointerEvents: "none",
           }}
@@ -243,7 +243,7 @@ const MapMetricRadar = ({
               width: CARD_SIZE,
               height: CARD_SIZE,
               border: `1.5px solid rgba(255, 255, 255, 0.4)`,
-              backgroundColor: "rgba(255, 255, 255, 0.45)", 
+              backgroundColor: "rgba(255, 255, 255, 0.85)", 
               backdropFilter: "blur(4px)",
               WebkitBackdropFilter: "blur(4px)",
             }}
