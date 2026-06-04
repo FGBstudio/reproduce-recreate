@@ -152,6 +152,7 @@
 .wr-bg-fun     { background: radial-gradient(ellipse 95% 85% at 50% 50%, #002a40, #00101c, #000408) }
 .wr-bg-identity{ background: radial-gradient(ellipse 95% 85% at 50% 50%, #1a3a1a, #061204, #010401) }
 .wr-bg-alerts  { background: radial-gradient(ellipse 95% 85% at 50% 50%, #4a1408, #1a0602, #060100) }
+.wr-bg-peer    { background: radial-gradient(ellipse 95% 85% at 50% 45%, #2a1a55, #0e0826, #02000a) }
 .wr-bg-global  { background: radial-gradient(ellipse 95% 85% at 50% 50%, #002a4a, #000c1a, #000208) }
 .wr-bg-regions { background: radial-gradient(ellipse 95% 85% at 50% 50%, #2a004a, #0c0018, #020008) }
 
@@ -185,6 +186,27 @@
 .wr-alert-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .wr-alert-num { font-size: clamp(48px, 8vw, 88px); font-weight: 900; letter-spacing: -3px; line-height: 1; }
 .wr-alert-lbl { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; }
+
+/* alerts graphical list */
+.wr-alert-list { width: min(460px, 84vw); margin: 6px auto 0; }
+.wr-alert-item { display: grid; grid-template-columns: 10px 60px 1fr 56px; align-items: center; gap: 10px; margin-bottom: 8px; }
+.wr-alert-dot { width: 8px; height: 8px; border-radius: 50%; }
+.wr-alert-name { font-size: 10px; font-weight: 700; opacity: .75; letter-spacing: .04em; }
+.wr-alert-track { height: 7px; border-radius: 4px; background: var(--track); overflow: hidden; }
+.wr-alert-fill { height: 100%; border-radius: 4px; width: 0%; transition: width 1.4s cubic-bezier(.16,1,.3,1); }
+.wr-alert-dur { font-size: 11px; font-weight: 700; opacity: .8; text-align: right; }
+
+/* peer benchmark */
+.wr-peer-rank { display: flex; align-items: baseline; justify-content: center; gap: 18px; margin-bottom: 16px; line-height: .9; }
+.wr-peer-hash { font-size: clamp(120px, 22vw, 240px); font-weight: 900; letter-spacing: -10px; color: var(--purple); }
+.wr-peer-of { font-size: clamp(28px, 4vw, 52px); font-weight: 700; opacity: .4; letter-spacing: -1px; }
+.wr-peer-list { width: min(520px, 86vw); margin: 14px auto 0; }
+.wr-peer-row { margin-bottom: 10px; }
+.wr-peer-row.me .wr-peer-lbl { color: var(--purple); opacity: 1; }
+.wr-peer-lbl { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; opacity: .65; letter-spacing: .02em; margin-bottom: 4px; }
+.wr-peer-val { font-weight: 800; opacity: .9; }
+.wr-peer-track { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.wr-peer-fill { height: 100%; border-radius: 3px; width: 0%; transition: width 1.4s cubic-bezier(.16,1,.3,1); }
 
 /* identity */
 .wr-identity-emoji { font-size: clamp(80px, 14vw, 160px); line-height: 1; margin-bottom: 12px; }
