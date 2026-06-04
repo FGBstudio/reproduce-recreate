@@ -54,11 +54,37 @@ export interface AirMetricStat {
   unit: string;
 }
 
+export interface PeerRow {
+  siteId: string;
+  name: string;
+  score: number;     // 0..100, higher is better
+  isMe: boolean;
+}
+
+export interface PeerBenchmark {
+  brandName: string;
+  total: number;       // number of peers with valid data (incl. me)
+  rank: number;        // 1-based rank of current site
+  myScore: number;
+  top5: PeerRow[];     // top 5 entries, with current site injected if outside top5
+  basis: 'eui' | 'kwh';
+  monthLabel: string;
+}
+
+export interface AlertItem {
+  id: string;
+  title: string;
+  severity: 'critical' | 'warning' | 'info';
+  durationMin: number | null;   // null if still active
+  status: 'active' | 'acknowledged' | 'resolved';
+}
+
 export interface SiteMonthlyData extends SiteWeeklyData {
   monthLabel: string;
   prevMonthLabel: string;
   prevYearMonthLabel: string;
   hasAirDevices: boolean;
+  peer: PeerBenchmark | null;
 
   energy: SiteWeeklyData['energy'] & {
     monthKwh: number | null;
@@ -74,6 +100,11 @@ export interface SiteMonthlyData extends SiteWeeklyData {
   air: SiteWeeklyData['air'] & {
     hoursExcellent: number | null;     // all metrics within limits simultaneously
     perMetric: AirMetricStat[];
+  };
+  alerts: SiteWeeklyData['alerts'] & {
+    items: AlertItem[];
+    countsBySeverity: { critical: number; warning: number; info: number };
+    totalDurationMin: number;
   };
 }
 
