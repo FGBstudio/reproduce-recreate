@@ -13,10 +13,10 @@ const SlideTreedom = ({ data }: { data: SiteMonthlyData }) => {
         <div className="wr-tbadge wr-a1">✦ FGB × Treedom</div>
         <div className="wr-tree-ico wr-a2 wr-asc">🌍</div>
         <div className="wr-sub wr-a3">
-          This month you emitted<br/><span style={{ color: 'var(--teal)' }}>{formatKg(emittedKg)} CO₂</span>.
+          This week you emitted<br/><span style={{ color: 'var(--teal)' }}>{formatKg(emittedKg)} CO₂</span>.
         </div>
         <div className="wr-bd wr-a4">
-          We compare to the same month last year or your baseline. Aim for less next cycle — every kWh avoided becomes a real, geotagged tree through Treedom.
+          Compared to last week (or the same week last year) consumption was not lower. Aim for less next cycle — every kWh avoided becomes a real, geotagged tree through Treedom.
         </div>
       </div>
     );
@@ -27,7 +27,7 @@ const SlideTreedom = ({ data }: { data: SiteMonthlyData }) => {
       <div className="wr-tbadge wr-a1">✦ FGB × Treedom</div>
       <div className="wr-tree-ico wr-a2 wr-asc">🌳</div>
       <div className="wr-sub wr-a3">
-        Your savings this month are equivalent<br/>to <span style={{ color: 'var(--teal)' }}>{trees} trees</span> growing for a year.
+        Your savings this week are equivalent<br/>to <span style={{ color: 'var(--teal)' }}>{trees} trees</span> growing for a year.
       </div>
       <div className="wr-bd wr-a4">
         Real, geotagged, traceable. Every FGB-monitored building contributes to reforestation in partnership with Treedom.
@@ -39,7 +39,7 @@ const SlideTreedom = ({ data }: { data: SiteMonthlyData }) => {
         </div>
         <div className="wr-ts-item">
           <div className="wr-ts-num" style={{ color: 'var(--amber)' }}>{formatKg(saved)}</div>
-          <div className="wr-ts-lbl">CO₂ saved this month</div>
+          <div className="wr-ts-lbl">CO₂ saved this week</div>
         </div>
       </div>
     </div>

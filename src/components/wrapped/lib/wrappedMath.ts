@@ -324,3 +324,29 @@ export function identityForScore(score: number | null): { name: string; emoji: s
     description: 'A cactus weathers harsh conditions. There is room to improve — small adjustments will make a big impact.',
   };
 }
+
+/* ─────────── Weekly site score (matches OverviewSection formulas) ───────────
+ * Uses *weekly averages* of the same quantities the dashboard ScoreHero uses:
+ *   - energy:  avg power kW    → 100 - (kW/100)*20         (clamp 0..100)
+ *   - air:     avg CO₂ ppm     → 100 - ((ppm-400)/600)*100 (clamp 0..100)
+ *   - water:   omitted (no reliable weekly water in wrap)  – weight redistributed
+ * Weights mirror MODULE_WEIGHTS in OverviewSection: energy 0.80, air 0.05, water 0.15.
+ */
+export function weeklySiteScore(input: {
+  avgPowerKw: number | null;
+  avgCo2Ppm: number | null;
+}): number | null {
+  const parts: { score: number; weight: number }[] = [];
+  if (input.avgPowerKw != null && isFinite(input.avgPowerKw)) {
+    const s = clamp(100 - (input.avgPowerKw / 100) * 20, 0, 100);
+    parts.push({ score: s, weight: 0.80 });
+  }
+  if (input.avgCo2Ppm != null && isFinite(input.avgCo2Ppm)) {
+    const s = clamp(100 - ((input.avgCo2Ppm - 400) / 600) * 100, 0, 100);
+    parts.push({ score: s, weight: 0.05 });
+  }
+  if (parts.length === 0) return null;
+  const totalW = parts.reduce((a, p) => a + p.weight, 0);
+  const score = parts.reduce((a, p) => a + p.score * (p.weight / totalW), 0);
+  return Math.round(clamp(score, 0, 100));
+}

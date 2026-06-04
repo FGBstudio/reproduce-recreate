@@ -54,7 +54,7 @@ const SlideScore = ({ score, trend, yoy, bestEverScore }: Props) => {
         <div className="wr-score-bench wr-a4">
           {yoy && (
             <div className="wr-sb-row">
-              <span className="wr-sb-lbl">Same month last year</span>
+              <span className="wr-sb-lbl">Same week last year</span>
               <span className="wr-sb-val">
                 {yoy.kwh != null ? formatKwh(yoy.kwh) : '—'}
                 {yoy.deltaPct != null && (
