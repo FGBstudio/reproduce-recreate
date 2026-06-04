@@ -51,7 +51,12 @@ export function useMonoSiteSlides({ siteId, siteName, areaM2, onDownload, isDown
     );
   }
   if (data.energy.weekKwh != null) slides.push(<SlideEnergy key="energy" data={data} />);
-  if (data.air.avgCo2Ppm != null || (data.air.perMetric && data.air.perMetric.length > 0)) {
+  if (
+    data.hasAirDevices ||
+    data.air.avgCo2Ppm != null ||
+    data.air.hoursExcellent != null ||
+    (data.air.perMetric && data.air.perMetric.length > 0)
+  ) {
     slides.push(<SlideAir key="air" data={data} />);
   }
   if (data.alerts.activeNow > 0 || data.alerts.resolvedThisWeek > 0) {
