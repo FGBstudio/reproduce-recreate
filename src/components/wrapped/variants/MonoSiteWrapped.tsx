@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
 import { useSiteMonthlyWrap } from '../hooks/useSiteMonthlyWrap';
-import { overallScore } from '../lib/wrappedMath';
 import SlideWelcome from '../slides/SlideWelcome';
 import SlideScore from '../slides/SlideScore';
 import SlideEnergy from '../slides/SlideEnergy';
@@ -28,11 +27,9 @@ export function useMonoSiteSlides({ siteId, siteName, areaM2, onDownload, isDown
 
   if (isLoading || !data) return { slides: [], isLoading: true, isEmpty: false };
 
-  const score = overallScore({
-    energyDeltaPct: data.energy.deltaPct,
-    waterDeltaPct: data.water.deltaPct,
-    airAvgCo2Ppm: data.air.avgCo2Ppm,
-  });
+  // Score uses the same dashboard formula on weekly averages — keeps the
+  // Wrap number in sync with the FGB score shown in the OverviewSection.
+  const score = data.siteScore;
 
   const slides: ReactNode[] = [
     <SlideWelcome key="welcome" siteName={siteName} weekLabel={data.monthLabel} badge="FGB Wrapped" />,
