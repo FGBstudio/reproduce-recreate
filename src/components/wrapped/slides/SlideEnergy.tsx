@@ -1,4 +1,4 @@
-import { formatPct } from '../lib/wrappedMath';
+import { formatPct, dayName } from '../lib/wrappedMath';
 import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString('it-IT');
@@ -9,22 +9,18 @@ const SlideEnergy = ({ data }: { data: SiteMonthlyData }) => {
     return (
       <div className="wr-slide on wr-bg-energy">
         <div className="wr-ey wr-a1" style={{ color: 'var(--amber)' }}>⚡ Energy</div>
-        <div className="wr-empty wr-a2">No energy data for this month</div>
+        <div className="wr-empty wr-a2">No energy data for this week</div>
       </div>
     );
   }
 
-  // Average draw in kW = total kWh / hours in the period
-  const presentDaysCount = e.daily.filter(d => d.kwh != null).length || e.daily.length || 1;
-  const hoursElapsed = presentDaysCount * 24;
-  const avgKw = e.weekKwh != null ? e.weekKwh / hoursElapsed : null;
+  // Avg draw in kW comes from the hook (general meters, kWh ÷ elapsed hours).
+  const avgKw = e.avgPowerKw;
 
-  const weeks = (e.weeks ?? []).filter(w => w.kwh != null);
-  const peak = weeks.length ? weeks.reduce((m, w) => (w.kwh! > (m.kwh ?? 0) ? w : m)) : null;
-  const maxBar = Math.max(...weeks.map(w => w.kwh ?? 0), 1);
-
-  const monthName = data.monthLabel.split(' ')[0];
-  const prevMonthName = data.prevMonthLabel.split(' ')[0];
+  // Daily kWh bars for the current week (Mon..Sun).
+  const days = (e.daily ?? []).filter(d => d.kwh != null);
+  const peakDay = days.length ? days.reduce((m, d) => (d.kwh! > (m.kwh ?? 0) ? d : m)) : null;
+  const maxBar = Math.max(...days.map(d => d.kwh ?? 0), 1);
 
   const deltaCls = e.deltaPct == null ? 'neutral' : e.deltaPct <= 0 ? 'good' : 'bad';
   const yoyCls = e.yoyDeltaPct == null ? 'neutral' : e.yoyDeltaPct <= 0 ? 'good' : 'bad';
@@ -42,25 +38,25 @@ const SlideEnergy = ({ data }: { data: SiteMonthlyData }) => {
       </div>
 
       <div className="wr-bd wr-a3">
-        Average draw in <strong>{monthName}</strong>
+        Average power draw this <strong>week</strong>
         {e.deltaPct != null && (
-          <> — <span className={`wr-delta ${deltaCls}`}>{formatPct(e.deltaPct)}</span> vs {prevMonthName}.</>
+          <> — <span className={`wr-delta ${deltaCls}`}>{formatPct(e.deltaPct)}</span> vs last week.</>
         )}
-        {peak && (
-          <> Peak week: <strong>W{peak.index} at {fmtInt(peak.kwh!)} kWh.</strong></>
+        {peakDay && (
+          <> Peak day: <strong>{dayName(peakDay.day)} at {fmtInt(peakDay.kwh!)} kWh.</strong></>
         )}
       </div>
 
-      {weeks.length > 0 && (
+      {days.length > 0 && (
         <div className="wr-vchart wr-a4">
           <div className="wr-vbars" style={{ height: 90 }}>
-            {weeks.map((w, i) => {
-              const isPeak = peak?.index === w.index;
-              const h = (w.kwh! / maxBar) * 78;
+            {days.map((d, i) => {
+              const isPeak = peakDay?.day === d.day;
+              const h = (d.kwh! / maxBar) * 78;
               return (
-                <div className="wr-vcol" key={w.index}>
+                <div className="wr-vcol" key={d.day}>
                   <div className="wr-vcol-val" style={{ color: isPeak ? 'var(--amber)' : undefined, opacity: isPeak ? 1 : 0.6 }}>
-                    {fmtInt(w.kwh!)}
+                    {fmtInt(d.kwh!)}
                   </div>
                   <div
                     className="wr-vbar"
@@ -72,7 +68,7 @@ const SlideEnergy = ({ data }: { data: SiteMonthlyData }) => {
                     }}
                   />
                   <div className="wr-vcol-lbl" style={{ color: isPeak ? 'var(--amber)' : undefined }}>
-                    W{w.index}{isPeak ? ' ↑' : ''}
+                    {dayName(d.day)}{isPeak ? ' ↑' : ''}
                   </div>
                 </div>
               );
@@ -84,7 +80,7 @@ const SlideEnergy = ({ data }: { data: SiteMonthlyData }) => {
       <div className="wr-hbars wr-a5" style={{ marginTop: 14 }}>
         {e.prevMonthKwh != null && (
           <div className="wr-hbrow">
-            <div className="wr-hblbl"><span>{data.prevMonthLabel}</span><span>{fmtInt(e.prevMonthKwh)} kWh</span></div>
+            <div className="wr-hblbl"><span>Last week</span><span>{fmtInt(e.prevMonthKwh)} kWh</span></div>
             <div className="wr-hbtrack">
               <div className="wr-hbfill" style={{ background: 'rgba(255,255,255,.25)', width: `${(e.prevMonthKwh / maxTotal) * 100}%` }} />
             </div>
@@ -92,7 +88,7 @@ const SlideEnergy = ({ data }: { data: SiteMonthlyData }) => {
         )}
         {e.weekKwh != null && (
           <div className="wr-hbrow">
-            <div className="wr-hblbl"><span>{data.monthLabel}</span><span>{fmtInt(e.weekKwh)} kWh</span></div>
+            <div className="wr-hblbl"><span>This week</span><span>{fmtInt(e.weekKwh)} kWh</span></div>
             <div className="wr-hbtrack">
               <div className="wr-hbfill" style={{ background: 'var(--amber)', width: `${(e.weekKwh / maxTotal) * 100}%` }} />
             </div>
@@ -103,7 +99,7 @@ const SlideEnergy = ({ data }: { data: SiteMonthlyData }) => {
       <div className="wr-cap wr-a5">
         {e.weekKwh != null && <>Total {fmtInt(e.weekKwh)} kWh</>}
         {e.yoyDeltaPct != null && (
-          <> · YoY <span className={`wr-delta ${yoyCls}`} style={{ padding: '2px 8px', fontSize: 9 }}>
+          <> · vs same week last year <span className={`wr-delta ${yoyCls}`} style={{ padding: '2px 8px', fontSize: 9 }}>
             {formatPct(e.yoyDeltaPct)}
           </span>{e.yoyDeltaPct <= 0 ? ' ✓' : ''}</>
         )}
