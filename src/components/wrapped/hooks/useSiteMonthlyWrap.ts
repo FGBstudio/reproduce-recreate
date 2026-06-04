@@ -326,13 +326,138 @@ async function fetchAirDailyAvg(siteId: string, start: string, end: string): Pro
 }
 
 async function fetchAlerts(siteId: string, weekStart: string, weekEnd: string) {
-  if (!supabase) return { active: 0, resolved: 0 };
-  const [{ count: active }, { count: resolved }] = await Promise.all([
-    supabase.from('events').select('id', { count: 'exact', head: true }).eq('site_id', siteId).eq('status', 'active'),
-    supabase.from('events').select('id', { count: 'exact', head: true }).eq('site_id', siteId).eq('status', 'resolved')
-      .gte('ts_resolved', weekStart).lte('ts_resolved', weekEnd + 'T23:59:59Z'),
-  ] as any);
-  return { active: active ?? 0, resolved: resolved ?? 0 };
+  const empty = {
+    active: 0,
+    resolved: 0,
+    items: [] as AlertItem[],
+    countsBySeverity: { critical: 0, warning: 0, info: 0 },
+    totalDurationMin: 0,
+  };
+  if (!supabase) return empty;
+  const startIso = weekStart + 'T00:00:00Z';
+  const endIso = weekEnd + 'T23:59:59Z';
+  const { data, error } = await supabase
+    .from('events')
+    .select('id, title, severity, status, ts_created, ts_resolved')
+    .eq('site_id', siteId)
+    .gte('ts_created', startIso)
+    .lte('ts_created', endIso)
+    .order('severity', { ascending: false })
+    .order('ts_created', { ascending: false })
+    .limit(20);
+  if (error || !data) return empty;
+
+  const sevOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+  const items: AlertItem[] = (data ?? [])
+    .map((r: any) => {
+      const created = r.ts_created ? new Date(r.ts_created).getTime() : null;
+      const resolved = r.ts_resolved ? new Date(r.ts_resolved).getTime() : null;
+      const durationMin = created != null && resolved != null
+        ? Math.max(1, Math.round((resolved - created) / 60000))
+        : null;
+      return {
+        id: r.id,
+        title: r.title ?? 'Alert',
+        severity: (r.severity as 'critical' | 'warning' | 'info') ?? 'info',
+        durationMin,
+        status: (r.status as 'active' | 'acknowledged' | 'resolved') ?? 'active',
+      } as AlertItem;
+    })
+    .sort((a, b) => (sevOrder[a.severity] - sevOrder[b.severity])
+      || ((b.durationMin ?? 0) - (a.durationMin ?? 0)));
+
+  const countsBySeverity = { critical: 0, warning: 0, info: 0 };
+  let totalDurationMin = 0;
+  let active = 0, resolved = 0;
+  for (const it of items) {
+    countsBySeverity[it.severity] += 1;
+    if (it.durationMin != null) totalDurationMin += it.durationMin;
+    if (it.status === 'active' || it.status === 'acknowledged') active += 1;
+    else resolved += 1;
+  }
+  return { active, resolved, items: items.slice(0, 6), countsBySeverity, totalDurationMin };
+}
+
+async function fetchPeerBenchmark(
+  siteId: string,
+  monthStart: string,
+  monthEnd: string,
+  monthLabel: string,
+): Promise<PeerBenchmark | null> {
+  if (!supabase) return null;
+  // 1) Current site brand
+  const { data: meSite } = await supabase
+    .from('sites').select('brand_id, area_m2').eq('id', siteId).maybeSingle();
+  if (!meSite?.brand_id) return null;
+
+  // 2) Brand name + peers
+  const [{ data: brandRow }, { data: peers }] = await Promise.all([
+    supabase.from('brands').select('name').eq('id', meSite.brand_id).maybeSingle(),
+    supabase.from('sites').select('id, name, area_m2').eq('brand_id', meSite.brand_id),
+  ]);
+  const peerSites = peers ?? [];
+  if (peerSites.length < 2) return null;
+
+  // 3) Devices (general) per peer site → device_id → site_id
+  const peerIds = peerSites.map((p: any) => p.id);
+  const { data: devs } = await supabase
+    .from('devices')
+    .select('id, site_id')
+    .in('site_id', peerIds)
+    .eq('category', 'general');
+  const siteByDevice = new Map<string, string>((devs ?? []).map((d: any) => [d.id, d.site_id]));
+  const deviceIds = Array.from(siteByDevice.keys());
+  if (deviceIds.length === 0) return null;
+
+  // 4) Monthly kWh per site
+  const { data: rows } = await supabase
+    .from('energy_daily')
+    .select('device_id, value_sum')
+    .in('device_id', deviceIds)
+    .gte('ts_day', monthStart)
+    .lte('ts_day', monthEnd)
+    .in('metric', ENERGY_METRICS);
+  const kwhBySite = new Map<string, number>();
+  (rows ?? []).forEach((r: any) => {
+    if (r.value_sum == null) return;
+    const sid = siteByDevice.get(r.device_id);
+    if (!sid) return;
+    kwhBySite.set(sid, (kwhBySite.get(sid) ?? 0) + Number(r.value_sum));
+  });
+
+  // 5) Build scoring rows (lower kWh/m² is better → higher score)
+  const useEui = peerSites.every((p: any) => p.area_m2 && p.area_m2 > 0);
+  const scored = peerSites
+    .map((p: any) => {
+      const kwh = kwhBySite.get(p.id) ?? null;
+      if (kwh == null || kwh <= 0) return null;
+      const metric = useEui ? kwh / Number(p.area_m2) : kwh;
+      return { siteId: p.id, name: p.name as string, metric };
+    })
+    .filter((x): x is { siteId: string; name: string; metric: number } => x !== null);
+  if (scored.length < 2 || !scored.find(s => s.siteId === siteId)) return null;
+
+  scored.sort((a, b) => a.metric - b.metric); // ascending: best first
+  const best = scored[0].metric;
+  const ranked: PeerRow[] = scored.map((s, i) => ({
+    siteId: s.siteId,
+    name: s.name,
+    score: Math.max(50, Math.round((best / s.metric) * 100)),
+    isMe: s.siteId === siteId,
+  }));
+  const myIdx = ranked.findIndex(r => r.isMe);
+  const top5 = ranked.slice(0, 5);
+  if (myIdx >= 5) top5[4] = ranked[myIdx];
+
+  return {
+    brandName: (brandRow?.name as string) ?? 'Brand',
+    total: ranked.length,
+    rank: myIdx + 1,
+    myScore: ranked[myIdx].score,
+    top5,
+    basis: useEui ? 'eui' : 'kwh',
+    monthLabel,
+  };
 }
 
 /* ────────────────────────────────────────────────────── buckets ───── */
