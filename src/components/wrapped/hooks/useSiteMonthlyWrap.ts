@@ -58,6 +58,7 @@ export interface SiteMonthlyData extends SiteWeeklyData {
   monthLabel: string;
   prevMonthLabel: string;
   prevYearMonthLabel: string;
+  hasAirDevices: boolean;
 
   energy: SiteWeeklyData['energy'] & {
     monthKwh: number | null;
