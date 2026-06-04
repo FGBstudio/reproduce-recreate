@@ -449,7 +449,7 @@ export const OnboardingTour: React.FC = () => {
                 >
                   ← Back
                 </button>
-                {/* Auto-play toggle */}
+                {/* Auto-play toggle 
                 <label
                   className="hidden sm:flex items-center gap-1.5 text-[11px] cursor-pointer select-none"
                   style={{ color: SUB }}
@@ -462,7 +462,7 @@ export const OnboardingTour: React.FC = () => {
                     style={{ accentColor: ACCENT }}
                   />
                   Auto-play
-                </label>
+                </label> */}
               </div>
               <div className="flex gap-2">
                 <button
