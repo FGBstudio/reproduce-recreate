@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 
 const SlideAlerts = ({ data }: { data: SiteMonthlyData }) => {
@@ -12,7 +13,7 @@ const SlideAlerts = ({ data }: { data: SiteMonthlyData }) => {
   const sevColor = (s: 'critical' | 'warning' | 'info') =>
     s === 'critical' ? 'var(--red)' : s === 'warning' ? 'var(--amber)' : 'var(--blue)';
 
-  let headline: React.ReactNode;
+  let headline: ReactNode;
   if (allClear) headline = <>All <span style={{ color: 'var(--teal)' }}>clear.</span></>;
   else if (crit && warn) headline = <><span style={{ color: 'var(--red)' }}>{crit} critical,</span> {warn} warning.</>;
   else if (crit) headline = <><span style={{ color: 'var(--red)' }}>{crit} critical</span> alert{crit > 1 ? 's' : ''}.</>;
