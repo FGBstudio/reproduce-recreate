@@ -674,7 +674,7 @@ const FloatingBentoPanel: React.FC = () => {
             <p className="mt-1 text-[13px]" style={{ color: SUB }}>Entry-level building monitoring.</p>
             <div className="mt-6 text-4xl font-semibold" style={{ color: INK }}>€0</div>
             <ul className="mt-6 space-y-2.5 flex-1">
-              {["1 Site view", "Standard Dashboard", "Eemail notification"].map((b) => (
+              {["1 Site view", "Standard Dashboard", "Email notification"].map((b) => (
                 <li key={b} className="flex items-center gap-2 text-[13px]" style={{ color: SUB }}>
                   <span className="w-1 h-1 rounded-full" style={{ background: SUB }} /> {b}
                 </li>
