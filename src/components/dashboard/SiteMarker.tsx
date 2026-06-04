@@ -216,8 +216,8 @@ const MapMetricRadar = ({
           className="absolute inset-0 rounded-full"
           style={{
             zIndex: 20,
-            backdropFilter: "blur(3px)",
-            WebkitBackdropFilter: "blur(3px)",
+            backdropFilter: "blur(1.5px)",
+            WebkitBackdropFilter: "blur(1.5px)",
             background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
             pointerEvents: "none",
           }}
