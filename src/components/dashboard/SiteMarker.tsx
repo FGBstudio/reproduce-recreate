@@ -243,7 +243,7 @@ const MapMetricRadar = ({
               width: CARD_SIZE,
               height: CARD_SIZE,
               border: `1.5px solid rgba(255, 255, 255, 0.4)`,
-              backgroundColor: "rgba(255, 255, 255, 0.85)", 
+              backgroundColor: "rgba(255, 255, 255, 0.45)", 
               backdropFilter: "blur(4px)",
               WebkitBackdropFilter: "blur(4px)",
             }}
