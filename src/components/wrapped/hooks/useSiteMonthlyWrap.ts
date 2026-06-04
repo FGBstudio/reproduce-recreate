@@ -9,14 +9,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
-  wrappedMonthRange,
-  previousMonthRange,
-  previousYearMonthRange,
+  currentISOWeek,
+  previousISOWeek,
   pctDelta,
   co2KgFromKwh,
   treesEquivFromCo2Kg,
   eui,
   archetypeFromHourlyProfile,
+  weeklySiteScore,
   ArchetypeInfo,
 } from '../lib/wrappedMath';
 import type { SiteWeeklyData, DailyKwh } from './useSiteWeeklyWrap';
@@ -80,17 +80,23 @@ export interface AlertItem {
 }
 
 export interface SiteMonthlyData extends SiteWeeklyData {
+  /** Same value as weekLabel — kept for slides that still read monthLabel. */
   monthLabel: string;
   prevMonthLabel: string;
   prevYearMonthLabel: string;
   hasAirDevices: boolean;
   peer: PeerBenchmark | null;
+  /** Dashboard-style score (0..100) computed on weekly averages. null if no data. */
+  siteScore: number | null;
 
   energy: SiteWeeklyData['energy'] & {
+    /** alias of weekKwh – kept so existing slides keep typing */
     monthKwh: number | null;
     prevMonthKwh: number | null;
     yoyKwh: number | null;
     yoyDeltaPct: number | null;
+    /** Weekly average draw, in kW (general meters / hours in window). */
+    avgPowerKw: number | null;
     weeks: WeekBucket[];
     byCategory: EnergyBreakdown | null;
     hourlyProfile: (number | null)[]; // length 24
@@ -492,9 +498,18 @@ function weeklyBuckets(daily: DailyKwh[]): WeekBucket[] {
 /* ────────────────────────────────────────────────────── main ──────── */
 
 async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefined): Promise<SiteMonthlyData> {
-  const cur = wrappedMonthRange();
-  const prev = previousMonthRange(cur);
-  const yoy = previousYearMonthRange(cur);
+  // The Wrap is *weekly* — current ISO week vs previous one, plus a "same week
+  // last year" reference (52 ISO weeks ago).
+  const cur = currentISOWeek();
+  const prev = previousISOWeek();
+  const yoyStart = new Date(cur.start.getTime() - 52 * 7 * 86400000);
+  const yoyEndExcl = new Date(cur.end.getTime() - 52 * 7 * 86400000);
+  const yoyLastDay = new Date(yoyEndExcl.getTime() - 86400000);
+  const yoy = {
+    startStr: yoyStart.toISOString().slice(0, 10),
+    endStr: yoyLastDay.toISOString().slice(0, 10),
+    label: `${yoyStart.toISOString().slice(0, 10)} → ${yoyLastDay.toISOString().slice(0, 10)}`,
+  };
 
   const [
     { daily: energyDaily, byCategory, totalKwh },
@@ -529,26 +544,39 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
   const yoyDelta = pctDelta(monthKwh, yoyKwh);
   const weeks = weeklyBuckets(energyDaily);
 
+  // Avg power kW over the *elapsed* hours in the week (skip days with no data).
+  const presentDays = energyDaily.filter(d => d.kwh != null);
+  const hoursElapsed = Math.max(1, presentDays.length * 24);
+  const avgPowerKw = monthKwh != null ? monthKwh / hoursElapsed : null;
+
+  // Score with the *same* logic the dashboard uses (weekly averages).
+  const siteScore = weeklySiteScore({
+    avgPowerKw,
+    avgCo2Ppm: airDaily.avg,
+  });
+
   // Reuse "best vs others" as golden day on the month
-  const presentDays = energyDaily.filter(d => d.kwh != null && (d.kwh as number) > 0);
-  const goldenDay = presentDays.length
-    ? presentDays.reduce((m, d) => (d.kwh! < m.kwh! ? d : m))
+  const nonZeroDays = energyDaily.filter(d => d.kwh != null && (d.kwh as number) > 0);
+  const goldenDay = nonZeroDays.length
+    ? nonZeroDays.reduce((m, d) => (d.kwh! < m.kwh! ? d : m))
     : null;
 
   const archetype = archetypeFromHourlyProfile(hourlyProfile);
 
-  // YoY-preferred CO₂ savings.
+  // Saved CO₂ vs previous week (preferred), fallback YoY. If consumption *worsened*,
+  // we leave savedKgRef = null so the Treedom slide shows total emitted CO₂ instead.
   let savedKgRef: number | null = null;
-  if (yoyKwh != null && monthKwh != null && yoyKwh > monthKwh) savedKgRef = co2KgFromKwh(yoyKwh - monthKwh);
-  else if (prevMonthKwh != null && monthKwh != null && prevMonthKwh > monthKwh) savedKgRef = co2KgFromKwh(prevMonthKwh - monthKwh);
+  if (prevMonthKwh != null && monthKwh != null && prevMonthKwh > monthKwh) savedKgRef = co2KgFromKwh(prevMonthKwh - monthKwh);
+  else if (yoyKwh != null && monthKwh != null && yoyKwh > monthKwh) savedKgRef = co2KgFromKwh(yoyKwh - monthKwh);
 
   return {
     siteId,
-    weekLabel: cur.label,          // keep field name for legacy slides
+    weekLabel: cur.label,
     prevWeekLabel: prev.label,
     monthLabel: cur.label,
     prevMonthLabel: prev.label,
     prevYearMonthLabel: yoy.label,
+    siteScore,
     hasAirDevices: (airDevicesCount ?? 0) > 0,
     energy: {
       weekKwh: monthKwh,
@@ -563,6 +591,7 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
       prevMonthKwh,
       yoyKwh,
       yoyDeltaPct: yoyDelta,
+      avgPowerKw,
       weeks,
       byCategory,
       hourlyProfile,
@@ -570,7 +599,9 @@ async function fetchSiteMonthly(siteId: string, areaM2: number | null | undefine
     },
     co2: {
       weekKg: monthKwh != null ? co2KgFromKwh(monthKwh) : null,
-      savedKg: savedKgRef ?? 0,
+      // null (not 0) when consumption did *not* improve — slides use this to switch
+      // between "saved" and "emitted" narratives.
+      savedKg: savedKgRef,
       treesEquiv: savedKgRef && savedKgRef > 0 ? treesEquivFromCo2Kg(savedKgRef) : 0,
     },
     water: { weekLiters: null, prevWeekLiters: null, deltaPct: null, leakCount: 0 },
