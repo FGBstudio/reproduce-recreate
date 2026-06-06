@@ -249,7 +249,7 @@
 .wr-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--teal); animation: wrPls 2.6s ease-in-out infinite }
 @keyframes wrPls { 0%,100% { opacity: 1; transform: scale(1) } 50% { opacity: .15; transform: scale(.6) } }
 .wr-site { font-size: 12px; font-weight: 500; letter-spacing: .3em; text-transform: uppercase; opacity: .35; margin-bottom: 10px }
-.wr-main { font-size: clamp(60px, 11vw, 130px); font-weight: 900; line-height: .88; letter-spacing: -4px; margin-bottom: 12px }
+.wr-main { font-size: clamp(60px, 11vw, 130px); font-weight: 900; line-height: 1; letter-spacing: -4px; margin-bottom: 28px; padding-bottom: 6px; }
 .wr-main .ac { color: var(--teal) }
 .wr-mo { font-size: clamp(14px, 2vw, 24px); font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.25) }
 
