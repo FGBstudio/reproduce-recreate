@@ -4,7 +4,8 @@ import type { SiteMonthlyData } from '../hooks/useSiteMonthlyWrap';
 const SlideAlerts = ({ data }: { data: SiteMonthlyData }) => {
   const a = data.alerts;
   const items = a.items ?? [];
-  const total = items.length || (a.activeNow + a.resolvedThisWeek);
+  // "triggered this week" — matches the dashboard SiteAlertsWidget count.
+  const total = a.activeNow + a.resolvedThisWeek;
   const allClear = total === 0;
   const crit = a.countsBySeverity?.critical ?? 0;
   const warn = a.countsBySeverity?.warning ?? 0;
@@ -29,6 +30,11 @@ const SlideAlerts = ({ data }: { data: SiteMonthlyData }) => {
         {total}
       </div>
       <div className="wr-sub wr-a3">{headline}</div>
+      {!allClear && (
+        <div className="wr-cap wr-a3" style={{ opacity: .7, marginTop: 4 }}>
+          {a.resolvedThisWeek} resolved · {a.activeNow} still active
+        </div>
+      )}
       {!allClear && a.totalDurationMin > 0 && (
         <div className="wr-bd wr-a4" style={{ marginBottom: 14 }}>
           Site impacted <strong style={{ color: 'var(--red)' }}>{formatDur(a.totalDurationMin)}</strong> total.
