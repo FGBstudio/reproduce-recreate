@@ -342,28 +342,31 @@ async function fetchAlerts(siteId: string, weekStart: string, weekEnd: string) {
   if (!supabase) return empty;
   const startIso = weekStart + 'T00:00:00Z';
   const endIso = weekEnd + 'T23:59:59Z';
+  // Source of truth = site_alerts (same table the dashboard widget reads).
+  // We take alerts *triggered* within the wrap week so the number matches the
+  // story of the week. Resolved-in-week is reported separately, smaller.
   const { data, error } = await supabase
-    .from('events')
-    .select('id, title, severity, status, ts_created, ts_resolved')
+    .from('site_alerts')
+    .select('id, message, metric, severity, status, triggered_at, resolved_at')
     .eq('site_id', siteId)
-    .gte('ts_created', startIso)
-    .lte('ts_created', endIso)
+    .gte('triggered_at', startIso)
+    .lte('triggered_at', endIso)
     .order('severity', { ascending: false })
-    .order('ts_created', { ascending: false })
-    .limit(20);
+    .order('triggered_at', { ascending: false })
+    .limit(500);
   if (error || !data) return empty;
 
   const sevOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
   const items: AlertItem[] = (data ?? [])
     .map((r: any) => {
-      const created = r.ts_created ? new Date(r.ts_created).getTime() : null;
-      const resolved = r.ts_resolved ? new Date(r.ts_resolved).getTime() : null;
+      const created = r.triggered_at ? new Date(r.triggered_at).getTime() : null;
+      const resolved = r.resolved_at ? new Date(r.resolved_at).getTime() : null;
       const durationMin = created != null && resolved != null
         ? Math.max(1, Math.round((resolved - created) / 60000))
         : null;
       return {
         id: r.id,
-        title: r.title ?? 'Alert',
+        title: r.message ?? r.metric ?? 'Alert',
         severity: (r.severity as 'critical' | 'warning' | 'info') ?? 'info',
         durationMin,
         status: (r.status as 'active' | 'acknowledged' | 'resolved') ?? 'active',
