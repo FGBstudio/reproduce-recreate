@@ -89,15 +89,15 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
     achievedLevel === 'Gold' ? 'bg-amber-100 text-amber-700' :
     achievedLevel === 'Silver' ? 'bg-gray-200 text-gray-700' :
     achievedLevel === 'Certified' ? 'bg-emerald-100 text-emerald-700' :
-    'bg-gray-100 text-gray-500';
+    'bg-gray-100 text-muted-foreground';
 
   return (
     <div className="space-y-6">
       {/* ====== SECTION 1: Header Card (like reference image) ====== */}
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
-            <span className="text-white font-black text-lg">LEED</span>
+            <span className="text-foreground font-black text-lg">LEED</span>
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-800">{certType}</h3>
@@ -118,7 +118,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
           <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all" style={{ width: `${(displayScore / 110) * 100}%` }} />
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-2">
+          <div className="flex justify-between text-xs text-muted-foreground mt-2">
             {LEVEL_THRESHOLDS.map(t => (
               <span key={t.label} className={achievedLevel === t.label ? 'font-bold text-emerald-700' : ''}>
                 {t.label} ({t.min})
@@ -152,31 +152,31 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
 
       {/* ====== SECTION 2: Summary Stats (like reference image bottom cards) ====== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
           <ShieldCheck className="w-5 h-5 text-blue-500 mx-auto mb-2" />
           <div className="text-2xl font-black text-blue-500">{leedCert ? 1 : 0}</div>
-          <div className="text-xs text-gray-500 font-medium mt-1">
+          <div className="text-xs text-muted-foreground font-medium mt-1">
             {language === 'it' ? 'Certificazioni Attive' : 'Active Certifications'}
           </div>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
           <ListChecks className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
           <div className="text-2xl font-black text-emerald-500">{milestonesCompleted}</div>
-          <div className="text-xs text-gray-500 font-medium mt-1">
+          <div className="text-xs text-muted-foreground font-medium mt-1">
             {language === 'it' ? 'Milestone Raggiunte' : 'Milestones Reached'}
           </div>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
           <TrendingUp className="w-5 h-5 text-amber-500 mx-auto mb-2" />
           <div className="text-2xl font-black text-amber-500">{milestonesInProgress}</div>
-          <div className="text-xs text-gray-500 font-medium mt-1">
+          <div className="text-xs text-muted-foreground font-medium mt-1">
             {language === 'it' ? 'In Corso' : 'In Progress'}
           </div>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
           <CalendarClock className="w-5 h-5 text-rose-500 mx-auto mb-2" />
           <div className="text-2xl font-black text-rose-500">{nextAuditYear ?? '—'}</div>
-          <div className="text-xs text-gray-500 font-medium mt-1">
+          <div className="text-xs text-muted-foreground font-medium mt-1">
             {language === 'it' ? 'Prossimo Audit' : 'Next Audit'}
           </div>
         </div>
@@ -185,7 +185,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
       {/* ====== SECTION 3: Donut + Categories side by side ====== */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Donut chart */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col items-center justify-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col items-center justify-center">
           <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">
             {language === 'it' ? 'Distribuzione Punti' : 'Points Distribution'}
           </h4>
@@ -210,7 +210,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-3xl font-black text-gray-800">{displayScore}</span>
-              <span className="text-xs text-gray-500 font-semibold">/ 110 pt</span>
+              <span className="text-xs text-muted-foreground font-semibold">/ 110 pt</span>
             </div>
           </div>
           <div className="flex gap-4 mt-2 flex-wrap justify-center">
@@ -224,7 +224,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
         </div>
 
         {/* Categories */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
           <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-4 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-emerald-600" />
             {language === 'it' ? 'Categorie LEED' : 'LEED Categories'}
@@ -236,7 +236,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
                 <div key={cat.key}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-500 w-6">{cat.key}</span>
+                      <span className="text-xs font-bold text-muted-foreground w-6">{cat.key}</span>
                       <span className="text-sm font-medium text-gray-700">{cat.label}</span>
                     </div>
                     <span className="text-sm font-bold text-gray-800">{pct}%</span>

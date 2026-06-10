@@ -80,8 +80,8 @@ export const TimePeriodSelector = ({
   return (
     <div className="flex items-center gap-2">
       <Select value={value} onValueChange={handlePeriodChange}>
-        <SelectTrigger className="w-[140px] h-9 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-700">
-          <CalendarIcon className="w-4 h-4 mr-2 text-gray-500" />
+        <SelectTrigger className="w-[140px] h-9 bg-foreground/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-700">
+          <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
           <SelectValue>{getDisplayValue()}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -99,11 +99,11 @@ export const TimePeriodSelector = ({
             variant="outline"
             size="sm"
             className={cn(
-              "h-9 px-3 bg-white/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-700",
+              "h-9 px-3 bg-foreground/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-700",
               value === "custom" ? "border-fgb-secondary/50" : ""
             )}
           >
-            <CalendarIcon className="w-4 h-4 mr-2 text-gray-500" />
+            <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
             {value === "custom" && dateRange ? (
               <span className="text-xs">
                 {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}
@@ -125,7 +125,7 @@ export const TimePeriodSelector = ({
               locale={dateLocale}
             />
             <div className="flex justify-between items-center pt-2 border-t">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 {tempRange.from && tempRange.to && (
                   <span>
                     {format(tempRange.from, "dd MMM yyyy", { locale: dateLocale })} - {format(tempRange.to, "dd MMM yyyy", { locale: dateLocale })}

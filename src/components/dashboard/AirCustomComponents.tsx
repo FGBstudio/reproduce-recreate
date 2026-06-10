@@ -18,7 +18,7 @@ const getAqColor = (aq: string | number) => {
     if (upper === "POOR" || upper === "CRITICAL") return "text-red-500 dark:text-red-400";
   }
   const val = typeof aq === 'string' ? parseInt(aq) : (aq || 0);
-  if (isNaN(val)) return "text-gray-400";
+  if (isNaN(val)) return "text-muted-foreground";
   if (val <= 50) return "text-emerald-500 dark:text-emerald-400";
   if (val <= 100) return "text-yellow-500 dark:text-yellow-400";
   return "text-red-500 dark:text-red-400";
@@ -128,7 +128,7 @@ export const BuildingOverview = ({
         </div>
         
         {/* Aesthetic Legend Block */}
-        <div className="flex gap-4 items-center bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 text-[10px] uppercase font-bold text-gray-500 shadow-sm border-b-2">
+        <div className="flex gap-4 items-center bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 text-[10px] uppercase font-bold text-muted-foreground shadow-sm border-b-2">
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></div> Optimal</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-sm"></div> Moderate</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></div> Poor</div>
@@ -136,9 +136,9 @@ export const BuildingOverview = ({
           <div className="relative group flex items-center ml-2 pl-4 border-l border-gray-200">
              <Info className="w-4 h-4 text-teal-600 hover:text-teal-700 cursor-help transition-colors" />
              {/* Tooltip */}
-             <div className="absolute right-0 top-full mt-2 w-[340px] p-4 bg-gray-900 rounded-xl text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+             <div className="absolute right-0 top-full mt-2 w-[340px] p-4 bg-gray-900 rounded-xl text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
                <div className="font-bold text-sm mb-3 border-b border-gray-700 pb-2 text-gray-100">Threshold Reference Logic</div>
-               <div className="grid grid-cols-4 gap-2 text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2">
+               <div className="grid grid-cols-4 gap-2 text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2">
                  <div className="col-span-1">Metric</div>
                  <div className="text-emerald-400">Optimal</div>
                  <div className="text-yellow-400">Moderate</div>
@@ -147,10 +147,10 @@ export const BuildingOverview = ({
                <div className="flex flex-col gap-2">
                  {Object.entries(METRICS_CONFIG).map(([key, info]) => (
                    <div key={key} className="grid grid-cols-4 gap-2 items-center border-t border-gray-800 pt-2">
-                     <div className="col-span-1 font-semibold text-gray-200">{key.replace('iaq.', '').replace('env.', '')}</div>
-                     <div className="text-gray-300">{info.legend.green}</div>
-                     <div className="text-gray-300">{info.legend.yellow}</div>
-                     <div className="text-gray-300">{info.legend.red}</div>
+                     <div className="col-span-1 font-semibold text-muted-foreground">{key.replace('iaq.', '').replace('env.', '')}</div>
+                     <div className="text-muted-foreground">{info.legend.green}</div>
+                     <div className="text-muted-foreground">{info.legend.yellow}</div>
+                     <div className="text-muted-foreground">{info.legend.red}</div>
                    </div>
                  ))}
                </div>
@@ -163,15 +163,15 @@ export const BuildingOverview = ({
         <table className="w-full text-left border-collapse min-w-[900px] table-fixed">
           <thead>
             <tr className="border-b-2 border-gray-100/60 bg-gray-50/50">
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap w-[220px]">Device Name</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">°C Temp</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">% Hum</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">CO₂</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">TVOC</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">PM2.5</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">PM10</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">CO PPM</th>
-              <th className="py-4 px-5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">O₃ PPB</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap w-[220px]">Device Name</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">°C Temp</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">% Hum</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">CO₂</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">TVOC</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">PM2.5</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">PM10</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">CO PPM</th>
+              <th className="py-4 px-5 text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">O₃ PPB</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -187,8 +187,8 @@ export const BuildingOverview = ({
                   return (
                     <div className="flex flex-col gap-1.5 w-full pr-5 opacity-40">
                       <div className="flex justify-between items-end">
-                        <span className="text-[13px] font-medium text-gray-400">—</span>
-                        <span className="text-[9px] font-semibold text-gray-300 tracking-widest">{config.unit}</span>
+                        <span className="text-[13px] font-medium text-muted-foreground">—</span>
+                        <span className="text-[9px] font-semibold text-muted-foreground tracking-widest">{config.unit}</span>
                       </div>
                       <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden"></div>
                     </div>
@@ -204,7 +204,7 @@ export const BuildingOverview = ({
                   <div className="flex flex-col gap-1.5 w-full pr-5">
                     <div className="flex justify-between items-end">
                       <span className="text-[13px] font-bold text-gray-700">{val.toFixed(1)}</span>
-                      <span className="text-[9px] font-semibold text-gray-400 tracking-widest">{config.unit}</span>
+                      <span className="text-[9px] font-semibold text-muted-foreground tracking-widest">{config.unit}</span>
                     </div>
                     <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all duration-1000 ${colorClass}`} style={{ width: `${percent}%`, minWidth: percent > 0 ? '4px' : '0' }}></div>
@@ -217,7 +217,7 @@ export const BuildingOverview = ({
                 <tr key={device.id} className="hover:bg-teal-50/30 transition-colors group">
                   <td className="py-4 px-5 font-semibold text-teal-800 border-r border-gray-50/50 overflow-hidden">
                     <div className="text-sm truncate w-full">{airDeviceLabelById.get(device.id)}</div>
-                    <div className="text-[10px] text-gray-400 uppercase tracking-wider font-medium mt-0.5 truncate w-full">{device.device_id}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mt-0.5 truncate w-full">{device.device_id}</div>
                   </td>
                   <td className="py-4 pl-5">{renderCell('env.temperature')}</td>
                   <td className="py-4 pl-5">{renderCell('env.humidity')}</td>
@@ -257,7 +257,7 @@ export const AirHeatmap = ({
           Air Quality Heatmap
         </h3>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <span>Low</span>
             <div className="flex gap-0.5">
               {heatmapLegendColors.map((c: string) => (
@@ -272,11 +272,11 @@ export const AirHeatmap = ({
       <div className="flex-1 overflow-x-auto pb-2 custom-scrollbar">
         <div className="min-w-max">
           <div className="flex">
-            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-gray-400">
+            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-muted-foreground">
                 {heatmapGrid.isYearView ? 'GG' : 'HH'}
             </div>
             {heatmapGrid.cols.map((col: any) => (
-                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-gray-500 pb-1">
+                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-muted-foreground pb-1">
                     {col.label}
                 </div>
             ))}
@@ -284,7 +284,7 @@ export const AirHeatmap = ({
 
           {heatmapGrid.rows.map((row: any) => (
               <div key={row} className="flex items-center h-6 mb-0.5">
-                  <div className="w-12 flex-shrink-0 text-[10px] text-gray-400 text-right pr-2">
+                  <div className="w-12 flex-shrink-0 text-[10px] text-muted-foreground text-right pr-2">
                       {heatmapGrid.isYearView 
                         ? row 
                         : `${String(row).padStart(2, '0')}:00` 
@@ -300,7 +300,7 @@ export const AirHeatmap = ({
                             style={{ backgroundColor: getColor(val, heatmapGrid.scale) }}
                           >
                             {val > 0 && (
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
                                     <div className="font-bold">
                                         {heatmapGrid.isYearView ? `${row} ${col.label}` : `${col.label} ${row}:00`}
                                     </div>

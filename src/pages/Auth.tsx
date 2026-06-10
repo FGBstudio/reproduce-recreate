@@ -172,13 +172,13 @@ const Auth = () => {
     );
   }
 
-  const inputClass = "pl-11 h-[clamp(2.5rem,4vh,3rem)] bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all text-[clamp(0.8rem,1.1vw,0.9375rem)]";
-  const inputClassNoPad = "h-[clamp(2.5rem,4vh,3rem)] bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all text-[clamp(0.8rem,1.1vw,0.9375rem)]";
+  const inputClass = "pl-11 h-[clamp(2.5rem,4vh,3rem)] bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all text-[clamp(0.8rem,1.1vw,0.9375rem)]";
+  const inputClassNoPad = "h-[clamp(2.5rem,4vh,3rem)] bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all text-[clamp(0.8rem,1.1vw,0.9375rem)]";
 
   return (
     <div className="min-h-[100dvh] bg-background flex">
       {/* Left Panel - Auth Form */}
-      <div className="w-full lg:w-[clamp(360px,35vw,520px)] flex flex-col min-h-[100dvh] bg-[#006367] text-white shrink-0">
+      <div className="w-full lg:w-[clamp(360px,35vw,520px)] flex flex-col min-h-[100dvh] bg-[#006367] text-foreground shrink-0">
         <header className="flex-shrink-0 pt-[max(1.25rem,env(safe-area-inset-top))] pb-1 flex items-center justify-center lg:justify-start lg:pl-[clamp(1rem,2vw,1.5rem)]">
           <img src={brandImg} alt="FGB" className="h-[clamp(2.5rem,5vw,5rem)] w-auto" />
         </header>
@@ -186,16 +186,16 @@ const Auth = () => {
         <div className="flex-1 flex flex-col justify-center px-[clamp(1.25rem,4vw,3rem)] py-[clamp(0.5rem,2vh,2rem)] overflow-y-auto">
           <div className="max-w-[420px] mx-auto w-full">
             <div className="mb-[clamp(0.75rem,2vh,1.5rem)]">
-              <h1 className="text-[clamp(1.25rem,2.5vw,1.875rem)] font-bold text-white mb-1">
+              <h1 className="text-[clamp(1.25rem,2.5vw,1.875rem)] font-bold text-foreground mb-1">
                 {mode === "login" ? t('auth.welcome_back') : mode === "update_password" ? "Reimposta Password" : t('auth.request_access')}
               </h1>
-              <p className="text-white/70 text-[clamp(0.75rem,1.2vw,0.875rem)]">
+              <p className="text-foreground/70 text-[clamp(0.75rem,1.2vw,0.875rem)]">
                 {mode === "login" ? t('auth.login_subtitle') : mode === "update_password" ? "Inserisci la tua nuova password di accesso." : t('auth.request_subtitle')}
               </p>
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm backdrop-blur-sm">
+              <div className="mb-4 p-3 rounded-lg bg-foreground/10 border border-foreground/20 text-foreground text-sm backdrop-blur-sm">
                 {error}
               </div>
             )}
@@ -208,23 +208,23 @@ const Auth = () => {
             {mode === "update_password" ? (
               <form onSubmit={handleUpdatePassword} className="space-y-[clamp(0.75rem,1.5vh,1.25rem)]">
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword" className="text-sm text-white/80">Nuova Password</Label>
+                  <Label htmlFor="newPassword" className="text-sm text-foreground/80">Nuova Password</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Lock className="w-5 h-5" /></div>
                     <Input id="newPassword" type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="••••••••"
                       className={`${inputClass} pr-11`} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-sm text-white/80">Conferma Password</Label>
+                  <Label htmlFor="confirmPassword" className="text-sm text-foreground/80">Conferma Password</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Lock className="w-5 h-5" /></div>
                     <Input id="confirmPassword" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••"
                       className={`${inputClass} pr-11`} />
@@ -232,7 +232,7 @@ const Auth = () => {
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}
-                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-white/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98] mt-4">
+                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-foreground/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98] mt-4">
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -243,9 +243,9 @@ const Auth = () => {
             ) : mode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-[clamp(0.75rem,1.5vh,1.25rem)]">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm text-white/80">{t('auth.email')}</Label>
+                  <Label htmlFor="email" className="text-sm text-foreground/80">{t('auth.email')}</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Mail className="w-5 h-5" /></div>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Mail className="w-5 h-5" /></div>
                     <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
                       className={inputClass} />
@@ -253,21 +253,21 @@ const Auth = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm text-white/80">{t('auth.password')}</Label>
+                  <Label htmlFor="password" className="text-sm text-foreground/80">{t('auth.password')}</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Lock className="w-5 h-5" /></div>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Lock className="w-5 h-5" /></div>
                     <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className={`${inputClass} pr-11`} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}
-                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-white/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-foreground/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98]">
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -282,16 +282,16 @@ const Auth = () => {
               <form onSubmit={handleRequestAccess} className="space-y-[clamp(0.5rem,1.2vh,1rem)]">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="firstName" className="text-sm text-white/80">{t('auth.first_name')} *</Label>
+                    <Label htmlFor="firstName" className="text-sm text-foreground/80">{t('auth.first_name')} *</Label>
                     <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><User className="w-4 h-4" /></div>
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><User className="w-4 h-4" /></div>
                       <Input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
                         placeholder="Mario"
-                        className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                        className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="lastName" className="text-sm text-white/80">{t('auth.last_name')} *</Label>
+                    <Label htmlFor="lastName" className="text-sm text-foreground/80">{t('auth.last_name')} *</Label>
                     <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
                       placeholder="Rossi"
                       className={inputClassNoPad} />
@@ -299,58 +299,58 @@ const Auth = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="reqEmail" className="text-sm text-white/80">{t('auth.email')} *</Label>
+                  <Label htmlFor="reqEmail" className="text-sm text-foreground/80">{t('auth.email')} *</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Mail className="w-4 h-4" /></div>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Mail className="w-4 h-4" /></div>
                     <Input id="reqEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
-                      className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                      className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="company" className="text-sm text-white/80">{t('auth.company')} *</Label>
+                    <Label htmlFor="company" className="text-sm text-foreground/80">{t('auth.company')} *</Label>
                     <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Building2 className="w-4 h-4" /></div>
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Building2 className="w-4 h-4" /></div>
                       <Input id="company" type="text" value={company} onChange={(e) => setCompany(e.target.value)}
                         placeholder="Acme Corp"
-                        className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                        className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="jobTitle" className="text-sm text-white/80">{t('auth.job_title')}</Label>
+                    <Label htmlFor="jobTitle" className="text-sm text-foreground/80">{t('auth.job_title')}</Label>
                     <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"><Briefcase className="w-4 h-4" /></div>
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Briefcase className="w-4 h-4" /></div>
                       <Input id="jobTitle" type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}
                         placeholder="Energy Manager"
-                        className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all" />
+                        className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="message" className="text-sm text-white/80">{t('auth.request_message')}</Label>
+                  <Label htmlFor="message" className="text-sm text-foreground/80">{t('auth.request_message')}</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-3 text-white/60"><MessageSquare className="w-4 h-4" /></div>
+                    <div className="absolute left-3 top-3 text-foreground/60"><MessageSquare className="w-4 h-4" /></div>
                     <Textarea id="message" value={requestMessage} onChange={(e) => setRequestMessage(e.target.value)}
                       placeholder={t('auth.request_message_placeholder')}
                       rows={3}
-                      className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white focus:ring-white/20 focus:bg-white/20 transition-all resize-none" />
+                      className="pl-10 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all resize-none" />
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
                   <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                    className="mt-0.5 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#911141]" />
-                  <Label htmlFor="terms" className="text-sm text-white/80 cursor-pointer">
+                    className="mt-0.5 border-foreground/50 data-[state=checked]:bg-white data-[state=checked]:text-[#911141]" />
+                  <Label htmlFor="terms" className="text-sm text-foreground/80 cursor-pointer">
                     {t('auth.terms_accept')}{" "}
-                    <a href="#" className="text-white hover:underline font-semibold">{t('auth.terms_link')}</a>
+                    <a href="#" className="text-foreground hover:underline font-semibold">{t('auth.terms_link')}</a>
                   </Label>
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}
-                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-white/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98]">
+                  className="w-full min-h-[44px] h-[clamp(2.5rem,4vh,3rem)] bg-white hover:bg-foreground/90 text-[#911141] font-bold text-[clamp(0.8rem,1.1vw,1rem)] gap-2 shadow-lg transition-all active:scale-[0.98]">
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-[#911141] border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -365,14 +365,14 @@ const Auth = () => {
 
             <div className="mt-[clamp(0.75rem,1.5vh,1.5rem)] text-center">
               {mode === "login" ? (
-                <p className="text-sm text-white/70">
+                <p className="text-sm text-foreground/70">
                   {t('auth.no_account')}{" "}
                   <button onClick={() => { setMode("request"); setError(null); setSuccessMessage(null); }}
-                    className="text-white hover:underline font-semibold hover:text-white/90">{t('auth.request_access')}</button>
+                    className="text-foreground hover:underline font-semibold hover:text-foreground/90">{t('auth.request_access')}</button>
                 </p>
               ) : mode === "request" ? (
                 <button onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}
-                  className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors mx-auto min-h-[44px]">
+                  className="flex items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground transition-colors mx-auto min-h-[44px]">
                   <ArrowLeft className="w-4 h-4" />
                   {t('auth.back_to_login')}
                 </button>
@@ -380,7 +380,7 @@ const Auth = () => {
             </div>
 
             <div className="mt-[clamp(1rem,2vh,2rem)] text-center">
-              <a href="mailto:support@fgb-studio.com" className="text-sm text-white/50 hover:text-white transition-colors">
+              <a href="mailto:support@fgb-studio.com" className="text-sm text-foreground/50 hover:text-foreground transition-colors">
                 {t('auth.need_help')}
               </a>
             </div>
@@ -389,21 +389,21 @@ const Auth = () => {
 
         <footer className="p-[clamp(0.75rem,1.5vh,1.5rem)] pb-[max(1rem,env(safe-area-inset-bottom))] text-center shrink-0">
           <div className="mt-8 flex flex-col items-center justify-center space-y-4">
-            <div className="flex space-x-8 text-center border-b border-white/500 pb-4">
+            <div className="flex space-x-8 text-center border-b border-foreground/500 pb-4">
               <div className="flex flex-col items-center">
-                <span className="text-white/70 font-bold text-2xl">60</span>
-                <span className="text-white/80 font-mono text-xs uppercase tracking-wider">countries</span>
+                <span className="text-foreground/70 font-bold text-2xl">60</span>
+                <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">countries</span>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-white/70 font-bold text-2xl">6000+</span>
-                <span className="text-white/80 font-mono text-xs uppercase tracking-wider">buildings monitored</span>
+                <span className="text-foreground/70 font-bold text-2xl">6000+</span>
+                <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">buildings monitored</span>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-white/70 font-bold text-2xl">300</span>
-                <span className="text-white/80 font-mono text-xs uppercase tracking-wider">clients</span>
+                <span className="text-foreground/70 font-bold text-2xl">300</span>
+                <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">clients</span>
               </div>
             </div>
-            <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-white/30">Powered by FGB Monitoring</p>
+            <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-foreground/30">Powered by FGB Monitoring</p>
           </div> {/* ← DIV CHIUSO QUI */}
         </footer>
       </div>

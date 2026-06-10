@@ -182,17 +182,17 @@ const ChartFullscreenModal = ({
   
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-fade-in"
+      className="fixed inset-0 z-[100] bg-background/60 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-fade-in"
       onClick={onClose}
     >
       <div 
         className="bg-white rounded-[24px] w-full max-w-6xl max-h-[90vh] overflow-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 flex justify-between items-center px-8 py-5 border-b border-gray-100/80">
+        <div className="sticky top-0 bg-foreground/95 backdrop-blur-xl z-10 flex justify-between items-center px-8 py-5 border-b border-gray-100/80">
           <h2 className="text-lg font-bold text-gray-800 tracking-tight">{title}</h2>
           <button onClick={onClose} className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors">
-            <X className="w-4 h-4 text-gray-500" />
+            <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
         <div className="p-6 md:p-8" style={{ minHeight: '500px' }}>
@@ -215,17 +215,17 @@ const ExportButtons = ({ chartRef, data, filename, onExpand }: ExportButtonsProp
   <div className="flex gap-1">
     {onExpand && (
       <button onClick={onExpand} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Fullscreen">
-        <Maximize2 className="w-3.5 h-3.5 text-gray-400" />
+        <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />
       </button>
     )}
     <button onClick={() => exportAsImage(chartRef, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export PNG">
-      <Image className="w-3.5 h-3.5 text-gray-400" />
+      <Image className="w-3.5 h-3.5 text-muted-foreground" />
     </button>
     <button onClick={() => exportAsCSV(data, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export CSV">
-      <FileSpreadsheet className="w-3.5 h-3.5 text-gray-400" />
+      <FileSpreadsheet className="w-3.5 h-3.5 text-muted-foreground" />
     </button>
     <button onClick={() => exportAsJSON(data, filename)} className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200" title="Export JSON">
-      <FileJson className="w-3.5 h-3.5 text-gray-400" />
+      <FileJson className="w-3.5 h-3.5 text-muted-foreground" />
     </button>
   </div>
 );
@@ -1045,7 +1045,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   // Helper: quality label & color for PM/gas values
   const getAirQualityLabel = (value: number | null, limits: { good: number; moderate: number }) => {
-    if (value == null) return { label: '—', color: 'text-gray-400' };
+    if (value == null) return { label: '—', color: 'text-muted-foreground' };
     if (value <= limits.good) return { label: t('pd.quality_excellent'), color: 'text-emerald-500' };
     if (value <= limits.moderate) return { label: t('pd.quality_moderate'), color: 'text-yellow-500' };
     return { label: t('pd.quality_poor'), color: 'text-red-500' };
@@ -3227,7 +3227,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       >
         <button 
           onClick={onClose}
-          className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold text-white transition-all group border border-white/10"
+          className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold text-foreground transition-all group border border-foreground/10"
           style={{ minHeight: 44 }}
         >
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
@@ -3242,7 +3242,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               siteName: project.name,
               areaM2: project.area_m2 ?? null,
             })}
-            className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-xs font-medium text-white transition-all cursor-pointer border border-white/10"
+            className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs font-medium text-foreground transition-all cursor-pointer border border-foreground/10"
             title="FGB Weekly Wrapped"
             style={{ minHeight: 36 }}
           >
@@ -3251,7 +3251,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           </button>
         )}
         {/* Change Background Button */}
-        <label className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-xs font-medium text-white transition-all cursor-pointer border border-white/10 ${isUploadingBg ? 'opacity-50 pointer-events-none' : ''}`}>
+        <label className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs font-medium text-foreground transition-all cursor-pointer border border-foreground/10 ${isUploadingBg ? 'opacity-50 pointer-events-none' : ''}`}>
           {isUploadingBg ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <Image className="w-3.5 h-3.5 md:w-4 md:h-4" />}
           <span className="hidden md:inline">{isUploadingBg ? 'Uploading...' : t('pd.change_bg')}</span>
           <input 
@@ -3330,8 +3330,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               onClick={() => handleDashboardChange("overview")}
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "overview" 
-                  ? "bg-fgb-secondary text-white" 
-                  : "bg-white/50 text-gray-600 hover:bg-white/80"
+                  ? "bg-fgb-secondary text-foreground" 
+                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
               }`}
               title="Overview"
             >
@@ -3341,8 +3341,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               onClick={() => handleDashboardChange("energy")}
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "energy" 
-                  ? "bg-fgb-secondary text-white" 
-                  : "bg-white/50 text-gray-600 hover:bg-white/80"
+                  ? "bg-fgb-secondary text-foreground" 
+                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
               }`}
               title="Energy Dashboard"
             >
@@ -3352,8 +3352,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               onClick={() => handleDashboardChange("air")}
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "air" 
-                  ? "bg-fgb-secondary text-white" 
-                  : "bg-white/50 text-gray-600 hover:bg-white/80"
+                  ? "bg-fgb-secondary text-foreground" 
+                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
               }`}
               title="Air Quality Dashboard"
             >
@@ -3363,8 +3363,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               onClick={() => handleDashboardChange("water")}
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "water" 
-                  ? "bg-fgb-secondary text-white" 
-                  : "bg-white/50 text-gray-600 hover:bg-white/80"
+                  ? "bg-fgb-secondary text-foreground" 
+                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
               }`}
               title="Water Dashboard"
             >
@@ -3375,8 +3375,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 onClick={() => handleDashboardChange("certification")}
                 className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                   activeDashboard === "certification" 
-                    ? "bg-fgb-secondary text-white" 
-                    : "bg-white/50 text-gray-600 hover:bg-white/80"
+                    ? "bg-fgb-secondary text-foreground" 
+                    : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
                 }`}
                 title="Certification Dashboard"
               >
@@ -3388,8 +3388,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 onClick={() => handleDashboardChange("bills")}
                 className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                   activeDashboard === "bills" 
-                    ? "bg-fgb-secondary text-white" 
-                    : "bg-white/50 text-gray-600 hover:bg-white/80"
+                    ? "bg-fgb-secondary text-foreground" 
+                    : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
                 }`}
                 title="Bill Analysis"
               >
@@ -3410,7 +3410,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 disabled={isGeneratingPdf}
                 variant="outline"
                 size="sm"
-                className="h-7 md:h-9 px-2 md:px-3 bg-white/50 border-gray-200 rounded-full text-xs md:text-sm font-medium text-gray-700 hover:bg-fgb-secondary hover:text-white"
+                className="h-7 md:h-9 px-2 md:px-3 bg-foreground/50 border-gray-200 rounded-full text-xs md:text-sm font-medium text-gray-700 hover:bg-fgb-secondary hover:text-foreground"
               >
                 {isGeneratingPdf ? (
                   <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
@@ -3426,7 +3426,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 onClick={() => setSettingsOpen(true)}
                 variant="outline"
                 size="sm"
-                className="h-7 md:h-9 w-7 md:w-9 p-0 bg-white/50 border-gray-200 rounded-full text-gray-700 hover:bg-fgb-secondary hover:text-white"
+                className="h-7 md:h-9 w-7 md:w-9 p-0 bg-foreground/50 border-gray-200 rounded-full text-gray-700 hover:bg-fgb-secondary hover:text-foreground"
                 title={t('pd.project_settings')}
               >
                 <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -3440,19 +3440,19 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </div>
           </div>
           
-          <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-white tracking-wide truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">{project.name}</h1>
-          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-white/90 font-medium flex-wrap drop-shadow-[0_1px_4px_rgba(0,0,0,0.3)]">
+          <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-foreground tracking-wide truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">{project.name}</h1>
+          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-foreground/90 font-medium flex-wrap drop-shadow-[0_1px_4px_rgba(0,0,0,0.3)]">
             <span className="truncate max-w-[150px] md:max-w-none">{project.address}</span>
-            <span className="text-white/40 hidden sm:inline">|</span>
+            <span className="text-foreground/40 hidden sm:inline">|</span>
             <span className="flex items-center gap-1">
-              {outdoorTemp ?? project.data.temp}° <Cloud className="w-3.5 h-3.5 md:w-4 md:h-4 text-white/80" />
+              {outdoorTemp ?? project.data.temp}° <Cloud className="w-3.5 h-3.5 md:w-4 md:h-4 text-foreground/80" />
             </span>
             {/* Brand & Holding Info - Dinamico */}
             {brand && (
               <>
-                <span className="text-white/40 hidden md:inline">|</span>
+                <span className="text-foreground/40 hidden md:inline">|</span>
                 <span className="hidden md:flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-white/70" />
+                  <Tag className="w-4 h-4 text-foreground/70" />
                   <span className="font-medium">{brand.name}</span>
                 </span>
                 {/* Nota: Per le holding reali bisognerebbe fare un lookup simile, 
@@ -3501,13 +3501,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                     {/* Energy Consumption Over Time Chart - REPLACED */}
-                    <div ref={energyConsumptionRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                    <div ref={energyConsumptionRef} className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div className="flex items-center gap-2">
                           <div>
                             {/* TITOLO RINOMINATO */}
                             <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_over_time')}</h3>
-                            <p className="text-[10px] md:text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
+                            <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                               <span>{timeRange.bucket === '1d' ? t('pd.daily_energy_kwh') : t('pd.avg_power_kw')}</span>
                               {isSimulationMode && hasOnlyGeneralMeters && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-teal-500/10 to-purple-500/10 border border-teal-500/20 text-[9px] font-semibold text-teal-700 dark:text-teal-300">
@@ -3525,7 +3525,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <button
                               onClick={() => setEnergyViewMode('category')}
                               className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                                energyViewMode === 'category' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
+                                energyViewMode === 'category' ? 'bg-white shadow text-slate-900' : 'text-muted-foreground hover:text-gray-700'
                               }`}
                             >
                               {t('pd.categories')}
@@ -3533,7 +3533,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <button
                               onClick={() => setEnergyViewMode('device')}
                               className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                                energyViewMode === 'device' ? 'bg-white shadow text-slate-900' : 'text-gray-500 hover:text-gray-700'
+                                energyViewMode === 'device' ? 'bg-white shadow text-slate-900' : 'text-muted-foreground hover:text-gray-700'
                               }`}
                             >
                               Devices
@@ -3546,7 +3546,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all duration-300 backdrop-blur-md relative group overflow-hidden ${
                                 isSimulationMode
                                   ? 'bg-[#0F766E]/10 border-[#0F766E]/20 text-[#0F766E] shadow-[0_2px_10px_rgba(15,118,110,0.08)] font-bold'
-                                  : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                                  : 'bg-foreground/60 border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
                               }`}
                               title={t('pd.virtual_split_tooltip')}
                             >
@@ -3716,7 +3716,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                     {/* Energy Consumption Breakdown Chart - REPLACED */}
                     {/* Energy Consumption Breakdown Chart */}
-                    <div ref={energyDensityRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                    <div ref={energyDensityRef} className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-3 md:mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_breakdown')}</h3>
                         <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-breakdown" />
@@ -3725,7 +3725,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         {/* Legenda a Sinistra */}
                         <div className="space-y-1.5 md:space-y-2 flex-1 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
                           {energyDistributionData.length === 0 ? (
-                            <div className="text-sm text-gray-400 italic">No data available</div>
+                            <div className="text-sm text-muted-foreground italic">No data available</div>
                           ) : (
                             energyDistributionData.map((item, idx) => (
                               <div key={idx} className="flex items-center gap-2">
@@ -3766,7 +3766,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <span className="text-lg md:text-xl font-bold text-slate-900">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] md:text-xs text-gray-500 font-medium">{t('pd.total_kwh')}</span>
+                            <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
                           </div>
                         </div>
                       </div>
@@ -3774,16 +3774,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
-                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
                         <p className="text-xl md:text-3xl font-bold text-slate-900">{densityValue}</p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">kWh/m²</p>
+                        <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">kWh/m²</p>
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-gray-400 font-medium">{t('pd.in_selected_period')}</div>
+                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.in_selected_period')}</div>
                       </div>
                       {/* Widget Costo Stimato */}
-                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">
                           Estimated Cost ({periodLabel})
                         </p>
                         
@@ -3793,7 +3793,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             : '---'}
                         </p>
                         
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">
+                        <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
                           {estimatedCostData 
                             ? `Consumption × €${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
                             : 'Energy price not configured'}
@@ -3802,18 +3802,18 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         {/* Indicatore Trend (Statico o da calcolare in futuro) */}
                         {/* <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('energy.efficiency')}</p>
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('energy.efficiency')}</p>
                         <p className={`text-xl md:text-3xl font-bold ${
-                          efficiencyData.delta === null ? 'text-gray-400' :
+                          efficiencyData.delta === null ? 'text-muted-foreground' :
                           efficiencyData.delta < 0 ? 'text-emerald-500' : 
-                          efficiencyData.delta === 0 ? 'text-gray-400' : 'text-red-500'
+                          efficiencyData.delta === 0 ? 'text-muted-foreground' : 'text-red-500'
                         }`}>
                           {efficiencyData.delta === null ? 'N/A' :
                            efficiencyData.delta === 0 ? '0%' :
                            `${efficiencyData.delta > 0 ? '+' : ''}${efficiencyData.delta}%`}
                         </p>
-                        <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">{efficiencySubtitle}</p>
+                        <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{efficiencySubtitle}</p>
                         {efficiencyData.delta !== null && efficiencyData.delta !== 0 && (
                           <div className={`mt-1 md:mt-2 text-[10px] md:text-xs font-medium ${
                             efficiencyData.delta < 0 ? 'text-emerald-500' : 'text-red-500'
@@ -3822,14 +3822,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </div>
                         )}
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-gray-500 mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
+                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
                         <p className={`text-xl md:text-3xl font-bold ${pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                           {pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length || 0}
                         </p>
                         {pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length > 0 && (
                           <>
-                            <p className="text-[9px] md:text-xs text-gray-500 mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
+                            <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
                             <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
                           </>
                         )}
@@ -3843,7 +3843,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Left Column: Alerts & Health Split */}
                     <div className="grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 min-h-[400px]">
-                      <div ref={alertsRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
+                      <div ref={alertsRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                           <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
@@ -3855,7 +3855,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                       </div>
 
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col border border-indigo-50">
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col border border-indigo-50">
                         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                           Sensor Health
                         </h3>
@@ -3867,7 +3867,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                     </div>
                     {/* Energy Periods Pivot Table */}
-                    <div ref={periodRef} className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg h-full flex flex-col">
+                    <div ref={periodRef} className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg h-full flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">Energy Periods</h3>
                         
@@ -3890,7 +3890,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       {/* Tabella Scrollabile */}
                       <div className="overflow-y-auto flex-1 custom-scrollbar pr-1" style={{ maxHeight: '300px' }}>
                         <table className="w-full text-sm text-left">
-                          <thead className="text-xs text-gray-500 uppercase bg-gray-50/90 sticky top-0 z-10">
+                          <thead className="text-xs text-muted-foreground uppercase bg-gray-50/90 sticky top-0 z-10">
                             <tr>
                               <th scope="col" className="px-3 py-3 rounded-l-lg">Period</th>
                               <th scope="col" className="px-3 py-3 text-center">kWh</th>
@@ -3900,7 +3900,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <tbody>
                             {energyPeriodsData.length === 0 ? (
                               <tr>
-                                <td colSpan={3} className="px-3 py-8 text-center text-gray-400 italic">
+                                <td colSpan={3} className="px-3 py-8 text-center text-muted-foreground italic">
                                   No data available for {energyPeriodsYear}
                                 </td>
                               </tr>
@@ -3914,7 +3914,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                     className="bg-white border-b hover:bg-gray-50 cursor-pointer transition-colors group"
                                   >
                                     <td className="px-3 py-3 font-medium text-gray-900 flex items-center gap-2">
-                                      <span className={`p-1 rounded-md transition-colors ${expandedMonths.includes(period.monthKey) ? 'bg-emerald-100 text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'}`}>
+                                      <span className={`p-1 rounded-md transition-colors ${expandedMonths.includes(period.monthKey) ? 'bg-emerald-100 text-emerald-600' : 'text-muted-foreground group-hover:text-emerald-500'}`}>
                                         {expandedMonths.includes(period.monthKey) ? (
                                           <ChevronUp className="w-3.5 h-3.5" />
                                         ) : (
@@ -3934,13 +3934,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                   {/* RIGHE GIORNI (Children) - Renderizzate solo se espanso */}
                                   {expandedMonths.includes(period.monthKey) && period.days.map((day) => (
                                     <tr key={day.dayKey} className="bg-gray-50/50 border-b border-gray-100 animate-slide-down">
-                                      <td className="px-3 py-2 pl-10 text-xs text-gray-500 font-medium border-l-2 border-emerald-100">
+                                      <td className="px-3 py-2 pl-10 text-xs text-muted-foreground font-medium border-l-2 border-emerald-100">
                                         {day.dayLabel}
                                       </td>
-                                      <td className="px-3 py-2 text-center text-xs text-gray-500 tabular-nums">
+                                      <td className="px-3 py-2 text-center text-xs text-muted-foreground tabular-nums">
                                         {day.kwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </td>
-                                      <td className="px-3 py-2 text-right text-xs text-gray-500 tabular-nums">
+                                      <td className="px-3 py-2 text-right text-xs text-muted-foreground tabular-nums">
                                         {day.cost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
                                       </td>
                                    </tr>
@@ -3953,14 +3953,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                     </div>
                     {/* Heatmap Widget - FIX LOGICA ORARIA/GIORNALIERA */}
-                    <div ref={heatmapRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                    <div ref={heatmapRef} className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">
                           Energy Consumption Heatmap
                         </h3>
                         <div className="flex items-center gap-3">
                           {/* Legendina minimale (scala per-store) */}
-                          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                             <span>Low</span>
                             <div className="flex gap-0.5">
                               {heatmapLegendColors.map((c) => (
@@ -3979,12 +3979,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           {/* Header Colonne (X-Axis) */}
                           <div className="flex">
                             {/* Spacer angolo in alto a sx */}
-                            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-gray-400">
+                            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-muted-foreground">
                                 {heatmapGrid.isYearView ? 'GG' : 'HH'}
                             </div>
                             {/* Labels Colonne */}
                             {heatmapGrid.cols.map(col => (
-                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-gray-500 pb-1">
+                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-muted-foreground pb-1">
                                     {col.label}
                                 </div>
                             ))}
@@ -3994,7 +3994,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           {heatmapGrid.rows.map(row => (
                               <div key={row} className="flex items-center h-6 mb-0.5">
                                   {/* Label Riga (00:00 o Day 1) */}
-                                  <div className="w-12 flex-shrink-0 text-[10px] text-gray-400 text-right pr-2">
+                                  <div className="w-12 flex-shrink-0 text-[10px] text-muted-foreground text-right pr-2">
                                       {heatmapGrid.isYearView 
                                         ? row // Giorno mese (1, 2...)
                                         : `${String(row).padStart(2, '0')}:00` // Ora (00:00...)
@@ -4012,7 +4012,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                           >
                                             {/* Tooltip on Hover */}
                                             {val > 0 && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
                                                     <div className="font-bold">
                                                         {heatmapGrid.isYearView 
                                                             ? `${row} ${col.label}` // "15 GEN"
@@ -4037,11 +4037,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-full pb-20">
                     
                     {/* WIDGET 1: ACTUAL VS AVERAGE */}
-                    <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                    <div className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
-                          <p className="text-xs text-gray-500">Energy Density (kWh/m²)</p>
+                          <p className="text-xs text-muted-foreground">Energy Density (kWh/m²)</p>
                         </div>
                         
                         <div className="flex items-center gap-3">
@@ -4141,13 +4141,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
 
                     {/* WIDGET: POWER CONSUMPTION (Real-time Breakdown) - 1/3 width */}
-                    <div ref={powerConsRef} className="lg:col-span-1 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                    <div ref={powerConsRef} className="lg:col-span-1 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <div>
                             <h3 className="text-base md:text-lg font-bold text-gray-800">
                               {timePeriod === 'today' ? 'Power Consumption' : 'Average Power'}
                             </h3>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               {timePeriod === 'today' ? 'Real-time (kW)' : 'Average (kW)'}
                             </p>
                           </div>
@@ -4158,7 +4158,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                            {/* Legenda Scrollabile */}
                            <div className="space-y-1.5 flex-1 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
                               {powerDistributionData.length === 0 ? (
-                                <div className="text-sm text-gray-400 italic">No real-time data</div>
+                                <div className="text-sm text-muted-foreground italic">No real-time data</div>
                               ) : (
                                 powerDistributionData.map((item, idx) => (
                                   <div key={idx} className="flex items-center gap-2">
@@ -4199,17 +4199,17 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                                   {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                 </span>
-                                <span className="text-[10px] text-gray-500 font-medium">kW</span>
+                                <span className="text-[10px] text-muted-foreground font-medium">kW</span>
                               </div>
                            </div>
                         </div>
                     </div>
                     {/* DEVICES CONSUMPTION (Stacked Bar Chart) - 2/3 width */}
-                    <div ref={deviceConsRef} className="lg:col-span-full bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    <div ref={deviceConsRef} className="lg:col-span-full bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
-                          <p className="text-xs text-gray-500">Breakdown by {energyViewMode === 'category' ? 'Category' : 'Device'} (kWh)</p>
+                          <p className="text-xs text-muted-foreground">Breakdown by {energyViewMode === 'category' ? 'Category' : 'Device'} (kWh)</p>
                         </div>
                         <ExportButtons 
                           chartRef={deviceConsRef} 
@@ -4314,11 +4314,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* RIGA CARBON FOOTPRINT */}
-                    <div ref={carbonRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    <div ref={carbonRef} className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Carbon Footprint Analysis</h3>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             {timePeriod === 'year' && 'Monthly Comparison (Year vs Year)'}
                             {timePeriod === 'month' && 'Weekly Breakdown (Month vs Month)'}
                             {timePeriod === 'week' && 'Daily Profile (Week vs Week)'}
@@ -4328,7 +4328,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200">
+                            <span className="text-[10px] font-mono bg-gray-100 text-muted-foreground px-2 py-1 rounded border border-gray-200">
                                 EF: 0.233 kg/kWh
                             </span>
                             <ExportButtons 
@@ -4385,11 +4385,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                     </div>
                   {/* CRASH-PROOF CIRCULAR DAY/NIGHT WIDGET */}
-                    <div ref={trendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg min-h-[350px] flex flex-col relative overflow-hidden">
+                    <div ref={trendRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg min-h-[350px] flex flex-col relative overflow-hidden">
                       <div className="flex justify-between items-center mb-2 relative z-10">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">24-Hour Energy Cycle</h3>
-                          <p className="text-xs text-gray-500">Day vs Night Consumption Ratio</p>
+                          <p className="text-xs text-muted-foreground">Day vs Night Consumption Ratio</p>
                         </div>
                         <ExportButtons chartRef={trendRef} data={dayNightData as any} filename="energy-cycle" onExpand={() => setFullscreenChart('trend')} />
                       </div>
@@ -4412,7 +4412,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <span className="text-3xl font-black text-gray-800 tracking-tight">
                               {dayNightSummary.total.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">kWh Total</span>
+                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">kWh Total</span>
                           </div>
                         </div>
 
@@ -4517,7 +4517,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(dynamicAq)}`}>
                                   {dynamicAq}
                                 </h3>
-                                <p className="text-gray-400 uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
+                                <p className="text-muted-foreground uppercase tracking-[0.15em] text-[9px] font-medium mt-0.5">Indoor Air Quality</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -4536,56 +4536,56 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 <Wind className="w-3.5 h-3.5 text-sky-500" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{Math.round(activeAirMetrics["iaq.co2"] ?? project.data.co2)}</div>
-                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO₂</div>
+                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppm CO₂</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
                                 <Activity className="w-3.5 h-3.5 text-purple-500" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.voc"] == null ? "—" : Math.round(activeAirMetrics["iaq.voc"])}</div>
-                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb TVOC</div>
+                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppb TVOC</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center mb-2">
                                 <Thermometer className="w-3.5 h-3.5 text-orange-500" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["env.temperature"] == null ? "—" : `${Math.round(activeAirMetrics["env.temperature"])}` }°</div>
-                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">°C Temp</div>
+                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">°C Temp</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center mb-2">
                                 <Droplets className="w-3.5 h-3.5 text-cyan-500" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["env.humidity"] == null ? "—" : Math.round(activeAirMetrics["env.humidity"])}</div>
-                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">% Humidity</div>
+                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">% Humidity</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
                                 <Cloud className="w-3.5 h-3.5 text-amber-600" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm25"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm25"])}</div>
-                              <div className="text-[9px] text-gray-400 tracking-wider mt-0.5">µg/m³ PM2.5</div>
+                              <div className="text-[9px] text-muted-foreground tracking-wider mt-0.5">µg/m³ PM2.5</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
                                 <Cloud className="w-3.5 h-3.5 text-amber-800" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm10"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm10"])}</div>
-                              <div className="text-[9px] text-gray-400 tracking-wider mt-0.5">µg/m³ PM10</div>
+                              <div className="text-[9px] text-muted-foreground tracking-wider mt-0.5">µg/m³ PM10</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center mb-2">
                                 <Gauge className="w-4 h-4 text-red-500" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.co"] == null ? "—" : activeAirMetrics["iaq.co"].toFixed(2)}</div>
-                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppm CO</div>
+                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppm CO</div>
                             </div>
                             <div className={airKpiCardClass}>
                               <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center mb-2">
                                 <Sparkles className="w-4 h-4 text-indigo-500" />
                               </div>
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.o3"] == null ? "—" : Math.round(activeAirMetrics["iaq.o3"])}</div>
-                              <div className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">ppb O₃</div>
+                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppb O₃</div>
                             </div>
                           </div>
                         </div>
@@ -4629,12 +4629,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                 {/* Slide 2: Air Quality Heatmap */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="mb-4 flex items-center gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit">
+                  <div className="mb-4 flex items-center gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit">
                     {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].map(m => (
                       <button 
                         key={m}
                         onClick={() => setActiveAirHeatmapMetric(m)}
-                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-white shadow-md' : 'hover:bg-gray-100 text-gray-500'}`}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-foreground shadow-md' : 'hover:bg-gray-100 text-muted-foreground'}`}
                       >
                         {m === 'iaq.co2' ? 'CO₂' : m === 'iaq.voc' ? 'TVOC' : m === 'iaq.pm25' ? 'PM2.5' : m === 'iaq.pm10' ? 'PM10' : m === 'iaq.co' ? 'CO' : m === 'iaq.o3' ? 'O₃' : m === 'env.temperature' ? 'TEMP' : 'HUM'}
                       </button>
@@ -4656,7 +4656,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="flex justify-between items-center mb-5">
                         <div>
                           <h3 className="text-base font-bold text-gray-800 tracking-tight">CO₂</h3>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{periodLabel} · ppm</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{periodLabel} · ppm</p>
                         </div>
                         <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
@@ -4693,7 +4693,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="flex justify-between items-center mb-5">
                         <div>
                           <h3 className="text-base font-bold text-gray-800 tracking-tight">TVOC</h3>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{periodLabel} · ppb</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{periodLabel} · ppb</p>
                         </div>
                         <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
@@ -4730,7 +4730,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="flex justify-between items-center mb-5">
                         <div>
                           <h3 className="text-base font-bold text-gray-800 tracking-tight">Temperature & Humidity</h3>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{periodLabel} · °C / %RH</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{periodLabel} · °C / %RH</p>
                         </div>
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
@@ -4775,7 +4775,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="flex justify-between items-center mb-5">
                         <div>
                           <h3 className="text-base font-bold text-gray-800 tracking-tight">PM2.5</h3>
-                          <p className="text-[11px] text-gray-400 mt-0.5">Fine Particulate · {periodLabel}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">Fine Particulate · {periodLabel}</p>
                         </div>
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
@@ -4805,7 +4805,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </LineChart>
                         </ZoomableChart>
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
+                      <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
                         <span>WHO Limit: 25 µg/m³</span>
                       </div>
@@ -4816,7 +4816,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="flex justify-between items-center mb-5">
                         <div>
                           <h3 className="text-base font-bold text-gray-800 tracking-tight">PM10</h3>
-                          <p className="text-[11px] text-gray-400 mt-0.5">Coarse Particulate · {periodLabel}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">Coarse Particulate · {periodLabel}</p>
                         </div>
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
@@ -4846,7 +4846,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </LineChart>
                         </ZoomableChart>
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
+                      <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
                         <span>WHO Limit: 50 µg/m³</span>
                       </div>
@@ -4860,7 +4860,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25In != null ? Math.round(pm25In) : '—'}</div>
-                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM2.5 Indoor</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Indoor</div>
                             <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
@@ -4871,7 +4871,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25Out != null ? Math.round(pm25Out) : '—'}</div>
-                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM2.5 Outdoor</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Outdoor</div>
                             <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
@@ -4882,7 +4882,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10In != null ? Math.round(pm10In) : '—'}</div>
-                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM10 Indoor</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Indoor</div>
                             <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
@@ -4893,7 +4893,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10Out != null ? Math.round(pm10Out) : '—'}</div>
-                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-1.5">PM10 Outdoor</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Outdoor</div>
                             <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
@@ -4910,7 +4910,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="flex justify-between items-center mb-5">
                         <div>
                           <h3 className="text-base font-bold text-gray-800 tracking-tight">CO & O₃</h3>
-                          <p className="text-[11px] text-gray-400 mt-0.5">Carbon Monoxide · Ozone · {periodLabel}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">Carbon Monoxide · Ozone · {periodLabel}</p>
                         </div>
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
@@ -4952,10 +4952,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div className="flex items-end gap-6">
                             <div className="flex-1">
                               <div className={`text-4xl font-bold tracking-tight ${coQ.color}`}>{coVal != null ? coVal.toFixed(1) : '—'}</div>
-                              <div className="text-[11px] text-gray-400 mt-1">ppm · {periodLabel}</div>
+                              <div className="text-[11px] text-muted-foreground mt-1">ppm · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Limit</div>
+                              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{coLimit} ppm</div>
                               <div className={`text-[10px] ${coQ.color} mt-1 font-medium`}>● {coQ.label}</div>
                             </div>
@@ -4983,10 +4983,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div className="flex items-end gap-6">
                             <div className="flex-1">
                               <div className={`text-4xl font-bold tracking-tight ${o3Q.color}`}>{o3Val != null ? Math.round(o3Val) : '—'}</div>
-                              <div className="text-[11px] text-gray-400 mt-1">ppb · {periodLabel}</div>
+                              <div className="text-[11px] text-muted-foreground mt-1">ppb · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">WHO Limit</div>
+                              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">WHO Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{o3Limit} ppb</div>
                               <div className={`text-[10px] ${o3Q.color} mt-1 font-medium`}>● {o3Q.label}</div>
                             </div>
@@ -5011,11 +5011,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Consumo mensile */}
-                    <div ref={waterConsumptionRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div ref={waterConsumptionRef} className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">Consumo Idrico</h3>
-                          <p className="text-xs text-gray-500">Confronto con target e anno precedente</p>
+                          <p className="text-xs text-muted-foreground">Confronto con target e anno precedente</p>
                         </div>
                         <ExportButtons chartRef={waterConsumptionRef} data={filteredWaterData} filename="water-consumption" onExpand={() => setFullscreenChart('waterConsumption')} />
                       </div>
@@ -5040,7 +5040,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
 
                     {/* Distribuzione consumo */}
-                    <div ref={waterDistributionRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div ref={waterDistributionRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Consumption Distribution</h3>
                         <ExportButtons chartRef={waterDistributionRef} data={waterDistributionData} filename="water-distribution" />
@@ -5067,7 +5067,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </ZoomableChart>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
                             <Droplet className="w-6 h-6 text-blue-500 mb-1" />
-                            <span className="text-xs text-gray-500">m³/mese</span>
+                            <span className="text-xs text-muted-foreground">m³/mese</span>
                           </div>
                         </div>
                       </div>
@@ -5075,30 +5075,30 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Total Consumption</p>
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-muted-foreground mb-1">Total Consumption</p>
                         <p className="text-3xl font-bold text-blue-500">18,740</p>
-                        <p className="text-xs text-gray-500 mt-1">m³ / year</p>
+                        <p className="text-xs text-muted-foreground mt-1">m³ / year</p>
                         <div className="mt-2 text-xs text-emerald-500 font-medium">↓ 12% vs last year</div>
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">Estimated Cost</p>
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-muted-foreground mb-1">Estimated Cost</p>
                         <p className="text-3xl font-bold text-gray-800">€24,562</p>
-                        <p className="text-xs text-gray-500 mt-1">/ year</p>
+                        <p className="text-xs text-muted-foreground mt-1">/ year</p>
                         <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 saved</div>
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">{t('energy.efficiency')}</p>
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-muted-foreground mb-1">{t('energy.efficiency')}</p>
                         <p className={`text-3xl font-bold ${
-                          efficiencyData.delta === null ? 'text-gray-400' :
+                          efficiencyData.delta === null ? 'text-muted-foreground' :
                           efficiencyData.delta < 0 ? 'text-emerald-500' : 
-                          efficiencyData.delta === 0 ? 'text-gray-400' : 'text-red-500'
+                          efficiencyData.delta === 0 ? 'text-muted-foreground' : 'text-red-500'
                         }`}>
                           {efficiencyData.delta === null ? 'N/A' :
                            efficiencyData.delta === 0 ? '0%' :
                            `${efficiencyData.delta > 0 ? '+' : ''}${efficiencyData.delta}%`}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">{efficiencySubtitle}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{efficiencySubtitle}</p>
                         {efficiencyData.delta !== null && efficiencyData.delta !== 0 && (
                           <div className={`mt-2 text-xs font-medium ${
                             efficiencyData.delta < 0 ? 'text-emerald-500' : 'text-red-500'
@@ -5107,14 +5107,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </div>
                         )}
                       </div>
-                      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
-                        <p className="text-sm text-gray-500 mb-1">{language === 'it' ? 'Perdite Rilevate' : 'Leaks Detected'}</p>
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
+                        <p className="text-sm text-muted-foreground mb-1">{language === 'it' ? 'Perdite Rilevate' : 'Leaks Detected'}</p>
                         <p className={`text-3xl font-bold ${pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                           {pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length || 0}
                         </p>
                         {pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length > 0 && (
                           <>
-                            <p className="text-xs text-gray-500 mt-1">{language === 'it' ? 'zone con anomalie' : 'zones with anomalies'}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{language === 'it' ? 'zone con anomalie' : 'zones with anomalies'}</p>
                             <div className="mt-2 text-xs text-red-500 font-medium">⚠️ {language === 'it' ? 'Richiede attenzione' : 'Requires attention'}</div>
                           </>
                         )}
@@ -5127,11 +5127,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Rilevamento Perdite */}
-                    <div ref={waterLeaksRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div ref={waterLeaksRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">Leak Detection</h3>
-                          <p className="text-xs text-gray-500">Critical zones monitoring</p>
+                          <p className="text-xs text-muted-foreground">Critical zones monitoring</p>
                         </div>
                         <ExportButtons chartRef={waterLeaksRef} data={waterLeaksData} filename="water-leaks" />
                       </div>
@@ -5144,7 +5144,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             }`} />
                             <div className="flex-1">
                               <div className="text-sm font-medium text-gray-700">{zone.zone}</div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-muted-foreground">
                                 {zone.status === 'ok' ? 'No anomaly' : `Detected: ${zone.detected}`}
                               </div>
                             </div>
@@ -5153,7 +5153,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 zone.status === 'critical' ? 'text-red-500' : 
                                 zone.status === 'warning' ? 'text-amber-500' : 'text-emerald-500'
                               }`}>{zone.leakRate}%</div>
-                              <div className="text-xs text-gray-500">leak rate</div>
+                              <div className="text-xs text-muted-foreground">leak rate</div>
                             </div>
                           </div>
                         ))}
@@ -5161,11 +5161,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
 
                     {/* Trend Giornaliero */}
-                    <div ref={waterTrendRef} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div ref={waterTrendRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">Daily Consumption Trend</h3>
-                          <p className="text-xs text-gray-500">Peaks and hourly consumption</p>
+                          <p className="text-xs text-muted-foreground">Peaks and hourly consumption</p>
                         </div>
                         <ExportButtons chartRef={waterTrendRef} data={waterDailyTrendData} filename="water-daily-trend" onExpand={() => setFullscreenChart('waterTrend')} />
                       </div>
@@ -5185,11 +5185,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
 
                     {/* Efficienza Settimanale */}
-                    <div ref={waterEfficiencyRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div ref={waterEfficiencyRef} className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">Weekly Efficiency</h3>
-                          <p className="text-xs text-gray-500">Usage/waste ratio</p>
+                          <p className="text-xs text-muted-foreground">Usage/waste ratio</p>
                         </div>
                         <ExportButtons chartRef={waterEfficiencyRef} data={waterEfficiencyData} filename="water-efficiency" />
                       </div>
@@ -5212,11 +5212,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Qualità Acqua Chart */}
-                    <div ref={waterQualityRef} className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div ref={waterQualityRef} className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">Water Quality Parameters</h3>
-                          <p className="text-xs text-gray-500">pH, Turbidity, Residual Chlorine</p>
+                          <p className="text-xs text-muted-foreground">pH, Turbidity, Residual Chlorine</p>
                         </div>
                         <ExportButtons chartRef={waterQualityRef} data={waterQualityData} filename="water-quality" onExpand={() => setFullscreenChart('waterQuality')} />
                       </div>
@@ -5236,15 +5236,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
 
                     {/* Indicatori Qualità */}
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <h3 className="text-lg font-bold text-gray-800 mb-4">pH - Acidity</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-blue-500">7.2</div>
-                          <div className="text-sm text-gray-500">current value</div>
+                          <div className="text-sm text-muted-foreground">current value</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Optimal range</div>
+                          <div className="text-xs text-muted-foreground mb-1">Optimal range</div>
                           <div className="text-lg font-semibold text-gray-700">6.5 - 8.5</div>
                           <div className="text-xs text-emerald-500 mt-1">● Optimal</div>
                         </div>
@@ -5252,22 +5252,22 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="mt-4 h-3 bg-gradient-to-r from-red-400 via-emerald-400 to-blue-400 rounded-full overflow-hidden relative">
                         <div className="absolute h-full w-1 bg-white shadow-lg" style={{ left: '47%' }} />
                       </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
                         <span>Acidic (6)</span>
                         <span>Neutral (7)</span>
                         <span>Basic (9)</span>
                       </div>
                     </div>
 
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <h3 className="text-lg font-bold text-gray-800 mb-4">Turbidity</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-amber-500">0.9</div>
-                          <div className="text-sm text-gray-500">NTU (current)</div>
+                          <div className="text-sm text-muted-foreground">NTU (current)</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">WHO Limit</div>
+                          <div className="text-xs text-muted-foreground mb-1">WHO Limit</div>
                           <div className="text-lg font-semibold text-gray-700">&lt; 4 NTU</div>
                           <div className="text-xs text-emerald-500 mt-1">● Excellent</div>
                         </div>
@@ -5277,15 +5277,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                     </div>
 
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <h3 className="text-lg font-bold text-gray-800 mb-4">Residual Chlorine</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-emerald-500">0.5</div>
-                          <div className="text-sm text-gray-500">mg/L (current)</div>
+                          <div className="text-sm text-muted-foreground">mg/L (current)</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Ideal range</div>
+                          <div className="text-xs text-muted-foreground mb-1">Ideal range</div>
                           <div className="text-lg font-semibold text-gray-700">0.2 - 1.0</div>
                           <div className="text-xs text-emerald-500 mt-1">● In range</div>
                         </div>
@@ -5295,15 +5295,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                     </div>
 
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                    <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <h3 className="text-lg font-bold text-gray-800 mb-4">Water Temperature</h3>
                       <div className="flex items-center gap-6">
                         <div className="flex-1">
                           <div className="text-4xl font-bold text-blue-500">18.5</div>
-                          <div className="text-sm text-gray-500">°C (current)</div>
+                          <div className="text-sm text-muted-foreground">°C (current)</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-gray-500 mb-1">Comfort range</div>
+                          <div className="text-xs text-muted-foreground mb-1">Comfort range</div>
                           <div className="text-lg font-semibold text-gray-700">15 - 25 °C</div>
                           <div className="text-xs text-emerald-500 mt-1">● Ideal</div>
                         </div>
@@ -5369,8 +5369,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 switch(status) {
                   case 'completed': return { dot: 'bg-[#009193]', text: 'text-[#006367]', badge: 'bg-[#a0d5d6]/30 text-[#006367] border-[#009193]/20' };
                   case 'in_progress': return { dot: 'bg-[#e63f26]', text: 'text-[#e63f26]', badge: 'bg-[#f8cbcc]/40 text-[#e63f26] border-[#e63f26]/20' };
-                  case 'pending': return { dot: 'bg-[#f8cbcc]', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-500 border-gray-200' };
-                  default: return { dot: 'bg-gray-300', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-600 border-gray-200' };
+                  case 'pending': return { dot: 'bg-[#f8cbcc]', text: 'text-muted-foreground', badge: 'bg-gray-100 text-muted-foreground border-gray-200' };
+                  default: return { dot: 'bg-gray-300', text: 'text-muted-foreground', badge: 'bg-gray-100 text-gray-600 border-gray-200' };
                 }
               };
 
@@ -5400,7 +5400,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       return (
                         <div 
                           onClick={() => setExpandedCert(expandedCert === 'leed' ? null : 'leed')}
-                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
+                          className={`bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
                             isExpanded ? 'lg:flex-[2_2_0%]' : isCollapsed ? 'lg:flex-[0.6_0.6_0%] opacity-80 hover:opacity-100' : 'lg:flex-1'
                           }`}
                         >
@@ -5430,7 +5430,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               LEED evaluates the sustainability of building operations, focusing on energy, water, waste, and human experience. Ongoing monitoring is crucial for recertification.
                             </p>
                             <div>
-                              <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
+                              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Status</div>
                               <div className="font-semibold text-gray-800 capitalize">{leedCert?.status ? String(leedCert.status).replace('_', ' ') : 'Pending'}</div>
                             </div>
                           </div>
@@ -5446,13 +5446,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       return (
                         <div 
                           onClick={() => setExpandedCert(expandedCert === 'breeam' ? null : 'breeam')}
-                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
+                          className={`bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
                             isExpanded ? 'lg:flex-[2_2_0%]' : isCollapsed ? 'lg:flex-[0.6_0.6_0%] opacity-80 hover:opacity-100' : 'lg:flex-1'
                           }`}
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
                             <div className="w-14 h-14 rounded-xl bg-[#009193] flex items-center justify-center shadow-sm flex-shrink-0">
-                              <span className="text-white font-black text-[10px]">BREEAM</span>
+                              <span className="text-foreground font-black text-[10px]">BREEAM</span>
                             </div>
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">BREEAM In-Use</h3>
@@ -5487,7 +5487,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       return (
                         <div 
                           onClick={() => setExpandedCert(expandedCert === 'well' ? null : 'well')}
-                          className={`bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
+                          className={`bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-[#a0d5d6]/50 cursor-pointer overflow-hidden transition-all duration-500 ease-out flex flex-col ${
                             isExpanded ? 'lg:flex-[2_2_0%]' : isCollapsed ? 'lg:flex-[0.6_0.6_0%] opacity-80 hover:opacity-100' : 'lg:flex-1'
                           }`}
                         >
@@ -5516,7 +5516,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               WELL focuses exclusively on human health and well-being, monitoring air quality, thermal comfort, water quality, and organizational policies.
                             </p>
                             <div>
-                              <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
+                              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Status</div>
                               <div className="font-semibold text-gray-800 capitalize">{wellCert?.status ? String(wellCert.status).replace('_', ' ') : 'Pending'}</div>
                             </div>
                           </div>
@@ -5529,7 +5529,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-6">
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'active' ? null : 'active')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'active' ? 'ring-2 ring-[#009193] ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-foreground/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'active' ? 'ring-2 ring-[#009193] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
                       <div className="text-4xl font-black text-[#009193] mb-2">{activeCertsCount}</div>
                       <div className="text-sm font-semibold text-gray-700">Active Certs</div>
@@ -5537,7 +5537,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'achieved' ? null : 'achieved')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'achieved' ? 'ring-2 ring-[#009193] ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-foreground/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'achieved' ? 'ring-2 ring-[#009193] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
                       <div className="text-4xl font-black text-[#009193] mb-2">{completedTimelineCount}</div>
                       <div className="text-sm font-semibold text-gray-700">Milestones Reached</div>
@@ -5545,7 +5545,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'progress' ? null : 'progress')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'progress' ? 'ring-2 ring-[#e63f26] ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-foreground/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'progress' ? 'ring-2 ring-[#e63f26] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
                       <div className="text-4xl font-black text-[#e63f26] mb-2">{inProgressTimelineList.length}</div>
                       <div className="text-sm font-semibold text-gray-700">In Progress</div>
@@ -5553,7 +5553,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                     <div 
                       onClick={() => setActiveWidget(activeWidget === 'audit' ? null : 'audit')}
-                      className={`bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'audit' ? 'ring-2 ring-[#911140] ring-offset-2' : 'hover:shadow-xl'}`}
+                      className={`bg-foreground/95 backdrop-blur-sm rounded-xl p-5 shadow-lg text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeWidget === 'audit' ? 'ring-2 ring-[#911140] ring-offset-2' : 'hover:shadow-xl'}`}
                     >
                       <div className="text-3xl font-black text-[#911140] mb-2 leading-tight flex items-center justify-center min-h-[40px]">{nextAudit}</div>
                       <div className="text-sm font-semibold text-gray-700">Next Audit</div>
@@ -5561,7 +5561,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   </div>
 
                   {/* --- DRILL-DOWN AREA (Sotto i widget, si espande in base al click) --- */}
-                  <div className={`w-full bg-white/90 backdrop-blur-md rounded-3xl shadow-inner border border-gray-100 overflow-hidden transition-all duration-500 ease-in-out ${activeWidget ? 'max-h-[1000px] p-4 sm:p-8 opacity-100 mb-8' : 'max-h-0 p-0 border-none opacity-0 m-0'}`}>
+                  <div className={`w-full bg-foreground/90 backdrop-blur-md rounded-3xl shadow-inner border border-gray-100 overflow-hidden transition-all duration-500 ease-in-out ${activeWidget ? 'max-h-[1000px] p-4 sm:p-8 opacity-100 mb-8' : 'max-h-0 p-0 border-none opacity-0 m-0'}`}>
                     
                     {(() => {
                       // 1. Stili avanzati per i Pallini (Bullets) e le Card
@@ -5592,8 +5592,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           bulletBg: 'bg-gray-50',
                           dot: 'bg-gray-300',
                           cardHover: 'hover:border-gray-300 hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.06)] hover:-translate-y-1.5',
-                          badge: 'bg-gray-100 text-gray-500 border-gray-200',
-                          text: 'text-gray-500',
+                          badge: 'bg-gray-100 text-muted-foreground border-gray-200',
+                          text: 'text-muted-foreground',
                         };
                       };
 
@@ -5630,8 +5630,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="space-y-4">
                                 {[leedCert, wellCert].filter(c => c && c.status === 'active').length === 0 ? (
                                   <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                    <Award className="w-12 h-12 text-gray-300 mb-3" />
-                                    <p className="text-gray-500 font-medium text-sm">No active certifications yet.</p>
+                                    <Award className="w-12 h-12 text-muted-foreground mb-3" />
+                                    <p className="text-muted-foreground font-medium text-sm">No active certifications yet.</p>
                                   </div>
                                 ) : (
                                   [leedCert, wellCert].filter(c => c && c.status === 'active').map((cert, idx) => {
@@ -5640,14 +5640,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                       <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] rounded-2xl transition-all duration-300 hover:shadow-[0_10px_40px_-10px_rgba(0,145,147,0.15)] hover:-translate-y-1 hover:border-[#009193]/30 cursor-default">
                                         <div>
                                           <div className="font-bold text-gray-900 text-lg tracking-tight mb-1">{cert?.cert_type}</div>
-                                          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Issued: {cert?.issued_date ? new Date(cert.issued_date).toLocaleDateString() : 'N/A'}</div>
+                                          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Issued: {cert?.issued_date ? new Date(cert.issued_date).toLocaleDateString() : 'N/A'}</div>
                                         </div>
                                         <div className="sm:text-right bg-gray-50 sm:bg-transparent p-3 sm:p-0 rounded-xl">
                                           <div className="flex items-center sm:justify-end gap-2 mb-1.5">
                                             <div className={`w-3 h-3 rounded-full ${expStatus.color} shadow-sm ring-4 ring-white`} />
                                             <span className="text-sm font-bold text-gray-800">{expStatus.label}</span>
                                           </div>
-                                          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Exp: {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString() : 'N/A'}</div>
+                                          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Exp: {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString() : 'N/A'}</div>
                                         </div>
                                       </div>
                                     );
@@ -5674,8 +5674,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                               {achievedMilestonesList.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Award className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">No milestones reached yet.</p>
+                                  <Award className="w-12 h-12 text-muted-foreground mb-3" />
+                                  <p className="text-muted-foreground font-medium text-sm">No milestones reached yet.</p>
                                 </div>
                               ) : (
                                 <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
@@ -5697,11 +5697,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                                         {/* Card Content */}
                                         <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
+                                          <div className={`w-full bg-foreground/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                               <div className="text-[15px] sm:text-base font-bold text-gray-800 tracking-tight">{m.title}</div>
                                               <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
+                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
                                                 <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
                                                   Completed
                                                 </span>
@@ -5734,8 +5734,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                               {progressMilestonesList.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                  <Activity className="w-12 h-12 text-gray-300 mb-3" />
-                                  <p className="text-gray-500 font-medium text-sm">Project complete. No pending milestones.</p>
+                                  <Activity className="w-12 h-12 text-muted-foreground mb-3" />
+                                  <p className="text-muted-foreground font-medium text-sm">Project complete. No pending milestones.</p>
                                 </div>
                               ) : (
                                 <div className="space-y-0 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 sm:pr-4 pb-4">
@@ -5760,11 +5760,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                                         {/* Card Content */}
                                         <div className="flex-1">
-                                          <div className={`w-full bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
+                                          <div className={`w-full bg-foreground/80 backdrop-blur-xl border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.04)] rounded-2xl p-4 sm:p-5 transition-all duration-300 cursor-default ${style.cardHover}`}>
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                               <div className={`text-[15px] sm:text-base font-bold tracking-tight ${style.text}`}>{m.title}</div>
                                               <div className="flex items-center gap-3">
-                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
+                                                {m.date !== 'TBD' && <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{m.date}</span>}
                                                 <span className={`px-2.5 py-1 rounded-md uppercase font-bold text-[9px] tracking-wider border shadow-sm ${style.badge}`}>
                                                   {String(m.status || '').replace('_', ' ')}
                                                 </span>
@@ -5794,19 +5794,19 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="space-y-4">
                                 {[leedCert, wellCert].filter(c => c && c.expiry_date).length === 0 ? (
                                   <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                                    <FileText className="w-12 h-12 text-gray-300 mb-3" />
-                                    <p className="text-gray-500 font-medium text-sm">No audits scheduled.</p>
+                                    <FileText className="w-12 h-12 text-muted-foreground mb-3" />
+                                    <p className="text-muted-foreground font-medium text-sm">No audits scheduled.</p>
                                   </div>
                                 ) : (
                                   [leedCert, wellCert].filter(c => c && c.expiry_date).map((cert, idx) => (
                                     <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-gradient-to-br from-[#911140]/5 to-transparent rounded-2xl border border-[#911140]/10 transition-all duration-300 hover:shadow-[0_10px_40px_-10px_rgba(145,17,64,0.15)] hover:-translate-y-1 hover:border-[#911140]/30 cursor-default">
                                       <div>
                                         <div className="font-bold text-gray-900 text-lg tracking-tight mb-1">{cert?.cert_type} Recertification</div>
-                                                                                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                             Current Level: <span className="font-bold text-[#911140]">{cert?.cert_level || 'N/A'}</span>
                                           </div>
                                       </div>
-                                      <div className="sm:text-right bg-white/50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-none border-[#911140]/10">
+                                      <div className="sm:text-right bg-foreground/50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-none border-[#911140]/10">
                                         <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
                                         <div className="text-xl font-black text-gray-900 tracking-tight">
                                           {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'TBD'}
@@ -5827,7 +5827,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   {hasLEED && leedCert && (
                     <div className="mt-8 border-t border-gray-200 pt-8">
                       <h3 className="text-xl font-bold text-gray-800 mb-1">LEED Credit Scorecard</h3>
-                      <p className="text-sm text-gray-500 mb-6">Detailed breakdown of certification credits and points achieved.</p>
+                      <p className="text-sm text-muted-foreground mb-6">Detailed breakdown of certification credits and points achieved.</p>
                       <LEEDCertificationWidget leedCert={leedCert} milestones={leedMilestones || []} />
                     </div>
                   )}
@@ -5847,7 +5847,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
         {/* Pagination Dots */}
         <div className="flex justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20">
-          <button onClick={prevSlide} disabled={currentSlide === 0} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-white/80 disabled:opacity-30 bg-white/40 flex items-center justify-center transition text-gray-700">
+          <button onClick={prevSlide} disabled={currentSlide === 0} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition text-gray-700">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="flex gap-2 md:gap-3">
@@ -5855,7 +5855,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               <button key={idx} onClick={() => setCurrentSlide(idx)} className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? "w-5 md:w-6 bg-fgb-secondary" : "w-1.5 md:w-2 bg-gray-400 hover:bg-gray-500"}`} />
             ))}
           </div>
-          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-white/80 disabled:opacity-30 bg-white/40 flex items-center justify-center transition text-gray-700">
+          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition text-gray-700">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -6026,7 +6026,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       >
         <div className="flex flex-col h-full justify-center">
           <div className="flex gap-4 h-[500px]">
-            <div className="text-sm text-gray-500 flex flex-col justify-between py-1 font-medium">
+            <div className="text-sm text-muted-foreground flex flex-col justify-between py-1 font-medium">
               {Array.from({ length: 24 }, (_, i) => (
                 <div key={i}>{String(i).padStart(2, '0')}:00</div>
               ))}
@@ -6037,7 +6037,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   <div key={idx} className="rounded-sm hover:opacity-80 transition-opacity" style={{ backgroundColor: heatmapColors[val] }} title={`Livello: ${val}`} />
                 ))}
               </div>
-              <div className="flex justify-between text-sm text-gray-500 mt-4 font-medium px-2">
+              <div className="flex justify-between text-sm text-muted-foreground mt-4 font-medium px-2">
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => <span key={d}>{d}</span>)}
               </div>
             </div>
@@ -6137,7 +6137,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <div className="flex items-center gap-8 h-[500px]">
           <div className="space-y-2 flex-1 max-h-[450px] overflow-y-auto pr-4">
             {powerDistributionData.length === 0 ? (
-              <div className="text-gray-400 italic">
+              <div className="text-muted-foreground italic">
                 {timePeriod === 'today' ? 'No real-time data' : 'No average data'}
               </div>
             ) : (
@@ -6180,7 +6180,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               <span className="text-4xl font-bold text-slate-900 tabular-nums">
                 {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
               </span>
-              <span className="text-sm text-gray-500 font-medium">kW</span>
+              <span className="text-sm text-muted-foreground font-medium">kW</span>
             </div>
           </div>
         </div>
@@ -6392,7 +6392,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </LineChart>
           </ZoomableChart>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 px-8">
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground px-8">
           <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
           <span>WHO Limit: 25 μg/m³</span>
         </div>
@@ -6430,7 +6430,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </LineChart>
           </ZoomableChart>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 px-8">
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground px-8">
           <span className="w-4 h-[1px] rounded" style={{ backgroundColor: '#ef4444' }} />
           <span>WHO Limit: 50 μg/m³</span>
         </div>
@@ -6574,7 +6574,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </ZoomableChart>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <span className="text-4xl font-black text-gray-800 tracking-tight">{dayNightSummary.total.toLocaleString()}</span>
-              <span className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">kWh Total</span>
+              <span className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">kWh Total</span>
             </div>
           </div>
           <div className="flex gap-12 mt-12">

@@ -132,7 +132,7 @@ export const UserAccountDropdown = () => {
               {displayName}
             </span>
             <div className="relative">
-              <Avatar className="w-7 h-7 md:w-9 md:h-9 border border-white/20">
+              <Avatar className="w-7 h-7 md:w-9 md:h-9 border border-foreground/20">
                 <AvatarImage src={avatarPreview} alt="Avatar" />
                 <AvatarFallback className="bg-fgb-light text-foreground text-xs">
                   {initials}
@@ -146,7 +146,7 @@ export const UserAccountDropdown = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="w-[360px] p-0 bg-[hsl(var(--popover))] backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+          className="w-[360px] p-0 bg-[hsl(var(--popover))] backdrop-blur-xl border border-foreground/10 rounded-2xl shadow-2xl overflow-hidden"
         >
           {/* === Header: avatar + identity === */}
           <div className="p-4 flex items-start gap-3">
@@ -176,7 +176,7 @@ export const UserAccountDropdown = () => {
 
           {/* === Theme toggle === */}
           <div className="px-4 pb-3">
-            <div className="flex items-center justify-between p-1.5 rounded-xl bg-white/[0.03] border border-white/5">
+            <div className="flex items-center justify-between p-1.5 rounded-xl bg-white/[0.03] border border-foreground/5">
               <span className="text-[11px] text-muted-foreground px-2">Theme</span>
               <div className="flex items-center gap-1">
                 <button
@@ -206,7 +206,7 @@ export const UserAccountDropdown = () => {
           </div>
 
           {/* === Tabs === */}
-          <div className="px-4 border-b border-white/5">
+          <div className="px-4 border-b border-foreground/5">
             <div className="relative flex items-center gap-1">
               {tabs.map(tab => {
                 const Icon = tab.icon;
@@ -223,7 +223,7 @@ export const UserAccountDropdown = () => {
                     <Icon className="w-3.5 h-3.5" />
                     {tab.label}
                     {tab.badge && tab.badge > 0 ? (
-                      <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[hsl(var(--rose))] text-white text-[9px] font-semibold">
+                      <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[hsl(var(--rose))] text-foreground text-[9px] font-semibold">
                         {tab.badge}
                       </span>
                     ) : null}
@@ -275,14 +275,14 @@ export const UserAccountDropdown = () => {
             </AnimatePresence>
           </div>
 
-          <DropdownMenuSeparator className="my-0 bg-white/5" />
+          <DropdownMenuSeparator className="my-0 bg-foreground/5" />
 
           {/* === Footer actions === */}
           <div className="p-2 flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className="flex-1 justify-center gap-1.5 text-xs h-9 text-foreground/80 hover:bg-white/5"
+              className="flex-1 justify-center gap-1.5 text-xs h-9 text-foreground/80 hover:bg-foreground/5"
               onClick={() => { setIsOpen(false); setIsEditDialogOpen(true); }}
             >
               <Settings className="w-3.5 h-3.5" />
@@ -320,7 +320,7 @@ export const UserAccountDropdown = () => {
                 </Avatar>
                 <label 
                   htmlFor="avatar-upload" 
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-fgb-secondary text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-fgb-secondary/80 transition-colors shadow-lg"
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-fgb-secondary text-foreground rounded-full flex items-center justify-center cursor-pointer hover:bg-fgb-secondary/80 transition-colors shadow-lg"
                 >
                   <Camera className="w-4 h-4" />
                 </label>
@@ -332,7 +332,7 @@ export const UserAccountDropdown = () => {
                   onChange={handleAvatarChange}
                 />
               </div>
-              <p className="text-xs text-gray-500">{t('account.click_upload')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.click_upload')}</p>
             </div>
 
             {/* Form Fields */}

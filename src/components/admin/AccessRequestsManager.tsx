@@ -125,7 +125,7 @@ export const AccessRequestsManager = () => {
                 <Mail className="w-5 h-5" />
                 {t('admin.access_requests')}
                 {pendingCount > 0 && (
-                  <Badge className="bg-yellow-500 text-white ml-2">{pendingCount}</Badge>
+                  <Badge className="bg-yellow-500 text-foreground ml-2">{pendingCount}</Badge>
                 )}
               </CardTitle>
               <CardDescription>{t('admin.access_requests_desc')}</CardDescription>
@@ -263,7 +263,7 @@ export const AccessRequestsManager = () => {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedRequest(null)}>Annulla</Button>
-            <Button className="bg-green-600 hover:bg-green-700 text-white" disabled={isProcessing}
+            <Button className="bg-green-600 hover:bg-green-700 text-foreground" disabled={isProcessing}
               onClick={() => selectedRequest && handleReview(selectedRequest.id, 'approved')}>
               {isProcessing ? 'Elaborazione...' : 'Approva e Procedi'}
             </Button>

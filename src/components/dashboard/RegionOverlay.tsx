@@ -188,7 +188,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               if (sitesList.length === 0) return;
               openWrapped({ kind: 'aggregate', label: `${region.name} region`, sites: sitesList });
             }}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            className="p-2 rounded-lg bg-foreground/10 hover:bg-foreground/20 transition-colors"
             title="Play weekly Wrapped"
             aria-label="Play weekly Wrapped"
           >
@@ -197,7 +197,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           {isMobile && (
             <button
               onClick={() => setCollapsed(c => !c)}
-              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+              className="p-2 rounded-lg bg-foreground/10 hover:bg-foreground/20 transition-colors"
               aria-label={collapsed ? "Expand" : "Collapse"}
             >
               {collapsed ? <ChevronDown className="w-5 h-5 text-foreground" /> : <ChevronUp className="w-5 h-5 text-foreground" />}
@@ -213,7 +213,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             {/* Avg. Energy Density */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('energy') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
+                <div className={`bg-foreground/5 p-4 rounded-xl border border-foreground/10 transition-colors group ${activeFilters.includes('energy') ? 'cursor-pointer hover:bg-foreground/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm text-muted-foreground whitespace-nowrap">{t('region.avg_energy_density')}</span>
@@ -274,7 +274,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             {/* Air Quality Score */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className={`bg-white/5 p-4 rounded-xl border border-white/10 transition-colors group ${activeFilters.includes('air') ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
+                <div className={`bg-foreground/5 p-4 rounded-xl border border-foreground/10 transition-colors group ${activeFilters.includes('air') ? 'cursor-pointer hover:bg-foreground/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex justify-between items-end mb-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm text-muted-foreground">{t('region.air_quality_score')}</span>
@@ -345,7 +345,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               {/* Active Sites */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <div className="text-center p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                  <div className="text-center p-3 rounded-lg bg-foreground/5 cursor-pointer hover:bg-foreground/10 transition-colors">
                     <div className="text-2xl font-bold text-foreground">{displayOnline}</div>
                     <div className="flex items-center justify-center gap-1">
                       <span className="text-[10px] uppercase text-muted-foreground">{t('region.active_sites')}</span>
@@ -396,7 +396,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
               {/* Critical Alerts */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <div className="text-center p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                  <div className="text-center p-3 rounded-lg bg-foreground/5 cursor-pointer hover:bg-foreground/10 transition-colors">
                     <div className={`text-2xl font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
                       {displayCritical}
                     </div>
@@ -451,7 +451,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             </div>
           </TooltipProvider>
 
-            <div className="mt-6 pt-4 border-t border-white/10 text-center">
+            <div className="mt-6 pt-4 border-t border-foreground/10 text-center">
               <p className="text-xs text-muted-foreground italic">
                 {(hasRealIntensity || hasRealCo2)
                   ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} ${t('region.sites_live_data')}` 
@@ -480,7 +480,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           {/* Energy Intensity */}
           <button 
             onClick={() => activeFilters.includes('energy') && setMobileDrawerContent('energy')}
-            className={`text-center p-2 rounded-lg bg-white/5 border border-white/10 ${activeFilters.includes('energy') ? 'active:bg-white/10' : 'opacity-30 grayscale'}`}
+            className={`text-center p-2 rounded-lg bg-foreground/5 border border-foreground/10 ${activeFilters.includes('energy') ? 'active:bg-foreground/10' : 'opacity-30 grayscale'}`}
           >
             <div className={`text-sm font-bold text-foreground`}>{activeFilters.includes('energy') && displayIntensity > 0 ? displayIntensity.toFixed(0) : '—'}</div>
             <div className="text-[8px] uppercase text-muted-foreground">kWh/m²</div>
@@ -488,7 +488,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           {/* Air Quality */}
           <button 
             onClick={() => activeFilters.includes('air') && setMobileDrawerContent('air')}
-            className={`text-center p-2 rounded-lg bg-white/5 border border-white/10 ${activeFilters.includes('air') ? 'active:bg-white/10' : 'opacity-30 grayscale'}`}
+            className={`text-center p-2 rounded-lg bg-foreground/5 border border-foreground/10 ${activeFilters.includes('air') ? 'active:bg-foreground/10' : 'opacity-30 grayscale'}`}
           >
             <div className={`text-sm font-bold ${aqColorClass}`}>{activeFilters.includes('air') ? displayAq : '—'}</div>
             <div className="text-[8px] uppercase text-muted-foreground">Air</div>
@@ -496,7 +496,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           {/* Active Sites */}
           <button 
             onClick={() => setMobileDrawerContent('sites')}
-            className="text-center p-2 rounded-lg bg-white/5 border border-white/10 active:bg-white/10"
+            className="text-center p-2 rounded-lg bg-foreground/5 border border-foreground/10 active:bg-foreground/10"
           >
             <div className="text-sm font-bold text-foreground">{displayOnline}</div>
             <div className="text-[8px] uppercase text-muted-foreground">Online</div>
@@ -504,7 +504,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           {/* Alerts */}
           <button 
             onClick={() => setMobileDrawerContent('alerts')}
-            className="text-center p-2 rounded-lg bg-white/5 border border-white/10 active:bg-white/10"
+            className="text-center p-2 rounded-lg bg-foreground/5 border border-foreground/10 active:bg-foreground/10"
           >
             <div className={`text-sm font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>{displayCritical}</div>
             <div className="text-[8px] uppercase text-muted-foreground">Alerts</div>
@@ -515,7 +515,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
     {/* Mobile Drawer for KPI Details */}
     <Drawer open={!!mobileDrawerContent} onOpenChange={(open) => !open && setMobileDrawerContent(null)}>
-      <DrawerContent className="max-h-[85vh] border-t border-white/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
+      <DrawerContent className="max-h-[85vh] border-t border-foreground/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
         <DrawerHeader className="text-left pb-2">
           <DrawerTitle className="text-foreground">
             {mobileDrawerContent === 'energy' && t('region.energy_intensity')}
@@ -529,7 +529,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           <div className="space-y-1 pb-6">
             {/* Energy List */}
             {mobileDrawerContent === 'energy' && siteIntensityList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                   <span className="text-muted-foreground/60 font-mono text-[10px] w-4">{i + 1}</span>
                   <span className="text-foreground truncate">{s.name}</span>
@@ -543,7 +543,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
             {/* Air List */}
             {mobileDrawerContent === 'air' && siteAqList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                   <Circle className={`w-2 h-2 shrink-0 fill-current ${aqLabelColor(s.label)}`} />
                   <span className="text-foreground truncate">{s.name}</span>
@@ -560,7 +560,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
             {/* Sites Status List */}
             {mobileDrawerContent === 'sites' && siteStatusList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3">
                   <Circle className={`w-2.5 h-2.5 shrink-0 fill-current ${statusColor(s.status)}`} />
                   <span className="text-foreground truncate">{s.name}</span>
@@ -571,7 +571,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
             {/* Alerts List */}
             {mobileDrawerContent === 'alerts' && siteAlertsList.length > 0 && siteAlertsList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-white/5">
+              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
                 <span className="text-foreground truncate min-w-0 flex-1 mr-3">{s.name}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {s.critical > 0 && <span className="px-1.5 py-0.5 rounded-full bg-rose-400/15 text-rose-400 text-[10px] font-semibold">{s.critical} crit</span>}

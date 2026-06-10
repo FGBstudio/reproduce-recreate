@@ -98,7 +98,7 @@ export const UsersManager = () => {
 
   const getRoleBadge = (role: UserRole | null) => {
     if (!role) {
-      return <Badge className="bg-gray-50 text-gray-400">Nessun ruolo</Badge>;
+      return <Badge className="bg-gray-50 text-muted-foreground">Nessun ruolo</Badge>;
     }
     const option = roleOptions.find(r => r.value === role);
     return (
@@ -121,7 +121,7 @@ export const UsersManager = () => {
     return (
       <Card>
         <CardContent className="py-8">
-          <div className="text-center text-slate-500">
+          <div className="text-center text-muted-foreground">
             <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Supabase non configurato. La gestione utenti richiede una connessione al database.</p>
           </div>
@@ -145,7 +145,7 @@ export const UsersManager = () => {
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Cerca utente..."
                 value={searchTerm}
@@ -174,7 +174,7 @@ export const UsersManager = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <Table>
@@ -207,18 +207,18 @@ export const UsersManager = () => {
                       {user.email}
                     </div>
                   </TableCell>
-                  <TableCell className="text-slate-500">
+                  <TableCell className="text-muted-foreground">
                     {user.company || '-'}
                   </TableCell>
                   <TableCell>{getRoleBadge(user.role)}</TableCell>
-                  <TableCell className="text-slate-500 text-sm">
+                  <TableCell className="text-muted-foreground text-sm">
                     {user.created_at ? new Date(user.created_at).toLocaleDateString('it-IT') : '-'}
                   </TableCell>
                 </TableRow>
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     {searchTerm ? 'Nessun utente trovato' : 'Nessun utente registrato.'}
                   </TableCell>
                 </TableRow>

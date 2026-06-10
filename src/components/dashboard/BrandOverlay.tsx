@@ -274,7 +274,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {displayEntity.logo ? (
               <img src={displayEntity.logo} alt={displayEntity.name} className="h-12 w-auto object-contain opacity-90 filter drop-shadow-[0_0_20px_rgba(255,255,255,0.65)] drop-shadow-[0_0_40px_rgba(255,255,255,0.4)] transition-all duration-300" />
             ) : (
-              <div className="h-12 w-12 rounded-xl bg-white/10 border border-white/5 flex items-center justify-center text-foreground font-bold text-base shadow-inner">
+              <div className="h-12 w-12 rounded-xl bg-foreground/10 border border-foreground/5 flex items-center justify-center text-foreground font-bold text-base shadow-inner">
                 {displayEntity.name.substring(0, 2).toUpperCase()}
               </div>
             )}
@@ -295,7 +295,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 if (sitesList.length === 0) return;
                 openWrapped({ kind: 'aggregate', label: displayEntity.name, sites: sitesList });
               }}
-              className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 transition-colors"
               title="Play weekly Wrapped"
             >
               <Sparkles className="w-3.5 h-3.5 text-fgb-accent" />
@@ -325,7 +325,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {/* Sites Online */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                <div className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 cursor-pointer hover:bg-foreground/10 transition-colors group">
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -345,7 +345,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
                     {siteStatusList.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
                         <Circle className={`w-2.5 h-2.5 fill-current ${statusColor[s.status]}`} />
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
                         <span className={`text-[10px] ${statusColor[s.status]}`}>{statusLabelMap(s.status)}</span>
@@ -359,7 +359,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {/* kWh (30d) */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className={`text-center p-3 rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterEnergy ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
+                <div className={`text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 transition-colors group ${filterEnergy ? 'cursor-pointer hover:bg-foreground/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -381,7 +381,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
                     {energyRankedList.length > 0 ? energyRankedList.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
                         <span className="text-[10px] text-muted-foreground w-4 text-right">{i + 1}.</span>
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
                         <span className="text-xs font-semibold text-foreground tabular-nums">{(s.kwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal">MWh</span></span>
@@ -397,7 +397,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {/* Avg CO₂ */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className={`text-center p-3 rounded-xl bg-white/5 border border-white/10 transition-colors group ${filterAir ? 'cursor-pointer hover:bg-white/10' : 'opacity-30 grayscale pointer-events-none'}`}>
+                <div className={`text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 transition-colors group ${filterAir ? 'cursor-pointer hover:bg-foreground/10' : 'opacity-30 grayscale pointer-events-none'}`}>
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -419,7 +419,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
                     {co2RankedList.length > 0 ? co2RankedList.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
                         <Circle className={`w-2.5 h-2.5 fill-current ${aqColorMap[s.label]}`} />
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
                         <div className="text-right">
@@ -438,7 +438,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             {/* Active Alerts */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                <div className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 cursor-pointer hover:bg-foreground/10 transition-colors group">
                   <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <UITooltip>
                       <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
@@ -462,7 +462,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <ScrollArea className="max-h-[220px]">
                   <div className="p-2 space-y-0.5">
                     {alertsList.length > 0 ? alertsList.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5">
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
                         <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
                         <div className="flex items-center gap-1.5">
                           {s.critical > 0 && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-destructive/20 text-destructive">{s.critical} crit</span>}
@@ -484,10 +484,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           <button
             onClick={() => showAnyChart && setIsDesktopVisible(!isDesktopVisible)}
             disabled={!showAnyChart}
-            className={`relative z-10 flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-lg border border-white/10 text-xs font-medium transition-all pointer-events-auto mt-3 ${
+            className={`relative z-10 flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-lg border border-foreground/10 text-xs font-medium transition-all pointer-events-auto mt-3 ${
               showAnyChart
-                ? 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground cursor-pointer'
-                : 'bg-white/5 text-muted-foreground/40 cursor-not-allowed opacity-50'
+                ? 'bg-foreground/5 hover:bg-foreground/10 text-muted-foreground hover:text-foreground cursor-pointer'
+                : 'bg-foreground/5 text-muted-foreground/40 cursor-not-allowed opacity-50'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" />
@@ -559,7 +559,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                           if (!active || !payload?.length) return null;
                           const d = payload[0].payload;
                           return (
-                            <div className="glass-panel rounded-lg p-3 text-sm border border-white/10">
+                            <div className="glass-panel rounded-lg p-3 text-sm border border-foreground/10">
                               <p className="font-semibold text-foreground mb-1.5">{d.name}</p>
                               
                               {/* Sostituzione Energia con icona Zap */}
@@ -619,7 +619,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                                   <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
                                   <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{(s.value / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal text-xs">MWh</span></span>
                                 </div>
-                                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                                <div className="w-full h-2 bg-foreground/5 rounded-full overflow-hidden">
                                   <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                                 </div>
                               </div>
@@ -647,7 +647,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                                   <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
                                   <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-xs">ppm</span></span>
                                 </div>
-                                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                                <div className="w-full h-2 bg-foreground/5 rounded-full overflow-hidden">
                                   <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                                 </div>
                               </div>
@@ -698,27 +698,27 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="space-y-1">
                     {healthMatrixData.map((site, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-white/5 transition-colors">
+                      <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-foreground/5 transition-colors">
                         <div className="flex items-center gap-2 min-w-0">
                           <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
                           <span className="text-sm text-foreground truncate" title={site.name}>{site.name}</span>
                         </div>
                         {filterEnergy ? (
                           <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.energy.status]}`}>
-                            <span className="text-xs font-semibold text-white">
+                            <span className="text-xs font-semibold text-foreground">
                               {site.energy.value > 0 ? (site.energy.value > 999 ? `${(site.energy.value / 1000).toFixed(1)}k` : site.energy.value) : '—'}
                             </span>
                           </div>
                         ) : <div className="rounded-md py-1.5 bg-muted/20" />}
                         {filterAir ? (
                           <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.air.status]}`}>
-                            <span className="text-xs font-semibold text-white">
+                            <span className="text-xs font-semibold text-foreground">
                               {site.air.value > 0 ? site.air.value : '—'}
                             </span>
                           </div>
                         ) : <div className="rounded-md py-1.5 bg-muted/20" />}
                         <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.alerts.status]}`}>
-                          <span className="text-xs font-semibold text-white">
+                          <span className="text-xs font-semibold text-foreground">
                             {site.alerts.value}
                           </span>
                         </div>
@@ -743,7 +743,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
-                    <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors">
+                    <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-foreground/5 transition-colors">
                       <Circle className={`w-3 h-3 fill-current shrink-0 ${
                         site.isOnline ? 'text-emerald-500' : site.hasData ? 'text-yellow-500' : 'text-red-400'
                       }`} />
@@ -797,26 +797,26 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <button onClick={() => setMobileDrawerOpen(true)} className="p-1.5 rounded-lg bg-fgb-accent/20 hover:bg-fgb-accent/30 border border-fgb-accent/30 transition-colors">
                 <LayoutList className="w-4 h-4 text-fgb-accent" />
               </button>
-              <button onClick={() => setChartsExpanded(!chartsExpanded)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20">
+              <button onClick={() => setChartsExpanded(!chartsExpanded)} className="p-1.5 rounded-lg bg-foreground/10 hover:bg-foreground/20">
                 {chartsExpanded ? <ChevronDown className="w-4 h-4 text-foreground" /> : <ChevronUp className="w-4 h-4 text-foreground" />}
               </button>
             </div>
           </div>
           {chartsExpanded && (
             <div className="mt-2 grid grid-cols-4 gap-1.5">
-              <div className="text-center p-1.5 rounded-lg bg-white/5 border border-white/10">
+              <div className="text-center p-1.5 rounded-lg bg-foreground/5 border border-foreground/10">
                 <div className="text-base font-bold text-foreground">{hasRealData ? totals.sitesOnline : '—'}</div>
                 <div className="text-[10px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
               </div>
-              <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterEnergy ? 'opacity-30 grayscale' : ''}`}>
+              <div className={`text-center p-1.5 rounded-lg bg-foreground/5 border border-foreground/10 ${!filterEnergy ? 'opacity-30 grayscale' : ''}`}>
                 <div className="text-base font-bold text-foreground">{filterEnergy && hasRealData && totals.monthlyEnergyKwh > 0 ? (totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}</div>
                 <div className="text-[10px] uppercase text-muted-foreground">MWh (30d)</div>
               </div>
-              <div className={`text-center p-1.5 rounded-lg bg-white/5 border border-white/10 ${!filterAir ? 'opacity-30 grayscale' : ''}`}>
+              <div className={`text-center p-1.5 rounded-lg bg-foreground/5 border border-foreground/10 ${!filterAir ? 'opacity-30 grayscale' : ''}`}>
                 <div className="text-base font-bold text-foreground">{filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}</div>
                 <div className="text-[10px] uppercase text-muted-foreground">CO₂</div>
               </div>
-              <div className="text-center p-1.5 rounded-lg bg-white/5 border border-white/10">
+              <div className="text-center p-1.5 rounded-lg bg-foreground/5 border border-foreground/10">
                 <div className="text-base font-bold text-foreground">
                   {hasRealData && (totals.alertsCritical + totals.alertsWarning) > 0 
                     ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span> 
@@ -831,7 +831,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
       {/* Mobile Detail Drawer */}
       <Drawer open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
-        <DrawerContent className="max-h-[90vh] border-t border-white/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
+        <DrawerContent className="max-h-[90vh] border-t border-foreground/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
           <DrawerHeader className="text-left pb-2">
             <DrawerTitle className="text-foreground flex items-center gap-2">
               {displayEntity.logo ? (
@@ -861,7 +861,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                             <span className="text-xs text-foreground truncate max-w-[180px]">{s.name}</span>
                             <span className="text-xs font-semibold text-foreground tabular-nums">{(s.value / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MWh</span>
                           </div>
-                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className="w-full h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                             <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
                           </div>
                         </div>
@@ -886,7 +886,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                             <span className="text-xs text-foreground truncate max-w-[180px]">{s.name}</span>
                             <span className="text-xs font-semibold text-foreground tabular-nums">{s.value.toLocaleString()} ppm</span>
                           </div>
-                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className="w-full h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                             <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
                           </div>
                         </div>
@@ -902,13 +902,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <h4 className="text-sm font-semibold text-foreground mb-3">🏥 {t('brand.system_health_short')}</h4>
                   <div className="space-y-1.5">
                     {healthMatrixData.map((site, i) => (
-                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-foreground/5 border border-foreground/5">
                         <Circle className={`w-2 h-2 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
                         <span className="text-xs text-foreground flex-1 truncate">{site.name}</span>
                         <div className="flex items-center gap-1">
-                          {filterEnergy && <div className={`w-5 h-5 rounded ${healthStatusColors[site.energy.status]} flex items-center justify-center`}><Zap className="w-3 h-3 text-white" /></div>}
-                          {filterAir && <div className={`w-5 h-5 rounded ${healthStatusColors[site.air.status]} flex items-center justify-center`}><Wind className="w-3 h-3 text-white" /></div>}
-                          <div className={`w-5 h-5 rounded ${healthStatusColors[site.alerts.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-white">⚠</span></div>
+                          {filterEnergy && <div className={`w-5 h-5 rounded ${healthStatusColors[site.energy.status]} flex items-center justify-center`}><Zap className="w-3 h-3 text-foreground" /></div>}
+                          {filterAir && <div className={`w-5 h-5 rounded ${healthStatusColors[site.air.status]} flex items-center justify-center`}><Wind className="w-3 h-3 text-foreground" /></div>}
+                          <div className={`w-5 h-5 rounded ${healthStatusColors[site.alerts.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-foreground">⚠</span></div>
                         </div>
                       </div>
                     ))}
@@ -921,7 +921,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {t('brand.site_directory')} ({storeDirectory.length})</h4>
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => (
-                    <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/5">
+                    <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-foreground/5">
                       <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${
                         site.isOnline ? 'text-emerald-500' : site.hasData ? 'text-yellow-500' : 'text-red-400'
                       }`} />

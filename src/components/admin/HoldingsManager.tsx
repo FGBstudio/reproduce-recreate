@@ -148,19 +148,19 @@ export const HoldingsManager = () => {
                         {previewUrl ? (
                           <>
                             <img src={previewUrl} alt="Logo Preview" className="w-full h-full object-contain p-1" />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Pencil className="w-5 h-5 text-white" />
+                            <div className="absolute inset-0 bg-background/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Pencil className="w-5 h-5 text-foreground" />
                             </div>
                           </>
                         ) : (
-                          <div className="flex flex-col items-center gap-1 text-slate-400">
+                          <div className="flex flex-col items-center gap-1 text-muted-foreground">
                             <ImageIcon className="w-5 h-5" />
                             <span className="text-[10px]">Carica</span>
                           </div>
                         )}
                       </div>
 
-                      <div className="flex flex-col gap-2 text-sm text-slate-500 flex-1">
+                      <div className="flex flex-col gap-2 text-sm text-muted-foreground flex-1">
                         <p className="text-xs">Logo aziendale principale (PNG/SVG).</p>
                         {previewUrl && (
                           <Button 
@@ -244,15 +244,15 @@ export const HoldingsManager = () => {
                       {holding.logo ? (
                         <img src={holding.logo} alt={holding.name} className="h-full w-full object-contain p-1" />
                       ) : (
-                        <Building2 className="w-4 h-4 text-slate-300" />
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
                       )}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">{holding.name}</TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {holdingBrands.length} brands
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {holding.createdAt.toLocaleDateString('it-IT')}
                   </TableCell>
                   <TableCell className="text-right">
@@ -292,7 +292,7 @@ export const HoldingsManager = () => {
             })}
             {holdings.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   Nessuna holding presente. Inizia creandone una.
                 </TableCell>
               </TableRow>

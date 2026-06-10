@@ -40,7 +40,7 @@ export const NotificationsTab = () => {
         <div className="text-sm font-medium text-foreground">
           {language === 'it' ? 'Notifiche' : 'Notifications'}
           {unreadCount > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[hsl(var(--rose))] text-white text-[10px] font-semibold">
+            <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[hsl(var(--rose))] text-foreground text-[10px] font-semibold">
               {unreadCount}
             </span>
           )}
@@ -87,7 +87,7 @@ export const NotificationsTab = () => {
             return (
               <div
                 key={group.name}
-                className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden"
+                className="rounded-xl border border-foreground/5 bg-white/[0.02] overflow-hidden"
               >
                 <button
                   onClick={() =>
@@ -119,7 +119,7 @@ export const NotificationsTab = () => {
                         <div
                           key={a.id}
                           className={cn(
-                            'group flex gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors',
+                            'group flex gap-2 p-2 rounded-lg hover:bg-foreground/5 transition-colors',
                             unread ? 'bg-white/[0.03]' : 'opacity-70'
                           )}
                         >

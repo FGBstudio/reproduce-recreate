@@ -56,13 +56,13 @@ export const ModulePlaceholder = ({ module, variant = 'chart', className = '' }:
   
   return (
     <div className={`bg-gradient-to-br ${moduleColors[module]} border rounded-xl p-6 flex flex-col items-center justify-center min-h-[200px] ${className}`}>
-      <div className={`w-16 h-16 rounded-full bg-white/60 flex items-center justify-center mb-4 ${moduleTextColors[module]}`}>
+      <div className={`w-16 h-16 rounded-full bg-foreground/60 flex items-center justify-center mb-4 ${moduleTextColors[module]}`}>
         <Icon className="w-8 h-8 opacity-50" />
       </div>
       <p className={`text-sm font-medium ${moduleTextColors[module]} text-center`}>
         {t.activate}
       </p>
-      <p className="text-xs text-gray-500 mt-1 text-center">
+      <p className="text-xs text-muted-foreground mt-1 text-center">
         {t.available}
       </p>
     </div>

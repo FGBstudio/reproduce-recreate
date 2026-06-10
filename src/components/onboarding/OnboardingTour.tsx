@@ -476,7 +476,7 @@ export const OnboardingTour: React.FC = () => {
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={next}
-                  className="px-5 py-2 rounded-full text-[12px] font-semibold text-white shadow-sm"
+                  className="px-5 py-2 rounded-full text-[12px] font-semibold text-foreground shadow-sm"
                   style={{ background: ACCENT }}
                 >
                   {isLast ? "End" : "Next →"}

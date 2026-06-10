@@ -21,23 +21,23 @@ export const BrandOverlaySkeleton = () => (
     {/* Left: Logo & Stats skeleton */}
     <div className="flex flex-col items-center gap-3 md:gap-6">
       <div className="relative">
-        <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full scale-150" />
-        <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/20">
-          <Skeleton className="h-12 md:h-20 w-24 md:w-32 bg-white/20" />
+        <div className="absolute inset-0 bg-foreground/10 blur-3xl rounded-full scale-150" />
+        <div className="relative bg-foreground/10 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-foreground/20">
+          <Skeleton className="h-12 md:h-20 w-24 md:w-32 bg-foreground/20" />
         </div>
       </div>
       
       <div className="glass-panel rounded-xl md:rounded-2xl p-3 md:p-5 min-w-[220px] md:min-w-[280px]">
         <div className="text-center mb-2 md:mb-3">
-          <Skeleton className="h-5 w-32 mx-auto mb-2 bg-white/20" />
-          <Skeleton className="h-3 w-24 mx-auto bg-white/10" />
+          <Skeleton className="h-5 w-32 mx-auto mb-2 bg-foreground/20" />
+          <Skeleton className="h-3 w-24 mx-auto bg-foreground/10" />
         </div>
         
         <div className="grid grid-cols-2 gap-1.5 md:gap-2">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-white/5 border border-white/10">
-              <Skeleton className="h-6 w-12 mx-auto mb-1 bg-white/20" />
-              <Skeleton className="h-2 w-10 mx-auto bg-white/10" />
+            <div key={i} className="text-center p-1.5 md:p-2.5 rounded-lg md:rounded-xl bg-foreground/5 border border-foreground/10">
+              <Skeleton className="h-6 w-12 mx-auto mb-1 bg-foreground/20" />
+              <Skeleton className="h-2 w-10 mx-auto bg-foreground/10" />
             </div>
           ))}
         </div>
@@ -48,8 +48,8 @@ export const BrandOverlaySkeleton = () => (
     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 max-w-3xl w-full">
       {[...Array(3)].map((_, i) => (
         <div key={i} className={`glass-panel rounded-xl md:rounded-2xl p-2.5 md:p-4 ${i === 2 ? 'md:col-span-2' : ''}`}>
-          <Skeleton className="h-4 w-32 mb-3 bg-white/20" />
-          <Skeleton className="h-32 md:h-44 w-full bg-white/10 rounded-lg" />
+          <Skeleton className="h-4 w-32 mb-3 bg-foreground/20" />
+          <Skeleton className="h-32 md:h-44 w-full bg-foreground/10 rounded-lg" />
         </div>
       ))}
     </div>
@@ -116,7 +116,7 @@ export const DashboardError = ({
     {onRetry && (
       <button 
         onClick={onRetry}
-        className="px-4 py-2 bg-fgb-teal text-white rounded-lg hover:bg-fgb-teal/90 transition-colors text-sm font-medium"
+        className="px-4 py-2 bg-fgb-teal text-foreground rounded-lg hover:bg-fgb-teal/90 transition-colors text-sm font-medium"
       >
         Riprova
       </button>
@@ -146,7 +146,7 @@ export const LiveDataIndicator = ({ isLoading, isError, lastUpdate }: {
     {!isLoading && !isError && (
       <>
         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="text-gray-500">
+        <span className="text-muted-foreground">
           {lastUpdate ? `Aggiornato: ${lastUpdate}` : 'Live'}
         </span>
       </>

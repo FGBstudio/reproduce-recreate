@@ -200,19 +200,19 @@ export const SitesManager = () => {
                           {previewUrl ? (
                             <>
                               <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Pencil className="w-6 h-6 text-white" />
+                              <div className="absolute inset-0 bg-background/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Pencil className="w-6 h-6 text-foreground" />
                               </div>
                             </>
                           ) : (
-                            <div className="flex flex-col items-center gap-1 text-slate-400">
+                            <div className="flex flex-col items-center gap-1 text-muted-foreground">
                               <ImageIcon className="w-6 h-6" />
                               <span className="text-xs">Carica foto</span>
                             </div>
                           )}
                         </div>
 
-                        <div className="flex flex-col gap-2 text-sm text-slate-500 flex-1">
+                        <div className="flex flex-col gap-2 text-sm text-muted-foreground flex-1">
                           <p>Formati: JPG, PNG, WEBP.<br/>Se vuoto, verrà usato il pattern del brand.</p>
                           {previewUrl && (
                             <Button 
@@ -402,7 +402,7 @@ export const SitesManager = () => {
                         {site.imageUrl ? (
                           <img src={site.imageUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-300">
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                             <ImageIcon className="w-4 h-4" />
                           </div>
                         )}
@@ -425,10 +425,10 @@ export const SitesManager = () => {
                       {site.region}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {site.areaSqm > 0 ? `${site.areaSqm} mq` : '-'}
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {siteProjects.length}
                   </TableCell>
                   <TableCell className="text-right">
@@ -487,7 +487,7 @@ export const SitesManager = () => {
             })}
             {sites.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Nessun site presente. Crea prima una holding e un brand.
                 </TableCell>
               </TableRow>
