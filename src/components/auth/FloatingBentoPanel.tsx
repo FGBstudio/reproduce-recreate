@@ -7,6 +7,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis,
   CartesianGrid, ResponsiveContainer,
 } from "recharts";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 /* ───────────────────────── tokens ───────────────────────── */
 const INK = "#1d1d1f";
@@ -512,6 +513,7 @@ const FloatingBentoPanel: React.FC = () => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [flippedIndex, setFlippedIndex] = useState<number | null>(null);
   const [hovering, setHovering] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
 
   const total = SLIDES.length;
   const isInteracting = expandedIndex !== null || hovering;
@@ -774,6 +776,7 @@ const FloatingBentoPanel: React.FC = () => {
               type="button"
               className="h-12 px-7 rounded-full text-[14px] font-semibold border border-black/15 hover:bg-black/[0.04] transition-colors"
               style={{ color: INK }}
+              onClick={() => setDemoOpen(true)}
             >
               See a live demo
             </button>
@@ -811,6 +814,7 @@ const FloatingBentoPanel: React.FC = () => {
         </div>
       </footer>
       </div>
+      <DemoRequestModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );
 };
