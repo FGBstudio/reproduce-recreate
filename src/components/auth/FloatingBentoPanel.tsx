@@ -19,6 +19,136 @@ const EASE: [number, number, number, number] = [0.25, 1, 0.5, 1];
 
 const axisStyle = { fontSize: 10, fill: SUB, fontWeight: 400 };
 
+/* ───────────────────────── Demo request modal ───────────────────────── */
+const DemoRequestModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setError(null); setSuccess(false);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !company.trim()) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      if (!isSupabaseConfigured) {
+        setSuccess(true);
+        return;
+      }
+      const { error: insertError } = await supabase.from("access_requests").insert({
+        email: email.trim().toLowerCase(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        company: company.trim(),
+        job_title: jobTitle.trim() || null,
+        message: `[DEMO REQUEST] ${message.trim()}`.trim(),
+      });
+      if (insertError) throw insertError;
+      setSuccess(true);
+      setFirstName(""); setLastName(""); setEmail(""); setCompany("");
+      setJobTitle(""); setMessage("");
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const inputCls =
+    "w-full h-11 px-3 rounded-xl border border-black/15 bg-white text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:border-[#0a7d7a] focus:ring-2 focus:ring-[#0a7d7a]/20 transition";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-[520px] bg-white rounded-3xl shadow-2xl p-7 max-h-[90vh] overflow-y-auto">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/[0.05] transition"
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" style={{ color: INK }} />
+        </button>
+
+        {success ? (
+          <div className="py-6 text-center">
+            <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `${ACCENT}1a` }}>
+              <span className="text-2xl" style={{ color: ACCENT }}>✓</span>
+            </div>
+            <h3 className="text-[20px] font-semibold mb-2" style={{ color: INK }}>Request received</h3>
+            <p className="text-[14px]" style={{ color: SUB }}>
+              Thanks — the FGB team will get in touch shortly with your live demo access.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-6 h-11 px-6 rounded-full text-[14px] font-semibold text-white"
+              style={{ background: ACCENT }}
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <>
+            <h3 className="text-[22px] font-semibold tracking-tight mb-1" style={{ color: INK }}>Request a live demo</h3>
+            <p className="text-[13px] mb-5" style={{ color: SUB }}>
+              Tell us about you and we'll send you a dedicated demo access.
+            </p>
+            <form onSubmit={onSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input className={inputCls} placeholder="First name *" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                <input className={inputCls} placeholder="Last name *" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
+              <input className={inputCls} type="email" placeholder="Work email *" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input className={inputCls} placeholder="Company *" value={company} onChange={(e) => setCompany(e.target.value)} />
+              <input className={inputCls} placeholder="Job title (optional)" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+              <textarea
+                className={`${inputCls} h-24 py-3`}
+                placeholder="What would you like to see in the demo? (optional)"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+              {error && (
+                <div className="text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {error}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full h-12 rounded-full text-[14px] font-semibold text-white transition disabled:opacity-60"
+                style={{ background: ACCENT }}
+              >
+                {submitting ? "Sending…" : "Send request →"}
+              </button>
+              <p className="text-[11px] text-center" style={{ color: SUB }}>
+                We'll forward your request to monitoring@fgb-studio.com.
+              </p>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const OFFICES = [
   "Aix-en-Provence", "Amsterdam", "Dubai", "Ho Chi Minh", "London",
   "Los Angeles", "Miami", "Milan", "New York", "Rome",
