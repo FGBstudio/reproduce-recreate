@@ -102,7 +102,7 @@ const RegionNav = ({
                 className={`px-2 py-1.5 rounded-full text-[10px] font-semibold tracking-wide transition-all ${
                   currentRegion === btn.code
                     ? "bg-fgb-light text-foreground shadow-[0_0_10px_rgba(0,255,255,0.3)]"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
                 }`}
               >
                 {btn.code === "GLOBAL" ? "🌍" : btn.label.slice(0, 2).toUpperCase()}
@@ -111,7 +111,7 @@ const RegionNav = ({
           </div>
 
           {/* Separator */}
-          <div className="w-px h-5 bg-white/15" />
+          <div className="w-px h-5 bg-foreground/15" />
 
           {/* 3 Monitoring toggles */}
           <div className="glass-panel rounded-full p-0.5 flex gap-0.5">
@@ -124,7 +124,7 @@ const RegionNav = ({
                   className={`w-9 h-9 rounded-full flex items-center justify-center transition ${
                     isActive
                       ? "bg-foreground text-background"
-                      : "text-foreground/50 hover:bg-white/10 hover:text-foreground"
+                      : "text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
                   }`}
                   title={`Toggle ${type}`}
                 >
@@ -169,7 +169,7 @@ const RegionNav = ({
                   <SelectTrigger className="w-[120px] h-8 border-0 bg-transparent text-sm focus:ring-0">
                     <SelectValue placeholder="All Groups" />
                   </SelectTrigger>
-                  <SelectContent className="glass-panel border-white/10">
+                  <SelectContent className="glass-panel border-foreground/10">
                     <SelectItem value="all">All Groups</SelectItem>
                     {holdings.map((h) => (
                       <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
@@ -180,7 +180,7 @@ const RegionNav = ({
             )}
 
             {canSelectHolding && canSelectBrand && (
-              <div className="w-px h-6 bg-white/20" />
+              <div className="w-px h-6 bg-foreground/20" />
             )}
 
             {canSelectBrand && (
@@ -194,7 +194,7 @@ const RegionNav = ({
                   <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent text-sm focus:ring-0">
                     <SelectValue placeholder="All Clients" />
                   </SelectTrigger>
-                  <SelectContent className="glass-panel border-white/10">
+                  <SelectContent className="glass-panel border-foreground/10">
                     <SelectItem value="all">All Clients</SelectItem>
                     {availableBrands.map((b) => (
                       <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
@@ -215,7 +215,7 @@ const RegionNav = ({
               className={`px-4 py-2 rounded-full text-sm font-semibold tracking-wide transition-all duration-300 hover:scale-105 ${
                 currentRegion === btn.code
                   ? "bg-fgb-light text-foreground shadow-[0_0_15px_rgba(0,255,255,0.3)]"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
               }`}
             >
               {btn.label}
@@ -234,7 +234,7 @@ const RegionNav = ({
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition hover:scale-110 ${
                   isActive
                     ? "bg-foreground text-background"
-                    : "hover:bg-white/10 text-foreground"
+                    : "hover:bg-foreground/10 text-foreground"
                 }`}
                 title={`Filter by ${type} monitoring`}
               >

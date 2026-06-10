@@ -141,7 +141,7 @@ export const ProjectsManager = () => {
     const config = project.modules[module];
     if (config.enabled) return { label: 'Attivo', color: 'bg-green-100 text-green-700' };
     if (config.showDemo) return { label: 'Demo', color: 'bg-purple-100 text-purple-700' };
-    return { label: 'Off', color: 'bg-gray-100 text-gray-500' };
+    return { label: 'Off', color: 'bg-gray-100 text-muted-foreground' };
   };
 
   return (
@@ -294,7 +294,7 @@ export const ProjectsManager = () => {
                               <Label className="text-sm font-medium">Messaggio Modulo Bloccato</Label>
                               <div className="grid gap-3">
                                 <div className="grid gap-1.5">
-                                  <Label className="text-xs text-slate-500">Titolo</Label>
+                                  <Label className="text-xs text-muted-foreground">Titolo</Label>
                                   <Input
                                     value={formData.modules[module].lockCopy.title}
                                     onChange={(e) => updateModuleLockCopy(module, 'title', e.target.value)}
@@ -302,7 +302,7 @@ export const ProjectsManager = () => {
                                   />
                                 </div>
                                 <div className="grid gap-1.5">
-                                  <Label className="text-xs text-slate-500">Descrizione</Label>
+                                  <Label className="text-xs text-muted-foreground">Descrizione</Label>
                                   <Textarea
                                     value={formData.modules[module].lockCopy.description}
                                     onChange={(e) => updateModuleLockCopy(module, 'description', e.target.value)}
@@ -311,14 +311,14 @@ export const ProjectsManager = () => {
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                   <div className="grid gap-1.5">
-                                    <Label className="text-xs text-slate-500">CTA Label</Label>
+                                    <Label className="text-xs text-muted-foreground">CTA Label</Label>
                                     <Input
                                       value={formData.modules[module].lockCopy.ctaLabel}
                                       onChange={(e) => updateModuleLockCopy(module, 'ctaLabel', e.target.value)}
                                     />
                                   </div>
                                   <div className="grid gap-1.5">
-                                    <Label className="text-xs text-slate-500">CTA Tipo</Label>
+                                    <Label className="text-xs text-muted-foreground">CTA Tipo</Label>
                                     <Select
                                       value={formData.modules[module].lockCopy.ctaType}
                                       onValueChange={(v) => updateModuleLockCopy(module, 'ctaType', v)}
@@ -334,7 +334,7 @@ export const ProjectsManager = () => {
                                     </Select>
                                   </div>
                                   <div className="grid gap-1.5">
-                                    <Label className="text-xs text-slate-500">CTA Value</Label>
+                                    <Label className="text-xs text-muted-foreground">CTA Value</Label>
                                     <Input
                                       value={formData.modules[module].lockCopy.ctaValue}
                                       onChange={(e) => updateModuleLockCopy(module, 'ctaValue', e.target.value)}
@@ -415,7 +415,7 @@ export const ProjectsManager = () => {
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-slate-400">-</span>
+                      <span className="text-xs text-muted-foreground">-</span>
                     )}
                   </div>
                 </TableCell>
@@ -454,7 +454,7 @@ export const ProjectsManager = () => {
             ))}
             {projects.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Nessun progetto presente.
                 </TableCell>
               </TableRow>

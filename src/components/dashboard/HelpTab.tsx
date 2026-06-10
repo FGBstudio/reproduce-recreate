@@ -106,7 +106,7 @@ export const HelpTab = () => {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder={lang === 'it' ? 'Cerca nelle FAQ…' : 'Search FAQs…'}
-          className="pl-9 h-9 text-xs bg-white/5 border-white/10"
+          className="pl-9 h-9 text-xs bg-foreground/5 border-foreground/10"
         />
       </div>
 
@@ -126,7 +126,7 @@ export const HelpTab = () => {
                   <AccordionItem
                     key={idx}
                     value={`${cat.category}-${idx}`}
-                    className="border border-white/5 rounded-lg px-3 bg-white/[0.02]"
+                    className="border border-foreground/5 rounded-lg px-3 bg-white/[0.02]"
                   >
                     <AccordionTrigger className="text-xs font-medium hover:no-underline py-2.5 text-left">
                       {item.q}
@@ -142,9 +142,9 @@ export const HelpTab = () => {
         )}
       </div>
 
-      <div className="mt-1 flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+      <div className="mt-1 flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.03] border border-foreground/5">
         <div className="relative">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--fgb-accent))] to-[hsl(var(--fgb-light))] flex items-center justify-center text-[10px] font-semibold text-white">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--fgb-accent))] to-[hsl(var(--fgb-light))] flex items-center justify-center text-[10px] font-semibold text-foreground">
             MM
           </div>
           <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" />

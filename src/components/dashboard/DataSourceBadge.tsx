@@ -25,7 +25,7 @@ export const DataSourceBadge = ({
   if (isLoading) {
     return (
       <Badge 
-        className={`${sizeClasses} bg-gray-100 text-gray-500 border border-gray-200 font-medium uppercase tracking-wider animate-pulse ${className}`}
+        className={`${sizeClasses} bg-gray-100 text-muted-foreground border border-gray-200 font-medium uppercase tracking-wider animate-pulse ${className}`}
       >
         <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
         Loading

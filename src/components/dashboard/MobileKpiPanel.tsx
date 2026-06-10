@@ -49,12 +49,12 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      <div className="bg-white/5 rounded-xl p-3 border border-white/8">
+      <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Energy Intensity</div>
         <div className="text-xl font-bold text-foreground">{(displayIntensity / 1000).toFixed(2)}</div>
         <div className="text-[10px] text-muted-foreground">MWh/m²</div>
       </div>
-      <div className="bg-white/5 rounded-xl p-3 border border-white/8">
+      <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Air Quality</div>
         <div
           className={`text-xl font-bold ${
@@ -73,11 +73,11 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
           <div className="text-[10px] text-muted-foreground">CO₂: {displayCo2} ppm</div>
         )}
       </div>
-      <div className="bg-white/5 rounded-xl p-3 border border-white/8">
+      <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Active Sites</div>
         <div className="text-xl font-bold text-foreground">{displayOnline}</div>
       </div>
-      <div className="bg-white/5 rounded-xl p-3 border border-white/8">
+      <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Critical Alerts</div>
         <div
           className={`text-xl font-bold ${
@@ -115,13 +115,13 @@ const MobileKpiPanel = ({
     >
       {/* Drag handle — visual affordance */}
       <div className="flex items-center justify-center pt-3 pb-1">
-        <div className="w-12 h-1.5 bg-white/25 rounded-full" />
+        <div className="w-12 h-1.5 bg-foreground/25 rounded-full" />
       </div>
 
       {/* Close button — 48×48 touch target */}
       <button
         onClick={onClose}
-        className="absolute top-2 right-4 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+        className="absolute top-2 right-4 flex items-center justify-center rounded-full hover:bg-foreground/10 transition-colors"
         style={{ minWidth: 48, minHeight: 48 }}
         aria-label="Chiudi pannello KPI"
       >

@@ -175,7 +175,7 @@ const Hero: React.FC<{ onScroll: () => void }> = ({ onScroll }) => (
     </div>
 
     {/* Marquee — clean, seamless */}
-    <div id="clients" className="relative z-10 border-y border-black/[0.06] bg-white/70 backdrop-blur-md py-3 overflow-hidden">
+    <div id="clients" className="relative z-10 border-y border-black/[0.06] bg-foreground/70 backdrop-blur-md py-3 overflow-hidden">
       <div className="flex w-max animate-marquee">
         {[0, 1].map((k) => (
           <ul key={k} className="flex shrink-0 items-center">
@@ -291,7 +291,7 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
           <div className="mt-8 flex flex-wrap gap-3">
             <button
               onClick={() => onFlip(true)}
-              className="px-6 py-3 rounded-full text-[13px] font-semibold text-white transition-transform hover:scale-[1.02]"
+              className="px-6 py-3 rounded-full text-[13px] font-semibold text-foreground transition-transform hover:scale-[1.02]"
               style={{ background: ACCENT }}
             >
               {slide.cta}
@@ -351,14 +351,14 @@ const ExpandedSlide: React.FC<ExpandedProps> = ({ slide, isFlipped, onClose, onF
           {slide.backVideo ? (
             <video src={slide.backVideo} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-90" />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-white/40 text-sm">Preview video</div>
+            <div className="absolute inset-0 flex items-center justify-center text-foreground/40 text-sm">Preview video</div>
           )}
         </div>
 
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/90 backdrop-blur border border-black/10 flex items-center justify-center hover:bg-white transition-colors z-10"
+          className="absolute top-5 right-5 w-9 h-9 rounded-full bg-foreground/90 backdrop-blur border border-black/10 flex items-center justify-center hover:bg-white transition-colors z-10"
         >
           <X className="w-4 h-4" style={{ color: INK }} />
         </button>
@@ -575,7 +575,7 @@ const FloatingBentoPanel: React.FC = () => {
         </div>
 
         {/* TASTO REQUEST ACCESS (Mantenuto fisso a destra) */}
-        <a href="mailto:fgb@fgb-studio.com" className="pointer-events-auto px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold uppercase tracking-wider rounded-full transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] ml-auto">
+        <a href="mailto:fgb@fgb-studio.com" className="pointer-events-auto px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-foreground text-xs font-bold uppercase tracking-wider rounded-full transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] ml-auto">
           Request access →
         </a>
       </nav>
@@ -687,7 +687,7 @@ const FloatingBentoPanel: React.FC = () => {
 
           {/* Custom */}
           <div className="rounded-3xl border p-8 flex flex-col relative shadow-[0_20px_40px_rgba(10,125,122,0.08)]" style={{ borderColor: `${ACCENT}33`, background: `linear-gradient(180deg, #ffffff, ${ACCENT}08)` }}>
-            <span className="absolute top-0 right-0 text-[10px] font-semibold uppercase tracking-widest text-white px-3 py-1 rounded-bl-xl rounded-tr-3xl" style={{ background: ACCENT }}>
+            <span className="absolute top-0 right-0 text-[10px] font-semibold uppercase tracking-widest text-foreground px-3 py-1 rounded-bl-xl rounded-tr-3xl" style={{ background: ACCENT }}>
               Enterprise
             </span>
             <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: INK }}>Custom</h3>
@@ -700,7 +700,7 @@ const FloatingBentoPanel: React.FC = () => {
                 </li>
               ))}
             </ul>
-            <button className="mt-8 py-3 rounded-xl text-[13px] font-semibold text-white transition-transform hover:scale-[1.01]" style={{ background: ACCENT }}>
+            <button className="mt-8 py-3 rounded-xl text-[13px] font-semibold text-foreground transition-transform hover:scale-[1.01]" style={{ background: ACCENT }}>
               Build your plan
             </button>
           </div>
@@ -714,7 +714,7 @@ const FloatingBentoPanel: React.FC = () => {
               <input type="email" placeholder="Company Email" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
               <input type="text" placeholder="Company Name" className="h-11 rounded-xl border border-black/10 px-4 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors" />
               <textarea placeholder="Introduce your portfolio.." rows={3} className="rounded-xl border border-black/10 px-4 py-3 text-[13px] outline-none focus:border-[#0a7d7a] transition-colors resize-none" />
-              <button type="button" className="mt-2 py-3 rounded-xl text-[13px] font-semibold text-white transition-transform hover:scale-[1.01] flex items-center justify-center gap-2" style={{ background: INK }}>
+              <button type="button" className="mt-2 py-3 rounded-xl text-[13px] font-semibold text-foreground transition-transform hover:scale-[1.01] flex items-center justify-center gap-2" style={{ background: INK }}>
                 Contact sales <ChevronRight className="w-4 h-4" />
               </button>
             </form>
@@ -765,7 +765,7 @@ const FloatingBentoPanel: React.FC = () => {
           <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
             <button
               type="button"
-              className="h-12 px-7 rounded-full text-[14px] font-semibold text-white transition-transform hover:scale-[1.02] shadow-[0_10px_30px_rgba(10,125,122,0.25)]"
+              className="h-12 px-7 rounded-full text-[14px] font-semibold text-foreground transition-transform hover:scale-[1.02] shadow-[0_10px_30px_rgba(10,125,122,0.25)]"
               style={{ background: ACCENT }}
             >
               Request access →

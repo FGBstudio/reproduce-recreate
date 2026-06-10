@@ -99,7 +99,7 @@ export const AdminAuthGate = ({ children }: AdminAuthGateProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
                         type="email"
@@ -114,7 +114,7 @@ export const AdminAuthGate = ({ children }: AdminAuthGateProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
                         type="password"
@@ -172,7 +172,7 @@ export const AdminAuthGate = ({ children }: AdminAuthGateProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="signupEmail">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signupEmail"
                         type="email"
@@ -187,7 +187,7 @@ export const AdminAuthGate = ({ children }: AdminAuthGateProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="signupPassword">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signupPassword"
                         type="password"
@@ -245,10 +245,10 @@ export const AdminAuthGate = ({ children }: AdminAuthGateProps) => {
           </CardHeader>
           <CardContent>
             <div className="p-3 bg-slate-50 rounded-lg flex items-center gap-3">
-              <User className="w-5 h-5 text-slate-400" />
+              <User className="w-5 h-5 text-muted-foreground" />
               <div>
                 <p className="font-medium text-slate-700">{user.name}</p>
-                <p className="text-sm text-slate-500">{user.email}</p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
               </div>
               <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-slate-200 text-slate-600 rounded">
                 {user.role}

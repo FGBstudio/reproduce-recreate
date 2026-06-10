@@ -117,7 +117,7 @@ const DemoCarousel = ({ children }: DemoCarouselProps) => {
         <button
           onClick={() => setCurrentSlide((prev) => Math.max(0, prev - 1))}
           disabled={currentSlide === 0}
-          className="p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="p-2 rounded-full bg-foreground/80 backdrop-blur-sm shadow-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           <ChevronLeft className="w-5 h-5 text-gray-700" />
         </button>
@@ -141,7 +141,7 @@ const DemoCarousel = ({ children }: DemoCarouselProps) => {
             setCurrentSlide((prev) => Math.min(totalSlides - 1, prev + 1))
           }
           disabled={currentSlide === totalSlides - 1}
-          className="p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="p-2 rounded-full bg-foreground/80 backdrop-blur-sm shadow-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           <ChevronRight className="w-5 h-5 text-gray-700" />
         </button>
@@ -200,11 +200,11 @@ export const EnergyDemoContent = () => (
   <DemoCarousel>
     {/* Slide 1: Overview */}
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-      <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="flex justify-between items-center mb-3 md:mb-4">
           <div>
             <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Energetico</h3>
-            <p className="text-[10px] md:text-xs text-gray-500">Dati demo - Confronto con previsione e media</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground">Dati demo - Confronto con previsione e media</p>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={220}>
@@ -226,7 +226,7 @@ export const EnergyDemoContent = () => (
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3">Distribuzione Consumo</h3>
         <div className="flex items-center gap-4">
           <div className="space-y-2 flex-1">
@@ -250,32 +250,32 @@ export const EnergyDemoContent = () => (
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <Lightbulb className="w-5 h-5 text-fgb-secondary mb-1" />
-              <span className="text-[10px] text-gray-500">Demo</span>
+              <span className="text-[10px] text-muted-foreground">Demo</span>
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-          <p className="text-[10px] text-gray-500 mb-0.5">Consumo Totale</p>
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+          <p className="text-[10px] text-muted-foreground mb-0.5">Consumo Totale</p>
           <p className="text-xl font-bold text-fgb-secondary">85</p>
-          <p className="text-[9px] text-gray-500">kWh/m² / anno</p>
+          <p className="text-[9px] text-muted-foreground">kWh/m² / anno</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
-          <p className="text-[10px] text-gray-500 mb-0.5">Efficienza</p>
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+          <p className="text-[10px] text-muted-foreground mb-0.5">Efficienza</p>
           <p className="text-xl font-bold text-emerald-500">82%</p>
-          <p className="text-[9px] text-gray-500">rating</p>
+          <p className="text-[9px] text-muted-foreground">rating</p>
         </div>
       </div>
     </div>
 
     {/* Slide 2: Device Consumption & Heatmap */}
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Dispositivi</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Dati demo</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Dati demo</p>
         </div>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={demoDeviceData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -291,13 +291,13 @@ export const EnergyDemoContent = () => (
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">Heatmap Consumo</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Ultimo 7 giorni per ora</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Ultimo 7 giorni per ora</p>
         </div>
         <div className="flex gap-2">
-          <div className="text-[8px] text-gray-500 space-y-[3px] pt-0.5">
+          <div className="text-[8px] text-muted-foreground space-y-[3px] pt-0.5">
             {[0, 6, 12, 18, 23].map(h => (
               <div key={h} className="h-3">{String(h).padStart(2, '0')}:00</div>
             ))}
@@ -320,21 +320,21 @@ export const EnergyDemoContent = () => (
       </div>
 
       <div className="lg:col-span-2 grid grid-cols-4 gap-2">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-fgb-secondary">4,250</p>
-          <p className="text-[10px] text-gray-500">kWh HVAC</p>
+          <p className="text-[10px] text-muted-foreground">kWh HVAC</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-fgb-secondary">2,100</p>
-          <p className="text-[10px] text-gray-500">kWh Luci</p>
+          <p className="text-[10px] text-muted-foreground">kWh Luci</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-fgb-secondary">1,050</p>
-          <p className="text-[10px] text-gray-500">kWh Prese</p>
+          <p className="text-[10px] text-muted-foreground">kWh Prese</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-amber-500">2</p>
-          <p className="text-[10px] text-gray-500">Alert Attivi</p>
+          <p className="text-[10px] text-muted-foreground">Alert Attivi</p>
         </div>
       </div>
     </div>
@@ -346,10 +346,10 @@ export const AirDemoContent = () => (
   <DemoCarousel>
     {/* Slide 1: CO2 & Temperature Overview */}
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">CO₂ Trend</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Dati demo - Ultime 24 ore</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Dati demo - Ultime 24 ore</p>
         </div>
         <ResponsiveContainer width="100%" height={180}>
           <AreaChart data={demoCO2History} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -369,10 +369,10 @@ export const AirDemoContent = () => (
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">Temperatura & Umidità</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Dati demo</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Dati demo</p>
         </div>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={demoTempHumidity} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -388,31 +388,31 @@ export const AirDemoContent = () => (
       </div>
 
       <div className="lg:col-span-2 grid grid-cols-4 gap-2">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">GOOD</p>
-          <p className="text-[10px] text-gray-500">Air Quality</p>
+          <p className="text-[10px] text-muted-foreground">Air Quality</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-fgb-secondary">450</p>
-          <p className="text-[10px] text-gray-500">CO₂ ppm</p>
+          <p className="text-[10px] text-muted-foreground">CO₂ ppm</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-gray-700">22°</p>
-          <p className="text-[10px] text-gray-500">Temperatura</p>
+          <p className="text-[10px] text-muted-foreground">Temperatura</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-gray-700">45%</p>
-          <p className="text-[10px] text-gray-500">Umidità</p>
+          <p className="text-[10px] text-muted-foreground">Umidità</p>
         </div>
       </div>
     </div>
 
     {/* Slide 2: TVOC & Particolato */}
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">TVOC Trend</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Composti Organici Volatili</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Composti Organici Volatili</p>
         </div>
         <ResponsiveContainer width="100%" height={180}>
           <AreaChart data={demoTVOCHistory} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -432,10 +432,10 @@ export const AirDemoContent = () => (
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">PM2.5 Indoor vs Outdoor</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Particolato fine</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Particolato fine</p>
         </div>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={demoPM25Data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -451,21 +451,21 @@ export const AirDemoContent = () => (
       </div>
 
       <div className="lg:col-span-2 grid grid-cols-4 gap-2">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-fgb-secondary">120</p>
-          <p className="text-[10px] text-gray-500">TVOC ppb</p>
+          <p className="text-[10px] text-muted-foreground">TVOC ppb</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">12</p>
-          <p className="text-[10px] text-gray-500">PM2.5 µg/m³</p>
+          <p className="text-[10px] text-muted-foreground">PM2.5 µg/m³</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">22</p>
-          <p className="text-[10px] text-gray-500">PM10 µg/m³</p>
+          <p className="text-[10px] text-muted-foreground">PM10 µg/m³</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">0</p>
-          <p className="text-[10px] text-gray-500">Alert</p>
+          <p className="text-[10px] text-muted-foreground">Alert</p>
         </div>
       </div>
     </div>
@@ -477,10 +477,10 @@ export const WaterDemoContent = () => (
   <DemoCarousel>
     {/* Slide 1: Consumption Overview */}
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-      <div className="lg:col-span-2 bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">Consumo Idrico</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Dati demo - Confronto con target</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Dati demo - Confronto con target</p>
         </div>
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={demoWaterConsumption} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -501,7 +501,7 @@ export const WaterDemoContent = () => (
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3">Distribuzione</h3>
         <div className="flex items-center gap-4">
           <div className="space-y-2 flex-1">
@@ -531,23 +531,23 @@ export const WaterDemoContent = () => (
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-blue-500">1,450</p>
-          <p className="text-[10px] text-gray-500">m³ / mese</p>
+          <p className="text-[10px] text-muted-foreground">m³ / mese</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">78%</p>
-          <p className="text-[10px] text-gray-500">Efficienza</p>
+          <p className="text-[10px] text-muted-foreground">Efficienza</p>
         </div>
       </div>
     </div>
 
     {/* Slide 2: Leaks & Quality */}
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">Rilevamento Perdite</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">Stato per zona</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Stato per zona</p>
         </div>
         <div className="space-y-2">
           {demoWaterLeaksData.map((leak, idx) => (
@@ -565,10 +565,10 @@ export const WaterDemoContent = () => (
         </div>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+      <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
         <div className="mb-3">
           <h3 className="text-base md:text-lg font-bold text-gray-800">Qualità Acqua</h3>
-          <p className="text-[10px] md:text-xs text-gray-500">pH, Torbidità, Cloro</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">pH, Torbidità, Cloro</p>
         </div>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={demoWaterQualityData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -585,21 +585,21 @@ export const WaterDemoContent = () => (
       </div>
 
       <div className="lg:col-span-2 grid grid-cols-4 gap-2">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">7.2</p>
-          <p className="text-[10px] text-gray-500">pH</p>
+          <p className="text-[10px] text-muted-foreground">pH</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">0.8</p>
-          <p className="text-[10px] text-gray-500">Torbidità NTU</p>
+          <p className="text-[10px] text-muted-foreground">Torbidità NTU</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-amber-500">1</p>
-          <p className="text-[10px] text-gray-500">Perdite Attive</p>
+          <p className="text-[10px] text-muted-foreground">Perdite Attive</p>
         </div>
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
+        <div className="bg-foreground/95 backdrop-blur-sm rounded-xl p-4 shadow-lg text-center">
           <p className="text-xl font-bold text-emerald-500">OK</p>
-          <p className="text-[10px] text-gray-500">Qualità</p>
+          <p className="text-[10px] text-muted-foreground">Qualità</p>
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@ const Admin = () => {
       <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
         
         {/* Header fisso */}
-        <header className="flex-shrink-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <header className="flex-shrink-0 z-40 bg-foreground/80 backdrop-blur-md border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-4">
@@ -67,7 +67,7 @@ const Admin = () => {
                   <Sparkles className="w-4 h-4" />
                   <span className="hidden sm:inline">FGB Wrapped</span>
                 </Button>
-                <span className="text-sm text-slate-500 hidden sm:inline">
+                <span className="text-sm text-muted-foreground hidden sm:inline">
                   {user?.name}
                 </span>
                 <span className="px-2 py-0.5 text-xs font-medium bg-fgb-secondary/10 text-fgb-secondary rounded-full">
@@ -86,40 +86,40 @@ const Admin = () => {
             {/* Menu Tab Fisso */}
             <div className="flex-shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 p-1.5">
               <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 gap-1 bg-transparent h-auto p-0">
-                <TabsTrigger value="dashboard" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="dashboard" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <LayoutDashboard className="w-4 h-4" /> <span className="hidden lg:inline">Dashboard</span>
                 </TabsTrigger>
-                <TabsTrigger value="hierarchy" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="hierarchy" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <GitBranch className="w-4 h-4" /> <span className="hidden lg:inline">Gerarchia</span>
                 </TabsTrigger>
-                <TabsTrigger value="holdings" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="holdings" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <Building2 className="w-4 h-4" /> <span className="hidden lg:inline">Holdings</span>
                 </TabsTrigger>
-                <TabsTrigger value="brands" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="brands" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <Tag className="w-4 h-4" /> <span className="hidden lg:inline">Brands</span>
                 </TabsTrigger>
-                <TabsTrigger value="sites" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="sites" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <MapPin className="w-4 h-4" /> <span className="hidden lg:inline">Sites</span>
                 </TabsTrigger>
-                <TabsTrigger value="projects" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="projects" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <FolderKanban className="w-4 h-4" /> <span className="hidden lg:inline">Projects</span>
                 </TabsTrigger>
-                <TabsTrigger value="devices" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="devices" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <Cpu className="w-4 h-4" /> <span className="hidden lg:inline">Devices</span>
                 </TabsTrigger>
-                <TabsTrigger value="users" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="users" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <UserCog className="w-4 h-4" /> <span className="hidden lg:inline">Utenti</span>
                 </TabsTrigger>
-                <TabsTrigger value="roles" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="roles" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <Shield className="w-4 h-4" /> <span className="hidden lg:inline">Ruoli</span>
                 </TabsTrigger>
-                <TabsTrigger value="client-users" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="client-users" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <UserPlus className="w-4 h-4" /> <span className="hidden lg:inline">Client</span>
                 </TabsTrigger>
-                <TabsTrigger value="access" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="access" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <Users className="w-4 h-4" /> <span className="hidden lg:inline">Accessi</span>
                 </TabsTrigger>
-                <TabsTrigger value="requests" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-white rounded-lg py-2.5">
+                <TabsTrigger value="requests" className="gap-1.5 data-[state=active]:bg-fgb-secondary data-[state=active]:text-foreground rounded-lg py-2.5">
                   <Inbox className="w-4 h-4" /> <span className="hidden lg:inline">Richieste</span>
                 </TabsTrigger>
               </TabsList>

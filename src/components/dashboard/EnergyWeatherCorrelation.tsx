@@ -227,7 +227,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
            </div>
            <div>
              <h3 className="text-lg font-bold text-gray-900 leading-tight">Energy Weather Analytics</h3>
-             <p className="text-xs text-gray-500 font-medium">Power consumption vs. outdoor intensity</p>
+             <p className="text-xs text-muted-foreground font-medium">Power consumption vs. outdoor intensity</p>
            </div>
            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50/50 border border-emerald-100 rounded-full ml-2 relative group/info">
               <Activity className="w-3.5 h-3.5 text-emerald-600" />
@@ -235,7 +235,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
               <div className="ml-1 cursor-help">
                 <Info className="w-3 h-3 text-emerald-400 hover:text-emerald-600 transition-colors" />
               </div>
-              <div className="absolute left-0 top-8 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none border border-slate-700">
+              <div className="absolute left-0 top-8 w-64 p-3 bg-slate-900 text-foreground text-[10px] rounded-xl shadow-2xl opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none border border-slate-700">
                 <p className="font-bold mb-1 border-b border-slate-700 pb-1 text-emerald-400 uppercase tracking-wider">WEATHER SENSITIVITY LOGIC</p>
                 <p className="leading-relaxed opacity-90 text-[9px]">
                   Site performance is modeled using Multiple Linear Regression: 
@@ -250,7 +250,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
           <Button 
             variant="ghost" 
             size="sm" 
-            className={`h-7 px-2.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition-all ${viewMode === 'timeseries' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`h-7 px-2.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition-all ${viewMode === 'timeseries' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground hover:text-gray-700'}`}
             onClick={() => setViewMode('timeseries')}
           >
             <BarChart2 className="w-3.5 h-3.5 mr-1.5" />
@@ -259,7 +259,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
           <Button 
             variant="ghost" 
             size="sm" 
-            className={`h-7 px-2.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition-all ${viewMode === 'scatter' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`h-7 px-2.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition-all ${viewMode === 'scatter' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground hover:text-gray-700'}`}
             onClick={() => setViewMode('scatter')}
           >
             <Grid className="w-3.5 h-3.5 mr-1.5" />
@@ -268,7 +268,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
         </div>
       </div>
 
-      <div className="flex-1 min-h-[300px] w-full bg-white/30 rounded-2xl border border-gray-100/50 p-2">
+      <div className="flex-1 min-h-[300px] w-full bg-foreground/30 rounded-2xl border border-gray-100/50 p-2">
         <ResponsiveContainer width="100%" height="100%">
           {viewMode === 'timeseries' ? (
             <ComposedChart data={chartData} margin={{ top: 10, right: 60, bottom: 20, left: 10 }}>
@@ -357,19 +357,19 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="bg-white/95 backdrop-blur-md p-3 border border-gray-100 shadow-xl rounded-xl">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-wider">Meteorological Data</p>
+                      <div className="bg-foreground/95 backdrop-blur-md p-3 border border-gray-100 shadow-xl rounded-xl">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2 tracking-wider">Meteorological Data</p>
                         <div className="space-y-1.5">
                           <div className="flex justify-between gap-8">
-                            <span className="text-xs text-gray-500">Temperature</span>
+                            <span className="text-xs text-muted-foreground">Temperature</span>
                             <span className="text-xs font-bold text-gray-900">{data.x.toFixed(1)}°C</span>
                           </div>
                           <div className="flex justify-between gap-8">
-                            <span className="text-xs text-gray-500">Energy Load</span>
+                            <span className="text-xs text-muted-foreground">Energy Load</span>
                             <span className="text-xs font-bold text-gray-900">{data.y.toFixed(2)} kWh</span>
                           </div>
                           <div className="flex justify-between gap-8 border-t border-gray-50 pt-1.5 mt-1.5">
-                            <span className="text-xs text-gray-500">Humidity</span>
+                            <span className="text-xs text-muted-foreground">Humidity</span>
                             <span className="text-xs font-bold text-emerald-600">{data.humidity.toFixed(0)}%</span>
                           </div>
                         </div>
@@ -423,7 +423,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
           <p className="text-sm font-semibold text-gray-700 italic">"{insightText}"</p>
         </div>
         {!hasRealData && (
-          <span className="px-2 py-0.5 bg-gray-200 text-[9px] font-black text-gray-500 rounded-md uppercase">Demo</span>
+          <span className="px-2 py-0.5 bg-gray-200 text-[9px] font-black text-muted-foreground rounded-md uppercase">Demo</span>
         )}
       </div>
     </div>

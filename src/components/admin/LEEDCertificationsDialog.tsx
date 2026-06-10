@@ -311,7 +311,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto pr-2 space-y-8 my-4 custom-scrollbar">
@@ -388,10 +388,10 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                 </div>
               ) : !hasTimeline ? (
                 <div className="p-4 bg-slate-50 rounded-lg flex flex-col gap-3 border border-slate-200">
-                  <p className="text-xs text-slate-500 leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Nessuna timeline trovata. Genera automaticamente i 17 step standard previsti dal framework FGB per il monitoraggio LEED.
                   </p>
-                  <Button onClick={handleGenerateTimeline} disabled={isGeneratingTimeline} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Button onClick={handleGenerateTimeline} disabled={isGeneratingTimeline} className="w-full bg-emerald-600 hover:bg-emerald-700 text-foreground">
                     {isGeneratingTimeline ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Calendar className="w-4 h-4 mr-2" />}
                     Genera Template Timeline Standard
                   </Button>
@@ -402,18 +402,18 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                     // FIX DARK MODE: Sfondo scuro e testi forzati al bianco per le card della timeline
                     <div key={tm.id} className="p-4 bg-slate-900 border border-slate-700 rounded-lg shadow-sm transition-shadow flex flex-col gap-3">
                       <div className="flex flex-col">
-                        <Label className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Nome Fase (Visibile al Cliente)</Label>
+                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Nome Fase (Visibile al Cliente)</Label>
                         <Input 
-                          className="text-sm font-semibold text-white bg-transparent border-none px-0 h-auto focus-visible:ring-0 focus-visible:border-b focus-visible:border-slate-500" 
+                          className="text-sm font-semibold text-foreground bg-transparent border-none px-0 h-auto focus-visible:ring-0 focus-visible:border-b focus-visible:border-slate-500" 
                           value={tm.category} 
                           onChange={(e) => updateTimelineField(idx, 'category', e.target.value)} 
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-slate-400">Stato</Label>
+                          <Label className="text-[10px] text-muted-foreground">Stato</Label>
                           <Select value={tm.status} onValueChange={(v) => updateTimelineField(idx, 'status', v)}>
-                            <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-700 text-white">
+                            <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-700 text-foreground">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -425,19 +425,19 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-slate-400">Data di Inizio</Label>
+                          <Label className="text-[10px] text-muted-foreground">Data di Inizio</Label>
                           <Input 
                             type="date" 
-                            className="h-8 text-xs bg-slate-800 border-slate-700 text-white placeholder-slate-400 [color-scheme:dark]" 
+                            className="h-8 text-xs bg-slate-800 border-slate-700 text-foreground placeholder-slate-400 [color-scheme:dark]" 
                             value={tm.start_date || ''} 
                             onChange={(e) => updateTimelineField(idx, 'start_date', e.target.value)} 
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-slate-400">Data Scadenza (Target)</Label>
+                          <Label className="text-[10px] text-muted-foreground">Data Scadenza (Target)</Label>
                           <Input 
                             type="date" 
-                            className="h-8 text-xs bg-slate-800 border-slate-700 text-white placeholder-slate-400 [color-scheme:dark]" 
+                            className="h-8 text-xs bg-slate-800 border-slate-700 text-foreground placeholder-slate-400 [color-scheme:dark]" 
                             value={tm.due_date || ''} 
                             onChange={(e) => updateTimelineField(idx, 'due_date', e.target.value)} 
                           />
@@ -466,7 +466,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-[10px] uppercase text-slate-500">Punti Ottenuti</Label>
+                        <Label className="text-[10px] uppercase text-muted-foreground">Punti Ottenuti</Label>
                         <Input
                           type="number"
                           min={0}
@@ -477,7 +477,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[10px] uppercase text-slate-500">Max Punti</Label>
+                        <Label className="text-[10px] uppercase text-muted-foreground">Max Punti</Label>
                         <Input
                           type="number"
                           className="h-8 text-sm"
@@ -501,7 +501,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Annulla
           </Button>
-          <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isSaving || isLoading}>
+          <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-foreground" disabled={isSaving || isLoading}>
             {isSaving ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
             ) : 'Salva Modifiche (Timeline e Scorecard)'}

@@ -417,15 +417,15 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                 {sc.label}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {selectedBill.company_name} — {formatDate(selectedBill.created_at)}
             </p>
           </div>
         </div>
 
         {!bd ? (
-          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <Card className="bg-foreground/90 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <FileText className="h-12 w-12 mb-4 opacity-50" />
               <p className="text-lg font-medium">{t.noData}</p>
               <p className="text-sm">
@@ -436,7 +436,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
         ) : (
           <div className="space-y-4">
             {sections.map((section) => (
-              <Card key={section.title} className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+              <Card key={section.title} className="bg-foreground/90 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold text-gray-800">{section.title}</CardTitle>
                 </CardHeader>
@@ -448,11 +448,11 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                           {field.icon}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500">{field.label}</p>
+                          <p className="text-xs text-muted-foreground">{field.label}</p>
                           <p className="text-base font-semibold text-gray-800 truncate">
                             {field.value}
                             {'unit' in field && (field as any).unit && field.value !== '—' && (
-                              <span className="ml-1 text-xs font-normal text-gray-400">{(field as any).unit}</span>
+                              <span className="ml-1 text-xs font-normal text-muted-foreground">{(field as any).unit}</span>
                             )}
                           </p>
                         </div>
@@ -464,7 +464,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
             ))}
 
             {additionalEntries.length > 0 && (
-              <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="bg-foreground/90 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold text-gray-800">{t.additionalData}</CardTitle>
                 </CardHeader>
@@ -472,7 +472,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                   <div className="grid gap-2 sm:grid-cols-2">
                     {additionalEntries.map(([key, value]) => (
                       <div key={key} className="flex justify-between items-center rounded-lg bg-gray-50/80 p-3">
-                        <span className="text-xs text-gray-500 capitalize">{key.replace(/_/g, ' ')}</span>
+                        <span className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
                         <span className="font-medium text-sm text-gray-800">{String(value)}</span>
                       </div>
                     ))}
@@ -496,11 +496,11 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
           </Button>
           <div>
             <h2 className="text-2xl font-bold text-gray-800">{t.upload}</h2>
-            <p className="text-sm text-gray-500">{t.uploadDesc}</p>
+            <p className="text-sm text-muted-foreground">{t.uploadDesc}</p>
           </div>
         </div>
 
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-foreground/90 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="pt-6">
             <form onSubmit={handleUpload} className="space-y-6">
               <div className="space-y-2">
@@ -541,15 +541,15 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                   <div className="flex flex-col items-center gap-2">
                     <FileUp className="h-10 w-10 text-teal-600" />
                     <p className="font-medium text-gray-800">{file.name}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2">
-                    <Upload className="h-10 w-10 text-gray-400" />
+                    <Upload className="h-10 w-10 text-muted-foreground" />
                     <p className="font-medium text-gray-700">{t.dropzone}</p>
-                    <p className="text-sm text-gray-400">{t.dropzoneHint}</p>
+                    <p className="text-sm text-muted-foreground">{t.dropzoneHint}</p>
                   </div>
                 )}
               </div>
@@ -583,20 +583,20 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
               <h2 className="text-2xl font-bold text-gray-800">{t.myBills} ({bills.length})</h2>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchBills} disabled={loading} className="bg-white/50">
+          <Button variant="outline" size="sm" onClick={fetchBills} disabled={loading} className="bg-foreground/50">
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             {t.refresh}
           </Button>
         </div>
 
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-foreground/90 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="pt-6">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
               </div>
             ) : bills.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <FileText className="h-12 w-12 mb-4 opacity-50" />
                 <p className="text-lg font-medium">{t.noBills}</p>
               </div>
@@ -629,7 +629,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                               {sc.label}
                             </span>
                           </TableCell>
-                          <TableCell className="text-gray-500">
+                          <TableCell className="text-muted-foreground">
                             {new Date(bill.created_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
@@ -674,10 +674,10 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">{t.title}</h2>
-          <p className="text-sm text-gray-500">{t.subtitle}</p>
+          <p className="text-sm text-muted-foreground">{t.subtitle}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setView('list')} className="bg-white/50">
+          <Button variant="outline" size="sm" onClick={() => setView('list')} className="bg-foreground/50">
             <FileText className="mr-2 h-4 w-4" />
             {t.myBills}
           </Button>
@@ -691,9 +691,9 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((card) => (
-          <Card key={card.title} className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <Card key={card.title} className="bg-foreground/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">{card.title}</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{card.title}</CardTitle>
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50">
                 <card.icon className="h-4.5 w-4.5 text-teal-600" />
               </div>
@@ -708,7 +708,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
       {/* Chart + Quick Stats */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Monthly Consumption Chart */}
-        <Card className="lg:col-span-2 bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="lg:col-span-2 bg-foreground/90 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-gray-800">{t.monthlyConsumption}</CardTitle>
             <CardDescription>kWh</CardDescription>
@@ -725,7 +725,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                 </BarChart>
               </ZoomableChart>
             ) : (
-              <div className="flex items-center justify-center h-[240px] text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-[240px] text-muted-foreground text-sm">
                 <BarChart3 className="h-8 w-8 mr-2 opacity-40" /> No data yet
               </div>
             )}
@@ -733,26 +733,26 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
         </Card>
 
         {/* Quick Stats */}
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-foreground/90 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-gray-800">Quick Stats</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-gray-50/80 p-4 text-center">
-                <p className="text-xs text-gray-400 uppercase tracking-wider">{t.peakPower}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.peakPower}</p>
                 <p className="text-lg font-bold text-gray-800 mt-1">{kpis.maxPeak.toLocaleString()} kW</p>
               </div>
               <div className="rounded-xl bg-gray-50/80 p-4 text-center">
-                <p className="text-xs text-gray-400 uppercase tracking-wider">{t.analyzed}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.analyzed}</p>
                 <p className="text-lg font-bold text-gray-800 mt-1">{kpis.completedCount}</p>
               </div>
               <div className="rounded-xl bg-gray-50/80 p-4 text-center">
-                <p className="text-xs text-gray-400 uppercase tracking-wider">{t.months}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.months}</p>
                 <p className="text-lg font-bold text-gray-800 mt-1">{kpis.monthlyData.length}</p>
               </div>
               <div className="rounded-xl bg-gray-50/80 p-4 text-center">
-                <p className="text-xs text-gray-400 uppercase tracking-wider">Pending</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Pending</p>
                 <p className="text-lg font-bold text-gray-800 mt-1">{bills.filter(b => b.status !== 'completed').length}</p>
               </div>
             </div>
@@ -772,7 +772,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate text-gray-800">{bill.file_name}</p>
-                      <p className="text-xs text-gray-400">{bill.company_name}</p>
+                      <p className="text-xs text-muted-foreground">{bill.company_name}</p>
                     </div>
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${sc.className}`}>

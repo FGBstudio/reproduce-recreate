@@ -34,7 +34,7 @@ const DonutChart = ({ percentage, color }: { percentage: number; color: string }
     <svg viewBox="0 0 80 80" className="w-16 h-16 md:w-[72px] md:h-[72px]">
       {/* Background track */}
       <circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="7"
-        className="text-gray-200" />
+        className="text-muted-foreground" />
       {/* Filled arc */}
       <circle cx="40" cy="40" r={radius} fill="none" stroke={color} strokeWidth="7"
         strokeDasharray={`${filled} ${gap}`}
@@ -79,7 +79,7 @@ export const EVSWidget = ({ modules, onActivateModule }: EVSWidgetProps) => {
               {level.label}
             </span>
           </div>
-          <div className="text-[9px] text-gray-500 leading-tight">
+          <div className="text-[9px] text-muted-foreground leading-tight">
             {activeCount}/{TOTAL_MODULES} moduli attivi
           </div>
           {/* Module indicators */}
@@ -107,7 +107,7 @@ export const EVSWidget = ({ modules, onActivateModule }: EVSWidgetProps) => {
                           ? 'bg-red-100 text-red-500 animate-pulse ring-1 ring-red-300'
                           : isOn
                             ? `${meta.activeBg} ${meta.activeColor}`
-                            : 'bg-gray-200 text-gray-400 hover:bg-gray-300 cursor-pointer'
+                            : 'bg-gray-200 text-muted-foreground hover:bg-gray-300 cursor-pointer'
                         }
                       `}
                     >

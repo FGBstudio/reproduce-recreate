@@ -30,12 +30,12 @@ export function LegendTooltip({
 
   return (
     <div className={`relative inline-flex items-center group cursor-help ${className}`}>
-      <Info size={iconSize} className="text-slate-400 hover:text-slate-600 transition-colors" />
+      <Info size={iconSize} className="text-muted-foreground hover:text-slate-600 transition-colors" />
       
       {/* Tooltip Content */}
       <div className={`absolute z-50 w-64 p-3 rounded-xl invisible opacity-0 
         group-hover:visible group-hover:opacity-100 transition-all duration-200 
-        bg-white/90 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 
+        bg-foreground/90 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 
         pointer-events-none text-xs font-medium text-slate-600 leading-relaxed ${getPositionClasses()}`}
       >
         {content}

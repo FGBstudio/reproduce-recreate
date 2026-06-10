@@ -59,7 +59,7 @@ const deviceTypeIcons: Record<string, React.ReactNode> = {
   energy_monitor: <Zap className="w-4 h-4 text-yellow-500" />,
   air_quality: <Wind className="w-4 h-4 text-blue-500" />,
   water_meter: <Droplets className="w-4 h-4 text-cyan-500" />,
-  other: <Cpu className="w-4 h-4 text-gray-500" />,
+  other: <Cpu className="w-4 h-4 text-muted-foreground" />,
 };
 
 const statusConfig: Record<string, { color: string; icon: React.ReactNode }> = {

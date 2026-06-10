@@ -155,19 +155,19 @@ export const BrandsManager = () => {
                         {previewUrl ? (
                           <>
                             <img src={previewUrl} alt="Logo Preview" className="w-full h-full object-contain p-1" />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Pencil className="w-5 h-5 text-white" />
+                            <div className="absolute inset-0 bg-background/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Pencil className="w-5 h-5 text-foreground" />
                             </div>
                           </>
                         ) : (
-                          <div className="flex flex-col items-center gap-1 text-slate-400">
+                          <div className="flex flex-col items-center gap-1 text-muted-foreground">
                             <ImageIcon className="w-5 h-5" />
                             <span className="text-[10px]">Carica</span>
                           </div>
                         )}
                       </div>
 
-                      <div className="flex flex-col gap-2 text-sm text-slate-500 flex-1">
+                      <div className="flex flex-col gap-2 text-sm text-muted-foreground flex-1">
                         <p className="text-xs">PNG o SVG con sfondo trasparente raccomandati per il pattern.</p>
                         {previewUrl && (
                           <Button 
@@ -268,7 +268,7 @@ export const BrandsManager = () => {
                       {brand.logo ? (
                         <img src={brand.logo} alt={brand.name} className="h-full w-full object-contain p-1" />
                       ) : (
-                        <Tag className="w-4 h-4 text-slate-300" />
+                        <Tag className="w-4 h-4 text-muted-foreground" />
                       )}
                     </div>
                   </TableCell>
@@ -279,10 +279,10 @@ export const BrandsManager = () => {
                       {getHoldingName(brand.holdingId)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {brandSites.length} sites
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {brand.createdAt.toLocaleDateString('it-IT')}
                   </TableCell>
                   <TableCell className="text-right">
@@ -340,7 +340,7 @@ export const BrandsManager = () => {
             })}
             {brands.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Nessun brand presente. Crea prima una holding, poi aggiungi i brand.
                 </TableCell>
               </TableRow>

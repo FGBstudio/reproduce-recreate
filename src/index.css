@@ -148,6 +148,61 @@
     --sidebar-border: 0 0% 100% / 0.1;
     --sidebar-ring: 43 41% 57%;
   }
+
+  /* ===== LIGHT MODE ===== */
+  .light {
+    --background: 200 30% 98%;        /* off-white with cool tint */
+    --foreground: 200 100% 11%;       /* navy */
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 100% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 100% 11%;
+
+    --primary: 43 55% 45%;            /* deeper gold for AA on white */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 188 50% 92%;         /* pale teal */
+    --secondary-foreground: 200 100% 11%;
+
+    --muted: 200 25% 94%;
+    --muted-foreground: 215 16% 35%;  /* AA gray on white */
+
+    --accent: 43 55% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 86%;
+    --input: 200 20% 86%;
+    --ring: 43 55% 45%;
+
+    /* FGB tokens */
+    --fgb-base: 200 30% 98%;
+    --fgb-light: 188 60% 88%;
+    --fgb-accent: 43 55% 45%;
+    --fgb-glass: 0 0% 100% / 0.85;
+    --fgb-surface: 200 30% 96% / 0.92;
+
+    /* Lens (already light-ish) keep card white but tune shadow */
+    --lens-card: 0 0% 100%;
+    --lens-ring-track: 200 19% 92%;
+    --lens-label: 215 16% 35%;
+    --lens-unit: 215 16% 45%;
+    --lens-shadow: 200 30% 50%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 200 100% 11%;
+    --sidebar-primary: 43 55% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 188 50% 92%;
+    --sidebar-accent-foreground: 200 100% 11%;
+    --sidebar-border: 200 20% 86%;
+    --sidebar-ring: 43 55% 45%;
+  }
 }
 
 @layer base {
@@ -172,6 +227,19 @@
   .glass-card {
     background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
     @apply backdrop-blur-lg border border-[hsl(0_0%_100%/0.15)] rounded-3xl;
+  }
+
+  /* Light-mode overrides for glassmorphic surfaces */
+  .light .glass-panel {
+    background: hsl(0 0% 100% / 0.88);
+    border-color: hsl(200 25% 80% / 0.7);
+    box-shadow: 0 8px 32px hsl(200 50% 20% / 0.12);
+    color: hsl(var(--foreground));
+  }
+  .light .glass-card {
+    background: linear-gradient(135deg, hsl(0 0% 100% / 0.92), hsl(200 30% 96% / 0.85));
+    border-color: hsl(200 25% 80% / 0.7);
+    color: hsl(var(--foreground));
   }
 }
 
