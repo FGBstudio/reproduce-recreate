@@ -2272,6 +2272,7 @@ export type Database = {
       }
       ops_locations: {
         Row: {
+          brand: string | null
           country: string | null
           created_at: string | null
           id: string
@@ -2282,6 +2283,7 @@ export type Database = {
           type: string | null
         }
         Insert: {
+          brand?: string | null
           country?: string | null
           created_at?: string | null
           id?: string
@@ -2292,6 +2294,7 @@ export type Database = {
           type?: string | null
         }
         Update: {
+          brand?: string | null
           country?: string | null
           created_at?: string | null
           id?: string
@@ -2351,11 +2354,14 @@ export type Database = {
       ops_shipments: {
         Row: {
           carrier_name: string | null
+          co2e_lbs: number | null
           created_at: string | null
           currency: string | null
           customs_cost: number | null
           destination_location_id: string | null
+          distance_miles: number | null
           id: string
+          is_emissions_estimated: boolean | null
           notes: string | null
           origin_location_id: string | null
           purchase_order_id: string | null
@@ -2369,11 +2375,14 @@ export type Database = {
         }
         Insert: {
           carrier_name?: string | null
+          co2e_lbs?: number | null
           created_at?: string | null
           currency?: string | null
           customs_cost?: number | null
           destination_location_id?: string | null
+          distance_miles?: number | null
           id?: string
+          is_emissions_estimated?: boolean | null
           notes?: string | null
           origin_location_id?: string | null
           purchase_order_id?: string | null
@@ -2387,11 +2396,14 @@ export type Database = {
         }
         Update: {
           carrier_name?: string | null
+          co2e_lbs?: number | null
           created_at?: string | null
           currency?: string | null
           customs_cost?: number | null
           destination_location_id?: string | null
+          distance_miles?: number | null
           id?: string
+          is_emissions_estimated?: boolean | null
           notes?: string | null
           origin_location_id?: string | null
           purchase_order_id?: string | null
