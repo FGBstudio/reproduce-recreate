@@ -182,7 +182,7 @@ const ChartFullscreenModal = ({
   
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] bg-background/60 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-fade-in"
+      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-fade-in"
       onClick={onClose}
     >
       <div 
