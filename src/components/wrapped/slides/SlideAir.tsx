@@ -27,10 +27,10 @@ const SlideAir = ({ data }: { data: SiteMonthlyData }) => {
       </div>
       <div className="wr-bd wr-a3">
         {avg != null ? (
-          <>Weekly average CO₂ — WELL Gold limit is <strong>800 ppm.</strong>{' '}
+          <>Weekly average CO₂ — <strong>{avg} ppm</strong>. The WELL Building Standard™ targets <strong>800 ppm</strong> for optimal cognitive performance.{' '}
             {compliant
-              ? <>You stayed <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom! / WELL_GOLD) * 100)}% below</strong> all week.</>
-              : <>You exceeded the limit by <strong style={{ color: 'var(--red)' }}>{Math.round(((avg - WELL_GOLD) / WELL_GOLD) * 100)}%.</strong></>}
+              ? <>You are <strong style={{ color: 'var(--blue)' }}>{Math.round((headroom! / WELL_GOLD) * 100)}% better</strong> than premium air quality.</>
+              : <>You are just <strong style={{ color: 'var(--blue)' }}>{Math.round(((avg - WELL_GOLD) / WELL_GOLD) * 100)}% away</strong> from premium air quality.</>}
           </>
         ) : hours != null ? (
           <>of <strong>excellent air</strong> this week — all sensors within WELL/ASHRAE limits.</>
