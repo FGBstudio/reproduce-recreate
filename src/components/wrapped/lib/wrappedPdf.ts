@@ -25,6 +25,8 @@ body{font-family:'Century Gothic',sans-serif;background:#fff;color:#1a1a1a;-webk
 table{width:100%;border-collapse:collapse;margin-top:8px;}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #e0eae3;font-size:12px;}
 th{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#888;}
+.amber{color:#c97a14;}.teal{color:#00614A;}.red{color:#b3261e;}.green{color:#1b7a3a;}.blue{color:#1f5fa8;}
+.note{margin-top:18px;font-size:11px;color:#888;text-align:center;font-style:italic;}
 @media print{@page{margin:0;}}
 `;
 
@@ -36,6 +38,23 @@ function openPrint(title: string, body: string) {
 }
 
 export function generateSitePdf(data: SiteWeeklyData | SiteMonthlyData, siteName: string) {
+  const energyDelta = data.energy.deltaPct;
+  const energyDeltaClass = energyDelta != null && energyDelta <= 0 ? 'green' : 'red';
+  const saved = data.co2.savedKg ?? 0;
+  const co2IsSaved = saved > 0;
+  const co2Value = co2IsSaved ? saved : (data.co2 as any).weekKg ?? saved;
+  const co2Label = co2IsSaved ? 'CO₂ saved' : 'CO₂ emitted';
+  const co2Class = co2IsSaved ? 'teal' : 'amber';
+
+  const days = (data.energy.daily ?? []).filter((d: any) => d.kwh != null);
+  const dayShort = (iso: string) => {
+    const d = new Date(iso);
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  };
+  const rows = days.map((d: any) =>
+    `<tr><td>${dayShort(d.day)} <span style="opacity:.4">${d.day.slice(5)}</span></td><td>${Math.round(d.kwh).toLocaleString('it-IT')}</td><td>${Math.round(d.kwh * 0.233)} kg</td></tr>`
+  ).join('');
+
   const body = `
     <div class="cover">
       <div class="fgb">FGB</div>
@@ -46,11 +65,35 @@ export function generateSitePdf(data: SiteWeeklyData | SiteMonthlyData, siteName
     <div class="body">
       <div class="sec">Key indicators</div>
       <div class="grid">
-        <div class="card"><div class="kl">Energy</div><div class="kv">${fmt(data.energy.weekKwh)} kWh</div><div class="kd">${fmtPct(data.energy.deltaPct)} vs last week</div></div>
-        <div class="card"><div class="kl">CO₂ saved</div><div class="kv">${fmt(data.co2.savedKg)} kg</div><div class="kd">≈ ${data.co2.treesEquiv ?? 0} trees/yr</div></div>
-        <div class="card"><div class="kl">Avg CO₂ indoor</div><div class="kv">${data.air.avgCo2Ppm ?? '—'} ppm</div><div class="kd">${data.air.daysExcellent} excellent days</div></div>
-        <div class="card"><div class="kl">Alerts</div><div class="kv">${data.alerts.activeNow}</div><div class="kd">${data.alerts.resolvedThisWeek} resolved this week</div></div>
+        <div class="card">
+          <div class="kl">Energy</div>
+          <div class="kv amber">${fmt(data.energy.weekKwh)} kWh</div>
+          <div class="kd ${energyDeltaClass}">${fmtPct(energyDelta)} vs baseline</div>
+        </div>
+        <div class="card">
+          <div class="kl">${co2Label}</div>
+          <div class="kv ${co2Class}">${fmt(co2Value)} kg</div>
+          <div class="kd green">≈ ${data.co2.treesEquiv ?? 0} trees/yr</div>
+        </div>
+        <div class="card">
+          <div class="kl">Avg CO₂ indoor</div>
+          <div class="kv blue">${data.air.avgCo2Ppm ?? '—'} ppm</div>
+          <div class="kd">${data.air.daysExcellent} excellent days</div>
+        </div>
+        <div class="card">
+          <div class="kl">Active alerts</div>
+          <div class="kv red">${data.alerts.activeNow}</div>
+          <div class="kd">${data.alerts.resolvedThisWeek} resolved this week</div>
+        </div>
       </div>
+      ${days.length > 0 ? `
+        <div class="sec">Daily breakdown</div>
+        <table>
+          <thead><tr><th>Day</th><th>kWh</th><th>CO₂</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      ` : ''}
+      <div class="note">Need the deep-dive? Use the full report generator.</div>
     </div>`;
   openPrint(`FGB Weekly Wrapped — ${siteName}`, body);
 }
