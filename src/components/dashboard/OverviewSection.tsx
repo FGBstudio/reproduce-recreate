@@ -188,7 +188,7 @@ function ScoreRing({ score, level, animatedScore }: { score: number; level: Stat
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <span className={`text-[36px] font-medium leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
-        <span className="text-[11px] uppercase tracking-widest text-muted-foreground mt-1">score</span>
+        <span className="text-[11px] uppercase tracking-widest text-slate-600 mt-1">score</span>
       </div>
     </div>
   );
@@ -202,7 +202,7 @@ function TrackBar({ score, level }: { score: number; level: StatusLevel }) {
       <div className="h-[5px] w-[240px] rounded-full bg-gray-100 overflow-hidden">
         <div className={`h-full rounded-full ${tokens.trackColor}`} style={{ width: mounted ? `${score}%` : "0%", transition: "width 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
       </div>
-      <span className="text-[13px] text-muted-foreground tabular-nums">{score} / 100</span>
+      <span className="text-[13px] text-slate-600 tabular-nums">{score} / 100</span>
     </div>
   );
 }
@@ -212,11 +212,11 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick }: any) {
   const active = enabled && isLive;
   return (
     <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-2 min-w-[76px] group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
-      <div className={`w-14 h-14 rounded-[14px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-muted-foreground border-gray-100"}`}>
+      <div className={`w-14 h-14 rounded-[14px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-slate-600 border-gray-100"}`}>
         {icon}
       </div>
-      <span className={`text-[19px] font-medium tabular-nums leading-none ${active ? "text-gray-800" : "text-muted-foreground"}`}>{active ? score : "—"}</span>
-      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className={`text-[19px] font-medium tabular-nums leading-none ${active ? "text-gray-800" : "text-slate-600"}`}>{active ? score : "—"}</span>
+      <span className="text-[11px] uppercase tracking-wider text-slate-600">{label}</span>
     </button>
   );
 }
@@ -225,7 +225,7 @@ function ModSep() { return <div className="w-px h-12 bg-gray-100 self-center fle
 
 function LiveBadge({ isLive }: { isLive: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase ${isLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-muted-foreground border border-gray-200"}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase ${isLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-slate-600 border border-gray-200"}`}>
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-300"}`} aria-hidden="true" />
       {isLive ? "Live" : "Offline"}
     </span>
@@ -254,14 +254,14 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{periodLabel}</span>
+              <span className="text-[10px] uppercase tracking-widest text-slate-600 font-medium">{periodLabel}</span>
               <LiveBadge isLive={isLive} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
             <div className={`text-[36px] md:text-[40px] font-medium leading-none tracking-tight ${tokens.textColor}`}>
               {tokens.word}
             </div>
-            <div className="text-[14px] text-muted-foreground mt-2 leading-snug">
+            <div className="text-[14px] text-slate-600 mt-2 leading-snug">
               Overall performance {peerPercentile != null && (<> · Top <strong className="font-medium text-gray-700">{peerPercentile}%</strong> of monitored buildings</>)}
             </div>
             <TrackBar score={score} level={level} />
@@ -286,7 +286,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
             <span className={`text-[19px] font-medium tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-emerald-600'}`}>
               {alertStatus.hasAlerts ? alertStatus.criticalCount + alertStatus.warningCount : "0"}
             </span>
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Alerts</span>
+            <span className="text-[11px] uppercase tracking-wider text-slate-600">Alerts</span>
           </div>
         </div>
       </div>
@@ -407,7 +407,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
   }, [powerData, project, benchmarkMatrix, isStale]);
 
   if (!enabled) return (
-    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-muted-foreground">
+    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
       <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Zap className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[10px]">DISABLED</Badge></div>
       <div className="text-4xl font-bold mb-1">N/A</div>
       <div className="text-base uppercase tracking-wide">Energy Performance</div>
@@ -442,31 +442,31 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
             </div>
             <div className="text-right">
               <div className={`text-xl font-bold ${isStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isStale ? '-' : status.level}</div>
-              <div className="text-[10px] text-muted-foreground uppercase">Score {status.score}</div>
+              <div className="text-[10px] text-slate-600 uppercase">Score {status.score}</div>
             </div>
           </div>
           
           <div className="mt-4">
-            <div className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-1">{t('overview.energy_performance')}</div>
+            <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-1">{t('overview.energy_performance')}</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className={`text-5xl font-black tracking-tighter ${isCriticalVal ? 'text-red-500' : 'text-gray-900'}`}>{formatMaybe(currentPower, 1)}</span>
-              <span className="text-sm font-bold text-muted-foreground">kW</span>
+              <span className="text-sm font-bold text-slate-600">kW</span>
             </div>
             
             {showAvg ? (
               <div className="flex items-center gap-2 text-xs mb-1">
-                <span className="text-muted-foreground font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgPower, 1)} kW</span></span>
+                <span className="text-slate-600 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgPower, 1)} kW</span></span>
                 <span className={`flex items-center font-bold px-1.5 py-0.5 rounded-full ${isPowerHigher ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   {isPowerHigher ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
                   {Math.abs(powerDelta).toFixed(1)}%
                 </span>
               </div>
             ) : (
-              <div className="text-xs font-medium text-muted-foreground mb-1">Analisi media in corso...</div>
+              <div className="text-xs font-medium text-slate-600 mb-1">Analisi media in corso...</div>
             )}
 
             {threshold && (
-               <div className="text-xs font-medium text-muted-foreground mt-1 pt-1 border-t border-gray-100">
+               <div className="text-xs font-medium text-slate-600 mt-1 pt-1 border-t border-gray-100">
                   {t('overview.limit')}: <span className="font-bold text-gray-700">{threshold.toFixed(1)} kW</span>
                </div>
             )}
@@ -478,7 +478,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
               onClick={onToggleFlip}
               className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"
             >
-              <RotateCcw className="w-4 h-4 text-muted-foreground" />
+              <RotateCcw className="w-4 h-4 text-slate-600" />
             </button>
           </div>
         </div>
@@ -487,7 +487,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
         <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-gray-50 ${getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
             <span className="text-sm font-bold tracking-tight text-gray-900 uppercase">Live Load Distribution</span>
-            <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
+            <ArrowUpRight className="w-5 h-5 text-slate-600" />
           </div>
           
           <div className="space-y-3 text-sm flex-1">
@@ -498,7 +498,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
           </div>
 
           <div className="mt-auto pt-4 flex justify-between items-center">
-             {(readings.hvac.isSimulated) && <span className="text-[10px] text-muted-foreground italic">Virtual Submeters</span>}
+             {(readings.hvac.isSimulated) && <span className="text-[10px] text-slate-600 italic">Virtual Submeters</span>}
             <button onClick={onToggleFlip} className="px-4 py-2 rounded-full bg-white hover:bg-gray-100 text-xs font-bold text-gray-600 border transition-colors shadow-sm ml-auto">
               Close Details
             </button>
@@ -529,7 +529,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
   }, [liveData, isCardStale]);
 
   if (!enabled) return (
-    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-muted-foreground">
+    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
       <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Wind className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[10px]">DISABLED</Badge></div>
       <div className="text-4xl font-bold mb-1">N/A</div>
       <div className="text-base uppercase tracking-wide">Indoor Air Quality</div>
@@ -560,37 +560,37 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
             </div>
             <div className="text-right">
               <div className={`text-xl font-bold ${isCardStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isCardStale ? '-' : status.level}</div>
-              <div className="text-[10px] text-muted-foreground uppercase">Score {status.score}</div>
+              <div className="text-[10px] text-slate-600 uppercase">Score {status.score}</div>
             </div>
           </div>
           
           <div className="mt-4">
-            <div className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-1">{t('overview.indoor_air_quality')}</div>
+            <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-1">{t('overview.indoor_air_quality')}</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-5xl font-black tracking-tighter text-gray-900">{formatMaybe(currentCo2, 0)}</span>
-              <span className="text-sm font-bold text-muted-foreground">ppm</span>
+              <span className="text-sm font-bold text-slate-600">ppm</span>
             </div>
 
             {showAvgCo2 ? (
               <div className="flex items-center gap-2 text-xs mb-1">
-                <span className="text-muted-foreground font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgCo2, 0)} ppm</span></span>
+                <span className="text-slate-600 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgCo2, 0)} ppm</span></span>
                 <span className={`flex items-center font-bold px-1.5 py-0.5 rounded-full ${isCo2Higher ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   {isCo2Higher ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
                   {Math.abs(co2Delta).toFixed(1)}%
                 </span>
               </div>
             ) : (
-              <div className="text-xs font-medium text-muted-foreground mb-1">Analisi media in corso...</div>
+              <div className="text-xs font-medium text-slate-600 mb-1">Analisi media in corso...</div>
             )}
 
-            <div className="text-xs font-medium text-muted-foreground mt-1 pt-1 border-t border-gray-100">
+            <div className="text-xs font-medium text-slate-600 mt-1 pt-1 border-t border-gray-100">
               Main Proxy: <span className="font-bold text-gray-700">Carbon Dioxide (CO₂)</span>
             </div>
           </div>
 
           <div className="mt-auto pt-4 flex justify-between items-end">
             <div/>
-            <button onClick={onToggleFlip} className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"><RotateCcw className="w-4 h-4 text-muted-foreground" /></button>
+            <button onClick={onToggleFlip} className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"><RotateCcw className="w-4 h-4 text-slate-600" /></button>
           </div>
         </div>
 
@@ -598,15 +598,15 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
         <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-gray-50 ${getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
             <span className="text-sm font-bold tracking-tight text-gray-900 uppercase">Live Gas Diagnostics</span>
-            <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
+            <ArrowUpRight className="w-5 h-5 text-slate-600" />
           </div>
           
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm flex-1">
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-muted-foreground">TVOC</span><span className="font-bold text-gray-800">{formatMaybe(readings.tvoc.value, 0)} ppb</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-muted-foreground">PM2.5</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm25.value, 1)} µg/m³</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-muted-foreground">PM10</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm10.value, 1)} µg/m³</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-muted-foreground">Temp</span><span className="font-bold text-gray-800">{formatMaybe(readings.temp.value, 1)} °C</span></div>
-            <div className="flex flex-col col-span-2"><span className="text-[10px] uppercase text-muted-foreground">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">TVOC</span><span className="font-bold text-gray-800">{formatMaybe(readings.tvoc.value, 0)} ppb</span></div>
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM2.5</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm25.value, 1)} µg/m³</span></div>
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM10</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm10.value, 1)} µg/m³</span></div>
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">Temp</span><span className="font-bold text-gray-800">{formatMaybe(readings.temp.value, 1)} °C</span></div>
+            <div className="flex flex-col col-span-2"><span className="text-[10px] uppercase text-slate-600">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
           </div>
 
           <div className="mt-auto pt-2 flex justify-end">
@@ -639,7 +639,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
   }, [liveData, isCardStale]);
 
   if (!enabled) return (
-    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-muted-foreground">
+    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
       <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Droplet className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[10px]">DISABLED</Badge></div>
       <div className="text-4xl font-bold mb-1">N/A</div>
       <div className="text-base uppercase tracking-wide">Water Consumption</div>
@@ -664,22 +664,22 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
             </div>
             <div className="text-right">
               <div className={`text-xl font-bold ${isCardStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isCardStale ? '-' : status.level}</div>
-              <div className="text-[10px] text-muted-foreground uppercase">Score {status.score}</div>
+              <div className="text-[10px] text-slate-600 uppercase">Score {status.score}</div>
             </div>
           </div>
           
           <div className="mt-4">
-            <div className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-1">{t('overview.water_consumption_title')}</div>
+            <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-1">{t('overview.water_consumption_title')}</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-5xl font-black tracking-tighter text-gray-900">{formatMaybeInt(readings.dailyConsumption)}</span>
-              <span className="text-sm font-bold text-muted-foreground">L/day</span>
+              <span className="text-sm font-bold text-slate-600">L/day</span>
             </div>
             <div className="text-xs font-medium text-emerald-600 flex items-center gap-1"><TrendingDown className="w-3 h-3"/> Live water metrics</div>
           </div>
 
           <div className="mt-auto pt-4 flex justify-between items-end">
             <div/>
-            <button onClick={onToggleFlip} className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"><RotateCcw className="w-4 h-4 text-muted-foreground" /></button>
+            <button onClick={onToggleFlip} className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"><RotateCcw className="w-4 h-4 text-slate-600" /></button>
           </div>
         </div>
 
@@ -687,12 +687,12 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
         <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-gray-50 ${getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
             <span className="text-sm font-bold tracking-tight text-gray-900 uppercase">Hydric Diagnostics</span>
-            <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
+            <ArrowUpRight className="w-5 h-5 text-slate-600" />
           </div>
           
           <div className="space-y-4 text-sm flex-1">
-            <div className="flex flex-col"><span className="text-xs text-muted-foreground">{t('overview.efficiency')}</span><span className="text-xl font-bold text-emerald-600">98.2 %</span></div>
-            <div className="flex flex-col"><span className="text-xs text-muted-foreground">{t('overview.active_leaks')}</span><span className={`text-xl font-black tracking-tight ${readings.activeLeaks ? "text-red-500" : "text-emerald-500"}`}>{readings.activeLeaks ? `${readings.activeLeaks} DETECTED` : "NONE"}</span></div>
+            <div className="flex flex-col"><span className="text-xs text-slate-600">{t('overview.efficiency')}</span><span className="text-xl font-bold text-emerald-600">98.2 %</span></div>
+            <div className="flex flex-col"><span className="text-xs text-slate-600">{t('overview.active_leaks')}</span><span className={`text-xl font-black tracking-tight ${readings.activeLeaks ? "text-red-500" : "text-emerald-500"}`}>{readings.activeLeaks ? `${readings.activeLeaks} DETECTED` : "NONE"}</span></div>
           </div>
 
           <div className="mt-auto pt-2 flex justify-end">
@@ -821,7 +821,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         />
 
         <Card className="xl:flex-1 xl:min-w-[380px] xl:max-w-[460px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
-          <div className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-2 w-full text-center">Site Fingerprint</div>
+          <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-2 w-full text-center">Site Fingerprint</div>
           <BuildingFingerprint
             level={overallStatus.level}
             axes={{
@@ -836,7 +836,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
             <div className={`text-sm font-semibold leading-tight ${STATUS_TOKENS[verdict.tone].textColor}`}>
               {verdict.headline}
             </div>
-            <div className="text-[11px] text-muted-foreground leading-snug mt-1 px-2">
+            <div className="text-[11px] text-slate-600 leading-snug mt-1 px-2">
               {verdict.reason}
             </div>
           </div>
