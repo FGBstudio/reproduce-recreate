@@ -176,9 +176,9 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
       <div className="space-y-1">
         <div className="flex items-center gap-4 mb-3 p-4 bg-foreground/40 backdrop-blur-sm rounded-xl border border-foreground/20">
           <div className="text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('pd.open_now')}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">{t('pd.open_now')}</p>
             <div className="relative inline-block">
-              <p className={`text-5xl font-extrabold tracking-tight ${hasAlerts ? 'text-rose-600' : 'text-muted-foreground'}`}>
+              <p className={`text-5xl font-extrabold tracking-tight ${hasAlerts ? 'text-rose-600' : 'text-slate-600'}`}>
                 {totalCount}
               </p>
               {hasAlerts && (
@@ -218,13 +218,13 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <cfg.icon className={`w-4 h-4 ${count > 0 ? cfg.textColor : 'text-muted-foreground'}`} />
+                    <cfg.icon className={`w-4 h-4 ${count > 0 ? cfg.textColor : 'text-slate-600'}`} />
                     <div className="flex flex-col min-w-0">
-                      <span className={`text-xs font-bold ${count > 0 ? 'text-slate-800' : 'text-muted-foreground'}`}>
+                      <span className={`text-xs font-bold ${count > 0 ? 'text-slate-800' : 'text-slate-600'}`}>
                         {t(cfg.labelKey)}
                       </span>
                       {latestAlert && (
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[140px] flex items-center gap-1">
+                        <span className="text-[10px] text-slate-600 truncate max-w-[140px] flex items-center gap-1">
                           {latestAlert.deviceName && <span className="font-bold text-slate-700">{latestAlert.deviceName}:</span>}
                           {latestAlert.message}
                         </span>
@@ -232,10 +232,10 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={`text-sm font-black ${count > 0 ? cfg.textColor : 'text-muted-foreground'}`}>
+                    <span className={`text-sm font-black ${count > 0 ? cfg.textColor : 'text-slate-600'}`}>
                       {count}
                     </span>
-                    {count > 0 && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                    {count > 0 && <ChevronRight className="w-4 h-4 text-slate-600" />}
                   </div>
                 </div>
               );
@@ -255,7 +255,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
       <div className="flex items-center justify-between mb-1">
         <button
           onClick={() => setFocusedCategory(null)}
-          className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-slate-800 transition-colors"
+          className="flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-slate-800 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           {t('pd.back').toUpperCase()}
@@ -278,7 +278,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
 
       <div className="overflow-y-auto max-h-[220px] space-y-2 pr-1 custom-scrollbar">
         {activeAlerts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
+          <div className="flex flex-col items-center justify-center py-8 text-slate-600 gap-2">
             <Shield className="w-8 h-8 opacity-20" />
             <p className="text-xs font-semibold">{t('pd.site_alerts.no_alerts')}</p>
           </div>
@@ -309,7 +309,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                       {alert.message}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <span className="text-[10px] text-slate-600 flex items-center gap-0.5">
                         <Clock className="w-2.5 h-2.5" />
                         {activeSince}
                       </span>
@@ -320,7 +320,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                       )}
                     </div>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isExpanded && (
@@ -330,7 +330,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                     {/* Recommendation Box */}
                     {alert.recommendation && (
                       <div className="bg-foreground/50 p-3 rounded-lg border border-current/5">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1">
                           <Info className="w-3 h-3" />
                           {t('pd.site_alerts.recommendation')}
                         </p>
@@ -343,7 +343,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                     <div className="grid grid-cols-2 gap-4">
                       {alert.metric && !alert.metric.startsWith('system.') && (
                         <div className="space-y-0.5">
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter flex items-center gap-1">
+                          <p className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter flex items-center gap-1">
                             {t('pd.site_alerts.reading')}
                             <LegendTooltip 
                               iconSize={10} 
@@ -353,15 +353,15 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                           <p className="text-xs font-black text-slate-800">
                              {alert.currentValue.toFixed(1)} <span className="text-[10px] opacity-60 font-medium">{alert.unit}</span>
                              {alert.duration_minutes !== undefined && alert.duration_minutes > 0 ? (
-                               <span className="block text-[9px] text-muted-foreground font-medium mt-0.5 leading-tight">
+                               <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight">
                                  (Sustained for {alert.duration_minutes}m)
                                </span>
                              ) : alert.duration_minutes === 1440 ? (
-                               <span className="block text-[9px] text-muted-foreground font-medium mt-0.5 leading-tight text-indigo-500 font-bold">
+                               <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight text-indigo-500 font-bold">
                                  (Daily Budget Exceeded)
                                </span>
                              ) : alert.duration_minutes === 0 ? (
-                               <span className="block text-[9px] text-muted-foreground font-medium mt-0.5 leading-tight text-rose-500 font-bold">
+                               <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight text-rose-500 font-bold">
                                  (Instant Spike)
                                </span>
                              ) : null}
@@ -369,7 +369,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                         </div>
                       )}
                       <div className="space-y-0.5">
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter flex items-center gap-1">
+                        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter flex items-center gap-1">
                           {t('pd.site_alerts.threshold')}
                           <LegendTooltip 
                             iconSize={10} 
@@ -379,7 +379,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                         <p className="text-xs font-black text-slate-800">
                           {alert.threshold.toFixed(1)} <span className="text-[10px] opacity-60 font-medium">{alert.unit}</span>
                           {alert.hysteresis_pct && alert.hysteresis_pct > 0 && (
-                            <span className="block text-[9px] text-muted-foreground font-medium mt-0.5 leading-tight">
+                            <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight">
                               Resolves at {(alert.threshold - (alert.threshold * (alert.hysteresis_pct / 100))).toFixed(1)}
                             </span>
                           )}
@@ -393,7 +393,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                         disabled={!!isAckLoading}
                         className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
                           isAckLoading === alert.id 
-                            ? 'bg-slate-100 text-muted-foreground cursor-wait' 
+                            ? 'bg-slate-100 text-slate-600 cursor-wait' 
                             : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm active:scale-95'
                         }`}
                       >
