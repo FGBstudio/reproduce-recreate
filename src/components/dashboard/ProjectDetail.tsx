@@ -894,56 +894,77 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return out;
   }, [airTimeseriesResp]);
 
-  // Logic to switch between Period and Latest (Latest only used for Today or when timeseries is empty)
   const isToday = timePeriod === 'today';
-  
-  const activeAirMetrics = useMemo(() => {
-    // If we have period data, use it. Fallback to latest if period is empty.
-    const hasPeriodData = Object.keys(airPeriodAverages).length > 0;
-    
-    // For anything other than Today, prefer Period Averages
-    if (!isToday && hasPeriodData) {
-      return airPeriodAverages;
-    }
-    
-    // Fallback to latest
-    const latestOut: Record<string, number> = {};
-    if (airLatestResp?.data) {
-      const sum: Record<string, { total: number; count: number }> = {};
-      Object.values(airLatestResp.data).forEach((deviceMetrics) => {
-        deviceMetrics.forEach((m) => {
-          if (!sum[m.metric]) sum[m.metric] = { total: 0, count: 0 };
-          sum[m.metric].total += m.value;
-          sum[m.metric].count += 1;
-        });
-      });
-      Object.entries(sum).forEach(([metric, { total, count }]) => {
-        latestOut[metric] = count ? total / count : 0;
-      });
-    }
 
-    // If "Today" but we have some period data, maybe we want average? 
-    // Usually user wants latest for today, so we keep latestOut.
-    return latestOut;
-  }, [airPeriodAverages, airLatestResp, isToday]);
-
-  const activeDeviceAverages = useMemo(() => {
-    const hasPeriodData = Object.keys(devicePeriodAverages).length > 0;
-    if (!isToday && hasPeriodData) {
-      return devicePeriodAverages;
-    }
-
-    // Latest fallback
-    const out: Record<string, any> = {};
-    if (!airLatestResp?.data) return out;
-    Object.entries(airLatestResp.data).forEach(([devId, sensors]) => {
-      out[devId] = {};
-      sensors.forEach(s => {
-        out[devId][s.metric] = s.value;
+  const isAirLatestStale = useMemo(() => {
+    if (!isSupabaseConfigured) return false;
+    if (!airLatestResp?.data) return true;
+    let latestTs: string | undefined;
+    Object.values(airLatestResp.data).forEach((deviceMetrics) => {
+      deviceMetrics.forEach((m) => {
+        if (m.ts && (!latestTs || m.ts > latestTs)) {
+          latestTs = m.ts;
+        }
       });
     });
-    return out;
-  }, [devicePeriodAverages, airLatestResp, isToday]);
+    if (!latestTs) return true;
+    const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+    return Date.now() - new Date(latestTs).getTime() > TWO_DAYS_MS;
+  }, [airLatestResp, isSupabaseConfigured]);
+
+  const activeAirMetrics = useMemo(() => {
+    if (isToday) {
+      if (isAirLatestStale) {
+        return {};
+      }
+      const hasPeriodData = Object.keys(airPeriodAverages).length > 0;
+      if (hasPeriodData) {
+        return airPeriodAverages;
+      }
+      const latestOut: Record<string, number> = {};
+      if (airLatestResp?.data) {
+        const sum: Record<string, { total: number; count: number }> = {};
+        Object.values(airLatestResp.data).forEach((deviceMetrics) => {
+          deviceMetrics.forEach((m) => {
+            if (!sum[m.metric]) sum[m.metric] = { total: 0, count: 0 };
+            sum[m.metric].total += m.value;
+            sum[m.metric].count += 1;
+          });
+        });
+        Object.entries(sum).forEach(([metric, { total, count }]) => {
+          latestOut[metric] = count ? total / count : 0;
+        });
+      }
+      return latestOut;
+    } else {
+      // Historical period: strictly use period averages (no fallback to latest)
+      return airPeriodAverages;
+    }
+  }, [airPeriodAverages, airLatestResp, isToday, isAirLatestStale]);
+
+  const activeDeviceAverages = useMemo(() => {
+    if (isToday) {
+      if (isAirLatestStale) {
+        return {};
+      }
+      const hasPeriodData = Object.keys(devicePeriodAverages).length > 0;
+      if (hasPeriodData) {
+        return devicePeriodAverages;
+      }
+      const out: Record<string, any> = {};
+      if (!airLatestResp?.data) return out;
+      Object.entries(airLatestResp.data).forEach(([devId, sensors]) => {
+        out[devId] = {};
+        sensors.forEach(s => {
+          out[devId][s.metric] = s.value;
+        });
+      });
+      return out;
+    } else {
+      // Historical period: strictly use device period averages (no fallback to latest)
+      return devicePeriodAverages;
+    }
+  }, [devicePeriodAverages, airLatestResp, isToday, isAirLatestStale]);
 
   // ENERGY PERIOD AVERAGES moved below energyConsumptionData to resolve dependency temporal dead zone
 
@@ -4479,17 +4500,24 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     {/* Air Quality Overview Card */}
                     {(() => {
                       // 1. Calculate base quality from metrics if available
-                      const co2 = activeAirMetrics['iaq.co2'] ?? project.data.co2 ?? 0;
-                      const voc = activeAirMetrics['iaq.voc'] ?? 0;
-                      const pm25 = activeAirMetrics['iaq.pm25'] ?? 0;
+                      const co2 = activeAirMetrics['iaq.co2'];
+                      const voc = activeAirMetrics['iaq.voc'];
+                      const pm25 = activeAirMetrics['iaq.pm25'];
                       
-                      let dynamicAq = 'EXCELLENT';
-                      if (co2 > 1000 || voc > 500 || pm25 > 25) {
-                        dynamicAq = 'POOR';
-                      } else if (co2 > 800 || voc > 300 || pm25 > 15) {
-                        dynamicAq = 'MODERATE';
-                      } else if (co2 > 600 || voc > 100) {
-                        dynamicAq = 'GOOD';
+                      let dynamicAq = '—';
+                      if (co2 != null || voc != null || pm25 != null) {
+                        const c = co2 ?? 0;
+                        const v = voc ?? 0;
+                        const p = pm25 ?? 0;
+                        if (c > 1000 || v > 500 || p > 25) {
+                          dynamicAq = 'POOR';
+                        } else if (c > 800 || v > 300 || p > 15) {
+                          dynamicAq = 'MODERATE';
+                        } else if (c > 600 || v > 100) {
+                          dynamicAq = 'GOOD';
+                        } else {
+                          dynamicAq = 'EXCELLENT';
+                        }
                       }
 
                       // 2. Overlay with ACTIVE air-specific alerts from DB
@@ -4499,10 +4527,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         a.id !== 'system-stale-offline'
                       );
 
-                      if (airAlerts.some(a => a.severity === 'critical')) {
-                        dynamicAq = 'CRITICAL';
-                      } else if (airAlerts.some(a => a.severity === 'warning')) {
-                        dynamicAq = 'MEDIUM';
+                      if (dynamicAq !== '—') {
+                        if (airAlerts.some(a => a.severity === 'critical')) {
+                          dynamicAq = 'CRITICAL';
+                        } else if (airAlerts.some(a => a.severity === 'warning')) {
+                          dynamicAq = 'MEDIUM';
+                        }
+                      }
+
+                      if (isToday && isAirLatestStale) {
+                        dynamicAq = '—';
                       }
 
                       return (
@@ -4510,8 +4544,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
                             <div className="flex items-center gap-4">
                               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(dynamicAq)} ${getAqColor(dynamicAq)} text-[10px] font-semibold tracking-wider uppercase`}>
-                                <span className={`w-1.5 h-1.5 rounded-full bg-current ${isToday ? 'animate-pulse' : ''}`} />
-                                {isToday ? 'LIVE' : periodLabel}
+                                {isToday && !isAirLatestStale && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                                )}
+                                {isToday ? (isAirLatestStale ? '-' : 'LIVE') : periodLabel}
                               </div>
                               <div>
                                 <h3 className={`text-3xl font-bold tracking-tight ${getAqColor(dynamicAq)}`}>
@@ -4535,7 +4571,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center mb-2">
                                 <Wind className="w-3.5 h-3.5 text-sky-500" />
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{Math.round(activeAirMetrics["iaq.co2"] ?? project.data.co2)}</div>
+                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.co2"] == null ? "—" : Math.round(activeAirMetrics["iaq.co2"])}</div>
                               <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppm CO₂</div>
                             </div>
                             <div className={airKpiCardClass}>
