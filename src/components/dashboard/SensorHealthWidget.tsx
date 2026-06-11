@@ -31,7 +31,7 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
       <div className="flex h-full items-center justify-center min-h-[220px]">
         <div className="animate-pulse flex flex-col items-center">
           <div className="w-16 h-16 rounded-full border-4 border-slate-100 border-t-indigo-500 animate-spin mb-4" />
-          <p className="text-sm font-semibold text-slate-400">Loading Health Data...</p>
+          <p className="text-sm font-semibold text-slate-600">Loading Health Data...</p>
         </div>
       </div>
     );
@@ -89,7 +89,7 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
             <span className={`text-2xl font-black tracking-tight ${scoreColor}`}>
               {averageTrustScore}
             </span>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Score</span>
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Score</span>
           </div>
         </div>
 
@@ -121,7 +121,7 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
         {/* Offline */}
         <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center relative pointer-events-auto">
           <div className="flex w-full justify-between items-start mb-1">
-            <WifiOff className={`w-3.5 h-3.5 ${offlineCount > 0 ? 'text-rose-500' : 'text-slate-300'}`} />
+            <WifiOff className={`w-3.5 h-3.5 ${offlineCount > 0 ? 'text-rose-500' : 'text-slate-500'}`} />
             <LegendTooltip
               iconSize={12}
               content="Sensor has not communicated with the platform for over 15 minutes."
@@ -129,13 +129,13 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
             />
           </div>
           <div className={`text-lg font-black leading-none ${offlineCount > 0 ? 'text-rose-700' : 'text-slate-700'}`}>{offlineCount}</div>
-          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Offline</div>
+          <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Offline</div>
         </div>
 
         {/* Flatlining */}
         <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center relative">
           <div className="flex w-full justify-between items-start mb-1">
-            <Activity className={`w-3.5 h-3.5 ${flatliningCount > 0 ? 'text-amber-500' : 'text-slate-300'}`} />
+            <Activity className={`w-3.5 h-3.5 ${flatliningCount > 0 ? 'text-amber-500' : 'text-slate-500'}`} />
             <LegendTooltip
               iconSize={12}
               content={flatlineTooltipContent}
@@ -143,13 +143,13 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
             />
           </div>
           <div className={`text-lg font-black leading-none ${flatliningCount > 0 ? 'text-amber-700' : 'text-slate-700'}`}>{flatliningCount}</div>
-          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Flatline</div>
+          <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Flatline</div>
         </div>
 
         {/* Flapping */}
         <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center relative">
           <div className="flex w-full justify-between items-start mb-1">
-            <ServerCrash className={`w-3.5 h-3.5 ${flappingCount > 0 ? 'text-indigo-500' : 'text-slate-300'}`} />
+            <ServerCrash className={`w-3.5 h-3.5 ${flappingCount > 0 ? 'text-indigo-500' : 'text-slate-500'}`} />
             <LegendTooltip
               iconSize={12}
               content="Flapping indicates packet loss or intermittent connectivity, reducing confidence in the metric's accuracy for threshold alerts."
@@ -157,13 +157,13 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
             />
           </div>
           <div className={`text-lg font-black leading-none ${flappingCount > 0 ? 'text-indigo-700' : 'text-slate-700'}`}>{flappingCount}</div>
-          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Packet Loss</div>
+          <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Packet Loss</div>
         </div>
       </div>
 
       {/* 3. Detailed List of Degraded Sensors */}
       <div className="flex-1 overflow-y-auto pr-1 stylish-scrollbar mt-2 border-t border-slate-100 pt-3">
-        <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">{degradedSensors.length > 0 ? 'Degraded Hardware' : 'All hardware performing optimally'}</h5>
+        <h5 className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 px-1">{degradedSensors.length > 0 ? 'Degraded Hardware' : 'All hardware performing optimally'}</h5>
         <div className="space-y-2">
           {degradedSensors.map(sensor => {
             const isExpanded = expandedSensorId === sensor.sensor_id;
@@ -190,7 +190,7 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
                         {sensor.trust_score}%
                       </span>
                     </div>
-                    {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-600" /> : <ChevronDown className="w-4 h-4 text-slate-600" />}
                   </div>
                 </button>
                 {isExpanded && (
@@ -198,16 +198,16 @@ export function SensorHealthWidget({ siteId, moduleFilter }: SensorHealthWidgetP
                     {sensor.metadata?.metric && sensor.is_flatlining && (
                       <div className="mt-2 bg-white rounded border border-slate-100 shadow-sm p-2 flex justify-between items-center">
                         <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Flatlined Metric</span>
+                          <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-0.5">Flatlined Metric</span>
                           <span className="text-xs font-semibold text-slate-700">{sensor.metadata.metric}</span>
                         </div>
                         <div className="flex flex-col text-right">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Stuck Value</span>
-                          <span className="text-xs font-black text-amber-600">{Number(sensor.metadata.value).toFixed(2)} <span className="text-slate-400 font-medium ml-1">({sensor.metadata.samples} readings)</span></span>
+                          <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-0.5">Stuck Value</span>
+                          <span className="text-xs font-black text-amber-600">{Number(sensor.metadata.value).toFixed(2)} <span className="text-slate-600 font-medium ml-1">({sensor.metadata.samples} readings)</span></span>
                         </div>
                       </div>
                     )}
-                    <div className="mt-2 text-[9px] font-mono text-slate-400">
+                    <div className="mt-2 text-[9px] font-mono text-slate-600">
                       ID: {sensor.sensor_id.split('-')[0]}
                     </div>
                   </div>
