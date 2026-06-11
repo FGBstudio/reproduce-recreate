@@ -360,11 +360,14 @@ function BuildingFingerprint({ axes, level }: any) {
 const easeCurve = "cubic-bezier(0.25, 1, 0.5, 1)";
 
 // --- ENERGY CARD ---
-const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshold, periodLabel, project, benchmarkMatrix, isFlipped, onToggleFlip }: any) => {
+const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshold, periodLabel, project, benchmarkMatrix, isFlipped, onToggleFlip, timePeriod }: any) => {
   const { t } = useLanguage();
   
+  const isToday = timePeriod === 'today';
+  const isStale = (powerData?.isStale ?? false) && isToday;
+
   const readings = useMemo(() => {
-    if (!powerData?.isRealData && !powerData?.isStale) {
+    if ((!powerData?.isRealData && !powerData?.isStale) || isStale) {
       return { totalPower: undefined, hvac: { value: undefined }, lighting: { value: undefined }, plugs: { value: undefined }, other: { value: undefined } };
     }
     const totalGeneral = powerData.totalGeneral;
@@ -401,7 +404,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
       plugs: { value: powerData.plugs, isSimulated: powerData.isSimulated || false },
       other: { value: powerData.other, isSimulated: powerData.isSimulated || false },
     };
-  }, [powerData, project, benchmarkMatrix]);
+  }, [powerData, project, benchmarkMatrix, isStale]);
 
   if (!enabled) return (
     <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-muted-foreground">
@@ -411,8 +414,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
     </div>
   );
 
-  const isStale = powerData?.isStale ?? false;
-  const currentPower = readings.totalPower;
+  const currentPower = isStale ? undefined : readings.totalPower;
   const isCriticalVal = threshold && currentPower != null && currentPower > threshold;
   
   const avgPower = averageData?.totalGeneral;
@@ -428,18 +430,18 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
         onClick={onClick}
       >
         {/* FRONTE */}
-        <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-white ${isStale ? 'border-amber-500/40' : getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden" }}>
+        <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-white ${isStale ? 'border-gray-200' : getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden" }}>
           <div className="flex items-center justify-between mb-auto">
             <div className="flex items-center gap-2">
-              <div className={`w-10 h-10 rounded-full ${isStale ? 'bg-amber-100 text-amber-500' : `${getStatusIconBg(status.level)} ${getStatusColor(status.level)}`} flex items-center justify-center`}>
+              <div className={`w-10 h-10 rounded-full ${isStale ? 'bg-gray-100 text-gray-400' : `${getStatusIconBg(status.level)} ${getStatusColor(status.level)}`} flex items-center justify-center`}>
                 <Zap className="w-5 h-5" />
               </div>
-              <Badge className={`${isStale ? 'bg-amber-500 text-foreground' : getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>
-                {isStale ? 'STALE' : 'LIVE'}
+              <Badge className={`${isToday ? (isStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[10px] uppercase tracking-wider`}>
+                {isToday ? (isStale ? '-' : 'LIVE') : timePeriod.toUpperCase()}
               </Badge>
             </div>
             <div className="text-right">
-              <div className={`text-xl font-bold ${isStale ? 'text-amber-500' : getStatusColor(status.level)}`}>{isStale ? 'WARNING' : status.level}</div>
+              <div className={`text-xl font-bold ${isStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isStale ? '-' : status.level}</div>
               <div className="text-[10px] text-muted-foreground uppercase">Score {status.score}</div>
             </div>
           </div>
@@ -471,9 +473,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
           </div>
 
           <div className="mt-auto pt-4 flex justify-between items-end">
-            {isStale ? (
-              <div className="bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md px-2 py-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{t('overview.stale_data')}</div>
-            ) : <div/>}
+            <div/>
             <button 
               onClick={onToggleFlip}
               className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"
@@ -510,11 +510,14 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
 };
 
 // --- AIR CARD ---
-const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLabel, isFlipped, onToggleFlip }: any) => {
+const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLabel, isFlipped, onToggleFlip, timePeriod, isStale }: any) => {
   const { t } = useLanguage();
   
+  const isToday = timePeriod === 'today';
+  const isCardStale = isStale && isToday;
+
   const readings = useMemo(() => {
-    const m = !!liveData?.isRealData ? liveData!.metrics : {};
+    const m = (!!liveData?.isRealData && !isCardStale) ? liveData!.metrics : {};
     return {
       co2: { value: m['iaq.co2'] ?? m['co2'], unit: "ppm" },
       tvoc: { value: m['iaq.voc'] ?? m['tvoc'], unit: "ppb" },
@@ -523,7 +526,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
       temp: { value: m['env.temperature'] ?? m['temperature'], unit: "°C" },
       humidity: { value: m['env.humidity'] ?? m['humidity'], unit: "%" },
     };
-  }, [liveData]);
+  }, [liveData, isCardStale]);
 
   if (!enabled) return (
     <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-muted-foreground">
@@ -533,7 +536,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
     </div>
   );
 
-  const currentCo2 = readings.co2.value;
+  const currentCo2 = isCardStale ? undefined : readings.co2.value;
   const avgCo2 = averageMetrics?.['iaq.co2'] ?? averageMetrics?.['co2'];
   const showAvgCo2 = avgCo2 != null && currentCo2 != null;
   const co2Delta = showAvgCo2 ? ((currentCo2 - avgCo2) / avgCo2) * 100 : 0;
@@ -542,19 +545,21 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
       <div
-        className="w-full h-full cursor-pointer transition-transform duration-700 shadow-sm hover:shadow-lg rounded-xl"
-        style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0)", transitionTimingFunction: easeCurve }}
-        onClick={onClick}
+         className="w-full h-full cursor-pointer transition-transform duration-700 shadow-sm hover:shadow-lg rounded-xl"
+         style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0)", transitionTimingFunction: easeCurve }}
+         onClick={onClick}
       >
         {/* FRONTE */}
-        <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-white ${getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden" }}>
+        <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-white ${isCardStale ? 'border-gray-200' : getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden" }}>
           <div className="flex items-center justify-between mb-auto">
             <div className="flex items-center gap-2">
-              <div className={`w-10 h-10 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}><Wind className="w-5 h-5" /></div>
-              <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>LIVE</Badge>
+              <div className={`w-10 h-10 rounded-full ${isCardStale ? 'bg-gray-100 text-gray-400' : `${getStatusIconBg(status.level)} ${getStatusColor(status.level)}`} flex items-center justify-center`}><Wind className="w-5 h-5" /></div>
+              <Badge className={`${isToday ? (isCardStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[10px] uppercase tracking-wider`}>
+                {isToday ? (isCardStale ? '-' : 'LIVE') : timePeriod.toUpperCase()}
+              </Badge>
             </div>
             <div className="text-right">
-              <div className={`text-xl font-bold ${getStatusColor(status.level)}`}>{status.level}</div>
+              <div className={`text-xl font-bold ${isCardStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isCardStale ? '-' : status.level}</div>
               <div className="text-[10px] text-muted-foreground uppercase">Score {status.score}</div>
             </div>
           </div>
@@ -583,7 +588,8 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
             </div>
           </div>
 
-          <div className="mt-auto pt-4 flex justify-end">
+          <div className="mt-auto pt-4 flex justify-between items-end">
+            <div/>
             <button onClick={onToggleFlip} className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"><RotateCcw className="w-4 h-4 text-muted-foreground" /></button>
           </div>
         </div>
@@ -613,10 +619,14 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
 };
 
 // --- WATER CARD ---
-const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip }: any) => {
+const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip, timePeriod, isStale }: any) => {
   const { t } = useLanguage();
+  
+  const isToday = timePeriod === 'today';
+  const isCardStale = isStale && isToday;
+
   const readings = useMemo(() => {
-    const isReal = !!liveData?.isRealData;
+    const isReal = !!liveData?.isRealData && !isCardStale;
     const m = isReal ? liveData!.metrics : {};
     const totalLiters = isReal ? m['water.total_liters'] : undefined;
     const flowRate = isReal ? m['water.flow_rate'] : undefined;
@@ -626,7 +636,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
       activeLeaks: typeof flowRate === 'number' && flowRate > 0.5 && flowRate < 1 ? 1 : (typeof flowRate === 'number' ? 0 : undefined),
       efficiency: undefined as number | undefined,
     };
-  }, [liveData]);
+  }, [liveData, isCardStale]);
 
   if (!enabled) return (
     <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-muted-foreground">
@@ -644,14 +654,16 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
         onClick={onClick}
       >
         {/* FRONTE */}
-        <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-white ${getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden" }}>
+        <div className={`absolute inset-0 p-6 flex flex-col rounded-xl border bg-white ${isCardStale ? 'border-gray-200' : getStatusBorderColor(status.level)}`} style={{ backfaceVisibility: "hidden" }}>
           <div className="flex items-center justify-between mb-auto">
             <div className="flex items-center gap-2">
-              <div className={`w-10 h-10 rounded-full ${getStatusIconBg(status.level)} flex items-center justify-center ${getStatusColor(status.level)}`}><Droplet className="w-5 h-5" /></div>
-              <Badge className={`${getLiveBadgeColor(status.isLive)} text-[10px] uppercase tracking-wider`}>LIVE</Badge>
+              <div className={`w-10 h-10 rounded-full ${isCardStale ? 'bg-gray-100 text-gray-400' : `${getStatusIconBg(status.level)} ${getStatusColor(status.level)}`} flex items-center justify-center`}><Droplet className="w-5 h-5" /></div>
+              <Badge className={`${isToday ? (isCardStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[10px] uppercase tracking-wider`}>
+                {isToday ? (isCardStale ? '-' : 'LIVE') : timePeriod.toUpperCase()}
+              </Badge>
             </div>
             <div className="text-right">
-              <div className={`text-xl font-bold ${getStatusColor(status.level)}`}>{status.level}</div>
+              <div className={`text-xl font-bold ${isCardStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isCardStale ? '-' : status.level}</div>
               <div className="text-[10px] text-muted-foreground uppercase">Score {status.score}</div>
             </div>
           </div>
@@ -662,10 +674,11 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
               <span className="text-5xl font-black tracking-tighter text-gray-900">{formatMaybeInt(readings.dailyConsumption)}</span>
               <span className="text-sm font-bold text-muted-foreground">L/day</span>
             </div>
-            <div className="text-xs font-medium text-emerald-600 flex items-center gap-1"><TrendingDown className="w-3 h-3"/> Dato istantaneo LIVE</div>
+            <div className="text-xs font-medium text-emerald-600 flex items-center gap-1"><TrendingDown className="w-3 h-3"/> Live water metrics</div>
           </div>
 
-          <div className="mt-auto pt-4 flex justify-end">
+          <div className="mt-auto pt-4 flex justify-between items-end">
+            <div/>
             <button onClick={onToggleFlip} className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border transition-colors shadow-sm"><RotateCcw className="w-4 h-4 text-muted-foreground" /></button>
           </div>
         </div>
@@ -836,15 +849,18 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
           status={energyStatus} enabled={moduleConfig.energy.enabled} onClick={moduleConfig.energy.enabled ? () => onNavigate && onNavigate("energy") : undefined}
           powerData={powerLatest} averageData={energyAverages} threshold={thresholds?.energy_power_limit_kw} periodLabel={periodLabel} project={project} benchmarkMatrix={benchmarkMatrix}
           isFlipped={flippedCards.energy} onToggleFlip={(e: React.MouseEvent) => toggleFlip('energy', e)}
+          timePeriod={timePeriod}
         />
         <AirCard
           status={airStatus} enabled={moduleConfig.air.enabled} project={project} onClick={moduleConfig.air.enabled ? () => onNavigate && onNavigate("air") : undefined}
-          liveData={{ metrics: liveData.metrics, isLoading: liveData.isLoading, isRealData: true }} averageMetrics={airAverages} periodLabel={periodLabel}
+          liveData={liveData} averageMetrics={airAverages} periodLabel={periodLabel}
           isFlipped={flippedCards.air} onToggleFlip={(e: React.MouseEvent) => toggleFlip('air', e)}
+          timePeriod={timePeriod} isStale={liveData.isStale}
         />
         <WaterCard
           status={waterStatus} enabled={moduleConfig.water.enabled} onClick={moduleConfig.water.enabled ? () => onNavigate && onNavigate("water") : undefined} liveData={liveData}
           isFlipped={flippedCards.water} onToggleFlip={(e: React.MouseEvent) => toggleFlip('water', e)}
+          timePeriod={timePeriod} isStale={liveData.isStale}
         />
       </div>
     </div>
