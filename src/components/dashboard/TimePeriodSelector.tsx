@@ -80,8 +80,8 @@ export const TimePeriodSelector = ({
   return (
     <div className="flex items-center gap-2">
       <Select value={value} onValueChange={handlePeriodChange}>
-        <SelectTrigger className="w-[140px] h-9 bg-foreground/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-700">
-          <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+        <SelectTrigger className="w-[140px] h-9 bg-white/90 dark:bg-foreground/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-800 dark:text-gray-700">
+          <CalendarIcon className="w-4 h-4 mr-2 text-gray-600 dark:text-muted-foreground" />
           <SelectValue>{getDisplayValue()}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -99,11 +99,11 @@ export const TimePeriodSelector = ({
             variant="outline"
             size="sm"
             className={cn(
-              "h-9 px-3 bg-foreground/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-700",
+              "h-9 px-3 bg-white/90 dark:bg-foreground/80 backdrop-blur-sm border-gray-200 rounded-full text-sm font-medium shadow-sm text-gray-800 dark:text-gray-700",
               value === "custom" ? "border-fgb-secondary/50" : ""
             )}
           >
-            <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+            <CalendarIcon className="w-4 h-4 mr-2 text-gray-600 dark:text-muted-foreground" />
             {value === "custom" && dateRange ? (
               <span className="text-xs">
                 {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}

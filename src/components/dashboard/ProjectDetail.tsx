@@ -3352,7 +3352,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "overview" 
                   ? "bg-fgb-secondary text-foreground" 
-                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
+                  : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
               }`}
               title="Overview"
             >
@@ -3363,7 +3363,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "energy" 
                   ? "bg-fgb-secondary text-foreground" 
-                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
+                  : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
               }`}
               title="Energy Dashboard"
             >
@@ -3374,7 +3374,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "air" 
                   ? "bg-fgb-secondary text-foreground" 
-                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
+                  : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
               }`}
               title="Air Quality Dashboard"
             >
@@ -3385,7 +3385,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                 activeDashboard === "water" 
                   ? "bg-fgb-secondary text-foreground" 
-                  : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
+                  : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
               }`}
               title="Water Dashboard"
             >
@@ -3397,7 +3397,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                   activeDashboard === "certification" 
                     ? "bg-fgb-secondary text-foreground" 
-                    : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
+                    : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
                 }`}
                 title="Certification Dashboard"
               >
@@ -3410,7 +3410,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                   activeDashboard === "bills" 
                     ? "bg-fgb-secondary text-foreground" 
-                    : "bg-foreground/50 text-gray-600 hover:bg-foreground/80"
+                    : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
                 }`}
                 title="Bill Analysis"
               >
@@ -3431,7 +3431,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 disabled={isGeneratingPdf}
                 variant="outline"
                 size="sm"
-                className="h-7 md:h-9 px-2 md:px-3 bg-foreground/50 border-gray-200 rounded-full text-xs md:text-sm font-medium text-gray-700 hover:bg-fgb-secondary hover:text-foreground"
+                className="h-7 md:h-9 px-2 md:px-3 bg-white/90 dark:bg-foreground/50 border-gray-200 rounded-full text-xs md:text-sm font-medium text-gray-800 dark:text-gray-700 hover:bg-fgb-secondary hover:text-foreground"
               >
                 {isGeneratingPdf ? (
                   <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
@@ -3447,7 +3447,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 onClick={() => setSettingsOpen(true)}
                 variant="outline"
                 size="sm"
-                className="h-7 md:h-9 w-7 md:w-9 p-0 bg-foreground/50 border-gray-200 rounded-full text-gray-700 hover:bg-fgb-secondary hover:text-foreground"
+                className="h-7 md:h-9 w-7 md:w-9 p-0 bg-white/90 dark:bg-foreground/50 border-gray-200 rounded-full text-gray-800 dark:text-gray-700 hover:bg-fgb-secondary hover:text-foreground"
                 title={t('pd.project_settings')}
               >
                 <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
