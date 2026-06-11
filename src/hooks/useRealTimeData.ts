@@ -102,8 +102,8 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
   // Map region from DB (or derive from country)
   const region = mapRegion(apiSite.region || apiSite.country);
 
-  // Generate a unique numeric ID from UUID for legacy compatibility
-  const numericId = apiSite.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  // Generate a unique numeric ID from UUID for legacy compatibility (32-bit hex hash to prevent collisions)
+  const numericId = parseInt(apiSite.id.replace(/-/g, '').substring(0, 8), 16);
 
   return {
     id: -numericId, // Negative ID for real data
