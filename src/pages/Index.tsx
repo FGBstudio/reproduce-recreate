@@ -113,8 +113,8 @@ const Index = () => {
             const holding = holdings.find(h => h.id === brand?.holdingId);
             
             // Create a Project object from the site data
-            // Use a hash of the UUID to create a numeric ID for compatibility
-            const numericId = site.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            // Use a 32-bit hex hash of the UUID to create a numeric ID for compatibility and to prevent collisions
+            const numericId = parseInt(site.id.replace(/-/g, '').substring(0, 8), 16);
             
             const project: Project = {
               id: numericId,
