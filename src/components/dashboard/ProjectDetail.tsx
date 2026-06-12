@@ -48,6 +48,9 @@ import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
 import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
+import { Money } from "@/components/Money";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { isSupportedCurrency, getCurrencySymbol } from "@/lib/currency";
 import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
