@@ -355,6 +355,30 @@ export const SitesManager = () => {
                         placeholder="Europe/Rome"
                       />
                     </div>
+
+                    <div className="grid gap-2">
+                      <Label>Valuta nativa del sito</Label>
+                      <select
+                        value={formData.currency}
+                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        {[
+                          ['EUR','€ Euro'],['USD','$ US Dollar'],['GBP','£ British Pound'],
+                          ['CHF','Fr Swiss Franc'],['JPY','¥ Japanese Yen'],['CNY','¥ Chinese Yuan'],
+                          ['AUD','A$ Australian Dollar'],['CAD','C$ Canadian Dollar'],
+                          ['SEK','kr Swedish Krona'],['NOK','kr Norwegian Krone'],
+                          ['DKK','kr Danish Krone'],['PLN','zł Polish Złoty'],
+                          ['AED','د.إ UAE Dirham'],['SGD','S$ Singapore Dollar'],
+                          ['HKD','HK$ Hong Kong Dollar'],
+                        ].map(([code, label]) => (
+                          <option key={code} value={code}>{label}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        I valori economici di questo sito (bollette, costi stimati) verranno mostrati e convertiti usando questa valuta.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
