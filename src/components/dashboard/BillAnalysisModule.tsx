@@ -19,6 +19,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import { ZoomableChart } from '@/components/ui/ZoomableChart';
+import { useSiteCurrency } from '@/hooks/useSiteCurrency';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Types matching DB schema
 interface Bill {
@@ -158,6 +160,8 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
   const { user } = useAuth();
   const { language } = useLanguage();
   const t = i18n[language] || i18n.en;
+  const siteCurrency = useSiteCurrency(siteId);
+  const { format: fmtMoney } = useCurrency();
 
   const [view, setView] = useState<View>('dashboard');
   const [bills, setBills] = useState<Bill[]>([]);
@@ -664,8 +668,8 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
   const kpiCards = [
     { title: t.totalBills, value: bills.length.toString(), icon: FileText },
     { title: t.totalConsumption, value: `${kpis.totalConsumption.toLocaleString()} kWh`, icon: Zap },
-    { title: t.avgCost, value: `€${kpis.avgCost.toFixed(4)}`, icon: TrendingUp },
-    { title: t.totalSpent, value: `€${kpis.totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: DollarSign },
+    { title: t.avgCost, value: fmtMoney(kpis.avgCost, 'EUR', siteCurrency, { minimumFractionDigits: 4, maximumFractionDigits: 4 }), icon: TrendingUp },
+    { title: t.totalSpent, value: fmtMoney(kpis.totalSpent, 'EUR', siteCurrency, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), icon: DollarSign },
   ];
 
   return (

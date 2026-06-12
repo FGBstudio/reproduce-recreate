@@ -1968,6 +1968,27 @@ export type Database = {
           },
         ]
       }
+      fx_rates: {
+        Row: {
+          base: string
+          fetched_at: string
+          quote: string
+          rate: number
+        }
+        Insert: {
+          base?: string
+          fetched_at?: string
+          quote: string
+          rate: number
+        }
+        Update: {
+          base?: string
+          fetched_at?: string
+          quote?: string
+          rate?: number
+        }
+        Relationships: []
+      }
       hardware_status_history: {
         Row: {
           changed_by: string | null
@@ -3942,6 +3963,7 @@ export type Database = {
           climate_zone: string | null
           country: string | null
           created_at: string | null
+          currency: string
           energy_price_kwh: number | null
           id: string
           image_url: string | null
@@ -3969,6 +3991,7 @@ export type Database = {
           climate_zone?: string | null
           country?: string | null
           created_at?: string | null
+          currency?: string
           energy_price_kwh?: number | null
           id?: string
           image_url?: string | null
@@ -3996,6 +4019,7 @@ export type Database = {
           climate_zone?: string | null
           country?: string | null
           created_at?: string | null
+          currency?: string
           energy_price_kwh?: number | null
           id?: string
           image_url?: string | null

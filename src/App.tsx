@@ -11,6 +11,7 @@ import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import OnboardingTour from "@/components/onboarding/OnboardingTour";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { WrappedProvider } from "@/components/wrapped/WrappedContext";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
@@ -27,6 +28,7 @@ const App = () => (
         <AdminDataProvider>
           <OnboardingProvider>
           <WrappedProvider>
+          <CurrencyProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -55,6 +57,7 @@ const App = () => (
               </Routes>
             </HashRouter>
           </TooltipProvider>
+          </CurrencyProvider>
           </WrappedProvider>
           </OnboardingProvider>
         </AdminDataProvider>

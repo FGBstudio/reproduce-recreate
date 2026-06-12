@@ -227,6 +227,7 @@ export interface ApiSite {
   monitoring_types: string[];
   timezone: string;
   energy_price_kwh: number;
+  currency?: string;
 }
 
 export interface ApiBrand {

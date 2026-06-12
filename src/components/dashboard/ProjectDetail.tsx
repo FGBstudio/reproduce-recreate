@@ -48,6 +48,9 @@ import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
 import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
+import { Money } from "@/components/Money";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { isSupportedCurrency, getCurrencySymbol } from "@/lib/currency";
 import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
@@ -3809,14 +3812,17 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </p>
                         
                         <p className="text-xl md:text-3xl font-bold text-gray-800">
-                          {estimatedCostData 
-                            ? `€${estimatedCostData.totalCost.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` 
-                            : '---'}
+                          <Money
+                            amount={estimatedCostData ? estimatedCostData.totalCost : null}
+                            source="EUR"
+                            display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                            fallback="---"
+                          />
                         </p>
                         
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
                           {estimatedCostData 
-                            ? `Consumption × €${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
+                            ? `Consumption × ${getCurrencySymbol(isSupportedCurrency(project?.currency) ? project?.currency : 'EUR')}${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
                             : 'Energy price not configured'}
                         </p>
                         
@@ -3948,7 +3954,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                       {period.totalKwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                     <td className="px-3 py-3 text-right font-bold text-gray-800 tabular-nums">
-                                      {period.totalCost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                                      <Money
+                                        amount={period.totalCost}
+                                        source="EUR"
+                                        display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                                        minimumFractionDigits={2}
+                                        maximumFractionDigits={2}
+                                      />
                                     </td>
                                   </tr>
 
@@ -3962,7 +3974,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                         {day.kwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </td>
                                       <td className="px-3 py-2 text-right text-xs text-muted-foreground tabular-nums">
-                                        {day.cost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                                        <Money
+                                          amount={day.cost}
+                                          source="EUR"
+                                          display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                                          minimumFractionDigits={2}
+                                          maximumFractionDigits={2}
+                                        />
                                       </td>
                                    </tr>
                                     ))}
@@ -5119,9 +5137,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
                         <p className="text-sm text-muted-foreground mb-1">Estimated Cost</p>
-                        <p className="text-3xl font-bold text-gray-800">€24,562</p>
+                        <p className="text-3xl font-bold text-gray-800">
+                          <Money amount={24562} source="EUR"
+                            display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'} />
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">/ year</p>
-                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 saved</div>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">
+                          ↓ <Money amount={3200} source="EUR"
+                              display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'} /> saved
+                        </div>
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
                         <p className="text-sm text-muted-foreground mb-1">{t('energy.efficiency')}</p>

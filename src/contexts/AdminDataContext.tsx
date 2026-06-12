@@ -183,6 +183,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
         areaSqm: s.area_m2 || 0,
         imageUrl: s.image_url,
         timezone: s.timezone || 'UTC',
+        currency: (s as any).currency || 'EUR',
         createdAt: new Date(s.created_at),
         updatedAt: new Date(s.updated_at),
       }));
@@ -466,6 +467,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
           area_m2: data.areaSqm,
           image_url: data.imageUrl,
           timezone: data.timezone,
+          currency: data.currency || 'EUR',
           monitoring_types: ['energy', 'air', 'water'],
         })
         .select()
@@ -486,6 +488,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
         areaSqm: inserted.area_m2 || 0,
         imageUrl: inserted.image_url,
         timezone: inserted.timezone || 'UTC',
+        currency: (inserted as any).currency || 'EUR',
         createdAt: new Date(inserted.created_at),
         updatedAt: new Date(inserted.updated_at),
       };
@@ -519,6 +522,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       if (data.areaSqm !== undefined) updateData.area_m2 = data.areaSqm;
       if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
       if (data.timezone !== undefined) updateData.timezone = data.timezone;
+      if (data.currency !== undefined) updateData.currency = data.currency;
       
       const { error } = await supabase
         .from('sites')
