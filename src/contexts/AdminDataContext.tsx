@@ -488,6 +488,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
         areaSqm: inserted.area_m2 || 0,
         imageUrl: inserted.image_url,
         timezone: inserted.timezone || 'UTC',
+        currency: (inserted as any).currency || 'EUR',
         createdAt: new Date(inserted.created_at),
         updatedAt: new Date(inserted.updated_at),
       };
