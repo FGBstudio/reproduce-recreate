@@ -174,6 +174,28 @@ export function formatEuro(v: number | null | undefined): string {
   return `€ ${Math.round(v).toLocaleString('it-IT')}`;
 }
 
+/**
+ * Currency-aware formatter for any supported ISO currency code.
+ * Used by Wrapped PDF and slides where the site's native currency is known.
+ */
+export function formatMoneyCode(
+  v: number | null | undefined,
+  currency: string = 'EUR',
+  locale: string = 'en-US',
+): string {
+  if (v == null || !isFinite(v)) return '—';
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(v);
+  } catch {
+    return `${currency} ${Math.round(v).toLocaleString(locale)}`;
+  }
+}
+
 /* ─────────── Building archetype from hourly load profile ─────────── */
 
 export type ArchetypeKey = 'early-bird' | 'day-shift' | 'night-owl' | 'insomniac';
