@@ -668,8 +668,8 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
   const kpiCards = [
     { title: t.totalBills, value: bills.length.toString(), icon: FileText },
     { title: t.totalConsumption, value: `${kpis.totalConsumption.toLocaleString()} kWh`, icon: Zap },
-    { title: t.avgCost, value: `€${kpis.avgCost.toFixed(4)}`, icon: TrendingUp },
-    { title: t.totalSpent, value: `€${kpis.totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: DollarSign },
+    { title: t.avgCost, value: fmtMoney(kpis.avgCost, 'EUR', siteCurrency, { minimumFractionDigits: 4, maximumFractionDigits: 4 }), icon: TrendingUp },
+    { title: t.totalSpent, value: fmtMoney(kpis.totalSpent, 'EUR', siteCurrency, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), icon: DollarSign },
   ];
 
   return (
