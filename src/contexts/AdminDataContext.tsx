@@ -522,6 +522,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       if (data.areaSqm !== undefined) updateData.area_m2 = data.areaSqm;
       if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
       if (data.timezone !== undefined) updateData.timezone = data.timezone;
+      if (data.currency !== undefined) updateData.currency = data.currency;
       
       const { error } = await supabase
         .from('sites')
