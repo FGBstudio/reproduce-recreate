@@ -158,7 +158,8 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
   const { user } = useAuth();
   const { language } = useLanguage();
   const t = i18n[language] || i18n.en;
-  const siteCurrency = (typeof window !== 'undefined') ? undefined : undefined; // placeholder removed
+  const siteCurrency = useSiteCurrency(siteId);
+  const { format: fmtMoney } = useCurrency();
 
   const [view, setView] = useState<View>('dashboard');
   const [bills, setBills] = useState<Bill[]>([]);
