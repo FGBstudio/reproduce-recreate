@@ -5137,9 +5137,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
                         <p className="text-sm text-muted-foreground mb-1">Estimated Cost</p>
-                        <p className="text-3xl font-bold text-gray-800">€24,562</p>
+                        <p className="text-3xl font-bold text-gray-800">
+                          <Money amount={24562} source="EUR"
+                            display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'} />
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">/ year</p>
-                        <div className="mt-2 text-xs text-emerald-500 font-medium">↓ €3,200 saved</div>
+                        <div className="mt-2 text-xs text-emerald-500 font-medium">
+                          ↓ <Money amount={3200} source="EUR"
+                              display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'} /> saved
+                        </div>
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
                         <p className="text-sm text-muted-foreground mb-1">{t('energy.efficiency')}</p>
