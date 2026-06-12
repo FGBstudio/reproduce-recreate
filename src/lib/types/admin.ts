@@ -88,6 +88,7 @@ export interface AdminSite {
   areaSqm?: number;
   area_m2?: number; // Alternative naming for area
   energy_price_kwh?: number; // Price per kWh for cost calculations
+  currency?: string; // Native currency for monetary values (e.g. 'EUR', 'USD')
   imageUrl?: string;
   timezone: string;
   createdAt: Date;
