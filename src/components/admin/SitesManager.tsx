@@ -35,6 +35,7 @@ const defaultFormData = {
   areaSqm: 0,
   imageUrl: '',
   timezone: 'UTC',
+  currency: 'EUR',
 };
 
 export const SitesManager = () => {
