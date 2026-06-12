@@ -4882,6 +4882,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sensor_health_monitoring: {
+        Row: {
+          health_staleness: string | null
+          is_flatlining: boolean | null
+          is_offline: boolean | null
+          last_evaluated_at: string | null
+          monitor_status: string | null
+          sensor_id: string | null
+          site_id: string | null
+          trust_score: number | null
+        }
+        Insert: {
+          health_staleness?: never
+          is_flatlining?: boolean | null
+          is_offline?: boolean | null
+          last_evaluated_at?: string | null
+          monitor_status?: never
+          sensor_id?: string | null
+          site_id?: string | null
+          trust_score?: number | null
+        }
+        Update: {
+          health_staleness?: never
+          is_flatlining?: boolean | null
+          is_offline?: boolean | null
+          last_evaluated_at?: string | null
+          monitor_status?: never
+          sensor_id?: string | null
+          site_id?: string | null
+          trust_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensor_health_sensor_id_fkey"
+            columns: ["sensor_id"]
+            isOneToOne: true
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensor_health_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_energy_daily: {
         Row: {
           metric: string | null
@@ -5155,12 +5203,17 @@ export type Database = {
         Returns: boolean
       }
       delete_stale_energy_latest: { Args: never; Returns: undefined }
+      detect_flatlines: { Args: never; Returns: undefined }
+      detect_offline_sensors: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
       evaluate_daily_alerts: { Args: never; Returns: undefined }
-      evaluate_instant_alerts: { Args: never; Returns: undefined }
+      evaluate_instant_alerts: {
+        Args: { p_device_id?: string }
+        Returns: undefined
+      }
       evaluate_sensor_health: { Args: never; Returns: undefined }
       evaluate_sustained_alerts: { Args: never; Returns: undefined }
       extract_mqtt_timestamp: {
