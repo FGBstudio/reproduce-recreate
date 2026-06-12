@@ -467,6 +467,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
           area_m2: data.areaSqm,
           image_url: data.imageUrl,
           timezone: data.timezone,
+          currency: data.currency || 'EUR',
           monitoring_types: ['energy', 'air', 'water'],
         })
         .select()
