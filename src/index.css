@@ -57,7 +57,7 @@
     --secondary-foreground: 0 0% 100%;
 
     --muted: 200 50% 20%;
-    --muted-foreground: 180 30% 70%;
+    --muted-foreground: 210 14% 60%;
 
     --accent: 43 41% 57%; /* Gold */
     --accent-foreground: 200 100% 11%;
@@ -131,7 +131,7 @@
     --secondary: 188 100% 19%;
     --secondary-foreground: 0 0% 100%;
     --muted: 200 50% 20%;
-    --muted-foreground: 180 30% 70%;
+    --muted-foreground: 210 14% 60%;
     --accent: 43 41% 57%;
     --accent-foreground: 200 100% 11%;
     --destructive: 0 62% 31%;
