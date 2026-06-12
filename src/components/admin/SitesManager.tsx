@@ -76,6 +76,7 @@ export const SitesManager = () => {
       areaSqm: site.areaSqm,
       imageUrl: site.imageUrl || '',
       timezone: site.timezone,
+      currency: site.currency || 'EUR',
     });
     setSelectedFile(null);
     setPreviewUrl(site.imageUrl || null);
