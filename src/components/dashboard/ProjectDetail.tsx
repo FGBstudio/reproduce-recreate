@@ -3812,14 +3812,17 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </p>
                         
                         <p className="text-xl md:text-3xl font-bold text-gray-800">
-                          {estimatedCostData 
-                            ? `€${estimatedCostData.totalCost.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` 
-                            : '---'}
+                          <Money
+                            amount={estimatedCostData ? estimatedCostData.totalCost : null}
+                            source="EUR"
+                            display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                            fallback="---"
+                          />
                         </p>
                         
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
                           {estimatedCostData 
-                            ? `Consumption × €${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
+                            ? `Consumption × ${getCurrencySymbol(isSupportedCurrency(project?.currency) ? project?.currency : 'EUR')}${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
                             : 'Energy price not configured'}
                         </p>
                         
