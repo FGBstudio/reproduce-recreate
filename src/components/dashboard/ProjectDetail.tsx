@@ -3954,7 +3954,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                       {period.totalKwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                     <td className="px-3 py-3 text-right font-bold text-gray-800 tabular-nums">
-                                      {period.totalCost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                                      <Money
+                                        amount={period.totalCost}
+                                        source="EUR"
+                                        display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                                        minimumFractionDigits={2}
+                                        maximumFractionDigits={2}
+                                      />
                                     </td>
                                   </tr>
 
@@ -3968,7 +3974,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                         {day.kwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </td>
                                       <td className="px-3 py-2 text-right text-xs text-muted-foreground tabular-nums">
-                                        {day.cost.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                                        <Money
+                                          amount={day.cost}
+                                          source="EUR"
+                                          display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                                          minimumFractionDigits={2}
+                                          maximumFractionDigits={2}
+                                        />
                                       </td>
                                    </tr>
                                     ))}
