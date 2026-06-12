@@ -19,6 +19,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import { ZoomableChart } from '@/components/ui/ZoomableChart';
+import { useSiteCurrency } from '@/hooks/useSiteCurrency';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Types matching DB schema
 interface Bill {
