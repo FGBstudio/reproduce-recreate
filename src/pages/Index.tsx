@@ -130,6 +130,7 @@ const Index = () => {
               siteId: site.id, // Keep UUID reference for real-time data
               area_m2: site.area_m2,
               energy_price_kwh: site.energy_price_kwh,
+              currency: (site as any).currency || 'EUR',
               timezone: site.timezone || 'UTC',
             };
             
