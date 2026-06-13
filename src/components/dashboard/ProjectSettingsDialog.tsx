@@ -289,6 +289,27 @@ export function ProjectSettingsDialog({
   const { language } = useLanguage();
   const t = (i18n as any)[language] || i18n.en;
   const { thresholds, isLoading, updateThresholds, isSaving } = useSiteThresholds(siteId);
+  const queryClient = useQueryClient();
+
+  // Site area (sites.area_m2)
+  const { data: siteArea, isLoading: isAreaLoading } = useQuery({
+    queryKey: ['site-area', siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
+      const { data, error } = await supabase
+        .from('sites')
+        .select('area_m2')
+        .eq('id', siteId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.area_m2 ?? null) as number | null;
+    },
+    enabled: !!siteId,
+  });
+  const [areaM2, setAreaM2] = useState<number | null>(null);
+  useEffect(() => {
+    setAreaM2(siteArea ?? null);
+  }, [siteArea]);
 
   const form = useForm<ThresholdsForm>({
     resolver: zodResolver(createSchema(t)),
@@ -339,6 +360,16 @@ export function ProjectSettingsDialog({
   const onSubmit = async (data: ThresholdsForm) => {
     try {
       await updateThresholds(data);
+      if (siteId && areaM2 !== (siteArea ?? null)) {
+        const { error: areaErr } = await supabase
+          .from('sites')
+          .update({ area_m2: areaM2 })
+          .eq('id', siteId);
+        if (areaErr) throw areaErr;
+        queryClient.invalidateQueries({ queryKey: ['site-area', siteId] });
+        queryClient.invalidateQueries({ queryKey: ['sites'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+      }
       toast.success(t.saveSuccess);
       onOpenChange?.(false);
     } catch (error) {
