@@ -483,6 +483,24 @@ export function ProjectSettingsDialog({
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="site_currency">{t.currency}</Label>
+                  <select
+                    id="site_currency"
+                    value={currency}
+                    disabled={isCurrencyLoading}
+                    onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.symbol}  {c.code} — {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">{t.currencyHint}</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="energy_power_limit_kw">
                     {t.powerLimit}
                   </Label>
