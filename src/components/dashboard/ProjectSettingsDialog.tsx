@@ -322,6 +322,26 @@ export function ProjectSettingsDialog({
     setAreaM2(siteArea ?? null);
   }, [siteArea]);
 
+  // Site currency (sites.currency)
+  const { data: siteCurrency, isLoading: isCurrencyLoading } = useQuery({
+    queryKey: ['site-currency', siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
+      const { data, error } = await supabase
+        .from('sites')
+        .select('currency')
+        .eq('id', siteId)
+        .maybeSingle();
+      if (error) throw error;
+      return ((data as any)?.currency ?? 'EUR') as string;
+    },
+    enabled: !!siteId,
+  });
+  const [currency, setCurrency] = useState<CurrencyCode>('EUR');
+  useEffect(() => {
+    setCurrency(isSupportedCurrency(siteCurrency) ? siteCurrency : 'EUR');
+  }, [siteCurrency]);
+
   const form = useForm<ThresholdsForm>({
     resolver: zodResolver(createSchema(t)),
     defaultValues: {
@@ -378,6 +398,16 @@ export function ProjectSettingsDialog({
           .eq('id', siteId);
         if (areaErr) throw areaErr;
         queryClient.invalidateQueries({ queryKey: ['site-area', siteId] });
+        queryClient.invalidateQueries({ queryKey: ['sites'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+      }
+      if (siteId && currency !== (siteCurrency ?? 'EUR')) {
+        const { error: curErr } = await supabase
+          .from('sites')
+          .update({ currency } as any)
+          .eq('id', siteId);
+        if (curErr) throw curErr;
+        queryClient.invalidateQueries({ queryKey: ['site-currency', siteId] });
         queryClient.invalidateQueries({ queryKey: ['sites'] });
         queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
       }
