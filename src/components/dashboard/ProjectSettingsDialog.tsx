@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { SUPPORTED_CURRENCIES, isSupportedCurrency, CurrencyCode } from "@/lib/currency";
 
 const i18n = {
   en: {
@@ -57,6 +58,8 @@ const i18n = {
     areaM2: 'Site Area (m²)',
     areaPlaceholder: 'e.g. 1200',
     areaHint: 'Total surface, used for EUI and density KPIs',
+    currency: 'Site Currency',
+    currencyHint: 'All economic values are stored in EUR and converted live to the selected currency. FX rates refresh every 24h.',
     cancel: 'Cancel',
     save: 'Save',
     saveSuccess: 'Settings saved successfully',
@@ -94,6 +97,8 @@ const i18n = {
     areaM2: 'Superficie Sito (m²)',
     areaPlaceholder: 'es. 1200',
     areaHint: 'Superficie totale, usata per EUI e KPI di densità',
+    currency: 'Valuta del Sito',
+    currencyHint: 'Tutti i valori economici sono memorizzati in EUR e convertiti in tempo reale nella valuta selezionata. Tassi aggiornati ogni 24h.',
     cancel: 'Annulla',
     save: 'Salva',
     saveSuccess: 'Impostazioni salvate con successo',
@@ -131,6 +136,8 @@ const i18n = {
     areaM2: 'Surface du Site (m²)',
     areaPlaceholder: 'ex. 1200',
     areaHint: 'Surface totale, utilisée pour EUI et KPI de densité',
+    currency: 'Devise du Site',
+    currencyHint: 'Toutes les valeurs économiques sont stockées en EUR et converties en temps réel. Taux mis à jour toutes les 24h.',
     cancel: 'Annuler',
     save: 'Enregistrer',
     saveSuccess: 'Paramètres enregistrés avec succès',
@@ -168,6 +175,8 @@ const i18n = {
     areaM2: 'Superficie del Sitio (m²)',
     areaPlaceholder: 'ej. 1200',
     areaHint: 'Superficie total, usada para EUI y KPI de densidad',
+    currency: 'Moneda del Sitio',
+    currencyHint: 'Todos los valores económicos se almacenan en EUR y se convierten en tiempo real. Tasas actualizadas cada 24h.',
     cancel: 'Cancelar',
     save: 'Guardar',
     saveSuccess: 'Ajustes guardados con éxito',
@@ -205,6 +214,8 @@ const i18n = {
     areaM2: '场地面积 (m²)',
     areaPlaceholder: '例如 1200',
     areaHint: '总面积，用于 EUI 和密度 KPI',
+    currency: '站点货币',
+    currencyHint: '所有经济数值以欧元存储，按所选货币实时换算。汇率每24小时更新。',
     cancel: '取消',
     save: '保存',
     saveSuccess: '设置保存成功',
@@ -311,6 +322,26 @@ export function ProjectSettingsDialog({
     setAreaM2(siteArea ?? null);
   }, [siteArea]);
 
+  // Site currency (sites.currency)
+  const { data: siteCurrency, isLoading: isCurrencyLoading } = useQuery({
+    queryKey: ['site-currency', siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
+      const { data, error } = await supabase
+        .from('sites')
+        .select('currency')
+        .eq('id', siteId)
+        .maybeSingle();
+      if (error) throw error;
+      return ((data as any)?.currency ?? 'EUR') as string;
+    },
+    enabled: !!siteId,
+  });
+  const [currency, setCurrency] = useState<CurrencyCode>('EUR');
+  useEffect(() => {
+    setCurrency(isSupportedCurrency(siteCurrency) ? siteCurrency : 'EUR');
+  }, [siteCurrency]);
+
   const form = useForm<ThresholdsForm>({
     resolver: zodResolver(createSchema(t)),
     defaultValues: {
@@ -367,6 +398,16 @@ export function ProjectSettingsDialog({
           .eq('id', siteId);
         if (areaErr) throw areaErr;
         queryClient.invalidateQueries({ queryKey: ['site-area', siteId] });
+        queryClient.invalidateQueries({ queryKey: ['sites'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+      }
+      if (siteId && currency !== (siteCurrency ?? 'EUR')) {
+        const { error: curErr } = await supabase
+          .from('sites')
+          .update({ currency } as any)
+          .eq('id', siteId);
+        if (curErr) throw curErr;
+        queryClient.invalidateQueries({ queryKey: ['site-currency', siteId] });
         queryClient.invalidateQueries({ queryKey: ['sites'] });
         queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
       }
@@ -439,6 +480,24 @@ export function ProjectSettingsDialog({
                     }}
                   />
                   <p className="text-xs text-muted-foreground">{t.areaHint}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="site_currency">{t.currency}</Label>
+                  <select
+                    id="site_currency"
+                    value={currency}
+                    disabled={isCurrencyLoading}
+                    onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.symbol}  {c.code} — {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">{t.currencyHint}</p>
                 </div>
 
                 <div className="space-y-2">
