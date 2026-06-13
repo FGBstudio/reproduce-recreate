@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,6 +25,8 @@ import {
 import { useSiteThresholds, SiteThresholds } from "@/hooks/useSiteThresholds";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const i18n = {
   en: {
@@ -52,6 +54,9 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'e.g. 1000',
     euiBenchmark: 'EUI Benchmark (kWh/m²)',
     euiPlaceholder: 'e.g. 150',
+    areaM2: 'Site Area (m²)',
+    areaPlaceholder: 'e.g. 1200',
+    areaHint: 'Total surface, used for EUI and density KPIs',
     cancel: 'Cancel',
     save: 'Save',
     saveSuccess: 'Settings saved successfully',
@@ -86,6 +91,9 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'es. 1000',
     euiBenchmark: 'Benchmark EUI (kWh/m²)',
     euiPlaceholder: 'es. 150',
+    areaM2: 'Superficie Sito (m²)',
+    areaPlaceholder: 'es. 1200',
+    areaHint: 'Superficie totale, usata per EUI e KPI di densità',
     cancel: 'Annulla',
     save: 'Salva',
     saveSuccess: 'Impostazioni salvate con successo',
@@ -120,6 +128,9 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'ex. 1000',
     euiBenchmark: 'Benchmark EUI (kWh/m²)',
     euiPlaceholder: 'ex. 150',
+    areaM2: 'Surface du Site (m²)',
+    areaPlaceholder: 'ex. 1200',
+    areaHint: 'Surface totale, utilisée pour EUI et KPI de densité',
     cancel: 'Annuler',
     save: 'Enregistrer',
     saveSuccess: 'Paramètres enregistrés avec succès',
@@ -154,6 +165,9 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'ej. 1000',
     euiBenchmark: 'Referencia EUI (kWh/m²)',
     euiPlaceholder: 'ej. 150',
+    areaM2: 'Superficie del Sitio (m²)',
+    areaPlaceholder: 'ej. 1200',
+    areaHint: 'Superficie total, usada para EUI y KPI de densidad',
     cancel: 'Cancelar',
     save: 'Guardar',
     saveSuccess: 'Ajustes guardados con éxito',
@@ -188,6 +202,9 @@ const i18n = {
     dailyBudgetWaterPlaceholder: '例如 1000',
     euiBenchmark: 'EUI 基准 (kWh/m²)',
     euiPlaceholder: '例如 150',
+    areaM2: '场地面积 (m²)',
+    areaPlaceholder: '例如 1200',
+    areaHint: '总面积，用于 EUI 和密度 KPI',
     cancel: '取消',
     save: '保存',
     saveSuccess: '设置保存成功',
@@ -272,6 +289,27 @@ export function ProjectSettingsDialog({
   const { language } = useLanguage();
   const t = (i18n as any)[language] || i18n.en;
   const { thresholds, isLoading, updateThresholds, isSaving } = useSiteThresholds(siteId);
+  const queryClient = useQueryClient();
+
+  // Site area (sites.area_m2)
+  const { data: siteArea, isLoading: isAreaLoading } = useQuery({
+    queryKey: ['site-area', siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
+      const { data, error } = await supabase
+        .from('sites')
+        .select('area_m2')
+        .eq('id', siteId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.area_m2 ?? null) as number | null;
+    },
+    enabled: !!siteId,
+  });
+  const [areaM2, setAreaM2] = useState<number | null>(null);
+  useEffect(() => {
+    setAreaM2(siteArea ?? null);
+  }, [siteArea]);
 
   const form = useForm<ThresholdsForm>({
     resolver: zodResolver(createSchema(t)),
@@ -322,6 +360,16 @@ export function ProjectSettingsDialog({
   const onSubmit = async (data: ThresholdsForm) => {
     try {
       await updateThresholds(data);
+      if (siteId && areaM2 !== (siteArea ?? null)) {
+        const { error: areaErr } = await supabase
+          .from('sites')
+          .update({ area_m2: areaM2 })
+          .eq('id', siteId);
+        if (areaErr) throw areaErr;
+        queryClient.invalidateQueries({ queryKey: ['site-area', siteId] });
+        queryClient.invalidateQueries({ queryKey: ['sites'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+      }
       toast.success(t.saveSuccess);
       onOpenChange?.(false);
     } catch (error) {
@@ -374,6 +422,25 @@ export function ProjectSettingsDialog({
 
               {/* Energy Tab */}
               <TabsContent value="energy" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="site_area_m2">{t.areaM2}</Label>
+                  <Input
+                    id="site_area_m2"
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder={t.areaPlaceholder}
+                    disabled={isAreaLoading}
+                    value={areaM2 ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const n = v === '' ? null : parseFloat(v);
+                      setAreaM2(n !== null && !isNaN(n) ? n : null);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">{t.areaHint}</p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="energy_power_limit_kw">
                     {t.powerLimit}
