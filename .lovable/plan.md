@@ -1,90 +1,54 @@
-## Obiettivo
+## Riepilogo situazione attuale
 
-Aggiungere il supporto multi-valuta a tutta l'applicazione. Ogni sito avrà la sua valuta nativa (es. EUR per i siti italiani, GBP per UK), e tutti i valori economici verranno automaticamente formattati e convertiti usando tassi di cambio live aggiornati giornalmente.
+- Il sistema valute è già implementato (DB, edge function, contesto, `<Money>`), ma:
+  - Il selettore vive solo in **Admin → Sites → Edit**, quindi è invisibile all'utente normale.
+  - I tassi vengono refreshati solo lato client quando la cache supera 12h: nessuna schedulazione server.
+  - Non c'è feedback in UI per capire/cambiare la valuta del sito attivo.
 
-## Valute supportate
+## Cosa cambierà
 
-EUR, USD, GBP, CHF, JPY, CNY, AUD, CAD, SEK, NOK, DKK, PLN, AED, SGD, HKD (15 valute principali).
+### 1) Selettore valuta nel Project Settings dialog
+File: `src/components/dashboard/ProjectSettingsDialog.tsx`
 
-## Architettura
+- Nella tab **Energy**, sotto "Area m²", aggiungere una sezione "Valuta del sito" con la stessa dropdown a 15 valute usata in `SitesManager`.
+- Load: `supabase.from('sites').select('currency').eq('id', siteId).maybeSingle()`.
+- Save: insieme agli altri campi della tab, `update({ currency }).eq('id', siteId)`.
+- Invalidate cache: `['site-currency', siteId]`, `['sites']`, `['admin-sites']`.
+- Stringa esplicativa: *"Tutti i valori economici sono memorizzati in EUR e convertiti in tempo reale nella valuta selezionata. Tassi aggiornati ogni 24h."*
 
-### 1. Database
+### 2) Nessun badge separato — solo il simbolo cambia
+Il simbolo della valuta selezionata sostituisce l'`€` ovunque, come già fa il componente `<Money>`. Nessun nuovo chip/badge nell'header. Gli unici punti dove serve verificare/correggere sono quelli che ancora hardcodano `€`:
 
-**Nuova colonna `currency` su `sites`** (TEXT, default `'EUR'`, CHECK in elenco supportato).
+- `src/components/dashboard/ProjectDetail.tsx` → label tipo `"€/kWh"`, intestazioni colonne `"Costo (€)"`, eventuali tooltip.
+- `src/components/dashboard/BillAnalysisModule.tsx` → label e header tabella.
+- `src/components/wrapped/lib/wrappedMath.ts` e `wrappedPdf.ts` → testi del PDF/Wrapped.
 
-**Nuova tabella `fx_rates`** per memorizzare i tassi di cambio:
-- `base` TEXT (sempre `'EUR'`)
-- `quote` TEXT (es. `'USD'`)
-- `rate` NUMERIC
-- `fetched_at` TIMESTAMPTZ
-- PRIMARY KEY (base, quote)
+Soluzione: usare `getCurrencySymbol(project.currency)` da `src/lib/currency.ts` per costruire dinamicamente le label (es. `${symbol}/kWh`, `Costo (${symbol})`). Nessun nuovo componente UI.
 
-Letta da tutti, scritta solo da `service_role`.
+### 3) Aggiornamento automatico giornaliero dei tassi
+Schedulare via `pg_cron + pg_net` la `fx-rates-refresh` ogni giorno alle **06:00 UTC**. Inserito con il tool `supabase--insert` (non migration, perché contiene URL + anon key specifici del progetto). Le estensioni `pg_cron` e `pg_net` vengono abilitate se mancanti.
 
-### 2. Edge Function `fx-rates-refresh`
-
-Cron job giornaliero che chiama `https://api.exchangerate.host/latest?base=EUR` (gratuito, no key) e fa upsert in `fx_rates`. Schedulato via `pg_cron` ogni 24h.
-
-Endpoint GET pubblico per il primo caricamento on-demand.
-
-### 3. Frontend: `CurrencyContext` + hook
-
-`src/contexts/CurrencyContext.tsx`:
-- Carica una volta `fx_rates` in cache (React Query, 12h stale).
-- Espone `convert(amount, fromCurrency, toCurrency)` e `format(amount, currency, options?)`.
-- `format` usa `Intl.NumberFormat` con locale dalla lingua attiva.
-
-`useSiteCurrency(siteId)` hook utility che restituisce la valuta del sito corrente (dalla query già esistente sui sites).
-
-### 4. Componente `<Money />` riutilizzabile
-
-```tsx
-<Money amount={1234.5} from="EUR" to={siteCurrency} compact />
-```
-Centralizza formattazione + conversione. Sostituisce tutti i template `€${x.toLocaleString(...)}`.
-
-### 5. UI selector
-
-Nelle **Project Settings** del sito (admin/owner): dropdown "Site currency" con tutte le valute supportate. Persistito su `sites.currency`.
-
-Read-only per gli utenti normali: vedono solo la valuta del sito.
-
-## Punti di sostituzione (callsite migration)
-
-Sostituire tutti i `€${...}` / `{ style: 'currency', currency: 'EUR' }` con `<Money />` o `format()`:
-
-- `src/components/dashboard/ProjectDetail.tsx` (estimated cost, periods table, day rows)
-- `src/components/dashboard/BillAnalysisModule.tsx` (KPI cards, bill detail fields — usa la valuta della bolletta dove presente)
-- `src/components/dashboard/PdfReportGenerator.tsx` (label CSV/tabelle, simbolo dinamico in base al sito)
-- `src/components/wrapped/lib/wrappedMath.ts` (`formatMoney` con currency parametrica)
-- `src/components/wrapped/lib/wrappedPdf.ts` (consumatore di formatMoney)
-- `src/hooks/useEnergyDataTransformer.ts` (commento di esempio — solo doc)
-
-## Dettagli tecnici
-
-```text
-sites.currency ──┐
-                 ├──► useSiteCurrency(siteId) ──► <Money to={cur} />
-fx_rates ────────┘                                      │
-                                                        ▼
-                          Intl.NumberFormat(locale, { style:'currency', currency })
+```sql
+select cron.schedule(
+  'fx-rates-daily',
+  '0 6 * * *',
+  $$ select net.http_post(
+       url := 'https://vejqfpznzcohtbggkfhr.supabase.co/functions/v1/fx-rates-refresh',
+       headers := '{"Content-Type":"application/json","apikey":"<ANON_KEY>"}'::jsonb,
+       body := '{}'::jsonb
+     ); $$
+);
 ```
 
-Regole di conversione:
-- Tutti i valori sorgente sono in EUR (tariffe `energy_price_kwh`, costi calcolati).
-- `convert(x, 'EUR', target) = x * rate('EUR','target')`.
-- Se rates non caricati → fallback al simbolo nativo senza conversione + badge "FX unavailable".
+## Cosa NON cambia
+- Nessun badge/chip nell'header.
+- Nessuna conversione dei dati storici a DB.
+- Nessuna modifica alle bollette già processate.
+- Nessuna modifica alla logica di conversione/formattazione.
 
-Caching:
-- React Query `staleTime: 12h`, persistito in `localStorage` per offline.
-- Edge function aggiorna i tassi 1x/giorno; client li rilegge quando stale.
-
-## Out of scope
-
-- Conversione storica di valori passati (es. bolletta importata mesi fa rimane nella sua valuta originale).
-- Hedging / tassi forward.
-- Modifica della valuta nativa di una bolletta già processata.
-
-## Migrazione dati
-
-I siti esistenti restano `EUR` di default (no breaking change). L'admin può cambiare la valuta dei siti non-EUR dalle Project Settings.
+## File toccati
+- `src/components/dashboard/ProjectSettingsDialog.tsx` — nuova sezione valuta.
+- `src/components/dashboard/ProjectDetail.tsx` — sostituire `€` hardcoded con `getCurrencySymbol(currency)`.
+- `src/components/dashboard/BillAnalysisModule.tsx` — idem.
+- `src/components/wrapped/lib/wrappedMath.ts` / `wrappedPdf.ts` — idem dove appare `€`.
+- `supabase--insert` per lo schedule pg_cron.
