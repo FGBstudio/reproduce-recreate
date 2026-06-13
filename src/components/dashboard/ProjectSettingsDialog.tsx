@@ -423,6 +423,25 @@ export function ProjectSettingsDialog({
               {/* Energy Tab */}
               <TabsContent value="energy" className="space-y-4 mt-4">
                 <div className="space-y-2">
+                  <Label htmlFor="site_area_m2">{t.areaM2}</Label>
+                  <Input
+                    id="site_area_m2"
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder={t.areaPlaceholder}
+                    disabled={isAreaLoading}
+                    value={areaM2 ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const n = v === '' ? null : parseFloat(v);
+                      setAreaM2(n !== null && !isNaN(n) ? n : null);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">{t.areaHint}</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="energy_power_limit_kw">
                     {t.powerLimit}
                   </Label>
