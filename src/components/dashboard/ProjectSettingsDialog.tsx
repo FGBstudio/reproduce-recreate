@@ -602,6 +602,36 @@ export function ProjectSettingsDialog({
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="energy_price_kwh">
+                    {t.energyPrice} ({getCurrencySymbol(currency)}/kWh)
+                  </Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                      {getCurrencySymbol(currency)}
+                    </span>
+                    <Input
+                      id="energy_price_kwh"
+                      type="number"
+                      step="0.0001"
+                      min="0"
+                      placeholder={t.energyPricePlaceholder}
+                      disabled={isPriceLoading || (currency !== 'EUR' && !ratesLoaded)}
+                      value={priceDisplay ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const n = v === '' ? null : parseFloat(v);
+                        setPriceDisplay(n !== null && !isNaN(n) ? n : null);
+                      }}
+                      className="pl-8"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+                      /kWh
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t.energyPriceHint}</p>
+                </div>
+
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
