@@ -27,7 +27,8 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { SUPPORTED_CURRENCIES, isSupportedCurrency, CurrencyCode } from "@/lib/currency";
+import { SUPPORTED_CURRENCIES, isSupportedCurrency, CurrencyCode, getCurrencySymbol, convertAmount } from "@/lib/currency";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 const i18n = {
   en: {
@@ -60,6 +61,9 @@ const i18n = {
     areaHint: 'Total surface, used for EUI and density KPIs',
     currency: 'Site Currency',
     currencyHint: 'All economic values are stored in EUR and converted live to the selected currency. FX rates refresh every 24h.',
+    energyPrice: 'Gross Energy Price',
+    energyPriceHint: 'Gross tariff per kWh in the selected currency. Stored in EUR and reconverted live as FX rates change.',
+    energyPricePlaceholder: 'e.g. 0.25',
     cancel: 'Cancel',
     save: 'Save',
     saveSuccess: 'Settings saved successfully',
@@ -99,6 +103,9 @@ const i18n = {
     areaHint: 'Superficie totale, usata per EUI e KPI di densità',
     currency: 'Valuta del Sito',
     currencyHint: 'Tutti i valori economici sono memorizzati in EUR e convertiti in tempo reale nella valuta selezionata. Tassi aggiornati ogni 24h.',
+    energyPrice: 'Prezzo Lordo Energia',
+    energyPriceHint: 'Tariffa lorda per kWh nella valuta selezionata. Salvata in EUR e riconvertita in tempo reale al variare dei tassi.',
+    energyPricePlaceholder: 'es. 0,25',
     cancel: 'Annulla',
     save: 'Salva',
     saveSuccess: 'Impostazioni salvate con successo',
@@ -138,6 +145,9 @@ const i18n = {
     areaHint: 'Surface totale, utilisée pour EUI et KPI de densité',
     currency: 'Devise du Site',
     currencyHint: 'Toutes les valeurs économiques sont stockées en EUR et converties en temps réel. Taux mis à jour toutes les 24h.',
+    energyPrice: 'Prix Brut de l\'Énergie',
+    energyPriceHint: 'Tarif brut par kWh dans la devise sélectionnée. Enregistré en EUR et reconverti en temps réel.',
+    energyPricePlaceholder: 'ex. 0,25',
     cancel: 'Annuler',
     save: 'Enregistrer',
     saveSuccess: 'Paramètres enregistrés avec succès',
@@ -177,6 +187,9 @@ const i18n = {
     areaHint: 'Superficie total, usada para EUI y KPI de densidad',
     currency: 'Moneda del Sitio',
     currencyHint: 'Todos los valores económicos se almacenan en EUR y se convierten en tiempo real. Tasas actualizadas cada 24h.',
+    energyPrice: 'Precio Bruto de la Energía',
+    energyPriceHint: 'Tarifa bruta por kWh en la moneda seleccionada. Almacenada en EUR y reconvertida en tiempo real.',
+    energyPricePlaceholder: 'ej. 0,25',
     cancel: 'Cancelar',
     save: 'Guardar',
     saveSuccess: 'Ajustes guardados con éxito',
@@ -216,6 +229,9 @@ const i18n = {
     areaHint: '总面积，用于 EUI 和密度 KPI',
     currency: '站点货币',
     currencyHint: '所有经济数值以欧元存储，按所选货币实时换算。汇率每24小时更新。',
+    energyPrice: '能源毛价',
+    energyPriceHint: '所选货币的每千瓦时毛价。以欧元存储，按实时汇率换算。',
+    energyPricePlaceholder: '例如 0.25',
     cancel: '取消',
     save: '保存',
     saveSuccess: '设置保存成功',
