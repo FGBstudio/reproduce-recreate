@@ -317,6 +317,7 @@ export function ProjectSettingsDialog({
   const t = (i18n as any)[language] || i18n.en;
   const { thresholds, isLoading, updateThresholds, isSaving } = useSiteThresholds(siteId);
   const queryClient = useQueryClient();
+  const { rates, ratesLoaded } = useCurrency();
 
   // Site area (sites.area_m2)
   const { data: siteArea, isLoading: isAreaLoading } = useQuery({
@@ -357,6 +358,31 @@ export function ProjectSettingsDialog({
   useEffect(() => {
     setCurrency(isSupportedCurrency(siteCurrency) ? siteCurrency : 'EUR');
   }, [siteCurrency]);
+
+  // Site energy price (sites.energy_price_kwh) - stored in EUR/kWh
+  const { data: siteEnergyPriceEur, isLoading: isPriceLoading } = useQuery({
+    queryKey: ['site-energy-price', siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
+      const { data, error } = await supabase
+        .from('sites')
+        .select('energy_price_kwh')
+        .eq('id', siteId)
+        .maybeSingle();
+      if (error) throw error;
+      return ((data as any)?.energy_price_kwh ?? null) as number | null;
+    },
+    enabled: !!siteId,
+  });
+  // Price shown in UI is in the currently selected currency
+  const [priceDisplay, setPriceDisplay] = useState<number | null>(null);
+  useEffect(() => {
+    if (siteEnergyPriceEur == null) { setPriceDisplay(null); return; }
+    if (currency === 'EUR') { setPriceDisplay(siteEnergyPriceEur); return; }
+    const v = convertAmount(siteEnergyPriceEur, 'EUR', currency, rates);
+    setPriceDisplay(v != null ? Number(v.toFixed(4)) : siteEnergyPriceEur);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteEnergyPriceEur, currency, ratesLoaded]);
 
   const form = useForm<ThresholdsForm>({
     resolver: zodResolver(createSchema(t)),
@@ -426,6 +452,24 @@ export function ProjectSettingsDialog({
         queryClient.invalidateQueries({ queryKey: ['site-currency', siteId] });
         queryClient.invalidateQueries({ queryKey: ['sites'] });
         queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+      }
+      // Save gross energy price (convert from selected currency back to EUR)
+      {
+        const desiredEur = priceDisplay == null
+          ? null
+          : (currency === 'EUR' ? priceDisplay : convertAmount(priceDisplay, currency, 'EUR', rates));
+        const current = siteEnergyPriceEur ?? null;
+        const changed = (desiredEur ?? null) !== (current ?? null);
+        if (siteId && changed && desiredEur !== undefined) {
+          const { error: pErr } = await supabase
+            .from('sites')
+            .update({ energy_price_kwh: desiredEur } as any)
+            .eq('id', siteId);
+          if (pErr) throw pErr;
+          queryClient.invalidateQueries({ queryKey: ['site-energy-price', siteId] });
+          queryClient.invalidateQueries({ queryKey: ['sites'] });
+          queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+        }
       }
       toast.success(t.saveSuccess);
       onOpenChange?.(false);
