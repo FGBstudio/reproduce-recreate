@@ -3820,14 +3820,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <Money
                             amount={estimatedCostData ? estimatedCostData.totalCost : null}
                             source="EUR"
-                            display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                            display={displayCurrency}
                             fallback="---"
                           />
                         </p>
                         
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
                           {estimatedCostData 
-                            ? `Consumption × ${getCurrencySymbol(isSupportedCurrency(project?.currency) ? project?.currency : 'EUR')}${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
+                            ? `Consumption × ${getCurrencySymbol(displayCurrency)}${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
                             : 'Energy price not configured'}
                         </p>
                         
@@ -3962,7 +3962,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                       <Money
                                         amount={period.totalCost}
                                         source="EUR"
-                                        display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                                        display={displayCurrency}
                                         minimumFractionDigits={2}
                                         maximumFractionDigits={2}
                                       />
@@ -3982,7 +3982,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                         <Money
                                           amount={day.cost}
                                           source="EUR"
-                                          display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}
+                                          display={displayCurrency}
                                           minimumFractionDigits={2}
                                           maximumFractionDigits={2}
                                         />
@@ -5144,12 +5144,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <p className="text-sm text-muted-foreground mb-1">Estimated Cost</p>
                         <p className="text-3xl font-bold text-gray-800">
                           <Money amount={24562} source="EUR"
-                            display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'} />
+                            display={displayCurrency} />
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">/ year</p>
                         <div className="mt-2 text-xs text-emerald-500 font-medium">
                           ↓ <Money amount={3200} source="EUR"
-                              display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'} /> saved
+                              display={displayCurrency} /> saved
                         </div>
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
