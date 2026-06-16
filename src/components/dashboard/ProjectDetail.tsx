@@ -264,9 +264,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       };
     },
   });
+  const siteCurrencyFallback = useSiteCurrency(project?.siteId);
   const displayCurrency = isSupportedCurrency(siteEconomicSettings?.currency)
     ? siteEconomicSettings.currency
-    : useSiteCurrency(project?.siteId);
+    : siteCurrencyFallback;
   const liveEnergyPriceEur = Number(siteEconomicSettings?.energy_price_kwh ?? project?.energy_price_kwh ?? 0);
 
   // Sync tab when initialDashboard prop changes (e.g. user clicks a different metric sphere on the map)
@@ -2074,8 +2075,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   }, [energyTimeseriesResp, project, deviceMap]);
 
   const estimatedCostData = useMemo(() => {
-    // 1. Recupera Prezzo (dal project o fallback a 0)
-    const price = Number(project?.energy_price_kwh ?? 0);
+    // 1. Recupera Prezzo live (salvato in EUR/kWh sul DB)
+    const price = Number(liveEnergyPriceEur || 0);
     
     // Se non ho il prezzo o non ho dati, ritorno null per gestire la UI
     const data = energyTimeseriesResp?.data;
@@ -2104,7 +2105,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       totalCost: cost,
       pricePerKwh: price
     };
-  }, [energyTimeseriesResp, project, deviceMap]);
+  }, [energyTimeseriesResp, liveEnergyPriceEur, deviceMap]);
+
+  const estimatedPricePerKwhDisplay = useMemo(() => {
+    if (!estimatedCostData) return null;
+    return convert(estimatedCostData.pricePerKwh, 'EUR', displayCurrency) ?? estimatedCostData.pricePerKwh;
+  }, [convert, displayCurrency, estimatedCostData]);
 
   // --- EFFICIENCY: ((current - prev) / prev) * 100 — negative = saving ---
   const efficiencyData = useMemo(() => {
@@ -2180,7 +2186,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const rawData = periodsResp?.data;
     if (!rawData || !Array.isArray(rawData)) return [];
 
-    const pricePerKwh = Number(project?.energy_price_kwh ?? 0);
+    const pricePerKwh = Number(liveEnergyPriceEur || 0);
     const monthsMap = new Map<string, {
       monthKey: string;     // YYYY-MM per ordinamento
       monthLabel: string;   // "Mar 2025"
@@ -2257,7 +2263,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         days: Array.from(m.days.values()).sort((a, b) => a.dayKey.localeCompare(b.dayKey))
       }));
 
-  }, [periodsResp, deviceMap, project?.energy_price_kwh]);
+  }, [periodsResp, deviceMap, liveEnergyPriceEur]);
 
   // Helper per espandere/collassare
   const togglePeriodExpand = (monthKey: string) => {
