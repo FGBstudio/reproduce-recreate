@@ -98,7 +98,10 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     if (amount == null || !isFinite(amount)) return '—';
     const target = isSupportedCurrency(display) ? display : source;
     const converted = target === source ? amount : convertAmount(amount, source, target, rates);
-    const finalCurrency = converted == null ? source : target;
+    if (converted == null && target !== source) {
+      return amount === 0 ? formatMoney(0, target, localeFor(language), opts) : '—';
+    }
+    const finalCurrency = target;
     const finalAmount = converted == null ? amount : converted;
     return formatMoney(finalAmount, finalCurrency, localeFor(language), opts);
   }, [rates, language]);
