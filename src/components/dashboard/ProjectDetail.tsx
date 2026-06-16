@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
@@ -244,9 +245,29 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>(initialDashboard ?? "overview");
 
-  // Live currency from DB — auto-updates when the user saves a new currency
-  // in Project Settings (shared cache key 'site-currency').
-  const displayCurrency = useSiteCurrency(project?.siteId);
+  const { convert } = useCurrency();
+
+  // Live economic settings from DB — avoids stale values captured in the selected project prop.
+  const { data: siteEconomicSettings } = useQuery({
+    queryKey: ['site-economic-settings', project?.siteId],
+    enabled: !!project?.siteId && isSupabaseConfigured && !!supabase,
+    queryFn: async () => {
+      const { data, error } = await supabase!
+        .from('sites')
+        .select('currency, energy_price_kwh')
+        .eq('id', project!.siteId!)
+        .maybeSingle();
+      if (error) throw error;
+      return {
+        currency: ((data as any)?.currency ?? null) as string | null,
+        energy_price_kwh: ((data as any)?.energy_price_kwh ?? null) as number | null,
+      };
+    },
+  });
+  const displayCurrency = isSupportedCurrency(siteEconomicSettings?.currency)
+    ? siteEconomicSettings.currency
+    : useSiteCurrency(project?.siteId);
+  const liveEnergyPriceEur = Number(siteEconomicSettings?.energy_price_kwh ?? project?.energy_price_kwh ?? 0);
 
   // Sync tab when initialDashboard prop changes (e.g. user clicks a different metric sphere on the map)
   useEffect(() => {
