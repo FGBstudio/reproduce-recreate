@@ -244,6 +244,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>(initialDashboard ?? "overview");
 
+  // Live currency from DB — auto-updates when the user saves a new currency
+  // in Project Settings (shared cache key 'site-currency').
+  const displayCurrency = useSiteCurrency(project?.siteId);
+
   // Sync tab when initialDashboard prop changes (e.g. user clicks a different metric sphere on the map)
   useEffect(() => {
     if (initialDashboard) setActiveDashboard(initialDashboard);
