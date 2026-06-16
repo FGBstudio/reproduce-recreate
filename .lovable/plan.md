@@ -1,54 +1,44 @@
-## Riepilogo situazione attuale
+## Problem
 
-- Il sistema valute è già implementato (DB, edge function, contesto, `<Money>`), ma:
-  - Il selettore vive solo in **Admin → Sites → Edit**, quindi è invisibile all'utente normale.
-  - I tassi vengono refreshati solo lato client quando la cache supera 12h: nessuna schedulazione server.
-  - Non c'è feedback in UI per capire/cambiare la valuta del sito attivo.
+The Energy Periods card (and the other "estimated cost" widgets in ProjectDetail) still render values in EUR even after the user saves a different currency (e.g. USD) in Project Settings.
 
-## Cosa cambierà
+Two combined causes:
 
-### 1) Selettore valuta nel Project Settings dialog
-File: `src/components/dashboard/ProjectSettingsDialog.tsx`
+1. **Stale `project` prop.** `selectedProject` in `src/pages/Index.tsx` is captured at click time. When the user saves a new currency from the settings dialog, the `sites` React Query is invalidated, but the `selectedProject` state held by `Index.tsx` is not rebuilt — so `project.currency` keeps the value it had when the project was opened (typically `'EUR'`).
+2. **`Money` display falls back to source.** All 5 monetary `<Money>` instances in `ProjectDetail.tsx` use `display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}`. With the stale prop, the resolved display currency stays EUR, so no FX conversion is applied and the € symbol is rendered.
 
-- Nella tab **Energy**, sotto "Area m²", aggiungere una sezione "Valuta del sito" con la stessa dropdown a 15 valute usata in `SitesManager`.
-- Load: `supabase.from('sites').select('currency').eq('id', siteId).maybeSingle()`.
-- Save: insieme agli altri campi della tab, `update({ currency }).eq('id', siteId)`.
-- Invalidate cache: `['site-currency', siteId]`, `['sites']`, `['admin-sites']`.
-- Stringa esplicativa: *"Tutti i valori economici sono memorizzati in EUR e convertiti in tempo reale nella valuta selezionata. Tassi aggiornati ogni 24h."*
+## Fix
 
-### 2) Nessun badge separato — solo il simbolo cambia
-Il simbolo della valuta selezionata sostituisce l'`€` ovunque, come già fa il componente `<Money>`. Nessun nuovo chip/badge nell'header. Gli unici punti dove serve verificare/correggere sono quelli che ancora hardcodano `€`:
+Use the live, query-backed currency rather than the prop snapshot. The hook `useSiteCurrency(siteId)` already exists (`src/hooks/useSiteCurrency.ts`) and shares the same `['site-currency', siteId]` cache that the settings dialog invalidates on save — so it auto-updates the moment the user saves a new currency.
 
-- `src/components/dashboard/ProjectDetail.tsx` → label tipo `"€/kWh"`, intestazioni colonne `"Costo (€)"`, eventuali tooltip.
-- `src/components/dashboard/BillAnalysisModule.tsx` → label e header tabella.
-- `src/components/wrapped/lib/wrappedMath.ts` e `wrappedPdf.ts` → testi del PDF/Wrapped.
+### Edits — `src/components/dashboard/ProjectDetail.tsx`
 
-Soluzione: usare `getCurrencySymbol(project.currency)` da `src/lib/currency.ts` per costruire dinamicamente le label (es. `${symbol}/kWh`, `Costo (${symbol})`). Nessun nuovo componente UI.
+1. Import the hook:
+   ```ts
+   import { useSiteCurrency } from '@/hooks/useSiteCurrency';
+   ```
+2. Inside the `ProjectDetail` component, resolve the live currency once:
+   ```ts
+   const displayCurrency = useSiteCurrency(project?.siteId);
+   ```
+3. Replace every occurrence of
+   `display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}`
+   with
+   `display={displayCurrency}`
+   (5 locations: lines ~3818, 3825, 3960, 3980, 5142, 5147 — including the
+   `getCurrencySymbol(...)` call used to render the `Consumption × $0.xxx/kWh`
+   subtitle).
 
-### 3) Aggiornamento automatico giornaliero dei tassi
-Schedulare via `pg_cron + pg_net` la `fx-rates-refresh` ogni giorno alle **06:00 UTC**. Inserito con il tool `supabase--insert` (non migration, perché contiene URL + anon key specifici del progetto). Le estensioni `pg_cron` e `pg_net` vengono abilitate se mancanti.
+No other files are touched. Money already handles conversion EUR → display via `CurrencyContext.format()` once `display` is a different supported currency.
 
-```sql
-select cron.schedule(
-  'fx-rates-daily',
-  '0 6 * * *',
-  $$ select net.http_post(
-       url := 'https://vejqfpznzcohtbggkfhr.supabase.co/functions/v1/fx-rates-refresh',
-       headers := '{"Content-Type":"application/json","apikey":"<ANON_KEY>"}'::jsonb,
-       body := '{}'::jsonb
-     ); $$
-);
-```
+## Verification
 
-## Cosa NON cambia
-- Nessun badge/chip nell'header.
-- Nessuna conversione dei dati storici a DB.
-- Nessuna modifica alle bollette già processate.
-- Nessuna modifica alla logica di conversione/formattazione.
+- Open a site, change currency to USD in Project Settings → Save.
+- Energy Periods PRICE column re-renders as `$X.XX` immediately (no reload).
+- Estimated Cost card subtitle shows `Consumption × $0.xxx/kWh`.
+- Switching back to EUR restores `€` formatting without reopening the dashboard.
 
-## File toccati
-- `src/components/dashboard/ProjectSettingsDialog.tsx` — nuova sezione valuta.
-- `src/components/dashboard/ProjectDetail.tsx` — sostituire `€` hardcoded con `getCurrencySymbol(currency)`.
-- `src/components/dashboard/BillAnalysisModule.tsx` — idem.
-- `src/components/wrapped/lib/wrappedMath.ts` / `wrappedPdf.ts` — idem dove appare `€`.
-- `supabase--insert` per lo schedule pg_cron.
+## Out of scope
+
+- Currency on cards outside `ProjectDetail.tsx` (Wrapped slides, PDF report) — not mentioned by the user and already handled separately by `CurrencyContext`/`wrappedMath`.
+- Backfilling old EUR-based historical prices; we only re-display and FX-convert.
