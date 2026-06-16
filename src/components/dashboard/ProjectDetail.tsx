@@ -3854,7 +3854,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
                           {estimatedCostData 
-                            ? `Consumption × ${getCurrencySymbol(displayCurrency)}${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
+                            ? `Consumption × ${getCurrencySymbol(displayCurrency)}${(estimatedPricePerKwhDisplay ?? estimatedCostData.pricePerKwh).toFixed(3)}/kWh`
                             : 'Energy price not configured'}
                         </p>
                         
