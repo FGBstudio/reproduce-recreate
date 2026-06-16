@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
@@ -244,9 +245,30 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>(initialDashboard ?? "overview");
 
-  // Live currency from DB — auto-updates when the user saves a new currency
-  // in Project Settings (shared cache key 'site-currency').
-  const displayCurrency = useSiteCurrency(project?.siteId);
+  const { convert } = useCurrency();
+
+  // Live economic settings from DB — avoids stale values captured in the selected project prop.
+  const { data: siteEconomicSettings } = useQuery({
+    queryKey: ['site-economic-settings', project?.siteId],
+    enabled: !!project?.siteId && isSupabaseConfigured && !!supabase,
+    queryFn: async () => {
+      const { data, error } = await supabase!
+        .from('sites')
+        .select('currency, energy_price_kwh')
+        .eq('id', project!.siteId!)
+        .maybeSingle();
+      if (error) throw error;
+      return {
+        currency: ((data as any)?.currency ?? null) as string | null,
+        energy_price_kwh: ((data as any)?.energy_price_kwh ?? null) as number | null,
+      };
+    },
+  });
+  const siteCurrencyFallback = useSiteCurrency(project?.siteId);
+  const displayCurrency = isSupportedCurrency(siteEconomicSettings?.currency)
+    ? siteEconomicSettings.currency
+    : siteCurrencyFallback;
+  const liveEnergyPriceEur = Number(siteEconomicSettings?.energy_price_kwh ?? project?.energy_price_kwh ?? 0);
 
   // Sync tab when initialDashboard prop changes (e.g. user clicks a different metric sphere on the map)
   useEffect(() => {
@@ -2053,8 +2075,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   }, [energyTimeseriesResp, project, deviceMap]);
 
   const estimatedCostData = useMemo(() => {
-    // 1. Recupera Prezzo (dal project o fallback a 0)
-    const price = Number(project?.energy_price_kwh ?? 0);
+    // 1. Recupera Prezzo live (salvato in EUR/kWh sul DB)
+    const price = Number(liveEnergyPriceEur || 0);
     
     // Se non ho il prezzo o non ho dati, ritorno null per gestire la UI
     const data = energyTimeseriesResp?.data;
@@ -2083,7 +2105,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       totalCost: cost,
       pricePerKwh: price
     };
-  }, [energyTimeseriesResp, project, deviceMap]);
+  }, [energyTimeseriesResp, liveEnergyPriceEur, deviceMap]);
+
+  const estimatedPricePerKwhDisplay = useMemo(() => {
+    if (!estimatedCostData) return null;
+    return convert(estimatedCostData.pricePerKwh, 'EUR', displayCurrency) ?? estimatedCostData.pricePerKwh;
+  }, [convert, displayCurrency, estimatedCostData]);
 
   // --- EFFICIENCY: ((current - prev) / prev) * 100 — negative = saving ---
   const efficiencyData = useMemo(() => {
@@ -2159,7 +2186,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const rawData = periodsResp?.data;
     if (!rawData || !Array.isArray(rawData)) return [];
 
-    const pricePerKwh = Number(project?.energy_price_kwh ?? 0);
+    const pricePerKwh = Number(liveEnergyPriceEur || 0);
     const monthsMap = new Map<string, {
       monthKey: string;     // YYYY-MM per ordinamento
       monthLabel: string;   // "Mar 2025"
@@ -2236,7 +2263,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         days: Array.from(m.days.values()).sort((a, b) => a.dayKey.localeCompare(b.dayKey))
       }));
 
-  }, [periodsResp, deviceMap, project?.energy_price_kwh]);
+  }, [periodsResp, deviceMap, liveEnergyPriceEur]);
 
   // Helper per espandere/collassare
   const togglePeriodExpand = (monthKey: string) => {
@@ -3827,7 +3854,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
                           {estimatedCostData 
-                            ? `Consumption × ${getCurrencySymbol(displayCurrency)}${estimatedCostData.pricePerKwh.toFixed(3)}/kWh`
+                            ? `Consumption × ${getCurrencySymbol(displayCurrency)}${(estimatedPricePerKwhDisplay ?? estimatedCostData.pricePerKwh).toFixed(3)}/kWh`
                             : 'Energy price not configured'}
                         </p>
                         

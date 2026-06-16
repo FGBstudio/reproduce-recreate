@@ -450,6 +450,7 @@ export function ProjectSettingsDialog({
           .eq('id', siteId);
         if (curErr) throw curErr;
         queryClient.invalidateQueries({ queryKey: ['site-currency', siteId] });
+        queryClient.invalidateQueries({ queryKey: ['site-economic-settings', siteId] });
         queryClient.invalidateQueries({ queryKey: ['sites'] });
         queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
       }
@@ -467,6 +468,7 @@ export function ProjectSettingsDialog({
             .eq('id', siteId);
           if (pErr) throw pErr;
           queryClient.invalidateQueries({ queryKey: ['site-energy-price', siteId] });
+          queryClient.invalidateQueries({ queryKey: ['site-economic-settings', siteId] });
           queryClient.invalidateQueries({ queryKey: ['sites'] });
           queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
         }
