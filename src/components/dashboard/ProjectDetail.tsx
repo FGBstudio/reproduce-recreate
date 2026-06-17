@@ -271,6 +271,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     : siteCurrencyFallback;
   const liveEnergyPriceEur = Number(siteEconomicSettings?.energy_price_kwh ?? project?.energy_price_kwh ?? 0);
 
+  // Versioned price history — we use the price that was effective at each
+  // timestamp so that changing the current price does NOT rewrite past costs.
+  const { priceAt: priceAtDate, history: priceHistory } = useSiteEnergyPriceHistory(
+    project?.siteId,
+    liveEnergyPriceEur,
+  );
+
   // Sync tab when initialDashboard prop changes (e.g. user clicks a different metric sphere on the map)
   useEffect(() => {
     if (initialDashboard) setActiveDashboard(initialDashboard);
