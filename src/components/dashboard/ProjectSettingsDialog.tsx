@@ -469,8 +469,26 @@ export function ProjectSettingsDialog({
             .update({ energy_price_kwh: desiredEur } as any)
             .eq('id', siteId);
           if (pErr) throw pErr;
+          // Append to history — NEVER overwrite past values. Each save creates
+          // a new versioned entry so historical cost calculations keep using
+          // the price that was effective at the time.
+          if (desiredEur != null) {
+            const { data: userData } = await supabase.auth.getUser();
+            const { error: hErr } = await supabase
+              .from('site_energy_price_history' as any)
+              .insert({
+                site_id: siteId,
+                price_eur_per_kwh: desiredEur,
+                currency_at_save: currency,
+                price_in_currency: priceDisplay,
+                effective_from: new Date().toISOString(),
+                created_by: userData?.user?.id ?? null,
+              } as any);
+            if (hErr) console.warn('price history insert failed', hErr);
+          }
           queryClient.invalidateQueries({ queryKey: ['site-energy-price', siteId] });
           queryClient.invalidateQueries({ queryKey: ['site-economic-settings', siteId] });
+          queryClient.invalidateQueries({ queryKey: ['site-energy-price-history', siteId] });
           queryClient.invalidateQueries({ queryKey: ['sites'] });
           queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
         }
