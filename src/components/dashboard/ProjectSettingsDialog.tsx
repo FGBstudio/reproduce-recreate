@@ -474,6 +474,21 @@ export function ProjectSettingsDialog({
           // the price that was effective at the time.
           if (desiredEur != null) {
             const { data: userData } = await supabase.auth.getUser();
+            // If no history exists yet and we had a previous price, seed it
+            // so past calculations keep using the original value.
+            if (priceHistory.length === 0 && current != null && current > 0) {
+              await supabase
+                .from('site_energy_price_history' as any)
+                .insert({
+                  site_id: siteId,
+                  price_eur_per_kwh: current,
+                  currency_at_save: 'EUR',
+                  price_in_currency: null,
+                  effective_from: new Date('1970-01-01T00:00:00Z').toISOString(),
+                  created_by: userData?.user?.id ?? null,
+                  note: 'auto-seeded from previous site price',
+                } as any);
+            }
             const { error: hErr } = await supabase
               .from('site_energy_price_history' as any)
               .insert({
