@@ -319,6 +319,7 @@ export function ProjectSettingsDialog({
   const { thresholds, isLoading, updateThresholds, isSaving } = useSiteThresholds(siteId);
   const queryClient = useQueryClient();
   const { rates, ratesLoaded } = useCurrency();
+  const { history: priceHistory } = useSiteEnergyPriceHistory(siteId);
 
   // Site area (sites.area_m2)
   const { data: siteArea, isLoading: isAreaLoading } = useQuery({
