@@ -53,6 +53,7 @@ import { Money } from "@/components/Money";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { isSupportedCurrency, getCurrencySymbol } from "@/lib/currency";
 import { useSiteCurrency } from "@/hooks/useSiteCurrency";
+import { useSiteEnergyPriceHistory } from "@/hooks/useSiteEnergyPriceHistory";
 import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
@@ -269,6 +270,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     ? siteEconomicSettings.currency
     : siteCurrencyFallback;
   const liveEnergyPriceEur = Number(siteEconomicSettings?.energy_price_kwh ?? project?.energy_price_kwh ?? 0);
+
+  // Versioned price history — we use the price that was effective at each
+  // timestamp so that changing the current price does NOT rewrite past costs.
+  const { priceAt: priceAtDate, history: priceHistory } = useSiteEnergyPriceHistory(
+    project?.siteId,
+    liveEnergyPriceEur,
+  );
 
   // Sync tab when initialDashboard prop changes (e.g. user clicks a different metric sphere on the map)
   useEffect(() => {
@@ -2075,37 +2083,40 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   }, [energyTimeseriesResp, project, deviceMap]);
 
   const estimatedCostData = useMemo(() => {
-    // 1. Recupera Prezzo live (salvato in EUR/kWh sul DB)
-    const price = Number(liveEnergyPriceEur || 0);
-    
+    // Recupera Prezzo live (salvato in EUR/kWh sul DB) come fallback / display
+    const livePrice = Number(liveEnergyPriceEur || 0);
+
     // Se non ho il prezzo o non ho dati, ritorno null per gestire la UI
     const data = energyTimeseriesResp?.data;
-    if (!price || price <= 0 || !data || !Array.isArray(data)) {
+    if ((!livePrice || livePrice <= 0) && !priceHistory.length) {
+      return null;
+    }
+    if (!data || !Array.isArray(data)) {
       return null; 
     }
 
-    // 2. Calcola Energia Totale (Solo Generale)
-    // Usiamo la stessa logica robusta della Densità
-    const totalKWh = data.reduce((acc, curr) => {
-        // Filtra solo General
-        const info = deviceMap.get(curr.device_id);
-        const isGeneral = (info && info.category === 'general') || 
-                          (!info && (curr.metric === 'energy.power_kw' || curr.metric === 'energy.active_energy'));
-        
-        if (!isGeneral) return acc;
+    // Itera per record applicando il prezzo storico valido al timestamp del bucket.
+    let totalKWh = 0;
+    let totalCost = 0;
+    for (const curr of data) {
+      const info = deviceMap.get(curr.device_id);
+      const isGeneral = (info && info.category === 'general') ||
+        (!info && (curr.metric === 'energy.power_kw' || curr.metric === 'energy.active_energy'));
+      if (!isGeneral) continue;
+      const kwh = Number(curr.value_sum ?? curr.value ?? 0);
+      if (!kwh) continue;
+      const ts = curr.ts_bucket || curr.ts;
+      const priceForRow = ts ? priceAtDate(ts) : livePrice;
+      totalKWh += kwh;
+      totalCost += kwh * (priceForRow || livePrice);
+    }
 
-        // Somma kWh (value_sum o value)
-        return acc + Number(curr.value_sum ?? curr.value ?? 0);
-    }, 0);
-
-    // 3. Calcolo Costo
-    const cost = totalKWh * price;
-
+    const avgPrice = totalKWh > 0 ? totalCost / totalKWh : livePrice;
     return {
-      totalCost: cost,
-      pricePerKwh: price
+      totalCost,
+      pricePerKwh: avgPrice,
     };
-  }, [energyTimeseriesResp, liveEnergyPriceEur, deviceMap]);
+  }, [energyTimeseriesResp, liveEnergyPriceEur, deviceMap, priceAtDate, priceHistory.length]);
 
   const estimatedPricePerKwhDisplay = useMemo(() => {
     if (!estimatedCostData) return null;
@@ -2186,7 +2197,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const rawData = periodsResp?.data;
     if (!rawData || !Array.isArray(rawData)) return [];
 
-    const pricePerKwh = Number(liveEnergyPriceEur || 0);
+    const fallbackPrice = Number(liveEnergyPriceEur || 0);
     const monthsMap = new Map<string, {
       monthKey: string;     // YYYY-MM per ordinamento
       monthLabel: string;   // "Mar 2025"
@@ -2234,6 +2245,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       }
       
       const monthEntry = monthsMap.get(monthKey)!;
+      // Usa il prezzo in vigore alla data del consumo (versioned history).
+      const pricePerKwh = priceAtDate(date) || fallbackPrice;
       const cost = kwh * pricePerKwh;
 
       // Aggiorna Totali Mese
@@ -2263,7 +2276,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         days: Array.from(m.days.values()).sort((a, b) => a.dayKey.localeCompare(b.dayKey))
       }));
 
-  }, [periodsResp, deviceMap, liveEnergyPriceEur]);
+  }, [periodsResp, deviceMap, liveEnergyPriceEur, priceAtDate]);
 
   // Helper per espandere/collassare
   const togglePeriodExpand = (monthKey: string) => {

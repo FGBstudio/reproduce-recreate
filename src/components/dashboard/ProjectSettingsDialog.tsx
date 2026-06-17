@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency, CurrencyCode, getCurrencySymbol, convertAmount } from "@/lib/currency";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useSiteEnergyPriceHistory } from "@/hooks/useSiteEnergyPriceHistory";
 
 const i18n = {
   en: {
@@ -318,6 +319,7 @@ export function ProjectSettingsDialog({
   const { thresholds, isLoading, updateThresholds, isSaving } = useSiteThresholds(siteId);
   const queryClient = useQueryClient();
   const { rates, ratesLoaded } = useCurrency();
+  const { history: priceHistory } = useSiteEnergyPriceHistory(siteId);
 
   // Site area (sites.area_m2)
   const { data: siteArea, isLoading: isAreaLoading } = useQuery({
@@ -467,8 +469,41 @@ export function ProjectSettingsDialog({
             .update({ energy_price_kwh: desiredEur } as any)
             .eq('id', siteId);
           if (pErr) throw pErr;
+          // Append to history — NEVER overwrite past values. Each save creates
+          // a new versioned entry so historical cost calculations keep using
+          // the price that was effective at the time.
+          if (desiredEur != null) {
+            const { data: userData } = await supabase.auth.getUser();
+            // If no history exists yet and we had a previous price, seed it
+            // so past calculations keep using the original value.
+            if (priceHistory.length === 0 && current != null && current > 0) {
+              await supabase
+                .from('site_energy_price_history' as any)
+                .insert({
+                  site_id: siteId,
+                  price_eur_per_kwh: current,
+                  currency_at_save: 'EUR',
+                  price_in_currency: null,
+                  effective_from: new Date('1970-01-01T00:00:00Z').toISOString(),
+                  created_by: userData?.user?.id ?? null,
+                  note: 'auto-seeded from previous site price',
+                } as any);
+            }
+            const { error: hErr } = await supabase
+              .from('site_energy_price_history' as any)
+              .insert({
+                site_id: siteId,
+                price_eur_per_kwh: desiredEur,
+                currency_at_save: currency,
+                price_in_currency: priceDisplay,
+                effective_from: new Date().toISOString(),
+                created_by: userData?.user?.id ?? null,
+              } as any);
+            if (hErr) console.warn('price history insert failed', hErr);
+          }
           queryClient.invalidateQueries({ queryKey: ['site-energy-price', siteId] });
           queryClient.invalidateQueries({ queryKey: ['site-economic-settings', siteId] });
+          queryClient.invalidateQueries({ queryKey: ['site-energy-price-history', siteId] });
           queryClient.invalidateQueries({ queryKey: ['sites'] });
           queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
         }
@@ -618,7 +653,7 @@ export function ProjectSettingsDialog({
                       step="0.0001"
                       min="0"
                       placeholder={t.energyPricePlaceholder}
-                      disabled={isPriceLoading || (currency !== 'EUR' && !ratesLoaded)}
+                      disabled={isPriceLoading}
                       value={priceDisplay ?? ''}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -632,6 +667,41 @@ export function ProjectSettingsDialog({
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">{t.energyPriceHint}</p>
+                  {priceHistory.length > 0 && (
+                    <details className="mt-2 rounded-md border border-border/50 bg-background/40 px-3 py-2 text-xs">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                        {language === 'it' ? 'Storico prezzi' : 'Price history'} ({priceHistory.length})
+                      </summary>
+                      <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                        {[...priceHistory].reverse().map((h) => {
+                          const dateStr = new Date(h.effective_from).toLocaleDateString(
+                            language === 'it' ? 'it-IT' : 'en-US',
+                            { day: '2-digit', month: 'short', year: 'numeric' }
+                          );
+                          const symEur = getCurrencySymbol('EUR');
+                          return (
+                            <li key={h.id} className="flex items-center justify-between gap-2">
+                              <span className="text-muted-foreground">{dateStr}</span>
+                              <span className="font-mono">
+                                {symEur}{Number(h.price_eur_per_kwh).toFixed(4)}/kWh
+                                {h.currency_at_save !== 'EUR' && h.price_in_currency != null && (
+                                  <span className="text-muted-foreground ml-1">
+                                    ({getCurrencySymbol(h.currency_at_save as CurrencyCode)}
+                                    {Number(h.price_in_currency).toFixed(4)})
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        {language === 'it'
+                          ? 'Ogni modifica crea una nuova versione. I calcoli storici usano il prezzo in vigore al momento del consumo.'
+                          : 'Each change creates a new version. Historical calculations use the price effective at the time of consumption.'}
+                      </p>
+                    </details>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between rounded-lg border p-3">
