@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency, CurrencyCode, getCurrencySymbol, convertAmount } from "@/lib/currency";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useSiteEnergyPriceHistory } from "@/hooks/useSiteEnergyPriceHistory";
 
 const i18n = {
   en: {
