@@ -638,7 +638,7 @@ export function ProjectSettingsDialog({
                       step="0.0001"
                       min="0"
                       placeholder={t.energyPricePlaceholder}
-                      disabled={isPriceLoading || (currency !== 'EUR' && !ratesLoaded)}
+                      disabled={isPriceLoading}
                       value={priceDisplay ?? ''}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -652,6 +652,41 @@ export function ProjectSettingsDialog({
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">{t.energyPriceHint}</p>
+                  {priceHistory.length > 0 && (
+                    <details className="mt-2 rounded-md border border-border/50 bg-background/40 px-3 py-2 text-xs">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                        {language === 'it' ? 'Storico prezzi' : 'Price history'} ({priceHistory.length})
+                      </summary>
+                      <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                        {[...priceHistory].reverse().map((h) => {
+                          const dateStr = new Date(h.effective_from).toLocaleDateString(
+                            language === 'it' ? 'it-IT' : 'en-US',
+                            { day: '2-digit', month: 'short', year: 'numeric' }
+                          );
+                          const symEur = getCurrencySymbol('EUR');
+                          return (
+                            <li key={h.id} className="flex items-center justify-between gap-2">
+                              <span className="text-muted-foreground">{dateStr}</span>
+                              <span className="font-mono">
+                                {symEur}{Number(h.price_eur_per_kwh).toFixed(4)}/kWh
+                                {h.currency_at_save !== 'EUR' && h.price_in_currency != null && (
+                                  <span className="text-muted-foreground ml-1">
+                                    ({getCurrencySymbol(h.currency_at_save as CurrencyCode)}
+                                    {Number(h.price_in_currency).toFixed(4)})
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        {language === 'it'
+                          ? 'Ogni modifica crea una nuova versione. I calcoli storici usano il prezzo in vigore al momento del consumo.'
+                          : 'Each change creates a new version. Historical calculations use the price effective at the time of consumption.'}
+                      </p>
+                    </details>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between rounded-lg border p-3">
