@@ -53,6 +53,7 @@ import { Money } from "@/components/Money";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { isSupportedCurrency, getCurrencySymbol } from "@/lib/currency";
 import { useSiteCurrency } from "@/hooks/useSiteCurrency";
+import { useSiteEnergyPriceHistory } from "@/hooks/useSiteEnergyPriceHistory";
 import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
