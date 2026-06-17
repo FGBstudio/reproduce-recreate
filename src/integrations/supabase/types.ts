@@ -3416,6 +3416,50 @@ export type Database = {
         }
         Relationships: []
       }
+      site_energy_price_history: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency_at_save: string
+          effective_from: string
+          id: string
+          note: string | null
+          price_eur_per_kwh: number
+          price_in_currency: number | null
+          site_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency_at_save?: string
+          effective_from?: string
+          id?: string
+          note?: string | null
+          price_eur_per_kwh: number
+          price_in_currency?: number | null
+          site_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency_at_save?: string
+          effective_from?: string
+          id?: string
+          note?: string | null
+          price_eur_per_kwh?: number
+          price_in_currency?: number | null
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_energy_price_history_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_energy_records: {
         Row: {
           additional_bridge: number | null
