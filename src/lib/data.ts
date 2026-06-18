@@ -73,6 +73,12 @@ export interface Project {
   energy_price_kwh?: number; // Price per kWh for cost calculations
   currency?: string; // Native currency code (e.g. 'EUR', 'USD')
   timezone?: string; // IANA timezone string (e.g. 'Asia/Shanghai')
+  /**
+   * Demo flag — when true, the dashboard injects deterministic mock data
+   * (see `src/lib/data/demoSiteMocks.ts`) instead of attempting real DB
+   * lookups. Used for showcase sites with no telemetry behind them.
+   */
+  demoMockup?: boolean;
 }
 
 export const holdings: Holding[] = [
@@ -134,10 +140,14 @@ export const projects: Project[] = [
     lng: 2.3522, 
     address: "Paris, France", 
     img: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1920&h=1080&fit=crop",
-    data: { hvac: 40, light: 35, total: 95, co2: 500, temp: 21, humidity: 45, alerts: 1, aq: "MODERATE" },
+    data: { hvac: 38, light: 32, total: 88, co2: 560, temp: 21.5, humidity: 55, alerts: 1, aq: "GOOD", area_m2: 1200, energy_price_kwh: 0.23 },
     monitoring: ["energy", "air"],
     brandId: "fgb",
-    siteId: "s-dior-paris" // Maps to Dior Paris in seed data (closest match)
+    area_m2: 1200,
+    energy_price_kwh: 0.23,
+    currency: "EUR",
+    timezone: "Europe/Paris",
+    demoMockup: true,
   },
   { 
     id: 6, 
@@ -147,10 +157,14 @@ export const projects: Project[] = [
     lng: -0.1278, 
     address: "London, UK", 
     img: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&h=1080&fit=crop",
-    data: { hvac: 38, light: 42, total: 92, co2: 480, temp: 21, humidity: 48, alerts: 0, aq: "GOOD" },
+    data: { hvac: 46, light: 38, total: 110, co2: 610, temp: 20.5, humidity: 62, alerts: 0, aq: "GOOD", area_m2: 2400, energy_price_kwh: 0.28 },
     monitoring: ["energy", "air", "water"],
     brandId: "fgb",
-    siteId: "s-dior-london" // Maps to Dior London in seed data
+    area_m2: 2400,
+    energy_price_kwh: 0.28,
+    currency: "GBP",
+    timezone: "Europe/London",
+    demoMockup: true,
   },
   // Americas
   { 
@@ -174,10 +188,14 @@ export const projects: Project[] = [
     lng: -118.2437, 
     address: "Los Angeles, USA", 
     img: "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1920&h=1080&fit=crop",
-    data: { hvac: 48, light: 38, total: 98, co2: 520, temp: 23, humidity: 38, alerts: 1, aq: "GOOD" },
-    monitoring: ["energy", "air"],
+    data: { hvac: 54, light: 36, total: 105, co2: 520, temp: 23.5, humidity: 42, alerts: 1, aq: "GOOD", area_m2: 1500, energy_price_kwh: 0.21 },
+    monitoring: ["energy", "air", "water"],
     brandId: "fgb",
-    // No siteId - will use mock data only
+    area_m2: 1500,
+    energy_price_kwh: 0.21,
+    currency: "USD",
+    timezone: "America/Los_Angeles",
+    demoMockup: true,
   },
   // APAC
   { 

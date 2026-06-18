@@ -46,6 +46,13 @@ import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
+import {
+  getDemoProfile,
+  generateDemoAirTimeseries,
+  generateDemoLatestMetrics,
+  getDemoAirDevices,
+  getDemoAirDeviceId,
+} from "@/lib/data/demoSiteMocks";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
 import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
@@ -432,7 +439,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const { leedCert, milestones: leedMilestones, timeline: leedTimeline } = useLeedCertification(project?.siteId);
   
   // Certifications configured in admin panel for this project
-  const projectCertifications = useProjectCertifications(project);
+  const projectCertificationsReal = useProjectCertifications(project);
+  const demoProfile = useMemo(() => getDemoProfile(project), [project]);
+  const projectCertifications = useMemo(() => {
+    if (demoProfile?.certifications?.length) {
+      const merged = new Set<string>([...projectCertificationsReal, ...demoProfile.certifications]);
+      return Array.from(merged) as typeof projectCertificationsReal;
+    }
+    return projectCertificationsReal;
+  }, [projectCertificationsReal, demoProfile]);
   const hasLEED = projectCertifications.includes('LEED') || !!leedCert;
   const hasBREEAM = projectCertifications.includes('BREEAM');
   const hasWELL = projectCertifications.includes('WELL') || !!wellCert;
@@ -479,7 +494,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     project?.siteId ? { site_id: project.siteId, device_type: "air_quality" } : undefined,
     { enabled: !!project?.siteId }
   );
-  const airDevices = airDevicesResp?.data ?? [];
+  const airDevices = useMemo(() => {
+    const real = airDevicesResp?.data ?? [];
+    if (real.length === 0 && demoProfile) {
+      return getDemoAirDevices(demoProfile);
+    }
+    return real;
+  }, [airDevicesResp, demoProfile]);
   const airDeviceIds = useMemo(() => airDevices.map((d) => d.id), [airDevices]);
 
   const [selectedAirDeviceIds, setSelectedAirDeviceIds] = useState<string[]>([]);
@@ -674,10 +695,21 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       bucket: airBucket,
     },
     {
-      enabled: isSupabaseConfigured && selectedAirDeviceIds.length > 0,
+      enabled: isSupabaseConfigured && selectedAirDeviceIds.length > 0 && !demoProfile,
     }
   );
-  const airTimeseriesResp = airTimeseriesQuery.data;
+  const airTimeseriesRespReal = airTimeseriesQuery.data;
+  const airTimeseriesResp = useMemo(() => {
+    if (demoProfile) {
+      // Always synthesise for demo sites — independent of selected devices.
+      return generateDemoAirTimeseries(
+        demoProfile,
+        airStart.toISOString(),
+        airEnd.toISOString(),
+      );
+    }
+    return airTimeseriesRespReal;
+  }, [demoProfile, airStart, airEnd, airTimeseriesRespReal]);
 
   // Energy timeseries (single query for all Energy charts)
   const energyMetrics = useMemo(
@@ -851,8 +883,20 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Shared hook for Power Consumption widget (energy_latest + device categories)
   const energyPowerBreakdown = useEnergyPowerByCategory(project?.siteId);
 
-  // Real-time telemetry for threshold alerts
-  const pdLiveData = useRealTimeLatestData(project?.siteId);
+  // Real-time telemetry for threshold alerts (with demo fallback)
+  const pdLiveDataReal = useRealTimeLatestData(project?.siteId);
+  const pdLiveData = useMemo(() => {
+    if (demoProfile && !pdLiveDataReal.isRealData) {
+      return {
+        ...pdLiveDataReal,
+        metrics: generateDemoLatestMetrics(demoProfile),
+        isRealData: true,
+        isStale: false,
+        lastUpdate: new Date().toISOString(),
+      };
+    }
+    return pdLiveDataReal;
+  }, [pdLiveDataReal, demoProfile]);
   const pdStaleMsg = language === 'it' ? 'Sito offline (> 24h)' : 'Site offline (> 24h)';
   const pdAlertStatus = useThresholdAlerts(project?.siteId, pdLiveData.metrics, {
     isStale: energyPowerBreakdown.isStale,
