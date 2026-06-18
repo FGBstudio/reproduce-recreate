@@ -494,7 +494,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     project?.siteId ? { site_id: project.siteId, device_type: "air_quality" } : undefined,
     { enabled: !!project?.siteId }
   );
-  const airDevices = airDevicesResp?.data ?? [];
+  const airDevices = useMemo(() => {
+    const real = airDevicesResp?.data ?? [];
+    if (real.length === 0 && demoProfile) {
+      return getDemoAirDevices(demoProfile);
+    }
+    return real;
+  }, [airDevicesResp, demoProfile]);
   const airDeviceIds = useMemo(() => airDevices.map((d) => d.id), [airDevices]);
 
   const [selectedAirDeviceIds, setSelectedAirDeviceIds] = useState<string[]>([]);
