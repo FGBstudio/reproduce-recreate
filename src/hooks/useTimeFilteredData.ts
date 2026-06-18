@@ -4,6 +4,7 @@ import {
   subDays, 
   subWeeks, 
   subMonths, 
+  subYears,
   eachDayOfInterval, 
   eachHourOfInterval, 
   eachWeekOfInterval, 
@@ -23,7 +24,7 @@ import { useEnergyTimeseries, useWeatherTimeseries } from "../lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type TimePeriod = "today" | "week" | "month" | "year" | "custom";
+export type TimePeriod = "today" | "week" | "month" | "mtd" | "year" | "ytd" | "custom";
 
 export interface DateRange {
   from: Date;
@@ -56,9 +57,22 @@ export const getTimeRangeParams = (timePeriod: TimePeriod, dateRange?: DateRange
       bucket = "1h"; // Hourly resolution for month view provides better detail
       break;
     case "year":
+      // "Year" = ultimi 12 mesi rolling
+      start = subYears(now, 1);
+      end = now;
+      bucket = "1d";
+      break;
+    case "mtd":
+      // Mese corrente: dal primo del mese ad oggi
+      start = startOfMonth(now);
+      end = now;
+      bucket = "1h";
+      break;
+    case "ytd":
+      // Anno corrente: dal 1° gennaio ad oggi
       start = startOfYear(now);
       end = now;
-      bucket = "1d"; // Daily averages for year view
+      bucket = "1d";
       break;
     case "custom":
       if (dateRange?.from && dateRange?.to) {
