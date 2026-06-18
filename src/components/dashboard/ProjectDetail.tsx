@@ -695,10 +695,21 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       bucket: airBucket,
     },
     {
-      enabled: isSupabaseConfigured && selectedAirDeviceIds.length > 0,
+      enabled: isSupabaseConfigured && selectedAirDeviceIds.length > 0 && !demoProfile,
     }
   );
-  const airTimeseriesResp = airTimeseriesQuery.data;
+  const airTimeseriesRespReal = airTimeseriesQuery.data;
+  const airTimeseriesResp = useMemo(() => {
+    if (demoProfile) {
+      // Always synthesise for demo sites — independent of selected devices.
+      return generateDemoAirTimeseries(
+        demoProfile,
+        airStart.toISOString(),
+        airEnd.toISOString(),
+      );
+    }
+    return airTimeseriesRespReal;
+  }, [demoProfile, airStart, airEnd, airTimeseriesRespReal]);
 
   // Energy timeseries (single query for all Energy charts)
   const energyMetrics = useMemo(
