@@ -20,7 +20,7 @@ import {
 import { DateRange } from "@/hooks/useTimeFilteredData";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export type TimePeriod = "today" | "week" | "month" | "year" | "custom";
+export type TimePeriod = "today" | "week" | "month" | "mtd" | "year" | "ytd" | "custom";
 
 interface TimePeriodSelectorProps {
   value: TimePeriod;
@@ -88,7 +88,9 @@ export const TimePeriodSelector = ({
           <SelectItem value="today">{t('time.today')}</SelectItem>
           <SelectItem value="week">{t('time.week')}</SelectItem>
           <SelectItem value="month">{t('time.month')}</SelectItem>
+          <SelectItem value="mtd">{t('time.mtd')}</SelectItem>
           <SelectItem value="year">{t('time.year')}</SelectItem>
+          <SelectItem value="ytd">{t('time.ytd')}</SelectItem>
           <SelectItem value="custom">{t('time.custom_ellipsis')}</SelectItem>
         </SelectContent>
       </Select>

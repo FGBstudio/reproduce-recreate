@@ -4,6 +4,7 @@ import {
   subDays, 
   subWeeks, 
   subMonths, 
+  subYears,
   eachDayOfInterval, 
   eachHourOfInterval, 
   eachWeekOfInterval, 
@@ -23,7 +24,7 @@ import { useEnergyTimeseries, useWeatherTimeseries } from "../lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type TimePeriod = "today" | "week" | "month" | "year" | "custom";
+export type TimePeriod = "today" | "week" | "month" | "mtd" | "year" | "ytd" | "custom";
 
 export interface DateRange {
   from: Date;
@@ -56,9 +57,22 @@ export const getTimeRangeParams = (timePeriod: TimePeriod, dateRange?: DateRange
       bucket = "1h"; // Hourly resolution for month view provides better detail
       break;
     case "year":
+      // "Year" = ultimi 12 mesi rolling
+      start = subYears(now, 1);
+      end = now;
+      bucket = "1d";
+      break;
+    case "mtd":
+      // Mese corrente: dal primo del mese ad oggi
+      start = startOfMonth(now);
+      end = now;
+      bucket = "1h";
+      break;
+    case "ytd":
+      // Anno corrente: dal 1° gennaio ad oggi
       start = startOfYear(now);
       end = now;
-      bucket = "1d"; // Daily averages for year view
+      bucket = "1d";
       break;
     case "custom":
       if (dateRange?.from && dateRange?.to) {
@@ -278,7 +292,7 @@ export const useEnergyData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
   return useMemo(() => {
     const now = new Date();
     
-    switch (timePeriod) {
+    switch (timePeriod === 'mtd' ? 'month' : timePeriod === 'ytd' ? 'year' : timePeriod) {
       case "today": {
         const hours = eachHourOfInterval({
           start: startOfDay(now),
@@ -387,7 +401,7 @@ export const useDeviceData = (timePeriod: TimePeriod, dateRange?: DateRange) => 
       plugs: Math.round((800 + seededRandom(i * 79) * 500) * scale),
     });
 
-    switch (timePeriod) {
+    switch (timePeriod === 'mtd' ? 'month' : timePeriod === 'ytd' ? 'year' : timePeriod) {
       case "today": {
         const hours = eachHourOfInterval({ start: startOfDay(now), end: now });
         return hours.map((hour, i) => generateDataPoint(format(hour, "HH:mm"), i, 0.05));
@@ -443,7 +457,7 @@ export const useCO2Data = (timePeriod: TimePeriod, dateRange?: DateRange) => {
       limit: 1000,
     });
 
-    switch (timePeriod) {
+    switch (timePeriod === 'mtd' ? 'month' : timePeriod === 'ytd' ? 'year' : timePeriod) {
       case "today": {
         const hours = eachHourOfInterval({ start: startOfDay(now), end: endOfDay(now) });
         return hours.map((hour, i) => generateDataPoint(format(hour, "HH:mm"), i));
@@ -497,7 +511,7 @@ export const useWaterData = (timePeriod: TimePeriod, dateRange?: DateRange) => {
       lastYear: Math.round((850 + seededRandom(i * 101) * 550) * scale),
     });
 
-    switch (timePeriod) {
+    switch (timePeriod === 'mtd' ? 'month' : timePeriod === 'ytd' ? 'year' : timePeriod) {
       case "today": {
         const hours = eachHourOfInterval({ start: startOfDay(now), end: endOfDay(now) });
         return hours.map((hour, i) => generateDataPoint(format(hour, "HH:mm"), i, 0.02));
@@ -543,7 +557,7 @@ export const getPeriodLabel = (timePeriod: TimePeriod, dateRange?: DateRange, la
   const now = new Date();
   const dateLocale = getDateLocale(language);
   
-  switch (timePeriod) {
+  switch (timePeriod === 'mtd' ? 'month' : timePeriod === 'ytd' ? 'year' : timePeriod) {
     case "today":
       return format(now, "dd MMMM yyyy", { locale: dateLocale });
     case "week":
