@@ -46,6 +46,13 @@ import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
+import {
+  getDemoProfile,
+  generateDemoAirTimeseries,
+  generateDemoLatestMetrics,
+  getDemoAirDevices,
+  getDemoAirDeviceId,
+} from "@/lib/data/demoSiteMocks";
 import { SiteAlertsWidget } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
 import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
