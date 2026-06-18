@@ -40,7 +40,7 @@ export const getTimeRangeParams = (timePeriod: TimePeriod, dateRange?: DateRange
   let end = now;
   let bucket = "1h"; // default granularity
 
-  switch (timePeriod === 'mtd' ? 'month' : timePeriod === 'ytd' ? 'year' : timePeriod) {
+  switch (timePeriod) {
     case "today":
       start = startOfDay(now);
       end = now;
