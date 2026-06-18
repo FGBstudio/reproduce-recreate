@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAdminData } from '@/contexts/AdminDataContext';
 import { Project } from '@/lib/data';
 import { ModuleConfig, ModuleType, defaultProjectModules } from '@/lib/types/admin';
+import { getDemoProfile } from '@/lib/data/demoSiteMocks';
 
 /**
  * Hook to get module configuration for a project
@@ -17,6 +18,23 @@ export const useProjectModuleConfig = (project: Project | null) => {
         air: defaultProjectModules.air,
         water: defaultProjectModules.water,
         certification: defaultProjectModules.certification,
+      };
+    }
+
+    // Demo showcase sites: hardcoded module gating per site, ignoring the
+    // admin/DB config. Keeps the showcase deterministic across environments.
+    const demoProfile = getDemoProfile(project);
+    if (demoProfile) {
+      const mk = (on: boolean): ModuleConfig => ({
+        ...defaultProjectModules.energy,
+        enabled: on,
+        showDemo: false,
+      });
+      return {
+        energy: mk(demoProfile.modules.energy),
+        air: mk(demoProfile.modules.air),
+        water: mk(demoProfile.modules.water),
+        certification: mk(demoProfile.modules.certification),
       };
     }
 
