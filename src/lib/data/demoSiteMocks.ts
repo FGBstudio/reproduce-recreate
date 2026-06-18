@@ -108,9 +108,11 @@ const diurnal = (hour: number) => {
 
 export interface DemoAirPoint {
   ts_bucket: string;
+  ts?: string;
   device_id: string;
   metric: string;
   value_avg: number;
+  value?: number;
 }
 
 const AIR_METRICS = [
@@ -208,9 +210,11 @@ export const generateDemoAirTimeseries = (
       if (metric.startsWith("iaq.")) value = Math.max(0, value);
       points.push({
         ts_bucket: b.toISOString(),
+        ts: b.toISOString(),
         device_id: deviceId,
         metric,
         value_avg: Math.round(value * 100) / 100,
+        value: Math.round(value * 100) / 100,
       });
     });
   });
