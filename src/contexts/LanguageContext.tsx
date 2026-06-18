@@ -369,6 +369,8 @@ const translations: Record<string, Record<Language, string>> = {
   'time.week': { en: 'Week', it: 'Settimana', fr: 'Semaine', es: 'Semana', zh: '本周' },
   'time.month': { en: 'Month', it: 'Mese', fr: 'Mois', es: 'Mes', zh: '本月' },
   'time.year': { en: 'Year', it: 'Anno', fr: 'Année', es: 'Año', zh: '本年' },
+ 'time.mtd': { en: 'Month to date', it: 'Mese corrente', fr: 'Mois en cours', es: 'Mes actual', zh: '本月至今' },
+ 'time.ytd': { en: 'Year to date', it: 'Anno corrente', fr: 'Année en cours', es: 'Año actual', zh: '本年至今' },
   'time.custom': { en: 'Custom', it: 'Personalizzato', fr: 'Personnalisé', es: 'Personalizado', zh: '自定义' },
   'time.custom_ellipsis': { en: 'Custom...', it: 'Personalizzato...', fr: 'Personnalisé...', es: 'Personalizado...', zh: '自定义...' },
   'time.select_date_range': { en: 'Select date range', it: 'Seleziona intervallo date', fr: 'Sélectionner une plage de dates', es: 'Seleccionar rango de fechas', zh: '选择日期范围' },
