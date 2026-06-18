@@ -439,7 +439,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const { leedCert, milestones: leedMilestones, timeline: leedTimeline } = useLeedCertification(project?.siteId);
   
   // Certifications configured in admin panel for this project
-  const projectCertifications = useProjectCertifications(project);
+  const projectCertificationsReal = useProjectCertifications(project);
+  const demoProfile = useMemo(() => getDemoProfile(project), [project]);
+  const projectCertifications = useMemo(() => {
+    if (demoProfile?.certifications?.length) {
+      const merged = new Set<string>([...projectCertificationsReal, ...demoProfile.certifications]);
+      return Array.from(merged) as typeof projectCertificationsReal;
+    }
+    return projectCertificationsReal;
+  }, [projectCertificationsReal, demoProfile]);
   const hasLEED = projectCertifications.includes('LEED') || !!leedCert;
   const hasBREEAM = projectCertifications.includes('BREEAM');
   const hasWELL = projectCertifications.includes('WELL') || !!wellCert;
