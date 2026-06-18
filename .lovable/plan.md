@@ -1,44 +1,80 @@
-## Problem
+## Come funziona oggi il selettore temporale
 
-The Energy Periods card (and the other "estimated cost" widgets in ProjectDetail) still render values in EUR even after the user saves a different currency (e.g. USD) in Project Settings.
+Il selettore vive in `src/components/dashboard/TimePeriodSelector.tsx` e produce due output che vengono passati ai widget tramite props:
 
-Two combined causes:
+1. `**value: TimePeriod**` — una stringa enum: `"today" | "week" | "month" | "year" | "custom"` (definita sia nel componente che in `src/hooks/useTimeFilteredData.ts`).
+2. `**dateRange?: { from: Date; to: Date }**` — popolato solo quando l'utente sceglie `"custom"` dal calendario.
 
-1. **Stale `project` prop.** `selectedProject` in `src/pages/Index.tsx` is captured at click time. When the user saves a new currency from the settings dialog, the `sites` React Query is invalidated, but the `selectedProject` state held by `Index.tsx` is not rebuilt — so `project.currency` keeps the value it had when the project was opened (typically `'EUR'`).
-2. **`Money` display falls back to source.** All 5 monetary `<Money>` instances in `ProjectDetail.tsx` use `display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}`. With the stale prop, the resolved display currency stays EUR, so no FX conversion is applied and the € symbol is rendered.
+Questi due valori vengono poi consumati da `getTimeRangeParams(timePeriod, dateRange)` in `useTimeFilteredData.ts`, che li traduce in:
 
-## Fix
+```text
+{ start: ISO string, end: ISO string, bucket: "15m" | "1h" | "1d" }
+```
 
-Use the live, query-backed currency rather than the prop snapshot. The hook `useSiteCurrency(siteId)` already exists (`src/hooks/useSiteCurrency.ts`) and shares the same `['site-currency', siteId]` cache that the settings dialog invalidates on save — so it auto-updates the moment the user saves a new currency.
+usato dalle query (energy_hourly / energy_daily / weather_data, ecc.). Mappatura attuale:
 
-### Edits — `src/components/dashboard/ProjectDetail.tsx`
 
-1. Import the hook:
-   ```ts
-   import { useSiteCurrency } from '@/hooks/useSiteCurrency';
-   ```
-2. Inside the `ProjectDetail` component, resolve the live currency once:
-   ```ts
-   const displayCurrency = useSiteCurrency(project?.siteId);
-   ```
-3. Replace every occurrence of
-   `display={isSupportedCurrency(project?.currency) ? project?.currency : 'EUR'}`
-   with
-   `display={displayCurrency}`
-   (5 locations: lines ~3818, 3825, 3960, 3980, 5142, 5147 — including the
-   `getCurrencySymbol(...)` call used to render the `Consumption × $0.xxx/kWh`
-   subtitle).
+| Period | start            | end          | bucket                             |
+| ------ | ---------------- | ------------ | ---------------------------------- |
+| today  | startOfDay(now)  | now          | 15m                                |
+| week   | now - 7 giorni   | now          | 1h                                 |
+| month  | now - 1 mese     | now          | 1h                                 |
+| year   | startOfYear(now) | now          | 1d                                 |
+| custom | dateRange.from   | dateRange.to | auto (15m/1h/1d in base ai giorni) |
 
-No other files are touched. Money already handles conversion EUR → display via `CurrencyContext.format()` once `display` is a different supported currency.
 
-## Verification
+Lo stesso enum è usato anche dai generatori di dati mock (`useEnergyData`, `useDeviceData`, `useCO2Data`, ecc.) con uno `switch` per periodo.
 
-- Open a site, change currency to USD in Project Settings → Save.
-- Energy Periods PRICE column re-renders as `$X.XX` immediately (no reload).
-- Estimated Cost card subtitle shows `Consumption × $0.xxx/kWh`.
-- Switching back to EUR restores `€` formatting without reopening the dashboard.
+> Nota: l'attuale `"month"` è "ultimi 30 giorni rolling", non "dall'inizio del mese". L'attuale `"year"` invece è già "dall'inizio dell'anno" (YTD). Quindi:
+>
+> - **MTD** ("dall'inizio del mese ad oggi") è una vera novità → nuova opzione.
+> - **YTD** ("dall'inizio dell'anno ad oggi") tecnicamente coincide con l'attuale `year`. Posso (a) rinominare l'etichetta di `year` in "Anno corrente (YTD)" senza creare un nuovo enum, oppure (b) aggiungere un'opzione separata `ytd` e lasciare `year` come "ultimi 12 mesi". Vedi domanda in fondo.
 
-## Out of scope
+## Modifiche previste
 
-- Currency on cards outside `ProjectDetail.tsx` (Wrapped slides, PDF report) — not mentioned by the user and already handled separately by `CurrencyContext`/`wrappedMath`.
-- Backfilling old EUR-based historical prices; we only re-display and FX-convert.
+### 1. Estendere l'enum `TimePeriod`
+
+In `src/hooks/useTimeFilteredData.ts` e `src/components/dashboard/TimePeriodSelector.tsx`:
+
+```ts
+export type TimePeriod = "today" | "week" | "month" | "year" | "mtd" | "ytd" | "custom";
+```
+
+### 2. `getTimeRangeParams` — nuovi casi
+
+```ts
+case "mtd":
+  start = startOfMonth(now); end = now; bucket = "1h"; break;
+case "ytd":
+  start = startOfYear(now);  end = now; bucket = "1d"; break;
+```
+
+### 3. `TimePeriodSelector.tsx` — nuove voci nel dropdown
+
+Aggiungere due `<SelectItem>`:
+
+- `mtd` → label `t('time.mtd')` ("Mese corrente" / "Month to date")
+- `ytd` → label `t('time.ytd')` ("Anno corrente" / "Year to date")
+
+### 4. Traduzioni
+
+Aggiungere chiavi `time.mtd` e `time.ytd` in `src/contexts/LanguageContext.tsx` (IT/EN, e altre lingue presenti).
+
+### 5. Generatori mock in `useTimeFilteredData.ts`
+
+Aggiungere i case `mtd` (giorni da inizio mese → granularità giornaliera) e `ytd` (mesi da inizio anno → granularità mensile) negli `switch` di `useEnergyData`, `useDeviceData`, `useCO2Data` per evitare array vuoti in demo mode. In alternativa, "fallthrough" verso `month`/`year` esistenti.
+
+### 6. Nessuna modifica ai consumer
+
+Tutti i widget che ricevono `timePeriod` lo passano semplicemente a `getTimeRangeParams`, quindi non serve toccarli — l'aggiunta è retro-compatibile.
+
+## Domanda aperta (prima di implementare)
+
+Visto che l'attuale `"year"` è già "dall'inizio dell'anno ad oggi" (YTD), preferisci:
+
+- **A)** Aggiungere `ytd` come opzione separata, lasciando `year` invariato (rischio: due opzioni equivalenti).
+- **B)** Rinominare solo l'etichetta di `year` in "Anno corrente (YTD)" e aggiungere solo `mtd`.
+- **C)** Aggiungere `ytd` nuovo e ridefinire `year` come "ultimi 12 mesi rolling" (startOfYear → subYears(now,1)).
+
+Confermami la scelta e procedo.  
+procedi con lascelta **C**
