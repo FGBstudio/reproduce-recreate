@@ -883,8 +883,20 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Shared hook for Power Consumption widget (energy_latest + device categories)
   const energyPowerBreakdown = useEnergyPowerByCategory(project?.siteId);
 
-  // Real-time telemetry for threshold alerts
-  const pdLiveData = useRealTimeLatestData(project?.siteId);
+  // Real-time telemetry for threshold alerts (with demo fallback)
+  const pdLiveDataReal = useRealTimeLatestData(project?.siteId);
+  const pdLiveData = useMemo(() => {
+    if (demoProfile && !pdLiveDataReal.isRealData) {
+      return {
+        ...pdLiveDataReal,
+        metrics: generateDemoLatestMetrics(demoProfile),
+        isRealData: true,
+        isStale: false,
+        lastUpdate: new Date().toISOString(),
+      };
+    }
+    return pdLiveDataReal;
+  }, [pdLiveDataReal, demoProfile]);
   const pdStaleMsg = language === 'it' ? 'Sito offline (> 24h)' : 'Site offline (> 24h)';
   const pdAlertStatus = useThresholdAlerts(project?.siteId, pdLiveData.metrics, {
     isStale: energyPowerBreakdown.isStale,
