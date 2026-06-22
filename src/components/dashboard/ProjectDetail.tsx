@@ -2502,7 +2502,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         const m = cursor.getMonth() + 1;
         const key = `${y}-${String(m).padStart(2, '0')}`;
         const monthLabel = cursor
-          .toLocaleDateString('it-IT', { month: 'short' })
+          .toLocaleDateString('en-US', { month: 'short' })
           .toUpperCase();
         // Include year suffix when spanning multiple years
         const label =
