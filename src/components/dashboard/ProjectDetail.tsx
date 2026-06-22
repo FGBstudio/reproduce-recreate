@@ -566,8 +566,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         // Last 30 days (>24h, ≤30d → 1h bucket)
         start = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
         break;
+      case "mtd":
+        // Month-to-date: dal 1° del mese ad oggi
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
       case "year":
-        // From Jan 1st of current year (>30d → 1d bucket)
+        // Ultimi 12 mesi rolling (dal 1° del mese, 11 mesi fa)
+        start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        break;
+      case "ytd":
+        // Year-to-date: dal 1° gennaio ad oggi
         start = new Date(now.getFullYear(), 0, 1);
         break;
       case "custom":
