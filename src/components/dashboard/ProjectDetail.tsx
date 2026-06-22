@@ -2362,10 +2362,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
     let start: Date;
     let end: Date;
+    let isDaily = false;
 
     if (timePeriod === 'custom' && dateRange) {
       start = dateRange.from;
       end = dateRange.to;
+      const days = (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000);
+      isDaily = days > 45;
     } else if (timePeriod === 'today') {
       start = startOfDay(now);
       end = endOfDay(now);
@@ -2374,17 +2377,29 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       start = s;
       end = endOfDay(now);
     } else if (timePeriod === 'month') {
+      // Ultimi 30 giorni rolling
+      start = startOfDay(new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000));
+      end = endOfDay(now);
+    } else if (timePeriod === 'mtd') {
+      // Mese corrente: dal 1° del mese ad oggi
       start = startOfMonth(now);
-      end = endOfMonth(now);
-    } else {
-      // year
+      end = endOfDay(now);
+    } else if (timePeriod === 'ytd') {
+      // Anno corrente: dal 1° gennaio ad oggi
       start = startOfYear(now);
-      end = endOfYear(now);
+      end = endOfDay(now);
+      isDaily = true;
+    } else {
+      // year = ultimi 12 mesi rolling
+      const s = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
+      start = s;
+      end = endOfDay(now);
+      isDaily = true;
     }
 
-    const bucket: '15m' | '1h' | '1d' = timePeriod === 'year' ? '1d' : '1h';
-    const force_table: 'hourly' | 'daily' = timePeriod === 'year' ? 'daily' : 'hourly';
-    return { start, end, bucket, force_table };
+    const bucket: '15m' | '1h' | '1d' = isDaily ? '1d' : '1h';
+    const force_table: 'hourly' | 'daily' = isDaily ? 'daily' : 'hourly';
+    return { start, end, bucket, force_table, isDaily };
   }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   // Query energy.power_kw (kW) from the correct source table
@@ -2408,7 +2423,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // B. Elaborazione Dati a Matrice (timezone-aware)
   const heatmapGrid = useMemo(() => {
     const rawData = heatmapResp?.data || [];
-    const isYearView = timePeriod === 'year';
+    const isYearView = heatmapConfig.isDaily;
     const tz = resolveTimezone(siteTimezone);
 
     // Step 1: Aggregate all points by (device, hourBucket/dayBucket) → sum kWh
@@ -2430,8 +2445,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       // Build a unique bucket key per cell using site-local time
       let bucketKey: string;
       if (isYearView) {
-        // Daily granularity: cell = month(col) × day(row)
-        bucketKey = `${p.day}_${p.month - 1}`; // row=day(1-31), col=month(0-11)
+        // Daily granularity: cell = month-year(col) × day(row)
+        const monthKey = `${p.year}-${String(p.month).padStart(2, '0')}`;
+        bucketKey = `${p.day}_${monthKey}`;
       } else {
         // Hourly granularity: cell = date(col) × hour(row)
         const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
@@ -2468,12 +2484,34 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
     if (isYearView) {
       rows = Array.from({ length: 31 }, (_, i) => i + 1); // days 1-31
-      cols = Array.from({ length: 12 }, (_, i) => ({
-        key: String(i),
-        label: new Date(2024, i, 1)
+      // Build month columns from start to end (handles year, ytd, custom-daily)
+      cols = [];
+      const startMonth = new Date(
+        heatmapConfig.start.getFullYear(),
+        heatmapConfig.start.getMonth(),
+        1
+      );
+      const endMonth = new Date(
+        heatmapConfig.end.getFullYear(),
+        heatmapConfig.end.getMonth(),
+        1
+      );
+      const cursor = new Date(startMonth);
+      while (cursor <= endMonth) {
+        const y = cursor.getFullYear();
+        const m = cursor.getMonth() + 1;
+        const key = `${y}-${String(m).padStart(2, '0')}`;
+        const monthLabel = cursor
           .toLocaleDateString('it-IT', { month: 'short' })
-          .toUpperCase(),
-      })); // months Jan-Dec
+          .toUpperCase();
+        // Include year suffix when spanning multiple years
+        const label =
+          startMonth.getFullYear() !== endMonth.getFullYear()
+            ? `${monthLabel} ${String(y).slice(-2)}`
+            : monthLabel;
+        cols.push({ key, label });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
     } else {
       rows = Array.from({ length: 24 }, (_, i) => i); // hours 0-23
 
