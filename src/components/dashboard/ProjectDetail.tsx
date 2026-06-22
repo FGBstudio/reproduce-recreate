@@ -566,8 +566,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         // Last 30 days (>24h, ≤30d → 1h bucket)
         start = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
         break;
+      case "mtd":
+        // Month-to-date: dal 1° del mese ad oggi
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
       case "year":
-        // From Jan 1st of current year (>30d → 1d bucket)
+        // Ultimi 12 mesi rolling (dal 1° del mese, 11 mesi fa)
+        start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        break;
+      case "ytd":
+        // Year-to-date: dal 1° gennaio ad oggi
         start = new Date(now.getFullYear(), 0, 1);
         break;
       case "custom":
@@ -1058,7 +1066,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     
     // Filter by active metric
     const filtered = rawData.filter(d => d.metric === activeAirHeatmapMetric);
-    
+
+    // Daily view (month-columns × day-rows) when range > 45 days (year / ytd / long custom)
+    const durationDays = (airEnd.getTime() - airStart.getTime()) / (24 * 60 * 60 * 1000);
+    const isYearView = durationDays > 45;
+
     filtered.forEach((d) => {
       const val = Number(d.value_avg ?? d.value ?? 0);
       if (!Number.isFinite(val)) return;
@@ -1067,9 +1079,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       if (!parsed || parsed > new Date()) return;
       
       const p = getPartsInTz(parsed, tz);
-      const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
-      const bucketKey = `${p.hour}_${dateKey}`;
-      
+      let bucketKey: string;
+      if (isYearView) {
+        // Cell = month(col) × day(row)
+        const monthKey = `${p.year}-${String(p.month).padStart(2, '0')}`;
+        bucketKey = `${p.day}_${monthKey}`;
+      } else {
+        const dateKey = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+        bucketKey = `${p.hour}_${dateKey}`;
+      }
+
       // Average across devices for that hour/day cell
       const current = bucketMap.get(bucketKey) || { sum: 0, count: 0 };
       bucketMap.set(bucketKey, { sum: current.sum + val, count: current.count + 1 });
@@ -1082,20 +1101,46 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const vals = Array.from(valueMap.values()).filter(v => v > 0).sort((a,b) => a-b);
     const min = vals.length ? vals[0] : 0;
     const max = vals.length ? vals[vals.length-1] : 0;
-    
+
     // Grid axes
-    const rows = Array.from({ length: 24 }, (_, i) => i);
+    let rows: number[];
     const cols: { key: string; label: string }[] = [];
-    const dayMs = 24 * 60 * 60 * 1000;
-    const cursor = new Date(airStart.getTime());
-    while (cursor <= airEnd) {
-      const cp = getPartsInTz(cursor, tz);
-      const dateKey = `${cp.year}-${String(cp.month).padStart(2, '0')}-${String(cp.day).padStart(2, '0')}`;
-      cols.push({ key: dateKey, label: `${String(cp.day).padStart(2, '0')}/${String(cp.month).padStart(2, '0')}` });
-      cursor.setTime(cursor.getTime() + dayMs);
+
+    if (isYearView) {
+      rows = Array.from({ length: 31 }, (_, i) => i + 1); // days 1-31
+      const startMonth = new Date(airStart.getFullYear(), airStart.getMonth(), 1);
+      const endMonth = new Date(airEnd.getFullYear(), airEnd.getMonth(), 1);
+      const cursor = new Date(startMonth);
+      while (cursor <= endMonth) {
+        const y = cursor.getFullYear();
+        const m = cursor.getMonth() + 1;
+        const key = `${y}-${String(m).padStart(2, '0')}`;
+        const monthLabel = cursor
+          .toLocaleDateString('en-US', { month: 'short' })
+          .toUpperCase();
+        const label =
+          startMonth.getFullYear() !== endMonth.getFullYear()
+            ? `${monthLabel} ${String(y).slice(-2)}`
+            : monthLabel;
+        cols.push({ key, label });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    } else {
+      rows = Array.from({ length: 24 }, (_, i) => i);
+      const dayMs = 24 * 60 * 60 * 1000;
+      const cursor = new Date(airStart.getTime());
+      while (cursor <= airEnd) {
+        const cp = getPartsInTz(cursor, tz);
+        const dateKey = `${cp.year}-${String(cp.month).padStart(2, '0')}-${String(cp.day).padStart(2, '0')}`;
+        cols.push({
+          key: dateKey,
+          label: `${String(cp.day).padStart(2, '0')}/${String(cp.month).padStart(2, '0')}`,
+        });
+        cursor.setTime(cursor.getTime() + dayMs);
+      }
     }
 
-    return { rows, cols, valueMap, scale: { min, max }, isYearView: false };
+    return { rows, cols, valueMap, scale: { min, max }, isYearView };
   }, [airTimeseriesResp, activeAirHeatmapMetric, airStart, airEnd, siteTimezone]);
 
   // ---------------------------------------------------------------------------
