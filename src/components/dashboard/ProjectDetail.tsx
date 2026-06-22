@@ -2362,10 +2362,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
     let start: Date;
     let end: Date;
+    let isDaily = false;
 
     if (timePeriod === 'custom' && dateRange) {
       start = dateRange.from;
       end = dateRange.to;
+      const days = (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000);
+      isDaily = days > 45;
     } else if (timePeriod === 'today') {
       start = startOfDay(now);
       end = endOfDay(now);
@@ -2374,17 +2377,29 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       start = s;
       end = endOfDay(now);
     } else if (timePeriod === 'month') {
+      // Ultimi 30 giorni rolling
+      start = startOfDay(new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000));
+      end = endOfDay(now);
+    } else if (timePeriod === 'mtd') {
+      // Mese corrente: dal 1° del mese ad oggi
       start = startOfMonth(now);
-      end = endOfMonth(now);
-    } else {
-      // year
+      end = endOfDay(now);
+    } else if (timePeriod === 'ytd') {
+      // Anno corrente: dal 1° gennaio ad oggi
       start = startOfYear(now);
-      end = endOfYear(now);
+      end = endOfDay(now);
+      isDaily = true;
+    } else {
+      // year = ultimi 12 mesi rolling
+      const s = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
+      start = s;
+      end = endOfDay(now);
+      isDaily = true;
     }
 
-    const bucket: '15m' | '1h' | '1d' = timePeriod === 'year' ? '1d' : '1h';
-    const force_table: 'hourly' | 'daily' = timePeriod === 'year' ? 'daily' : 'hourly';
-    return { start, end, bucket, force_table };
+    const bucket: '15m' | '1h' | '1d' = isDaily ? '1d' : '1h';
+    const force_table: 'hourly' | 'daily' = isDaily ? 'daily' : 'hourly';
+    return { start, end, bucket, force_table, isDaily };
   }, [timePeriod, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   // Query energy.power_kw (kW) from the correct source table
