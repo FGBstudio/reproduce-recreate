@@ -344,7 +344,7 @@ const MapNameCard = ({
   brandLogo,
   onInfoClick,
 }: NameCardProps) => {
-  const accentVar = "--fgb-navy";
+  const accentVar = "--fgb-emerald";
   const accent = css(accentVar);
 
   return (
