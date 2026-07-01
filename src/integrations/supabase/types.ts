@@ -805,6 +805,8 @@ export type Database = {
           pm_id: string | null
           po_sign_date: string | null
           project_subtype: string | null
+          quotation_approved_at: string | null
+          quotation_approved_by: string | null
           quotation_notes: string | null
           quotation_sent_date: string | null
           region: string
@@ -844,6 +846,8 @@ export type Database = {
           pm_id?: string | null
           po_sign_date?: string | null
           project_subtype?: string | null
+          quotation_approved_at?: string | null
+          quotation_approved_by?: string | null
           quotation_notes?: string | null
           quotation_sent_date?: string | null
           region?: string
@@ -883,6 +887,8 @@ export type Database = {
           pm_id?: string | null
           po_sign_date?: string | null
           project_subtype?: string | null
+          quotation_approved_at?: string | null
+          quotation_approved_by?: string | null
           quotation_notes?: string | null
           quotation_sent_date?: string | null
           region?: string
@@ -2216,6 +2222,165 @@ export type Database = {
         }
         Relationships: []
       }
+      hr_attendance: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          device_label: string | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          note: string | null
+          status: Database["public"]["Enums"]["hr_attendance_status"]
+          timestamp_in: string
+          timestamp_out: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          note?: string | null
+          status?: Database["public"]["Enums"]["hr_attendance_status"]
+          timestamp_in?: string
+          timestamp_out?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          note?: string | null
+          status?: Database["public"]["Enums"]["hr_attendance_status"]
+          timestamp_in?: string
+          timestamp_out?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hr_availability: {
+        Row: {
+          created_at: string
+          date: string
+          hours_planned: number | null
+          id: string
+          note: string | null
+          status: Database["public"]["Enums"]["hr_availability_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          hours_planned?: number | null
+          id?: string
+          note?: string | null
+          status?: Database["public"]["Enums"]["hr_availability_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          hours_planned?: number | null
+          id?: string
+          note?: string | null
+          status?: Database["public"]["Enums"]["hr_availability_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hr_qr_tokens: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          rotated_at: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          rotated_at?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          rotated_at?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hr_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          end_date: string
+          end_time: string | null
+          id: string
+          manager_note: string | null
+          reason: string | null
+          start_date: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["hr_request_status"]
+          type: Database["public"]["Enums"]["hr_request_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date: string
+          end_time?: string | null
+          id?: string
+          manager_note?: string | null
+          reason?: string | null
+          start_date: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["hr_request_status"]
+          type: Database["public"]["Enums"]["hr_request_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string
+          end_time?: string | null
+          id?: string
+          manager_note?: string | null
+          reason?: string | null
+          start_date?: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["hr_request_status"]
+          type?: Database["public"]["Enums"]["hr_request_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mqtt_messages_raw: {
         Row: {
           broker: string
@@ -2301,6 +2466,7 @@ export type Database = {
           lng: number | null
           name: string
           region: string | null
+          site_id: string | null
           type: string | null
         }
         Insert: {
@@ -2312,6 +2478,7 @@ export type Database = {
           lng?: number | null
           name: string
           region?: string | null
+          site_id?: string | null
           type?: string | null
         }
         Update: {
@@ -2323,9 +2490,18 @@ export type Database = {
           lng?: number | null
           name?: string
           region?: string | null
+          site_id?: string | null
           type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ops_locations_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ops_purchase_orders: {
         Row: {
@@ -3104,6 +3280,7 @@ export type Database = {
       }
       site_air_records: {
         Row: {
+          air_product_ids: string[] | null
           certification_id: string | null
           created_at: string
           customs_cost: number | null
@@ -3133,6 +3310,7 @@ export type Database = {
           working_time_cost: number | null
         }
         Insert: {
+          air_product_ids?: string[] | null
           certification_id?: string | null
           created_at?: string
           customs_cost?: number | null
@@ -3162,6 +3340,7 @@ export type Database = {
           working_time_cost?: number | null
         }
         Update: {
+          air_product_ids?: string[] | null
           certification_id?: string | null
           created_at?: string
           customs_cost?: number | null
@@ -5547,6 +5726,17 @@ export type Database = {
         | "Allocated"
         | "In_Transit"
         | "Delivered"
+      hr_attendance_status: "auto_qr" | "manual_override"
+      hr_availability_status:
+        | "office"
+        | "unavailable"
+        | "vacation"
+        | "travel"
+        | "smart_working"
+        | "permit"
+        | "sick"
+      hr_request_status: "pending" | "approved" | "rejected"
+      hr_request_type: "holiday" | "permit" | "travel"
       milestone_category: "scorecard" | "timeline"
       permission_level: "view" | "edit" | "admin"
       scope_type: "project" | "site" | "brand" | "holding" | "region"
@@ -5564,6 +5754,9 @@ export type Database = {
         | "budget_warning_80"
         | "budget_overrun"
         | "resource_burnout_warning"
+        | "quotation_to_operations"
+        | "quotation_to_payments"
+        | "billing_due"
       wiring_type: "WYE" | "DELTA"
     }
     CompositeTypes: {
@@ -5722,6 +5915,18 @@ export const Constants = {
         "In_Transit",
         "Delivered",
       ],
+      hr_attendance_status: ["auto_qr", "manual_override"],
+      hr_availability_status: [
+        "office",
+        "unavailable",
+        "vacation",
+        "travel",
+        "smart_working",
+        "permit",
+        "sick",
+      ],
+      hr_request_status: ["pending", "approved", "rejected"],
+      hr_request_type: ["holiday", "permit", "travel"],
       milestone_category: ["scorecard", "timeline"],
       permission_level: ["view", "edit", "admin"],
       scope_type: ["project", "site", "brand", "holding", "region"],
@@ -5739,6 +5944,9 @@ export const Constants = {
         "budget_warning_80",
         "budget_overrun",
         "resource_burnout_warning",
+        "quotation_to_operations",
+        "quotation_to_payments",
+        "billing_due",
       ],
       wiring_type: ["WYE", "DELTA"],
     },
