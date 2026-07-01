@@ -344,7 +344,7 @@ const MapNameCard = ({
   brandLogo,
   onInfoClick,
 }: NameCardProps) => {
-  const accentVar = "--fgb-navy";
+  const accentVar = "--fgb-emerald";
   const accent = css(accentVar);
 
   return (
@@ -466,7 +466,7 @@ const MapNameCard = ({
             <span
               className="text-[11px] font-bold uppercase tracking-[0.08em] text-center leading-tight"
               style={{
-                color: "#0f172a",
+                color: accent,
                 position: "relative",
                 zIndex: 1,
                 display: "-webkit-box",
@@ -476,7 +476,7 @@ const MapNameCard = ({
                 maxWidth: CARD_SIZE - 20,
               }}
             >
-              {name}
+              {name.toUpperCase()}
             </span>
             <button
               type="button"
