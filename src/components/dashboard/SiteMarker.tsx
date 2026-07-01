@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Wind, Droplet, Award } from "lucide-react";
+import { Zap, Wind, Droplet, Award, Info } from "lucide-react";
 import { Project, MonitoringType } from "@/lib/data";
 import { ClientRole } from "@/hooks/useUserScope";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
@@ -327,6 +327,183 @@ const MapMetricRadar = ({
   );
 };
 
+/* ─────────────────────── MapNameCard (hover intro) ──────────────────────── */
+
+interface NameCardProps {
+  name: string;
+  rotationDeg: number;
+  backgroundImage?: string;
+  brandLogo?: string;
+  onInfoClick: () => void;
+}
+
+const MapNameCard = ({
+  name,
+  rotationDeg,
+  backgroundImage,
+  brandLogo,
+  onInfoClick,
+}: NameCardProps) => {
+  const accentVar = "--fgb-navy";
+  const accent = css(accentVar);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.6, rotate: rotationDeg }}
+      animate={{ opacity: 1, scale: 1, rotate: rotationDeg }}
+      exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.15 } }}
+      transition={{ type: "spring", stiffness: 260, damping: 22 }}
+      className="absolute pointer-events-none"
+      style={{
+        width: WIDGET_PX,
+        height: WIDGET_PX,
+        left: `calc(50% - ${WIDGET_PX / 2}px)`,
+        top: `calc(50% - ${WIDGET_PX / 2}px)`,
+      }}
+    >
+      {/* Cone */}
+      <svg
+        viewBox={`0 0 ${VB} ${VB}`}
+        className="absolute inset-0 w-full h-full"
+        style={{ zIndex: -1, overflow: "visible", pointerEvents: "none" }}
+      >
+        <path
+          d={conePath}
+          fill={cssA(accentVar, 0.12)}
+          stroke={cssA(accentVar, 0.33)}
+          strokeWidth={1.25}
+          strokeDasharray="6 6"
+        />
+      </svg>
+
+      {/* Lens */}
+      <div
+        className="absolute rounded-full pointer-events-auto"
+        style={{
+          width: LENS_D,
+          height: LENS_D,
+          left: LENS_L,
+          top: LENS_T,
+          boxShadow: `0 20px 40px ${cssA("--lens-shadow", 0.45)}, 0 0 0 2.5px ${accent}, inset 0 0 0 1px rgba(255,255,255,0.4)`,
+          overflow: "hidden",
+          isolation: "isolate",
+          transform: "translateZ(0)",
+        }}
+      >
+        {/* Brand pattern / site image */}
+        {(backgroundImage || brandLogo) && (
+          <div
+            className="absolute flex items-center justify-center"
+            style={{
+              width: "150%",
+              height: "150%",
+              left: "-25%",
+              top: "-25%",
+              zIndex: 20,
+              transform: `rotate(${-rotationDeg}deg)`,
+            }}
+          >
+            {backgroundImage ? (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage: `url(${backgroundImage})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  opacity: 0.5,
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage: `url(${brandLogo})`,
+                  backgroundRepeat: "repeat",
+                  backgroundSize: "80px 80px",
+                  opacity: 0.15,
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Glass patina */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            zIndex: 10,
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* Inner border */}
+        <div
+          className="absolute inset-2 rounded-full border"
+          style={{ zIndex: 30, pointerEvents: "none", borderColor: "rgba(255,255,255,0.3)" }}
+        />
+
+        {/* Central card: site name + info button */}
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ zIndex: 40, transform: `rotate(${-rotationDeg}deg)` }}
+        >
+          <div
+            className="relative flex flex-col items-center justify-center rounded-full shadow-xl px-3"
+            style={{
+              width: CARD_SIZE,
+              height: CARD_SIZE,
+              border: `1.5px solid rgba(255, 255, 255, 0.4)`,
+              backgroundColor: "rgba(255, 255, 255, 0.85)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+          >
+            <span
+              className="text-[11px] font-bold uppercase tracking-[0.08em] text-center leading-tight"
+              style={{
+                color: "#0f172a",
+                position: "relative",
+                zIndex: 1,
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                maxWidth: CARD_SIZE - 20,
+              }}
+            >
+              {name}
+            </span>
+            <button
+              type="button"
+              onPointerDown={(e) => { e.stopPropagation(); onInfoClick(); }}
+              onClick={(e) => { e.stopPropagation(); onInfoClick(); }}
+              aria-label="Show site metrics"
+              className="mt-2 flex items-center justify-center rounded-full transition-transform hover:scale-110"
+              style={{
+                width: 26,
+                height: 26,
+                backgroundColor: accent,
+                border: "1.5px solid rgba(255,255,255,0.6)",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                position: "relative",
+                zIndex: 2,
+                cursor: "pointer",
+              }}
+            >
+              <Info className="w-3.5 h-3.5" style={{ color: "white" }} strokeWidth={2.6} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 /* ──────────────────────────── SiteMarker wrapper ────────────────────────── */
 
 export const SiteMarker = ({
@@ -337,6 +514,7 @@ export const SiteMarker = ({
   onSphereClick,
 }: SiteMarkerProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
   // Certificazioni configurate via Admin (LEED/WELL/BREEAM/…)
@@ -360,7 +538,10 @@ export const SiteMarker = ({
 
   const handleLeave = useCallback(() => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setIsHovered(false), 150);
+    closeTimer.current = window.setTimeout(() => {
+      setIsHovered(false);
+      setShowMetrics(false);
+    }, 150);
   }, []);
 
 
@@ -426,7 +607,52 @@ export const SiteMarker = ({
       onMouseLeave={handleLeave}
     >
       <AnimatePresence>
-        {isHovered && activeSpheres.length > 0 && (
+        {isHovered && activeSpheres.length > 0 && !showMetrics && (
+          <motion.div
+            key="name-card"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
+          >
+            {(() => {
+              const thetaDeg = 270;
+              const theta = thetaDeg * (Math.PI / 180);
+              const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
+              const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: dx,
+                    top: dy,
+                    width: 0,
+                    height: 0,
+                    pointerEvents: "auto",
+                  }}
+                >
+                  <MapNameCard
+                    name={project.name}
+                    rotationDeg={thetaDeg}
+                    backgroundImage={project.img || undefined}
+                    brandLogo={brandLogo}
+                    onInfoClick={() => setShowMetrics(true)}
+                  />
+                </div>
+              );
+            })()}
+          </motion.div>
+        )}
+        {isHovered && activeSpheres.length > 0 && showMetrics && (
           <motion.div
             key="radars"
             initial={{ opacity: 0 }}
