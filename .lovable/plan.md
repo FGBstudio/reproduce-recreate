@@ -1,38 +1,34 @@
-## Obiettivo
-Modificare il comportamento dei marker sulla mappa: al momento le sfere delle metriche (Energy/Air/Water/Certifications) compaiono immediatamente al passaggio del cursore. Vogliamo un passaggio intermedio con una singola "card di anteprima" (nome sito + pulsante info).
 
-## Nuovo comportamento
+# MapNameCard refinement
 
-1. **Marker a riposo** — solo il pin (come ora).
-2. **Hover sul pin** → compare **una sola sfera** in stile identico alle attuali (stessa lente in vetro, stesso pattern di sfondo brand/immagine del sito, stesso bordo/ombra), contenente:
-   - Il **nome del sito** (in evidenza)
-   - Sotto, un piccolo pulsante circolare con l'icona **"i"** (info)
-3. **Click sulla "i"** → la card di anteprima si nasconde e compaiono le sfere delle metriche esattamente come oggi (Energy/Air/Water/Certifications, in arco attorno al pin).
-4. **Mouse leave** → tutto si chiude e torna a stato 1.
-5. **Click sul pin** (marker) → invariato: apre la dashboard del sito (`onMarkerClick`).
-6. **Click su una singola sfera metrica** → invariato: apre la sezione corrispondente (`onSphereClick`).
+Tutte le modifiche in un solo file: `src/components/dashboard/SiteMarker.tsx`. Ambito ristretto al componente `MapNameCard` e al blocco di rendering nell'`AnimatePresence` della name-card. `MapMetricRadar` e le sfere metriche restano identiche.
 
-## Dove intervenire
+## 1. Rimozione del cono
+Eliminare l'`<svg>` che disegna il `conePath` all'interno di `MapNameCard`. Le sfere metriche mantengono il loro cono.
 
-Un solo file: `src/components/dashboard/SiteMarker.tsx`.
+## 2. Fluttuante sopra al marker
+Nel wrapper di rendering della name-card:
+- Definire `NAME_CARD_OFFSET_PX = FOCUS_OFFSET_PX * 0.55` per avvicinare la sfera al pin.
+- Forzare posizione sopra: `dx = 0`, `dy = -Math.abs(NAME_CARD_OFFSET_PX)`. Rimosso il calcolo con `thetaDeg = 270`.
+- Passare `rotationDeg={0}` a `MapNameCard` così logo e bottone restano dritti.
 
-### Dettagli tecnici
+## 3. Verde FGB #006367
+Dentro `MapNameCard`:
+- Costante locale `const FGB_GREEN = "#006367"`.
+- Bordo della sfera (ring 2.5px) → `FGB_GREEN`.
+- Sfondo e bordo del bottone "i" → `FGB_GREEN` (bordo bianco esterno mantenuto).
+- Colore testo del nome sito → `FGB_GREEN`.
+Sostituisce l'uso attuale di `--fgb-emerald` solo in `MapNameCard`.
 
-- Aggiungere uno stato locale `showMetrics: boolean` accanto a `isHovered`. Reset di `showMetrics` a `false` su `handleLeave`.
-- Estrarre il "guscio" visivo dell'attuale `MapMetricRadar` (lente, pattern brand, patina di vetro, bordo interno) in modo che una nuova `MapNameCard` possa riusarlo con lo stesso look. In pratica: fattorizzare in un piccolo componente `LensShell` che riceve `rotationDeg`, `backgroundImage`, `brandLogo`, `accentVar` e `children` (contenuto centrale).
-- Creare `MapNameCard` che usa `LensShell` con:
-  - `accentVar = "--fgb-navy"` (o token neutro coerente col brand)
-  - `rotationDeg = 270` (una sola card, posizionata sopra il pin come le sfere singole)
-  - Contenuto: nome del sito (`project.name`, con wrapping/troncamento se lungo) + sotto pulsante rotondo con icona `Info` (lucide-react). Click sul pulsante → `setShowMetrics(true)` (con `stopPropagation`).
-- Rendering condizionale dentro `<AnimatePresence>`:
-  - `isHovered && !showMetrics && activeSpheres.length > 0` → mostra `MapNameCard`.
-  - `isHovered && showMetrics && activeSpheres.length > 0` → mostra le sfere metriche come oggi.
-  - Se `activeSpheres.length === 0`, non mostrare nulla (comportamento attuale).
-- Il fetch dei dati real-time (`useRealTimeLatestData`, `useEnergyPowerByCategory`) resta legato a `isHovered` (non serve attendere il click su "i", così quando l'utente clicca info i valori sono già pronti). Nessuna modifica alla logica dati.
-- Il click sul pin (`button` con `markerPinIcon`) resta invariato e continua a chiamare `onMarkerClick(project)`.
-- Nessuna modifica a `MapView.tsx` o ad altri file: le props di `SiteMarker` restano identiche.
+## 4. Logo brand + nome sito
+Al centro della sfera:
+- Se `brandLogo` esiste: mostrare il PNG (`object-fit: contain`, larghezza `CARD_SIZE - 40px`, altezza max ~60px, leggero `drop-shadow`) sopra al nome del sito.
+- Il nome del sito rimane sempre visibile sotto al logo, in maiuscolo e color `FGB_GREEN`.
+- Se `brandLogo` manca, mostrato solo il nome sito.
+- Bottone "i" sotto al blocco logo+nome, struttura invariata.
+
+## 5. Sfondo della sfera
+Pattern/`project.img` invariati. Il logo si sovrappone come nella reference.
 
 ## Fuori scope
-- Nessuna modifica al comportamento su mobile/touch oltre a quanto già presente.
-- Nessuna modifica ai dati, alle API, o all'aspetto grafico delle sfere metriche.
-- Nessuna modifica alla dashboard.
+Nessun cambio a `MapMetricRadar`, al cono delle sfere metriche, ai dati, o al click sul pin (che continua ad aprire la dashboard). Nessun cambio all'API di `SiteMarker`.
