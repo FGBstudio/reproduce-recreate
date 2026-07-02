@@ -62,6 +62,7 @@ const FOCUS_Y              = 300;
 const CONE_HALF_ANGLE_DEG  = 25;
 const SCALE                = WIDGET_PX / VB;
 const FOCUS_OFFSET_PX      = (FOCUS_X - CX) * SCALE;
+const NAME_CARD_OFFSET_PX  = FOCUS_OFFSET_PX * 0.55;
 
 const LENS_D = (CIRCLE_R * 2) * SCALE;
 const LENS_L = (CX - CIRCLE_R) * SCALE;
@@ -624,10 +625,8 @@ export const SiteMarker = ({
             }}
           >
             {(() => {
-              const thetaDeg = 270;
-              const theta = thetaDeg * (Math.PI / 180);
-              const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
-              const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
+              const dx = 0;
+              const dy = -Math.abs(NAME_CARD_OFFSET_PX);
               return (
                 <div
                   style={{
@@ -641,7 +640,7 @@ export const SiteMarker = ({
                 >
                   <MapNameCard
                     name={project.name}
-                    rotationDeg={thetaDeg}
+                    rotationDeg={0}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
                     onInfoClick={() => setShowMetrics(true)}
