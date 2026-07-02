@@ -62,6 +62,7 @@ const FOCUS_Y              = 300;
 const CONE_HALF_ANGLE_DEG  = 25;
 const SCALE                = WIDGET_PX / VB;
 const FOCUS_OFFSET_PX      = (FOCUS_X - CX) * SCALE;
+const NAME_CARD_OFFSET_PX  = FOCUS_OFFSET_PX * 0.55;
 
 const LENS_D = (CIRCLE_R * 2) * SCALE;
 const LENS_L = (CX - CIRCLE_R) * SCALE;
@@ -344,8 +345,7 @@ const MapNameCard = ({
   brandLogo,
   onInfoClick,
 }: NameCardProps) => {
-  const accentVar = "--fgb-emerald";
-  const accent = css(accentVar);
+  const FGB_GREEN = "#006367";
 
   return (
     <motion.div
@@ -361,21 +361,6 @@ const MapNameCard = ({
         top: `calc(50% - ${WIDGET_PX / 2}px)`,
       }}
     >
-      {/* Cone */}
-      <svg
-        viewBox={`0 0 ${VB} ${VB}`}
-        className="absolute inset-0 w-full h-full"
-        style={{ zIndex: -1, overflow: "visible", pointerEvents: "none" }}
-      >
-        <path
-          d={conePath}
-          fill={cssA(accentVar, 0.12)}
-          stroke={cssA(accentVar, 0.33)}
-          strokeWidth={1.25}
-          strokeDasharray="6 6"
-        />
-      </svg>
-
       {/* Lens */}
       <div
         className="absolute rounded-full pointer-events-auto"
@@ -384,7 +369,7 @@ const MapNameCard = ({
           height: LENS_D,
           left: LENS_L,
           top: LENS_T,
-          boxShadow: `0 20px 40px ${cssA("--lens-shadow", 0.45)}, 0 0 0 2.5px ${accent}, inset 0 0 0 1px rgba(255,255,255,0.4)`,
+          boxShadow: `0 20px 40px ${cssA("--lens-shadow", 0.45)}, 0 0 0 2.5px ${FGB_GREEN}, inset 0 0 0 1px rgba(255,255,255,0.4)`,
           overflow: "hidden",
           isolation: "isolate",
           transform: "translateZ(0)",
@@ -463,14 +448,29 @@ const MapNameCard = ({
               WebkitBackdropFilter: "blur(4px)",
             }}
           >
+            {brandLogo && (
+              <img
+                src={brandLogo}
+                alt="Brand logo"
+                style={{
+                  width: CARD_SIZE - 40,
+                  maxHeight: 60,
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))",
+                  position: "relative",
+                  zIndex: 1,
+                  marginBottom: 4,
+                }}
+              />
+            )}
             <span
-              className="text-[11px] font-bold uppercase tracking-[0.08em] text-center leading-tight"
+              className="text-[10px] font-bold uppercase tracking-[0.08em] text-center leading-tight"
               style={{
-                color: accent,
+                color: FGB_GREEN,
                 position: "relative",
                 zIndex: 1,
                 display: "-webkit-box",
-                WebkitLineClamp: 3,
+                WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
                 maxWidth: CARD_SIZE - 20,
@@ -487,7 +487,7 @@ const MapNameCard = ({
               style={{
                 width: 26,
                 height: 26,
-                backgroundColor: accent,
+                backgroundColor: FGB_GREEN,
                 border: "1.5px solid rgba(255,255,255,0.6)",
                 boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
                 position: "relative",
@@ -625,10 +625,8 @@ export const SiteMarker = ({
             }}
           >
             {(() => {
-              const thetaDeg = 270;
-              const theta = thetaDeg * (Math.PI / 180);
-              const dx = -Math.cos(theta) * FOCUS_OFFSET_PX;
-              const dy = -Math.sin(theta) * FOCUS_OFFSET_PX;
+              const dx = 0;
+              const dy = -Math.abs(NAME_CARD_OFFSET_PX);
               return (
                 <div
                   style={{
@@ -642,7 +640,7 @@ export const SiteMarker = ({
                 >
                   <MapNameCard
                     name={project.name}
-                    rotationDeg={thetaDeg}
+                    rotationDeg={0}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
                     onInfoClick={() => setShowMetrics(true)}
