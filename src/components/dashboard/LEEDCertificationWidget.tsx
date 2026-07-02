@@ -97,7 +97,7 @@ export const LEEDCertificationWidget = ({ leedCert, milestones }: LEEDCertificat
       <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
-            <span className="text-foreground font-black text-lg">LEED</span>
+            <Award className="w-8 h-8 text-white" strokeWidth={2.25} />
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-800">{certType}</h3>
