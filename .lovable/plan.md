@@ -1,34 +1,23 @@
+## Sostituzione logo LEED con icona Award nella sfera "Awards"
 
-# MapNameCard refinement
+**File:** `src/components/auth/FloatingBentoPanel.tsx` (solo riga ~303, dentro l'hero con le 4 sfere sotto il titolo "Air. Water. Energy. Awards.")
 
-Tutte le modifiche in un solo file: `src/components/dashboard/SiteMarker.tsx`. Ambito ristretto al componente `MapNameCard` e al blocco di rendering nell'`AnimatePresence` della name-card. `MapMetricRadar` e le sfere metriche restano identiche.
+### Modifica
+Sostituire:
+```tsx
+<img src="/leed_logo.png" alt="LEED" className="w-[78px] h-[78px] object-contain" />
+```
+con l'icona `Award` di `lucide-react` (la stessa usata in `LEEDCertificationWidget.tsx` per le certificazioni), stilizzata coerentemente con le altre 3 sfere (Water = droplet, Air = cloud, Energy = zap):
 
-## 1. Rimozione del cono
-Eliminare l'`<svg>` che disegna il `conePath` all'interno di `MapNameCard`. Le sfere metriche mantengono il loro cono.
+```tsx
+<Award className="w-[42px] h-[42px]" style={{ color: ACCENT, strokeWidth: 1.5 }} />
+```
 
-## 2. Fluttuante sopra al marker
-Nel wrapper di rendering della name-card:
-- Definire `NAME_CARD_OFFSET_PX = FOCUS_OFFSET_PX * 0.55` per avvicinare la sfera al pin.
-- Forzare posizione sopra: `dx = 0`, `dy = -Math.abs(NAME_CARD_OFFSET_PX)`. Rimosso il calcolo con `thetaDeg = 270`.
-- Passare `rotationDeg={0}` a `MapNameCard` così logo e bottone restano dritti.
+Dimensione e `strokeWidth` allineati alle altre icone della stessa riga (verranno letti dal codice esistente per mantenere identica proporzione). Il colore usa la variabile `ACCENT` già definita nel file (verde FGB), come per le altre sfere.
 
-## 3. Verde FGB #006367
-Dentro `MapNameCard`:
-- Costante locale `const FGB_GREEN = "#006367"`.
-- Bordo della sfera (ring 2.5px) → `FGB_GREEN`.
-- Sfondo e bordo del bottone "i" → `FGB_GREEN` (bordo bianco esterno mantenuto).
-- Colore testo del nome sito → `FGB_GREEN`.
-Sostituisce l'uso attuale di `--fgb-emerald` solo in `MapNameCard`.
+Aggiungere `Award` all'import esistente da `lucide-react` in cima al file.
 
-## 4. Logo brand + nome sito
-Al centro della sfera:
-- Se `brandLogo` esiste: mostrare il PNG (`object-fit: contain`, larghezza `CARD_SIZE - 40px`, altezza max ~60px, leggero `drop-shadow`) sopra al nome del sito.
-- Il nome del sito rimane sempre visibile sotto al logo, in maiuscolo e color `FGB_GREEN`.
-- Se `brandLogo` manca, mostrato solo il nome sito.
-- Bottone "i" sotto al blocco logo+nome, struttura invariata.
-
-## 5. Sfondo della sfera
-Pattern/`project.img` invariati. Il logo si sovrappone come nella reference.
-
-## Fuori scope
-Nessun cambio a `MapMetricRadar`, al cono delle sfere metriche, ai dati, o al click sul pin (che continua ad aprire la dashboard). Nessun cambio all'API di `SiteMarker`.
+### Fuori scope
+- Nessuna modifica alle sfere Water/Air/Energy.
+- Nessuna modifica al resto del pannello (sezione certificazioni più in basso continua a mostrare i loghi PNG LEED/BREEAM/WELL).
+- Nessuna modifica al file `LEEDCertificationWidget.tsx` o ad altri componenti.
