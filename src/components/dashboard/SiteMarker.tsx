@@ -62,7 +62,7 @@ const FOCUS_Y              = 300;
 const CONE_HALF_ANGLE_DEG  = 25;
 const SCALE                = WIDGET_PX / VB;
 const FOCUS_OFFSET_PX      = (FOCUS_X - CX) * SCALE;
-const NAME_CARD_OFFSET_PX  = FOCUS_OFFSET_PX * 0.55;
+const NAME_CARD_OFFSET_PX  = FOCUS_OFFSET_PX * 0.88;
 
 const LENS_D = (CIRCLE_R * 2) * SCALE;
 const LENS_L = (CX - CIRCLE_R) * SCALE;
