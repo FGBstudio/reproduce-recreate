@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  ChevronRight, ChevronLeft, ChevronDown, Zap, Wind, Droplet, Cloud, X,
+  ChevronRight, ChevronLeft, ChevronDown, Zap, Wind, Droplet, Cloud, X, Award,
 } from "lucide-react";
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis,
@@ -300,7 +300,7 @@ const Hero: React.FC<{ onScroll: () => void }> = ({ onScroll }) => (
           transition={{ duration: 0.7, ease: EASE, delay: 0.3 }}
           className="w-[150px] h-[150px] flex items-center justify-center rounded-full bg-white border border-black/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
         >
-          <img src="/leed_logo.png" alt="LEED" className="w-[78px] h-[78px] object-contain" />
+          <Award className="w-[64px] h-[64px]" style={{ color: ACCENT }} strokeWidth={1.5} />
         </motion.div>
       </div>
     </div>
