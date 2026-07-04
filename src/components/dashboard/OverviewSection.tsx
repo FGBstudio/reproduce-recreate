@@ -2,9 +2,10 @@
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Project } from "@/lib/data";
-import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, AlertTriangle, ArrowUpRight, RotateCcw, Fan, Lightbulb, Plug, MoreHorizontal } from "lucide-react";
+import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, AlertTriangle, ArrowUpRight, RotateCcw, Fan, Lightbulb, Plug, MoreHorizontal, Info } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { useThresholdAlerts, getMetricStatus, type ThresholdAlert } from "@/hooks/useThresholdAlerts";
@@ -84,8 +85,8 @@ const formatMaybeInt = (value: number | undefined) => typeof value === "number" 
 const MODULE_WEIGHTS = { energy: 0.80, air: 0.05, water: 0.15 };
 
 const STATUS_TOKENS: Record<StatusLevel, { word: string; trackColor: string; ringColor: string; ringBg: string; textColor: string; modIconBg: string; modIconText: string; }> = {
-  GOOD: { word: "Good", trackColor: "bg-emerald-500", ringColor: "#1D9E75", ringBg: "#E1F5EE", textColor: "text-emerald-600", modIconBg: "bg-emerald-50", modIconText: "text-emerald-700" },
-  OK: { word: "Ok", trackColor: "bg-blue-500", ringColor: "#378ADD", ringBg: "#E6F1FB", textColor: "text-blue-600", modIconBg: "bg-blue-50", modIconText: "text-blue-700" },
+  GOOD: { word: "Good", trackColor: "bg-[#009293]", ringColor: "#009293", ringBg: "#E4F3F3", textColor: "text-[#006367]", modIconBg: "bg-[#E4F3F3]", modIconText: "text-[#006367]" },
+  OK: { word: "Ok", trackColor: "bg-[#a0d5d6]", ringColor: "#a0d5d6", ringBg: "#EEF7F7", textColor: "text-[#006367]", modIconBg: "bg-[#EEF7F7]", modIconText: "text-[#006367]" },
   WARNING: { word: "Warning", trackColor: "bg-amber-500", ringColor: "#EF9F27", ringBg: "#FAEEDA", textColor: "text-amber-600", modIconBg: "bg-amber-50", modIconText: "text-amber-700" },
   CRITICAL: { word: "Critical", trackColor: "bg-red-500", ringColor: "#E24B4A", ringBg: "#FCEBEB", textColor: "text-red-600", modIconBg: "bg-red-50", modIconText: "text-red-700" },
 };
@@ -172,7 +173,7 @@ function useDelayedTrue(delay = 60): boolean {
 // ScoreHero Sub-components
 // ─────────────────────────────────────────────
 
-const RING_R = 52;
+const RING_R = 76;
 const RING_CIRC = 2 * Math.PI * RING_R;
 
 function ScoreRing({ score, level, animatedScore }: { score: number; level: StatusLevel; animatedScore: number }) {
@@ -181,14 +182,14 @@ function ScoreRing({ score, level, animatedScore }: { score: number; level: Stat
   const offset = mounted ? RING_CIRC * (1 - score / 100) : RING_CIRC;
 
   return (
-    <div className="relative flex-shrink-0" style={{ width: 128, height: 128 }}>
-      <svg width={128} height={128} viewBox="0 0 128 128" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
-        <circle cx={64} cy={64} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={9} />
-        <circle cx={64} cy={64} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={9} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
+    <div className="relative flex-shrink-0" style={{ width: 180, height: 180 }}>
+      <svg width={180} height={180} viewBox="0 0 180 180" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
+        <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={12} />
+        <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={12} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className={`text-[36px] font-medium leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
-        <span className="text-[11px] uppercase tracking-widest text-slate-600 mt-1">score</span>
+        <span className={`text-[64px] font-semibold leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
+        <span className="text-[12px] uppercase tracking-widest text-[#006367]/70 mt-1.5 font-medium">score</span>
       </div>
     </div>
   );
@@ -199,29 +200,63 @@ function TrackBar({ score, level }: { score: number; level: StatusLevel }) {
   const mounted = useDelayedTrue(80);
   return (
     <div className="flex items-center gap-3 mt-3">
-      <div className="h-[5px] w-[240px] rounded-full bg-gray-100 overflow-hidden">
+      <div className="h-[6px] w-[280px] rounded-full bg-[#E4F3F3] overflow-hidden">
         <div className={`h-full rounded-full ${tokens.trackColor}`} style={{ width: mounted ? `${score}%` : "0%", transition: "width 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
       </div>
-      <span className="text-[13px] text-slate-600 tabular-nums">{score} / 100</span>
+      <span className="text-[15px] text-[#006367] tabular-nums font-medium">{score} / 100</span>
     </div>
   );
 }
 
-function ModPill({ icon, label, score, enabled, isLive, level, onClick }: any) {
-  const tokens = STATUS_TOKENS[level];
-  const active = enabled && isLive;
+function InfoDot({ text }: { text: string }) {
   return (
-    <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-2 min-w-[76px] group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
-      <div className={`w-14 h-14 rounded-[14px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-slate-600 border-gray-100"}`}>
-        {icon}
-      </div>
-      <span className={`text-[19px] font-medium tabular-nums leading-none ${active ? "text-gray-800" : "text-slate-600"}`}>{active ? score : "—"}</span>
-      <span className="text-[11px] uppercase tracking-wider text-slate-600">{label}</span>
-    </button>
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[#006367]/60 hover:text-[#006367] hover:bg-[#E4F3F3] transition-colors"
+            aria-label="More info"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Info className="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-snug bg-white text-slate-700 border border-[#a0d5d6]/60 shadow-md">
+          {text}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
-function ModSep() { return <div className="w-px h-12 bg-gray-100 self-center flex-shrink-0" aria-hidden="true" />; }
+const MOD_INFO: Record<string, string> = {
+  energy: "Punteggio Energia (0-100). Confronta i consumi reali con la baseline attesa: valori più alti indicano un edificio efficiente e vicino al target di consumo.",
+  air: "Punteggio Aria (0-100). Basato su CO₂, VOC, PM2.5 e temperatura indoor rispetto alle soglie WHO: valori alti = aria salubre.",
+  water: "Punteggio Acqua (0-100). Confronta i consumi idrici e le anomalie di flusso con la baseline: valori alti = uso efficiente e nessuna perdita.",
+  alerts: "Numero di anomalie aperte (Critical + Warning) sul sito. Le Critical richiedono intervento immediato.",
+};
+
+function ModPill({ icon, label, score, enabled, isLive, level, onClick, infoText }: any) {
+  const tokens = STATUS_TOKENS[level];
+  const active = enabled && isLive;
+  return (
+    <div className="flex flex-col items-center gap-2 min-w-[92px]">
+      <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-2 group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
+      <div className={`w-[72px] h-[72px] rounded-[18px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-slate-600 border-gray-100"}`}>
+        {icon}
+      </div>
+      <span className={`text-[30px] font-semibold tabular-nums leading-none ${active ? "text-[#006367]" : "text-slate-600"}`}>{active ? score : "—"}</span>
+      </button>
+      <div className="flex items-center gap-1">
+        <span className="text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">{label}</span>
+        {infoText && <InfoDot text={infoText} />}
+      </div>
+    </div>
+  );
+}
+
+function ModSep() { return <div className="w-px h-16 bg-[#a0d5d6]/40 self-center flex-shrink-0" aria-hidden="true" />; }
 
 function LiveBadge({ isLive }: { isLive: boolean }) {
   return (
@@ -248,45 +283,50 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           filter: "blur(6px)",
         }}
       />
-      <div className={`relative flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-6 px-4 md:px-6 py-4 md:py-6 h-full`}>
+      <div className={`relative flex flex-col xl:flex-row xl:items-center justify-between gap-5 md:gap-8 px-5 md:px-8 py-5 md:py-8 h-full`}>
         {/* ── LEFT: Ring + status text ── */}
-        <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="flex items-center gap-6 flex-1 min-w-0">
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[10px] uppercase tracking-widest text-slate-600 font-medium">{periodLabel}</span>
+              <span className="text-[11px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
               <LiveBadge isLive={isLive} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
-            <div className={`text-[36px] md:text-[40px] font-medium leading-none tracking-tight ${tokens.textColor}`}>
+            <div className={`text-[48px] md:text-[56px] font-semibold leading-none tracking-tight ${tokens.textColor}`}>
               {tokens.word}
             </div>
-            <div className="text-[14px] text-slate-600 mt-2 leading-snug">
-              Overall performance {peerPercentile != null && (<> · Top <strong className="font-medium text-gray-700">{peerPercentile}%</strong> of monitored buildings</>)}
+            <div className="text-[16px] text-[#006367] mt-2 leading-snug flex items-center gap-1.5 flex-wrap">
+              <span className="font-medium">Overall performance</span>
+              <InfoDot text="Media ponderata dei tre indici del sito: 80% Energia, 15% Acqua, 5% Aria. Un valore alto (≥ 80) significa un edificio efficiente, con aria salubre e nessuna perdita d'acqua." />
+              {peerPercentile != null && (<span className="text-slate-500">· Top <strong className="font-semibold text-[#006367]">{peerPercentile}%</strong> of monitored buildings</span>)}
             </div>
             <TrackBar score={score} level={level} />
           </div>
         </div>
 
         {/* ── DIVIDER (xl+) ── */}
-        <div className="hidden xl:block w-px h-24 bg-gray-100 flex-shrink-0" aria-hidden="true" />
+        <div className="hidden xl:block w-px h-32 bg-[#a0d5d6]/40 flex-shrink-0" aria-hidden="true" />
 
         {/* ── RIGHT: Module pills + Alerts ── */}
-        <div className="flex items-center gap-5 md:gap-6 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
-          <ModPill icon={<Zap className="w-5 h-5" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} />
+        <div className="flex items-center gap-6 md:gap-7 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
+          <ModPill icon={<Zap className="w-7 h-7" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} infoText={MOD_INFO.energy} />
           <ModSep />
-          <ModPill icon={<Wind className="w-5 h-5" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} />
+          <ModPill icon={<Wind className="w-7 h-7" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} infoText={MOD_INFO.air} />
           <ModSep />
-          <ModPill icon={<Droplet className="w-5 h-5" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} />
+          <ModPill icon={<Droplet className="w-7 h-7" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} infoText={MOD_INFO.water} />
           <ModSep />
-          <div className="flex flex-col items-center gap-2 min-w-[76px]">
-            <div className={`w-14 h-14 rounded-[14px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-              {alertStatus.hasAlerts ? <AlertTriangle className="w-6 h-6" /> : <Activity className="w-6 h-6" />}
+          <div className="flex flex-col items-center gap-2 min-w-[92px]">
+            <div className={`w-[72px] h-[72px] rounded-[18px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-[#E4F3F3] text-[#006367] border-[#a0d5d6]/40'}`}>
+              {alertStatus.hasAlerts ? <AlertTriangle className="w-7 h-7" /> : <Activity className="w-7 h-7" />}
             </div>
-            <span className={`text-[19px] font-medium tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-emerald-600'}`}>
+            <span className={`text-[30px] font-semibold tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-[#006367]'}`}>
               {alertStatus.hasAlerts ? alertStatus.criticalCount + alertStatus.warningCount : "0"}
             </span>
-            <span className="text-[11px] uppercase tracking-wider text-slate-600">Alerts</span>
+            <div className="flex items-center gap-1">
+              <span className="text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">Alerts</span>
+              <InfoDot text={MOD_INFO.alerts} />
+            </div>
           </div>
         </div>
       </div>

@@ -3384,12 +3384,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         style={backgroundStyle} // Applica il colore di fondo o l'immagine Hero
       >
         
-        {/* LIVELLO PATTERN LOGO (Visibile solo se NON c'è immagine progetto e C'È un logo brand) */}
-        {!project?.img && brand?.logo && (
+        {/* LIVELLO PATTERN LOGO (Sempre logo FGB come fallback, indipendentemente dal brand) */}
+        {!project?.img && (
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url(${brand.logo})`,
+              backgroundImage: `url(/green.png)`,
               
               // 1. SPAZIATURA: 'space' distanzia i loghi invece di affiancarli stretti
               backgroundRepeat: 'space', 

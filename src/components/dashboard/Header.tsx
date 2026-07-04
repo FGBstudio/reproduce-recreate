@@ -20,9 +20,11 @@ interface HeaderProps {
   onSearch?: (query: string) => void;
   onProjectSelect?: (project: Project) => void;
   onBurgerOpen?: () => void;
+  selectedHolding?: string | null;
+  selectedBrand?: string | null;
 }
 
-const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerOpen }: HeaderProps) => {
+const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerOpen, selectedHolding = null, selectedBrand = null }: HeaderProps) => {
   const navigate = useNavigate();
   const { user, login, isAdmin } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
@@ -81,7 +83,8 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
 
   // Restrict the searchable project list to what this user can actually access
   const scopedProjects = useMemo(() => {
-    switch (clientRole) {
+    const base = (() => {
+      switch (clientRole) {
       case 'ADMIN_HOLDING': {
         if (!holdingId) return [];
         const allowedBrandIds = new Set(
@@ -95,8 +98,22 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
         return siteId ? projects.filter(p => p.siteId === siteId) : [];
       default:
         return projects;
+      }
+    })();
+
+    // Further filter by the currently selected holding / brand on the map
+    let filtered = base;
+    if (selectedHolding) {
+      const allowedBrandIds = new Set(
+        brands.filter(b => b.holdingId === selectedHolding).map(b => b.id)
+      );
+      filtered = filtered.filter(p => p.brandId && allowedBrandIds.has(p.brandId));
     }
-  }, [projects, clientRole, holdingId, brandId, siteId, brands]);
+    if (selectedBrand) {
+      filtered = filtered.filter(p => p.brandId === selectedBrand);
+    }
+    return filtered;
+  }, [projects, clientRole, holdingId, brandId, siteId, brands, selectedHolding, selectedBrand]);
 
   // Filter projects based on search query
   const filteredProjects = useMemo(() => {
