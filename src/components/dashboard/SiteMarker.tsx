@@ -345,6 +345,7 @@ const MapNameCard = ({
   backgroundImage,
   brandLogo,
   onInfoClick,
+  onClick,
 }: NameCardProps) => {
   const FGB_GREEN = "#006367";
 
