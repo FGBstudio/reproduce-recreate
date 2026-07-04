@@ -215,6 +215,8 @@ const Index = () => {
         onSearch={setSearchQuery}
         onProjectSelect={handleProjectSelect}
         onBurgerOpen={() => setIsBurgerOpen(true)}
+        selectedHolding={selectedHolding}
+        selectedBrand={selectedBrand}
       />
 
       {/* Mobile Burger Menu */}
