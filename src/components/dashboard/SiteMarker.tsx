@@ -365,7 +365,9 @@ const MapNameCard = ({
     >
       {/* Lens */}
       <div
-        className="absolute rounded-full pointer-events-auto"
+        className="absolute rounded-full pointer-events-auto cursor-pointer"
+        onPointerDown={(e) => { e.stopPropagation(); onClick(); }}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
         style={{
           width: LENS_D,
           height: LENS_D,
