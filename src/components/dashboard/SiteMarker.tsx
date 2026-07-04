@@ -648,6 +648,7 @@ export const SiteMarker = ({
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
                     onInfoClick={() => setShowMetrics(true)}
+                    onClick={() => onMarkerClick(project)}
                   />
                 </div>
               );
