@@ -336,6 +336,7 @@ interface NameCardProps {
   backgroundImage?: string;
   brandLogo?: string;
   onInfoClick: () => void;
+  onClick: () => void;
 }
 
 const MapNameCard = ({
@@ -344,6 +345,7 @@ const MapNameCard = ({
   backgroundImage,
   brandLogo,
   onInfoClick,
+  onClick,
 }: NameCardProps) => {
   const FGB_GREEN = "#006367";
 
@@ -363,7 +365,9 @@ const MapNameCard = ({
     >
       {/* Lens */}
       <div
-        className="absolute rounded-full pointer-events-auto"
+        className="absolute rounded-full pointer-events-auto cursor-pointer"
+        onPointerDown={(e) => { e.stopPropagation(); onClick(); }}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
         style={{
           width: LENS_D,
           height: LENS_D,
@@ -644,6 +648,7 @@ export const SiteMarker = ({
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
                     onInfoClick={() => setShowMetrics(true)}
+                    onClick={() => onMarkerClick(project)}
                   />
                 </div>
               );
