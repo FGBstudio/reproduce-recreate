@@ -336,6 +336,7 @@ interface NameCardProps {
   backgroundImage?: string;
   brandLogo?: string;
   onInfoClick: () => void;
+  onClick: () => void;
 }
 
 const MapNameCard = ({
