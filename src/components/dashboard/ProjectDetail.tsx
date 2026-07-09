@@ -3758,10 +3758,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <ExportButtons chartRef={energyConsumptionRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('energyConsumption')} />
                       </div>
 
-                      <ZoomableChart width="100%" height={280}>
+                      <ZoomableChart width="100%" height={260}>
                         <AreaChart
                           data={energyConsumptionData}
-                          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                          margin={{ top: 5, right: 10, left: 0, bottom: 28 }}
                         >
                           <defs>
                             {/* General: Teal Primary */}
@@ -3825,7 +3825,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             labelStyle={{ color: '#111827', fontWeight: 'bold' }}
                             itemSorter={(item: any) => -Number(item.value)}
                           />
-                          <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} iconType="circle" />
+                          <Legend
+                            wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 4, bottom: 0 }}
+                            iconType="circle"
+                            iconSize={8}
+                            verticalAlign="bottom"
+                            height={28}
+                          />
 
                           {energyViewMode === 'category' ? (
                             <>
