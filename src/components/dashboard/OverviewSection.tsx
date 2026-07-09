@@ -14,7 +14,6 @@ import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 import { useFingerprintVerdict } from "@/hooks/useFingerprintVerdict";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─────────────────────────────────────────────
 // Types & Config
@@ -272,119 +271,6 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
   const tokens = STATUS_TOKENS[level];
   const animatedScore = useCountUp(score, 1100);
   const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    return (
-      <Card className={`relative overflow-hidden bg-white border ${getStatusBorderColor(level)} shadow-sm ${className}`}>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-16 -right-16 w-[220px] h-[220px] rounded-full opacity-70"
-          style={{
-            background: `radial-gradient(circle at center, ${tokens.ringColor}40 0%, ${tokens.ringColor}1a 45%, transparent 72%)`,
-            filter: "blur(6px)",
-          }}
-        />
-        <div className="relative flex flex-col items-center gap-4 px-4 py-5">
-          {/* Header: period + live badges */}
-          <div className="flex items-center justify-center gap-2 flex-wrap w-full">
-            <span className="text-[10px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
-            <LiveBadge isLive={isLive} />
-            <DataSourceBadge isRealData={isRealData} size="sm" />
-          </div>
-
-          {/* Ring compact + status word */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative" style={{ width: 132, height: 132 }}>
-              <svg width={132} height={132} viewBox="0 0 180 180" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
-                <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={12} />
-                <circle
-                  cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringColor}
-                  strokeWidth={12} strokeLinecap="round"
-                  strokeDasharray={RING_CIRC}
-                  strokeDashoffset={RING_CIRC * (1 - score / 100)}
-                  style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className={`text-[44px] font-semibold leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
-                <span className="text-[10px] uppercase tracking-widest text-[#006367]/70 mt-1 font-medium">score</span>
-              </div>
-            </div>
-            <div className={`text-[28px] font-semibold leading-none tracking-tight ${tokens.textColor}`}>
-              {tokens.word}
-            </div>
-            <div className="flex items-center justify-center gap-1.5 text-[13px] text-[#006367]">
-              <span className="font-medium">Overall performance</span>
-              <InfoDot text="Media ponderata dei tre indici del sito: 80% Energia, 15% Acqua, 5% Aria. Un valore alto (≥ 80) significa un edificio efficiente, con aria salubre e nessuna perdita d'acqua." />
-            </div>
-            {peerPercentile != null && (
-              <div className="text-[11px] text-slate-500">Top <strong className="font-semibold text-[#006367]">{peerPercentile}%</strong> of monitored buildings</div>
-            )}
-          </div>
-
-          {/* Full-width track bar */}
-          <div className="w-full flex items-center gap-2">
-            <div className="h-[6px] flex-1 rounded-full bg-[#E4F3F3] overflow-hidden">
-              <div className={`h-full rounded-full ${tokens.trackColor}`} style={{ width: `${score}%`, transition: "width 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
-            </div>
-            <span className="text-[12px] text-[#006367] tabular-nums font-medium">{score}/100</span>
-          </div>
-
-          {/* Module pills 2×2 grid */}
-          <div className="grid grid-cols-2 gap-3 w-full pt-1">
-            {[
-              { key: "energy", icon: <Zap className="w-5 h-5" />, label: "Energy", info: MOD_INFO.energy, mod: modules.energy, onClick: modules.energy.enabled ? handleModClick("energy") : undefined },
-              { key: "air",    icon: <Wind className="w-5 h-5" />, label: "Air", info: MOD_INFO.air, mod: modules.air, onClick: modules.air.enabled ? handleModClick("air") : undefined },
-              { key: "water",  icon: <Droplet className="w-5 h-5" />, label: "Water", info: MOD_INFO.water, mod: modules.water, onClick: modules.water.enabled ? handleModClick("water") : undefined },
-            ].map(({ key, icon, label, info, mod, onClick }) => {
-              const active = mod.enabled && mod.isLive;
-              return (
-                <button
-                  key={key}
-                  onClick={onClick}
-                  disabled={!onClick}
-                  className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${active ? `${tokens.modIconBg} border-[#a0d5d6]/40` : "bg-gray-50 border-gray-100"}`}
-                >
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? `${tokens.modIconText} bg-white` : "text-slate-500 bg-white"}`}>
-                    {icon}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className={`text-[22px] font-semibold tabular-nums leading-none ${active ? "text-[#006367]" : "text-slate-500"}`}>
-                      {active ? mod.score : "—"}
-                    </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="text-[10px] uppercase tracking-wider text-[#006367]/80 font-medium">{label}</span>
-                      <InfoDot text={info} />
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-
-            {/* Alerts pill */}
-            <button
-              disabled
-              className={`flex items-center gap-3 p-3 rounded-2xl border text-left col-span-2 ${alertStatus.hasAlerts ? "bg-red-50 border-red-100" : "bg-[#E4F3F3] border-[#a0d5d6]/40"}`}
-            >
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-white ${alertStatus.hasAlerts ? "text-red-600" : "text-[#006367]"}`}>
-                {alertStatus.hasAlerts ? <AlertTriangle className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className={`text-[22px] font-semibold tabular-nums leading-none ${alertStatus.hasAlerts ? "text-red-600" : "text-[#006367]"}`}>
-                  {alertStatus.hasAlerts ? alertStatus.criticalCount + alertStatus.warningCount : "0"}
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#006367]/80 font-medium">Alerts</span>
-                  <InfoDot text={MOD_INFO.alerts} />
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-      </Card>
-    );
-  }
 
   return (
     <Card className={`relative overflow-hidden bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>

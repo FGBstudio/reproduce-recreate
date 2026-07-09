@@ -62,7 +62,6 @@ import { isSupportedCurrency, getCurrencySymbol } from "@/lib/currency";
 import { useSiteCurrency } from "@/hooks/useSiteCurrency";
 import { useSiteEnergyPriceHistory } from "@/hooks/useSiteEnergyPriceHistory";
 import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
 const getIAQGradient = (type: string) => {
@@ -2578,50 +2577,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return { rows, cols, valueMap: bucketMap, scale, isYearView };
   }, [heatmapResp, timePeriod, heatmapConfig, siteTimezone]);
 
-  // Mobile: collapse hourly rows into 3h buckets for readability. Year (daily) view unchanged.
-  const isMobileView = useIsMobile();
-  const [tappedHeatCell, setTappedHeatCell] = useState<string | null>(null);
-  useEffect(() => {
-    if (!tappedHeatCell) return;
-    const clear = () => setTappedHeatCell(null);
-    window.addEventListener('touchstart', clear, { passive: true });
-    return () => window.removeEventListener('touchstart', clear);
-  }, [tappedHeatCell]);
-
-  const heatmapGridDisplay = useMemo(() => {
-    if (!isMobileView || heatmapGrid.isYearView) {
-      return { ...heatmapGrid, is3h: false as const };
-    }
-    const bucketStarts = [0, 3, 6, 9, 12, 15, 18, 21];
-    const collapsed = new Map<string, number>();
-    for (const col of heatmapGrid.cols) {
-      for (const start of bucketStarts) {
-        let sum = 0;
-        for (let h = start; h < start + 3; h++) {
-          const v = heatmapGrid.valueMap.get(`${h}_${col.key}`);
-          if (v) sum += v;
-        }
-        if (sum > 0) collapsed.set(`${start}_${col.key}`, sum);
-      }
-    }
-    // Recompute quantile scale on the collapsed values so colors stay meaningful
-    const values = Array.from(collapsed.values()).filter(v => v > 0).sort((a, b) => a - b);
-    const q = (pct: number) => values.length ? values[Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * pct)))] : 0;
-    const scale = {
-      min: values[0] ?? 0,
-      max: values[values.length - 1] ?? 0,
-      t1: q(0.2), t2: q(0.4), t3: q(0.6), t4: q(0.8),
-    };
-    return {
-      rows: bucketStarts,
-      cols: heatmapGrid.cols,
-      valueMap: collapsed,
-      scale,
-      isYearView: false,
-      is3h: true as const,
-    };
-  }, [heatmapGrid, isMobileView]);
-
   const heatmapLegendColors = useMemo(
     () => [
       'hsl(var(--heatmap-1))',
@@ -3421,7 +3376,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   ]);
 
   return (
-    <div className="pd-root fixed inset-0 z-50 animate-slide-up bg-background">
+    <div className="fixed inset-0 z-50 animate-slide-up bg-background">
       
       {/* CONTAINER SFONDO GENERALE */}
       <div 
@@ -3737,7 +3692,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
               <ModuleGate module="energy" config={resolvedModuleConfig.energy} demoContent={<EnergyDemoContent />}>
-                <div className="pd-energy-module contents">
+                <>
                 {/* Slide 1: Energy Overview */}
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
@@ -3803,10 +3758,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <ExportButtons chartRef={energyConsumptionRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('energyConsumption')} />
                       </div>
 
-                      <ZoomableChart width="100%" height={260}>
+                      <ZoomableChart width="100%" height={280}>
                         <AreaChart
                           data={energyConsumptionData}
-                          margin={{ top: 5, right: 10, left: 0, bottom: 28 }}
+                          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                         >
                           <defs>
                             {/* General: Teal Primary */}
@@ -3870,13 +3825,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             labelStyle={{ color: '#111827', fontWeight: 'bold' }}
                             itemSorter={(item: any) => -Number(item.value)}
                           />
-                          <Legend
-                            wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 4, bottom: 0 }}
-                            iconType="circle"
-                            iconSize={8}
-                            verticalAlign="bottom"
-                            height={28}
-                          />
+                          <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} iconType="circle" />
 
                           {energyViewMode === 'category' ? (
                             <>
@@ -3961,23 +3910,24 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </ZoomableChart>
                     </div>
 
+                    {/* Energy Consumption Breakdown Chart - REPLACED */}
                     {/* Energy Consumption Breakdown Chart */}
-                    <div ref={energyDensityRef} className="pd-energy-breakdown-card bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                    <div ref={energyDensityRef} className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-3 md:mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_breakdown')}</h3>
                         <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-breakdown" />
                       </div>
-                      <div className="pd-energy-breakdown-body flex items-center gap-4 md:gap-6">
+                      <div className="flex items-center gap-4 md:gap-6">
                         {/* Legenda a Sinistra */}
-                        <div className="pd-energy-breakdown-legend space-y-1.5 md:space-y-2 flex-1 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-1.5 md:space-y-2 flex-1 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
                           {energyDistributionData.length === 0 ? (
                             <div className="text-sm text-muted-foreground italic">No data available</div>
                           ) : (
                             energyDistributionData.map((item, idx) => (
                               <div key={idx} className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                                <span className="pd-legend-name text-xs md:text-sm text-gray-600 truncate" title={item.name}>{item.name}</span>
-                                <span className="pd-legend-value text-xs md:text-sm font-semibold text-gray-800 ml-auto tabular-nums">
+                                <span className="text-xs md:text-sm text-gray-600 truncate" title={item.name}>{item.name}</span>
+                                <span className="text-xs md:text-sm font-semibold text-gray-800 ml-auto">
                                   {item.value.toLocaleString('it-IT', { maximumFractionDigits: 0 })} kWh
                                 </span>
                               </div>
@@ -3986,7 +3936,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
 
                         {/* Donut Chart a Destra */}
-                        <div className="pd-energy-breakdown-donut relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0 mx-auto">
+                        <div className="relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0">
                           <ZoomableChart width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -4009,10 +3959,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </ZoomableChart>
                           {/* Valore Centrale: Totale kWh */}
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="pd-donut-total text-sm md:text-xl font-bold text-slate-900 leading-none tabular-nums">
+                            <span className="text-lg md:text-xl font-bold text-slate-900">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[8px] md:text-xs text-muted-foreground font-medium mt-0.5 leading-none">{t('pd.total_kwh')}</span>
+                            <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
                           </div>
                         </div>
                       </div>
@@ -4091,8 +4041,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Left Column: Alerts & Health Split */}
-                    <div className="pd-alerts-health-grid grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 min-h-[400px]">
-                      <div ref={alertsRef} className="pd-alerts-card bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
+                    <div className="grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 min-h-[400px]">
+                      <div ref={alertsRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                           <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
@@ -4104,7 +4054,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                       </div>
 
-                      <div className="pd-health-card bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col border border-indigo-50">
+                      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col border border-indigo-50">
                         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                           Sensor Health
                         </h3>
@@ -4241,10 +4191,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div className="flex">
                             {/* Spacer angolo in alto a sx */}
                             <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-muted-foreground">
-                                {heatmapGridDisplay.isYearView ? 'GG' : 'HH'}
+                                {heatmapGrid.isYearView ? 'GG' : 'HH'}
                             </div>
                             {/* Labels Colonne */}
-                            {heatmapGridDisplay.cols.map(col => (
+                            {heatmapGrid.cols.map(col => (
                                 <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-muted-foreground pb-1">
                                     {col.label}
                                 </div>
@@ -4252,39 +4202,32 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </div>
 
                           {/* Body Griglia (Righe Y-Axis) */}
-                          {heatmapGridDisplay.rows.map(row => (
-                              <div key={row} className="flex items-center h-6 mb-0.5 hm-row">
+                          {heatmapGrid.rows.map(row => (
+                              <div key={row} className="flex items-center h-6 mb-0.5">
                                   {/* Label Riga (00:00 o Day 1) */}
                                   <div className="w-12 flex-shrink-0 text-[10px] text-muted-foreground text-right pr-2">
-                                      {heatmapGridDisplay.isYearView 
+                                      {heatmapGrid.isYearView 
                                         ? row // Giorno mese (1, 2...)
-                                        : heatmapGridDisplay.is3h
-                                          ? `${String(row).padStart(2, '0')}-${String((row + 3) % 24).padStart(2, '0')}`
-                                          : `${String(row).padStart(2, '0')}:00`
+                                        : `${String(row).padStart(2, '0')}:00` // Ora (00:00...)
                                       }
                                   </div>
                                   
                                   {/* Celle */}
-                                  {heatmapGridDisplay.cols.map(col => {
-                                      const cellKey = `${row}_${col.key}`;
-                                      const val = heatmapGridDisplay.valueMap.get(cellKey) || 0;
-                                      const isTapped = tappedHeatCell === cellKey;
+                                  {heatmapGrid.cols.map(col => {
+                                      const val = heatmapGrid.valueMap.get(`${row}_${col.key}`) || 0;
                                       return (
                                           <div 
                                             key={`${row}-${col.key}`} 
-                                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group hm-cell"
-                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGridDisplay.scale) }}
-                                            onTouchStart={(e) => { e.stopPropagation(); if (val > 0) setTappedHeatCell(isTapped ? null : cellKey); }}
+                                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group"
+                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGrid.scale) }}
                                           >
                                             {/* Tooltip on Hover */}
                                             {val > 0 && (
-                                                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg ${isTapped ? 'block' : 'hidden group-hover:block'}`}>
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
                                                     <div className="font-bold">
-                                                        {heatmapGridDisplay.isYearView 
+                                                        {heatmapGrid.isYearView 
                                                             ? `${row} ${col.label}` // "15 GEN"
-                                                            : heatmapGridDisplay.is3h
-                                                              ? `${col.label} ${String(row).padStart(2, '0')}-${String((row + 3) % 24).padStart(2, '0')}`
-                                                              : `${col.label} ore ${row}:00`
+                                                            : `${col.label} ore ${row}:00` // "01/03 ore 14:00"
                                                         }
                                                     </div>
                                                     <div>{val.toFixed(2)} kWh</div>
@@ -4305,32 +4248,17 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-full pb-20">
                     
                     {/* WIDGET 1: ACTUAL VS AVERAGE */}
-                    <div className="pd-actual-vs-avg lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
-                      <div className="pd-avg-header flex justify-between items-start mb-4 gap-2 flex-wrap">
-                        <div className="min-w-0">
+                    <div className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
                           <p className="text-xs text-muted-foreground">Energy Density (kWh/m²)</p>
-                          {/* BANNER DINAMICO — inline sotto il titolo su mobile */}
-                          {actualVsAverageData.summary && (
-                            <div className={`pd-avg-badge mt-2 md:hidden inline-flex px-3 py-1.5 rounded-lg text-xs font-semibold items-center gap-2 border ${
-                              actualVsAverageData.summary.status === 'above'
-                                ? 'bg-red-50 text-red-700 border-red-100'
-                                : actualVsAverageData.summary.status === 'below'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                  : 'bg-gray-50 text-gray-700 border-gray-100'
-                            }`}>
-                              {actualVsAverageData.summary.status === 'above' && '↑'}
-                              {actualVsAverageData.summary.status === 'below' && '↓'}
-                              {actualVsAverageData.summary.status === 'line' && '•'}
-                              <span>You are {Math.abs(actualVsAverageData.summary.diffPct).toFixed(2)}% {actualVsAverageData.summary.status} average</span>
-                            </div>
-                          )}
                         </div>
-
+                        
                         <div className="flex items-center gap-3">
-                          {/* BANNER DINAMICO — solo desktop */}
+                          {/* BANNER DINAMICO */}
                           {actualVsAverageData.summary && (
-                            <div className={`hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold items-center gap-2 border ${
+                            <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
                               actualVsAverageData.summary.status === 'above' 
                                 ? 'bg-red-50 text-red-700 border-red-100' 
                                 : actualVsAverageData.summary.status === 'below'
@@ -4360,8 +4288,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               tickLine={false} 
                               tick={{ fontSize: 10, fill: '#9ca3af' }} 
                               dy={10}
-                              interval={isMobileView ? 'preserveStartEnd' : undefined}
-                              minTickGap={isMobileView ? 40 : undefined}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4378,18 +4304,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             />
                             <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
 
-                            {/* BAND: Peer Range (Area) — nascosta su mobile per leggibilità */}
-                            {!isMobileView && (
-                              <Area 
-                                type="monotone" 
-                                dataKey="range" 
-                                fill="#A6A6A6" 
-                                stroke="none" 
-                                fillOpacity={0.2} 
-                                name="Peer Range" 
-                                legendType="rect"
-                              />
-                            )}
+                            {/* BAND: Peer Range (Area) */}
+                            <Area 
+                              type="monotone" 
+                              dataKey="range" 
+                              fill="#A6A6A6" 
+                              stroke="none" 
+                              fillOpacity={0.2} 
+                              name="Peer Range" 
+                              legendType="rect"
+                            />
 
                             {/* LINE: Peer Average */}
                             <Line 
@@ -4401,26 +4325,24 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               name="Peer Average"
                             />
 
-                            {/* LINE: Benchmark (Dotted) — nascosta su mobile */}
-                            {!isMobileView && (
-                              <Line 
-                                type="monotone" 
-                                dataKey="benchmark" 
-                                stroke="#7E0A2F" 
-                                strokeWidth={2} 
-                                strokeDasharray="4 4" 
-                                dot={false} 
-                                name="Benchmark"
-                              />
-                            )}
+                            {/* LINE: Benchmark (Dotted) */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="benchmark" 
+                              stroke="#7E0A2F" 
+                              strokeWidth={2} 
+                              strokeDasharray="4 4" 
+                              dot={false} 
+                              name="Benchmark"
+                            />
 
                             {/* LINE: Actual (Main) */}
                             <Line 
                               type="monotone" 
                               dataKey="actual" 
                               stroke="#129E97" 
-                              strokeWidth={isMobileView ? 3.5 : 3} 
-                              dot={isMobileView ? false : { r: 3, fill: '#129E97', strokeWidth: 0 }} 
+                              strokeWidth={3} 
+                              dot={{ r: 3, fill: '#129E97', strokeWidth: 0 }} 
                               activeDot={{ r: 6 }} 
                               name="Actual"
                             />
@@ -4494,7 +4416,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                     </div>
                     {/* DEVICES CONSUMPTION (Stacked Bar Chart) - 2/3 width */}
-                    <div ref={deviceConsRef} className="pd-devices-cons lg:col-span-full bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    <div ref={deviceConsRef} className="lg:col-span-full bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
@@ -4508,20 +4430,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         />
                       </div>
                       
-                      <div className="pd-devices-cons-scroll flex-1 w-full min-h-[250px] overflow-x-auto md:overflow-visible">
-                        <div
-                          style={{
-                            minWidth: isMobileView
-                              ? `${Math.max(320, deviceConsumptionData.data.length * 28)}px`
-                              : undefined,
-                            height: '100%',
-                            minHeight: isMobileView ? 300 : undefined,
-                          }}
-                        >
+                      <div className="flex-1 w-full min-h-[250px]">
                         <ZoomableChart width="100%" height="100%">
                           <BarChart 
                             data={deviceConsumptionData.data} 
-                            margin={{ top: 10, right: 10, left: 0, bottom: isMobileView ? 4 : 0 }}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" vertical={timePeriod === 'week' || timePeriod === 'month'} stroke="#f0f0f0" />
                             <XAxis 
@@ -4531,7 +4444,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               tick={({ x, y, payload, index: tickIndex }: any) => {
                                 const value = payload?.value || '';
                                 let display = value;
-                                const needsRotation = !isMobileView && timePeriod === 'week';
+                                const needsRotation = timePeriod === 'week';
 
                                 if (timePeriod === 'today') {
                                   // Show HH:mm
@@ -4540,7 +4453,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                   // Show "DD/MM HH:00"
                                   if (value.includes(' ')) {
                                     const [datePart, timePart] = value.split(' ');
-                                    display = isMobileView ? datePart : `${datePart} ${timePart.substring(0, 5)}`;
+                                    display = `${datePart} ${timePart.substring(0, 5)}`;
                                   }
                                 } else if (timePeriod === 'month') {
                                   // Show DD/MM only
@@ -4558,7 +4471,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                   );
                                 }
                                 return (
-                                  <text x={x} y={y + 12} textAnchor="middle" fontSize={isMobileView ? 10 : 9} fill="#9ca3af">
+                                  <text x={x} y={y + 12} textAnchor="middle" fontSize={9} fill="#9ca3af">
                                     {display}
                                   </text>
                                 );
@@ -4566,13 +4479,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               height={timePeriod === 'week' ? 60 : 40}
                               interval={(() => {
                                 const len = deviceConsumptionData.data.length;
-                                if (isMobileView) {
-                                  // With horizontal scroll each bar has room; show ~1 label every 4-6 bars
-                                  if (timePeriod === 'today') return Math.max(0, Math.floor(len / 8) - 1);
-                                  if (timePeriod === 'week') return Math.max(0, Math.floor(len / 8) - 1);
-                                  if (timePeriod === 'month') return Math.max(0, Math.floor(len / 10) - 1);
-                                  return Math.max(0, Math.floor(len / 10) - 1);
-                                }
                                 if (timePeriod === 'today') return Math.max(0, Math.floor(len / 12) - 1);
                                 if (timePeriod === 'week') return Math.max(0, Math.floor(len / 28) - 1); // ~4 per day
                                 if (timePeriod === 'month') return Math.max(0, Math.floor(len / 15) - 1);
@@ -4584,7 +4490,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               tickLine={false} 
                               tick={{ fontSize: 10, fill: '#9ca3af' }} 
                               tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })}
-                              width={isMobileView ? 36 : undefined}
                             />
                             <Tooltip 
                               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
@@ -4596,11 +4501,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               }}
                               labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
                             />
-                            <Legend
-                              wrapperStyle={{ fontSize: isMobileView ? '11px' : '12px', paddingTop: '10px' }}
-                              iconType="circle"
-                              iconSize={isMobileView ? 8 : undefined}
-                            />
+                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
                             
                             {/* Generazione Dinamica delle Barre (Stack) */}
                             {deviceConsumptionData.keys.map((key, index) => (
@@ -4610,12 +4511,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                     stackId="a" 
                                     fill={getBarColor(key, index)} 
                                     radius={[index === deviceConsumptionData.keys.length - 1 ? 4 : 0, index === deviceConsumptionData.keys.length - 1 ? 4 : 0, 0, 0]}
-                                    maxBarSize={isMobileView ? 22 : 60}
+                                    maxBarSize={60}
                                 />
                             ))}
                           </BarChart>
                         </ZoomableChart>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -4776,14 +4676,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
               </ModuleGate>
             )}
             
             {/* AIR QUALITY DASHBOARD */}
             {activeDashboard === "air" && (
               <ModuleGate module="air" config={resolvedModuleConfig.air} demoContent={<AirDemoContent />}>
-                <div className="pd-air-module contents">
+                <>
                 {/* Slide 1: Overview + Building Grid */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -5325,14 +5225,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     })()}
                   </div>
                 </div>
-              </div>
+              </>
               </ModuleGate>
             )}
             
             {/* WATER DASHBOARD */}
             {activeDashboard === "water" && (
               <ModuleGate module="water" config={resolvedModuleConfig.water} demoContent={<WaterDemoContent />}>
-                <div className="pd-water-module contents">
+                <>
                 {/* Slide 1: Consumo idrico & Distribuzione */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -5646,7 +5546,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
               </ModuleGate>
             )}
             
