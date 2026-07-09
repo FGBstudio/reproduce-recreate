@@ -182,14 +182,14 @@ function ScoreRing({ score, level, animatedScore }: { score: number; level: Stat
   const offset = mounted ? RING_CIRC * (1 - score / 100) : RING_CIRC;
 
   return (
-    <div className="relative flex-shrink-0" style={{ width: 180, height: 180 }}>
-      <svg width={180} height={180} viewBox="0 0 180 180" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
+    <div className="relative flex-shrink-0 w-[140px] h-[140px] md:w-[180px] md:h-[180px]">
+      <svg className="w-full h-full" viewBox="0 0 180 180" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
         <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={12} />
         <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={12} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className={`text-[64px] font-semibold leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
-        <span className="text-[12px] uppercase tracking-widest text-[#006367]/70 mt-1.5 font-medium">score</span>
+        <span className={`text-[44px] md:text-[64px] font-semibold leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
+        <span className="text-[10px] md:text-[12px] uppercase tracking-widest text-[#006367]/70 mt-1 md:mt-1.5 font-medium">score</span>
       </div>
     </div>
   );
@@ -199,11 +199,11 @@ function TrackBar({ score, level }: { score: number; level: StatusLevel }) {
   const tokens = STATUS_TOKENS[level];
   const mounted = useDelayedTrue(80);
   return (
-    <div className="flex items-center gap-3 mt-3">
-      <div className="h-[6px] w-[280px] rounded-full bg-[#E4F3F3] overflow-hidden">
+    <div className="flex items-center gap-2 md:gap-3 mt-2 md:mt-3">
+      <div className="h-[4px] md:h-[6px] w-full max-w-[200px] md:max-w-[280px] rounded-full bg-[#E4F3F3] overflow-hidden">
         <div className={`h-full rounded-full ${tokens.trackColor}`} style={{ width: mounted ? `${score}%` : "0%", transition: "width 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
       </div>
-      <span className="text-[15px] text-[#006367] tabular-nums font-medium">{score} / 100</span>
+      <span className="text-[13px] md:text-[15px] text-[#006367] tabular-nums font-medium">{score} / 100</span>
     </div>
   );
 }
@@ -241,22 +241,22 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick, infoText
   const tokens = STATUS_TOKENS[level];
   const active = enabled && isLive;
   return (
-    <div className="flex flex-col items-center gap-2 min-w-[92px]">
-      <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-2 group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
-      <div className={`w-[72px] h-[72px] rounded-[18px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-slate-600 border-gray-100"}`}>
+    <div className="flex flex-col items-center gap-1.5 md:gap-2 min-w-[76px] md:min-w-[92px]">
+      <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-1.5 md:gap-2 group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
+      <div className={`w-[56px] h-[56px] md:w-[72px] md:h-[72px] rounded-[14px] md:rounded-[18px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-slate-600 border-gray-100"}`}>
         {icon}
       </div>
-      <span className={`text-[30px] font-semibold tabular-nums leading-none ${active ? "text-[#006367]" : "text-slate-600"}`}>{active ? score : "—"}</span>
+      <span className={`text-[24px] md:text-[30px] font-semibold tabular-nums leading-none ${active ? "text-[#006367]" : "text-slate-600"}`}>{active ? score : "—"}</span>
       </button>
       <div className="flex items-center gap-1">
-        <span className="text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">{label}</span>
+        <span className="text-[10px] md:text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">{label}</span>
         {infoText && <InfoDot text={infoText} />}
       </div>
     </div>
   );
 }
 
-function ModSep() { return <div className="w-px h-16 bg-[#a0d5d6]/40 self-center flex-shrink-0" aria-hidden="true" />; }
+function ModSep() { return <div className="w-px h-12 md:h-16 bg-[#a0d5d6]/40 self-center flex-shrink-0" aria-hidden="true" />; }
 
 function LiveBadge({ isLive }: { isLive: boolean }) {
   return (
@@ -283,20 +283,20 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           filter: "blur(6px)",
         }}
       />
-      <div className={`relative flex flex-col xl:flex-row xl:items-center justify-between gap-5 md:gap-8 px-5 md:px-8 py-5 md:py-8 h-full`}>
+      <div className={`relative flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-8 px-4 md:px-8 py-4 md:py-8 h-full`}>
         {/* ── LEFT: Ring + status text ── */}
-        <div className="flex items-center gap-6 flex-1 min-w-0">
+        <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[11px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
+              <span className="text-[10px] md:text-[11px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
               <LiveBadge isLive={isLive} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
-            <div className={`text-[48px] md:text-[56px] font-semibold leading-none tracking-tight ${tokens.textColor}`}>
+            <div className={`text-[36px] md:text-[56px] font-semibold leading-none tracking-tight ${tokens.textColor}`}>
               {tokens.word}
             </div>
-            <div className="text-[16px] text-[#006367] mt-2 leading-snug flex items-center gap-1.5 flex-wrap">
+            <div className="text-[14px] md:text-[16px] text-[#006367] mt-1.5 md:mt-2 leading-snug flex items-center gap-1.5 flex-wrap">
               <span className="font-medium">Overall performance</span>
               <InfoDot text="Media ponderata dei tre indici del sito: 80% Energia, 15% Acqua, 5% Aria. Un valore alto (≥ 80) significa un edificio efficiente, con aria salubre e nessuna perdita d'acqua." />
               {peerPercentile != null && (<span className="text-slate-500">· Top <strong className="font-semibold text-[#006367]">{peerPercentile}%</strong> of monitored buildings</span>)}
@@ -309,22 +309,22 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
         <div className="hidden xl:block w-px h-32 bg-[#a0d5d6]/40 flex-shrink-0" aria-hidden="true" />
 
         {/* ── RIGHT: Module pills + Alerts ── */}
-        <div className="flex items-center gap-6 md:gap-7 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
-          <ModPill icon={<Zap className="w-7 h-7" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} infoText={MOD_INFO.energy} />
+        <div className="flex items-center gap-4 md:gap-7 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
+          <ModPill icon={<Zap className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} infoText={MOD_INFO.energy} />
           <ModSep />
-          <ModPill icon={<Wind className="w-7 h-7" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} infoText={MOD_INFO.air} />
+          <ModPill icon={<Wind className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} infoText={MOD_INFO.air} />
           <ModSep />
-          <ModPill icon={<Droplet className="w-7 h-7" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} infoText={MOD_INFO.water} />
+          <ModPill icon={<Droplet className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} infoText={MOD_INFO.water} />
           <ModSep />
-          <div className="flex flex-col items-center gap-2 min-w-[92px]">
-            <div className={`w-[72px] h-[72px] rounded-[18px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-[#E4F3F3] text-[#006367] border-[#a0d5d6]/40'}`}>
-              {alertStatus.hasAlerts ? <AlertTriangle className="w-7 h-7" /> : <Activity className="w-7 h-7" />}
+          <div className="flex flex-col items-center gap-1.5 md:gap-2 min-w-[76px] md:min-w-[92px]">
+            <div className={`w-[56px] h-[56px] md:w-[72px] md:h-[72px] rounded-[14px] md:rounded-[18px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-[#E4F3F3] text-[#006367] border-[#a0d5d6]/40'}`}>
+              {alertStatus.hasAlerts ? <AlertTriangle className="w-6 h-6 md:w-7 md:h-7" /> : <Activity className="w-6 h-6 md:w-7 md:h-7" />}
             </div>
-            <span className={`text-[30px] font-semibold tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-[#006367]'}`}>
+            <span className={`text-[24px] md:text-[30px] font-semibold tabular-nums leading-none ${alertStatus.hasAlerts ? 'text-red-600' : 'text-[#006367]'}`}>
               {alertStatus.hasAlerts ? alertStatus.criticalCount + alertStatus.warningCount : "0"}
             </span>
             <div className="flex items-center gap-1">
-              <span className="text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">Alerts</span>
+              <span className="text-[10px] md:text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">Alerts</span>
               <InfoDot text={MOD_INFO.alerts} />
             </div>
           </div>
