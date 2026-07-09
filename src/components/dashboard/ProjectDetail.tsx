@@ -3692,7 +3692,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
               <ModuleGate module="energy" config={resolvedModuleConfig.energy} demoContent={<EnergyDemoContent />}>
-                <>
+                <div className="pd-energy-module contents">
                 {/* Slide 1: Energy Overview */}
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
@@ -4676,14 +4676,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
               </ModuleGate>
             )}
             
             {/* AIR QUALITY DASHBOARD */}
             {activeDashboard === "air" && (
               <ModuleGate module="air" config={resolvedModuleConfig.air} demoContent={<AirDemoContent />}>
-                <>
+                <div className="pd-air-module contents">
                 {/* Slide 1: Overview + Building Grid */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -5225,14 +5225,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     })()}
                   </div>
                 </div>
-              </>
+              </div>
               </ModuleGate>
             )}
             
             {/* WATER DASHBOARD */}
             {activeDashboard === "water" && (
               <ModuleGate module="water" config={resolvedModuleConfig.water} demoContent={<WaterDemoContent />}>
-                <>
+                <div className="pd-water-module contents">
                 {/* Slide 1: Consumo idrico & Distribuzione */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
