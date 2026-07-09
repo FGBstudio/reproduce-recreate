@@ -582,4 +582,38 @@
   .pd-energy-module .overflow-x-auto table,
   .pd-air-module .overflow-x-auto table,
   .pd-water-module .overflow-x-auto table { min-width: 100%; }
+
+  /* =====================================================
+     ENERGY — Slide 2 (Alerts, Sensor Health, Periods, Heatmap)
+     ===================================================== */
+
+  /* Alerts + Sensor Health: stack, cap height so they aren't half-empty */
+  .pd-energy-module .grid.grid-rows-2.xl\:grid-rows-1,
+  .pd-energy-module .grid.grid-rows-2 {
+    grid-template-rows: auto auto !important;
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+    gap: 10px !important;
+  }
+  .pd-energy-module .grid.grid-rows-2 > div {
+    max-height: 240px;
+    padding: 12px !important;
+  }
+  .pd-energy-module .grid.grid-rows-2 > div h3 { font-size: 13px !important; margin-bottom: 8px !important; }
+
+  /* Energy Periods table: compact, prices never wrap */
+  .pd-energy-module table th,
+  .pd-energy-module table td { padding: 6px 8px !important; font-size: 11px !important; }
+  .pd-energy-module table td:last-child,
+  .pd-energy-module table th:last-child { white-space: nowrap; font-size: 10.5px !important; }
+  .pd-energy-module .overflow-y-auto[style*="maxHeight"],
+  .pd-energy-module .overflow-y-auto[style*="max-height"] { max-height: 260px !important; }
+  .pd-energy-module select { font-size: 11px !important; padding: 4px 6px !important; }
+
+  /* Consumption Heatmap: compact cells, wrappable header, tap-friendly */
+  .pd-energy-module .hm-row { height: 22px !important; }
+  .pd-energy-module .hm-cell { min-width: 20px !important; }
+  .pd-energy-module .hm-row > div:first-child { width: 40px !important; font-size: 9px !important; padding-right: 4px !important; }
+  .pd-energy-module [class*="min-w-max"] > .flex:first-child > div:first-child { width: 40px !important; font-size: 9px !important; }
+  .pd-energy-module [class*="min-w-max"] > .flex:first-child > div:not(:first-child) { min-width: 20px !important; font-size: 9px !important; }
 }

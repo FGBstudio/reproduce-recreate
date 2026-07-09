@@ -62,6 +62,7 @@ import { isSupportedCurrency, getCurrencySymbol } from "@/lib/currency";
 import { useSiteCurrency } from "@/hooks/useSiteCurrency";
 import { useSiteEnergyPriceHistory } from "@/hooks/useSiteEnergyPriceHistory";
 import { BuildingOverview, AirHeatmap } from "./AirCustomComponents";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
 const getIAQGradient = (type: string) => {
@@ -2577,6 +2578,50 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return { rows, cols, valueMap: bucketMap, scale, isYearView };
   }, [heatmapResp, timePeriod, heatmapConfig, siteTimezone]);
 
+  // Mobile: collapse hourly rows into 3h buckets for readability. Year (daily) view unchanged.
+  const isMobileView = useIsMobile();
+  const [tappedHeatCell, setTappedHeatCell] = useState<string | null>(null);
+  useEffect(() => {
+    if (!tappedHeatCell) return;
+    const clear = () => setTappedHeatCell(null);
+    window.addEventListener('touchstart', clear, { passive: true });
+    return () => window.removeEventListener('touchstart', clear);
+  }, [tappedHeatCell]);
+
+  const heatmapGridDisplay = useMemo(() => {
+    if (!isMobileView || heatmapGrid.isYearView) {
+      return { ...heatmapGrid, is3h: false as const };
+    }
+    const bucketStarts = [0, 3, 6, 9, 12, 15, 18, 21];
+    const collapsed = new Map<string, number>();
+    for (const col of heatmapGrid.cols) {
+      for (const start of bucketStarts) {
+        let sum = 0;
+        for (let h = start; h < start + 3; h++) {
+          const v = heatmapGrid.valueMap.get(`${h}_${col.key}`);
+          if (v) sum += v;
+        }
+        if (sum > 0) collapsed.set(`${start}_${col.key}`, sum);
+      }
+    }
+    // Recompute quantile scale on the collapsed values so colors stay meaningful
+    const values = Array.from(collapsed.values()).filter(v => v > 0).sort((a, b) => a - b);
+    const q = (pct: number) => values.length ? values[Math.min(values.length - 1, Math.max(0, Math.floor((values.length - 1) * pct)))] : 0;
+    const scale = {
+      min: values[0] ?? 0,
+      max: values[values.length - 1] ?? 0,
+      t1: q(0.2), t2: q(0.4), t3: q(0.6), t4: q(0.8),
+    };
+    return {
+      rows: bucketStarts,
+      cols: heatmapGrid.cols,
+      valueMap: collapsed,
+      scale,
+      isYearView: false,
+      is3h: true as const,
+    };
+  }, [heatmapGrid, isMobileView]);
+
   const heatmapLegendColors = useMemo(
     () => [
       'hsl(var(--heatmap-1))',
@@ -4197,10 +4242,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div className="flex">
                             {/* Spacer angolo in alto a sx */}
                             <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-muted-foreground">
-                                {heatmapGrid.isYearView ? 'GG' : 'HH'}
+                                {heatmapGridDisplay.isYearView ? 'GG' : 'HH'}
                             </div>
                             {/* Labels Colonne */}
-                            {heatmapGrid.cols.map(col => (
+                            {heatmapGridDisplay.cols.map(col => (
                                 <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-muted-foreground pb-1">
                                     {col.label}
                                 </div>
@@ -4208,32 +4253,39 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </div>
 
                           {/* Body Griglia (Righe Y-Axis) */}
-                          {heatmapGrid.rows.map(row => (
-                              <div key={row} className="flex items-center h-6 mb-0.5">
+                          {heatmapGridDisplay.rows.map(row => (
+                              <div key={row} className="flex items-center h-6 mb-0.5 hm-row">
                                   {/* Label Riga (00:00 o Day 1) */}
                                   <div className="w-12 flex-shrink-0 text-[10px] text-muted-foreground text-right pr-2">
-                                      {heatmapGrid.isYearView 
+                                      {heatmapGridDisplay.isYearView 
                                         ? row // Giorno mese (1, 2...)
-                                        : `${String(row).padStart(2, '0')}:00` // Ora (00:00...)
+                                        : heatmapGridDisplay.is3h
+                                          ? `${String(row).padStart(2, '0')}-${String((row + 3) % 24).padStart(2, '0')}`
+                                          : `${String(row).padStart(2, '0')}:00`
                                       }
                                   </div>
                                   
                                   {/* Celle */}
-                                  {heatmapGrid.cols.map(col => {
-                                      const val = heatmapGrid.valueMap.get(`${row}_${col.key}`) || 0;
+                                  {heatmapGridDisplay.cols.map(col => {
+                                      const cellKey = `${row}_${col.key}`;
+                                      const val = heatmapGridDisplay.valueMap.get(cellKey) || 0;
+                                      const isTapped = tappedHeatCell === cellKey;
                                       return (
                                           <div 
                                             key={`${row}-${col.key}`} 
-                                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group"
-                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGrid.scale) }}
+                                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group hm-cell"
+                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGridDisplay.scale) }}
+                                            onTouchStart={(e) => { e.stopPropagation(); if (val > 0) setTappedHeatCell(isTapped ? null : cellKey); }}
                                           >
                                             {/* Tooltip on Hover */}
                                             {val > 0 && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg ${isTapped ? 'block' : 'hidden group-hover:block'}`}>
                                                     <div className="font-bold">
-                                                        {heatmapGrid.isYearView 
+                                                        {heatmapGridDisplay.isYearView 
                                                             ? `${row} ${col.label}` // "15 GEN"
-                                                            : `${col.label} ore ${row}:00` // "01/03 ore 14:00"
+                                                            : heatmapGridDisplay.is3h
+                                                              ? `${col.label} ${String(row).padStart(2, '0')}-${String((row + 3) % 24).padStart(2, '0')}`
+                                                              : `${col.label} ore ${row}:00`
                                                         }
                                                     </div>
                                                     <div>{val.toFixed(2)} kWh</div>
