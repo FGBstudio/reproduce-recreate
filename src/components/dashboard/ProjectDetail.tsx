@@ -3758,10 +3758,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <ExportButtons chartRef={energyConsumptionRef} data={energyConsumptionData} filename="energy-over-time" onExpand={() => setFullscreenChart('energyConsumption')} />
                       </div>
 
-                      <ZoomableChart width="100%" height={280}>
+                      <ZoomableChart width="100%" height={260}>
                         <AreaChart
                           data={energyConsumptionData}
-                          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                          margin={{ top: 5, right: 10, left: 0, bottom: 28 }}
                         >
                           <defs>
                             {/* General: Teal Primary */}
@@ -3825,7 +3825,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             labelStyle={{ color: '#111827', fontWeight: 'bold' }}
                             itemSorter={(item: any) => -Number(item.value)}
                           />
-                          <Legend wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 10 }} iconType="circle" />
+                          <Legend
+                            wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 4, bottom: 0 }}
+                            iconType="circle"
+                            iconSize={8}
+                            verticalAlign="bottom"
+                            height={28}
+                          />
 
                           {energyViewMode === 'category' ? (
                             <>
@@ -3959,10 +3965,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </ZoomableChart>
                           {/* Valore Centrale: Totale kWh */}
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-lg md:text-xl font-bold text-slate-900">
+                            <span className="text-sm md:text-xl font-bold text-slate-900 leading-none">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
+                            <span className="text-[8px] md:text-xs text-muted-foreground font-medium mt-0.5 leading-none">{t('pd.total_kwh')}</span>
                           </div>
                         </div>
                       </div>

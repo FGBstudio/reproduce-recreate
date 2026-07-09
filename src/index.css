@@ -401,18 +401,20 @@
   .pd-energy-module .recharts-legend-wrapper,
   .pd-air-module .recharts-legend-wrapper,
   .pd-water-module .recharts-legend-wrapper {
-    position: static !important;
-    padding: 8px 4px 0 !important;
+    /* Keep Recharts' default absolute positioning so the legend stays
+       inside the chart container and never spills outside the card. */
     max-width: 100% !important;
+    padding: 0 4px !important;
   }
   .pd-energy-module .recharts-default-legend,
   .pd-air-module .recharts-default-legend,
   .pd-water-module .recharts-default-legend {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 4px 10px !important;
+    gap: 2px 8px !important;
     justify-content: center !important;
-    font-size: 10px !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
   }
   .pd-energy-module .recharts-legend-item,
   .pd-air-module .recharts-legend-item,
