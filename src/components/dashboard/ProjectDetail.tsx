@@ -4494,7 +4494,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                     </div>
                     {/* DEVICES CONSUMPTION (Stacked Bar Chart) - 2/3 width */}
-                    <div ref={deviceConsRef} className="lg:col-span-full bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
+                    <div ref={deviceConsRef} className="pd-devices-cons lg:col-span-full bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
@@ -4508,11 +4508,20 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         />
                       </div>
                       
-                      <div className="flex-1 w-full min-h-[250px]">
+                      <div className="pd-devices-cons-scroll flex-1 w-full min-h-[250px] overflow-x-auto md:overflow-visible">
+                        <div
+                          style={{
+                            minWidth: isMobileView
+                              ? `${Math.max(320, deviceConsumptionData.data.length * 28)}px`
+                              : undefined,
+                            height: '100%',
+                            minHeight: isMobileView ? 300 : undefined,
+                          }}
+                        >
                         <ZoomableChart width="100%" height="100%">
                           <BarChart 
                             data={deviceConsumptionData.data} 
-                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            margin={{ top: 10, right: 10, left: 0, bottom: isMobileView ? 4 : 0 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" vertical={timePeriod === 'week' || timePeriod === 'month'} stroke="#f0f0f0" />
                             <XAxis 
@@ -4522,7 +4531,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               tick={({ x, y, payload, index: tickIndex }: any) => {
                                 const value = payload?.value || '';
                                 let display = value;
-                                const needsRotation = timePeriod === 'week';
+                                const needsRotation = !isMobileView && timePeriod === 'week';
 
                                 if (timePeriod === 'today') {
                                   // Show HH:mm
@@ -4531,7 +4540,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                   // Show "DD/MM HH:00"
                                   if (value.includes(' ')) {
                                     const [datePart, timePart] = value.split(' ');
-                                    display = `${datePart} ${timePart.substring(0, 5)}`;
+                                    display = isMobileView ? datePart : `${datePart} ${timePart.substring(0, 5)}`;
                                   }
                                 } else if (timePeriod === 'month') {
                                   // Show DD/MM only
@@ -4549,7 +4558,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                   );
                                 }
                                 return (
-                                  <text x={x} y={y + 12} textAnchor="middle" fontSize={9} fill="#9ca3af">
+                                  <text x={x} y={y + 12} textAnchor="middle" fontSize={isMobileView ? 10 : 9} fill="#9ca3af">
                                     {display}
                                   </text>
                                 );
@@ -4557,6 +4566,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               height={timePeriod === 'week' ? 60 : 40}
                               interval={(() => {
                                 const len = deviceConsumptionData.data.length;
+                                if (isMobileView) {
+                                  // With horizontal scroll each bar has room; show ~1 label every 4-6 bars
+                                  if (timePeriod === 'today') return Math.max(0, Math.floor(len / 8) - 1);
+                                  if (timePeriod === 'week') return Math.max(0, Math.floor(len / 8) - 1);
+                                  if (timePeriod === 'month') return Math.max(0, Math.floor(len / 10) - 1);
+                                  return Math.max(0, Math.floor(len / 10) - 1);
+                                }
                                 if (timePeriod === 'today') return Math.max(0, Math.floor(len / 12) - 1);
                                 if (timePeriod === 'week') return Math.max(0, Math.floor(len / 28) - 1); // ~4 per day
                                 if (timePeriod === 'month') return Math.max(0, Math.floor(len / 15) - 1);
@@ -4568,6 +4584,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               tickLine={false} 
                               tick={{ fontSize: 10, fill: '#9ca3af' }} 
                               tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })}
+                              width={isMobileView ? 36 : undefined}
                             />
                             <Tooltip 
                               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
@@ -4579,7 +4596,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               }}
                               labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
                             />
-                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} iconType="circle" />
+                            <Legend
+                              wrapperStyle={{ fontSize: isMobileView ? '11px' : '12px', paddingTop: '10px' }}
+                              iconType="circle"
+                              iconSize={isMobileView ? 8 : undefined}
+                            />
                             
                             {/* Generazione Dinamica delle Barre (Stack) */}
                             {deviceConsumptionData.keys.map((key, index) => (
@@ -4589,11 +4610,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                     stackId="a" 
                                     fill={getBarColor(key, index)} 
                                     radius={[index === deviceConsumptionData.keys.length - 1 ? 4 : 0, index === deviceConsumptionData.keys.length - 1 ? 4 : 0, 0, 0]}
-                                    maxBarSize={60}
+                                    maxBarSize={isMobileView ? 22 : 60}
                                 />
                             ))}
                           </BarChart>
                         </ZoomableChart>
+                        </div>
                       </div>
                     </div>
                   </div>
