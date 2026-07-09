@@ -4242,10 +4242,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div className="flex">
                             {/* Spacer angolo in alto a sx */}
                             <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-muted-foreground">
-                                {heatmapGrid.isYearView ? 'GG' : 'HH'}
+                                {heatmapGridDisplay.isYearView ? 'GG' : 'HH'}
                             </div>
                             {/* Labels Colonne */}
-                            {heatmapGrid.cols.map(col => (
+                            {heatmapGridDisplay.cols.map(col => (
                                 <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-muted-foreground pb-1">
                                     {col.label}
                                 </div>
@@ -4253,32 +4253,39 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </div>
 
                           {/* Body Griglia (Righe Y-Axis) */}
-                          {heatmapGrid.rows.map(row => (
-                              <div key={row} className="flex items-center h-6 mb-0.5">
+                          {heatmapGridDisplay.rows.map(row => (
+                              <div key={row} className="flex items-center h-6 mb-0.5 hm-row">
                                   {/* Label Riga (00:00 o Day 1) */}
                                   <div className="w-12 flex-shrink-0 text-[10px] text-muted-foreground text-right pr-2">
-                                      {heatmapGrid.isYearView 
+                                      {heatmapGridDisplay.isYearView 
                                         ? row // Giorno mese (1, 2...)
-                                        : `${String(row).padStart(2, '0')}:00` // Ora (00:00...)
+                                        : heatmapGridDisplay.is3h
+                                          ? `${String(row).padStart(2, '0')}-${String((row + 3) % 24).padStart(2, '0')}`
+                                          : `${String(row).padStart(2, '0')}:00`
                                       }
                                   </div>
                                   
                                   {/* Celle */}
-                                  {heatmapGrid.cols.map(col => {
-                                      const val = heatmapGrid.valueMap.get(`${row}_${col.key}`) || 0;
+                                  {heatmapGridDisplay.cols.map(col => {
+                                      const cellKey = `${row}_${col.key}`;
+                                      const val = heatmapGridDisplay.valueMap.get(cellKey) || 0;
+                                      const isTapped = tappedHeatCell === cellKey;
                                       return (
                                           <div 
                                             key={`${row}-${col.key}`} 
-                                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group"
-                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGrid.scale) }}
+                                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group hm-cell"
+                                            style={{ backgroundColor: getHeatmapColor(val, heatmapGridDisplay.scale) }}
+                                            onTouchStart={(e) => { e.stopPropagation(); if (val > 0) setTappedHeatCell(isTapped ? null : cellKey); }}
                                           >
                                             {/* Tooltip on Hover */}
                                             {val > 0 && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg ${isTapped ? 'block' : 'hidden group-hover:block'}`}>
                                                     <div className="font-bold">
-                                                        {heatmapGrid.isYearView 
+                                                        {heatmapGridDisplay.isYearView 
                                                             ? `${row} ${col.label}` // "15 GEN"
-                                                            : `${col.label} ore ${row}:00` // "01/03 ore 14:00"
+                                                            : heatmapGridDisplay.is3h
+                                                              ? `${col.label} ${String(row).padStart(2, '0')}-${String((row + 3) % 24).padStart(2, '0')}`
+                                                              : `${col.label} ore ${row}:00`
                                                         }
                                                     </div>
                                                     <div>{val.toFixed(2)} kWh</div>
