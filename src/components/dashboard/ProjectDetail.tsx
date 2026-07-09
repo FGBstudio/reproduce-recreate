@@ -4091,8 +4091,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Left Column: Alerts & Health Split */}
-                    <div className="grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 min-h-[400px]">
-                      <div ref={alertsRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
+                    <div className="pd-alerts-health-grid grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 min-h-[400px]">
+                      <div ref={alertsRef} className="pd-alerts-card bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                           <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
@@ -4104,7 +4104,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                       </div>
 
-                      <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col border border-indigo-50">
+                      <div className="pd-health-card bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col border border-indigo-50">
                         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                           Sensor Health
                         </h3>
