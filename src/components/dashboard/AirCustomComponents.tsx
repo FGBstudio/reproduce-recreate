@@ -1,6 +1,5 @@
 import React from 'react';
 import { Wind, Activity, Thermometer, Droplets, Cloud, Gauge, Sparkles, ChevronUp, ChevronDown, Info } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 /**
  * AIR QUALITY CUSTOM COMPONENTS
@@ -120,86 +119,6 @@ export const BuildingOverview = ({
   airCardClass,
   t
 }: any) => {
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    // Compact mobile list: one card per device, primary metrics as pills.
-    const primary: Array<[string, string]> = [
-      ['env.temperature', 'Temp'],
-      ['env.humidity', 'Hum'],
-      ['iaq.co2', 'CO₂'],
-      ['iaq.pm25', 'PM2.5'],
-    ];
-    const secondary: Array<[string, string]> = [
-      ['iaq.voc', 'TVOC'],
-      ['iaq.pm10', 'PM10'],
-      ['iaq.co', 'CO'],
-      ['iaq.o3', 'O₃'],
-    ];
-    const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
-
-    const Pill = ({ metric, label, val }: { metric: string; label: string; val: any }) => {
-      const config = METRICS_CONFIG[metric];
-      const hasVal = val !== undefined && val !== null;
-      const dotClass = hasVal ? config.getColor(val) : 'bg-gray-300';
-      return (
-        <div className="flex items-center justify-between bg-white rounded-lg border border-gray-100 px-2.5 py-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className={`w-2 h-2 rounded-full ${dotClass} flex-shrink-0`} />
-            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide truncate">{label}</span>
-          </div>
-          <span className="text-[12px] font-bold text-gray-800 tabular-nums">
-            {hasVal ? `${val.toFixed(1)}` : '—'}
-            <span className="text-[9px] text-slate-500 font-medium ml-0.5">{config.unit}</span>
-          </span>
-        </div>
-      );
-    };
-
-    return (
-      <div className={`${airCardClass} flex flex-col`}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-bold text-gray-800 tracking-tight">Building overview</h3>
-          <div className="flex gap-2 items-center text-[9px] uppercase font-bold text-slate-600">
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Ok</div>
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-400" /> Med</div>
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" /> Poor</div>
-          </div>
-        </div>
-        <ul className="flex flex-col gap-2.5">
-          {selectedAirDevices.map((device: any) => {
-            const avg = deviceAverages[device.device_id] || deviceAverages[device.id] || {};
-            const isOpen = !!expanded[device.id];
-            return (
-              <li key={device.id} className="bg-gray-50/60 rounded-xl border border-gray-100 p-2.5">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold text-teal-800 truncate">{airDeviceLabelById.get(device.id)}</div>
-                    <div className="text-[9px] text-slate-500 uppercase tracking-wider truncate">{device.device_id}</div>
-                  </div>
-                  <button
-                    onClick={() => setExpanded(s => ({ ...s, [device.id]: !isOpen }))}
-                    className="text-[10px] font-semibold text-teal-700 flex items-center gap-0.5 flex-shrink-0 ml-2"
-                  >
-                    {isOpen ? 'meno' : 'più'}
-                    {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {primary.map(([m, l]) => <Pill key={m} metric={m} label={l} val={avg[m]} />)}
-                </div>
-                {isOpen && (
-                  <div className="grid grid-cols-2 gap-1.5 mt-1.5">
-                    {secondary.map(([m, l]) => <Pill key={m} metric={m} label={l} val={avg[m]} />)}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    );
-  }
 
   return (
     <div className={`${airCardClass} h-full flex flex-col`}>

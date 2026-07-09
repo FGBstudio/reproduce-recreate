@@ -379,10 +379,7 @@
 @media (max-width: 767px) {
 
   /* ---- Recharts: shrink & de-clutter ---- */
-  .pd-root .recharts-responsive-container,
-  .pd-root .recharts-wrapper,
-  .pd-root .recharts-surface { max-height: 240px !important; }
-  .pd-root .recharts-responsive-container { min-height: 200px !important; height: 220px !important; }
+  .pd-root .recharts-responsive-container { min-height: 220px !important; }
   .pd-root .recharts-cartesian-axis-tick text,
   .pd-root .recharts-polar-angle-axis-tick text,
   .pd-root .recharts-polar-radius-axis-tick text { font-size: 10px !important; }
@@ -406,9 +403,6 @@
     padding: 6px 8px !important;
     border-radius: 10px !important;
   }
-  /* Pie/Donut charts: shrink so labels don't overlap on narrow screens */
-  .pd-root .recharts-pie { transform: scale(0.85); transform-origin: center; }
-  .pd-root .recharts-pie-label-text { font-size: 9px !important; }
 
   /* ---- KPI mini-card grids: force 2 columns instead of 3/4/5 ----
      Common patterns used inside PD Air/Energy sections. */
@@ -452,48 +446,4 @@
   /* ---- Section titles a hair smaller so headers don't wrap awkwardly ---- */
   .pd-root h2 { font-size: 18px !important; line-height: 1.2 !important; }
   .pd-root h3 { font-size: 14px !important; line-height: 1.25 !important; }
-}
-
-/* ============================================================
-   MOBILE-OPTIMIZE LAYER · phase 2 (Energy & Air specifics)
-   ============================================================ */
-@media (max-width: 767px) {
-  /* Wide tables (Air Building Overview): drop the desktop min-width */
-  .pd-root .min-w-\[900px\],
-  .pd-root .min-w-\[800px\],
-  .pd-root .min-w-\[700px\] { min-width: 100% !important; }
-
-  /* Chart card headers: title + controls stack vertically */
-  .pd-root .flex.flex-col.md\:flex-row { gap: 8px !important; }
-
-  /* Chart wrapper divs with fixed inline heights */
-  .pd-root [style*="height: 300px"],
-  .pd-root [style*="height: 320px"],
-  .pd-root [style*="height: 350px"],
-  .pd-root [style*="height: 400px"],
-  .pd-root [style*="height:300px"],
-  .pd-root [style*="height:400px"] { height: 240px !important; }
-
-  /* Section header rows: allow filters to wrap */
-  .pd-root .flex.items-center.justify-between { flex-wrap: wrap; row-gap: 8px; }
-
-  /* Compact chart toolbar buttons */
-  .pd-root button.text-xs, .pd-root button.text-sm {
-    padding: 4px 8px !important;
-    font-size: 11px !important;
-  }
-
-  /* Also normalise 6/7/8-col grids to 2 columns */
-  .pd-root .grid.grid-cols-6,
-  .pd-root .grid.grid-cols-7,
-  .pd-root .grid.grid-cols-8 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px !important;
-  }
-
-  /* Cap oversized score numbers */
-  .pd-root .text-4xl { font-size: 26px !important; line-height: 1.1 !important; }
-  .pd-root .text-5xl { font-size: 32px !important; line-height: 1.1 !important; }
-  .pd-root .text-6xl { font-size: 36px !important; line-height: 1.1 !important; }
-  .pd-root .text-7xl { font-size: 40px !important; line-height: 1.1 !important; }
 }
