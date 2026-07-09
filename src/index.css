@@ -479,10 +479,20 @@
   .pd-air-module table th, .pd-air-module table td,
   .pd-water-module table th, .pd-water-module table td { padding: 6px 8px !important; }
 
-  /* ---- Horizontal slider tab strips: wrap chips instead of overflow ---- */
-  .pd-energy-module .overflow-x-auto > .flex,
-  .pd-air-module .overflow-x-auto > .flex,
-  .pd-water-module .overflow-x-auto > .flex { flex-wrap: wrap; }
+  /* ---- Horizontal chip strips: keep scroll, add momentum + snap ---- */
+  .pd-energy-module .overflow-x-auto,
+  .pd-air-module .overflow-x-auto,
+  .pd-water-module .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .pd-energy-module .overflow-x-auto::-webkit-scrollbar,
+  .pd-air-module .overflow-x-auto::-webkit-scrollbar,
+  .pd-water-module .overflow-x-auto::-webkit-scrollbar { display: none; }
+  .pd-energy-module .overflow-x-auto > .flex > *,
+  .pd-air-module .overflow-x-auto > .flex > *,
+  .pd-water-module .overflow-x-auto > .flex > * { scroll-snap-align: start; flex-shrink: 0; }
 
   /* ---- Section paddings tightened for narrow viewports (module only) ---- */
   .pd-energy-module .px-16,
@@ -502,4 +512,72 @@
   .pd-energy-module h3,
   .pd-air-module h3,
   .pd-water-module h3 { font-size: 14px !important; line-height: 1.25 !important; }
+
+  /* ---- Chart card body: consistent height & inner padding ---- */
+  .pd-energy-module .recharts-wrapper,
+  .pd-air-module .recharts-wrapper,
+  .pd-water-module .recharts-wrapper { max-width: 100% !important; }
+  .pd-energy-module .recharts-surface,
+  .pd-air-module .recharts-surface,
+  .pd-water-module .recharts-surface { overflow: visible; }
+
+  /* ---- Recharts tooltip: pin inside viewport, readable on dark bg ---- */
+  .pd-energy-module .recharts-tooltip-wrapper,
+  .pd-air-module .recharts-tooltip-wrapper,
+  .pd-water-module .recharts-tooltip-wrapper {
+    max-width: calc(100vw - 32px) !important;
+    z-index: 20 !important;
+  }
+  .pd-energy-module .recharts-tooltip-wrapper .recharts-default-tooltip,
+  .pd-air-module .recharts-tooltip-wrapper .recharts-default-tooltip,
+  .pd-water-module .recharts-tooltip-wrapper .recharts-default-tooltip {
+    background: rgba(15, 23, 42, 0.95) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
+  }
+  .pd-energy-module .recharts-tooltip-wrapper .recharts-tooltip-label,
+  .pd-air-module .recharts-tooltip-wrapper .recharts-tooltip-label,
+  .pd-water-module .recharts-tooltip-wrapper .recharts-tooltip-label { color: #cbd5e1 !important; font-size: 10px !important; }
+  .pd-energy-module .recharts-tooltip-wrapper .recharts-tooltip-item,
+  .pd-air-module .recharts-tooltip-wrapper .recharts-tooltip-item,
+  .pd-water-module .recharts-tooltip-wrapper .recharts-tooltip-item { color: #f8fafc !important; padding: 2px 0 !important; }
+
+  /* ---- Touch targets: chart toolbar icon buttons ≥ 36px ---- */
+  .pd-energy-module button[class*="rounded"] svg,
+  .pd-air-module button[class*="rounded"] svg,
+  .pd-water-module button[class*="rounded"] svg { min-width: 16px; min-height: 16px; }
+  .pd-energy-module button.rounded,
+  .pd-air-module button.rounded,
+  .pd-water-module button.rounded,
+  .pd-energy-module button.rounded-md,
+  .pd-air-module button.rounded-md,
+  .pd-water-module button.rounded-md,
+  .pd-energy-module button.rounded-lg,
+  .pd-air-module button.rounded-lg,
+  .pd-water-module button.rounded-lg,
+  .pd-energy-module button.rounded-full,
+  .pd-air-module button.rounded-full,
+  .pd-water-module button.rounded-full { min-width: 36px; min-height: 36px; }
+
+  /* ---- Chart card outer padding tighter on narrow screens ---- */
+  .pd-energy-module .rounded-2xl.p-6,
+  .pd-air-module .rounded-2xl.p-6,
+  .pd-water-module .rounded-2xl.p-6,
+  .pd-energy-module .rounded-xl.p-6,
+  .pd-air-module .rounded-xl.p-6,
+  .pd-water-module .rounded-xl.p-6 { padding: 14px !important; }
+
+  /* ---- Prevent horizontal chart overflow from pushing card wider ---- */
+  .pd-energy-module .rounded-2xl,
+  .pd-air-module .rounded-2xl,
+  .pd-water-module .rounded-2xl,
+  .pd-energy-module .rounded-xl,
+  .pd-air-module .rounded-xl,
+  .pd-water-module .rounded-xl { min-width: 0; }
+
+  /* ---- Tables: keep horizontal scroll but never break card layout ---- */
+  .pd-energy-module .overflow-x-auto table,
+  .pd-air-module .overflow-x-auto table,
+  .pd-water-module .overflow-x-auto table { min-width: 100%; }
 }
