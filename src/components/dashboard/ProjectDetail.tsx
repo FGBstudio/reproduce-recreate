@@ -5546,7 +5546,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
               </ModuleGate>
             )}
             
