@@ -14,6 +14,7 @@ import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 import { useFingerprintVerdict } from "@/hooks/useFingerprintVerdict";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─────────────────────────────────────────────
 // Types & Config
