@@ -1,65 +1,56 @@
-# Mobile optimization — Site Dashboard
+## Problema
 
-Login e mappa funzionano già bene. Il problema è tutto **dentro** allo store: `ScoreHero` (Overview), grafici Energy e card Air sono stati progettati per desktop e vengono solo rimpiccioliti su mobile, quindi si sovrappongono e perdono leggibilità. La strategia è **non ridimensionare — riprogettare in stack verticale** con un layout mobile dedicato tramite `useIsMobile()`, mantenendo intatto il desktop.
+Il job precedente ha applicato regole CSS mobile troppo aggressive a tutto `.pd-root`, forzando le griglie KPI (incluse le card Overview Energia/Aria/Acqua) su 2 colonne. Risultato: le card Overview del sito sono compresse, sovrapposte e illeggibili (immagine 1).
 
-## 1. Overview / ScoreHero (schermata sovrapposta in immagine 1)
+L'intento originale era: **Overview del sito = invariato (full-width, come prima)**. Ottimizzazioni mobile solo dentro le dashboard specifiche dei moduli Energy / Air / Water (immagini 2, 3, 4).
 
-Problema: il ring 180px + colonna testo + 4 module pill 72px vengono forzati in `flex-col xl:flex-row`, ma sotto ~430px il testo "Ok / Overall performance" finisce **sopra** al ring e le pill scorrono in overflow orizzontale tagliato.
+## Piano
 
-Redesign mobile (`<768px`):
-- Header compatto: badge periodo + LiveBadge su una riga, `word` (Ok/Good…) ridotto a 32px sotto.
-- **Ring 128px centrato**, numero score 44px, "SCORE" caption sotto.
-- Track bar full-width sotto al ring (no side-by-side).
-- Module pills in **grid 2×2** (Energy/Air/Water/Alerts), pill 64px, numero 22px — niente scroll orizzontale, niente separatori verticali.
-- InfoDot su tap (già tooltip su click), nessun hover richiesto.
+### 1) Ripristinare le card Overview a piena larghezza (fix immediato)
+In `src/index.css`, rimuovere le regole `.pd-root` che agiscono globalmente sulle griglie e sui padding. In particolare:
+- Rimuovere il forcing `grid-template-columns: repeat(2, ...)` su `.grid-cols-3/4/5` scope `.pd-root`.
+- Rimuovere l'override globale su `.p-6`, `.p-4`, `.px-16`, `h2`, `h3` dentro `.pd-root`.
+- Mantenere solo regole innocue e generiche per tabelle/toolbar se servono.
 
-## 2. Energy — grafici (immagine 2)
+Lasciare `OverviewSection.tsx` com'è (lo ScoreHero mobile compatto va bene, non è quello il problema secondo l'utente — le card Energy/Air/Water Overview devono restare full-width come da desktop, una sotto l'altra su mobile grazie al comportamento naturale di Tailwind).
 
-Problema: "Energy consumption over time" mostra assi/legende/tab desktop; su mobile linea densa 15gg + 4 categorie in legenda diventa illeggibile.
+Verificare che su mobile le tre card Overview (Energy / Air / Water) tornino: 1 colonna, piena larghezza, numeri grandi leggibili come prima.
 
-Redesign mobile per **tutti** i widget della sezione Energy:
-- **Card chart**: rimuovere toolbar icone (expand/screenshot/csv/pdf) → spostare dietro menu `⋯`. Tab "Categories / Devices / Simulate breakdown" diventano `Select` compatto.
-- **Grafico linea**: 
-  - default range più breve (7g invece di 30g) su mobile;
-  - meno tick su asse X (formato `dd/mm`, max 4 label);
-  - asse Y con 3 tick, unità inline;
-  - tooltip fisso in fondo card invece che flottante;
-  - legenda sotto in **chip orizzontali scrollabili** con dot colorato, non sovrapposta.
-- **Grafici pie/donut breakdown** → convertiti in lista con barra orizzontale + valore/percentuale (più leggibile del donut piccolo).
-- **KPI card** (Power breakdown, Efficiency, Density…) → grid 2 colonne su mobile invece di 4, altezza uniforme, numero primario 28px, unit 11px.
+### 2) Introdurre scope mirato per i moduli
+Creare classi scope dedicate applicate solo ai contenitori delle dashboard modulo:
+- `.pd-energy-module` — sezione Energy dashboard
+- `.pd-air-module` — sezione Air Quality dashboard
+- `.pd-water-module` — sezione Water dashboard
 
-## 3. Air Quality — card (immagine 3)
+Applicarle in `ProjectDetail.tsx` sui wrapper delle rispettive tab/sezioni (non sull'intero root).
 
-Problema: le mini-card CO/O₃ mostrano numero enorme troncato dalla card sopra; "Building overview" tabella device è desktop-first.
+### 3) Ottimizzazioni mobile PER MODULO (dentro i wrapper `.pd-*-module`)
 
-Redesign mobile:
-- **Metric mini-card** (CO, O₃, CO₂, VOC, PM…) → grid 2 colonne con altezza fissa 96px, numero 24px, label uppercase 10px, status dot a destra. Niente "peek" della card successiva.
-- **Site Alerts / Sensor Health** → collapsible card (chevron + count) chiuse di default su mobile per accorciare la pagina.
-- **Building overview table** → su mobile diventa **lista di righe** (device name + valore + mini-bar), non tabella con colonne che si accavallano. Header sticky con legenda OPTIMAL/MODERATE/POOR + InfoDot.
-- Slider di paginazione (dots in basso) trasformato in tab a chip in alto per orientarsi meglio tra i 4 sotto-pannelli.
+**Energy (immagine 2):**
+- Toolbar icone (expand / screenshot / csv / png) → wrap + touch target 32px.
+- Chart "Energy consumption over time": altezza fissa 240px, font assi 10px, max 4 tick X, legend sotto in flex-wrap.
+- Selettori "Categories / Devices / Simulate breakdown" → scroll-x orizzontale con snap.
+- KPI grid "Energy consumption breakdown" (General/Other/Lighting/HVAC): lista verticale invece di tabella con numeri grossi allineati a destra.
 
-## 4. Strategia trasversale (design system mobile)
+**Air (immagine 3):**
+- Mini-card metriche (CO, O₃, ecc.): grid 2 colonne fissa, altezza 92px, numero 22px, label 10px.
+- "Site Alerts" e "Sensor Health": collassabili, chiusi di default su mobile.
+- "Building overview" tabella → lista verticale con nome device sopra e valore sotto (niente scroll orizzontale con testo troncato).
 
-Per evitare di ripetere gli stessi errori altrove:
+**Water (immagine 4):**
+- Chart "Consumo Idrico": altezza 220px, rimuovere il pulsante expand duplicato in alto a destra dentro il chart.
+- "Consumption Distribution": lista + donut sotto invece di affiancati.
 
-- **Nuovo hook `useMobileLayout()`** wrapper di `useIsMobile()` che espone anche breakpoint `sm/md` e safe-area insets (già gestiti in mem `mobile-safe-area`).
-- **Pattern "card mobile"** condiviso: padding 16px, radius 20px, ombre leggere, titoli 15px semibold, KPI 24-28px, testo secondario 12px `text-[#006367]/70`. Codificato come classe utility in `index.css` (`.mobile-card`, `.mobile-kpi`, `.mobile-chart-wrap`).
-- **Regola grafici**: se `isMobile`, il componente chart riceve `height={220}`, `margin ridotto`, tick ridotti, legenda esterna scrollabile. Wrapper `<ResponsiveChart>` centralizza le opzioni recharts.
-- **Regola tabelle**: helper `<ResponsiveTable>` che su mobile renderizza `<ul>` di righe con label:value invece della tabella.
-- Nessuna modifica al desktop, nessun cambio di business logic — solo layer di presentazione.
-
-## Ordine di implementazione proposto
-
-1. `ScoreHero` mobile variant (fix immediato immagine 1).
-2. Utility CSS `.mobile-card / .mobile-kpi` + hook `useMobileLayout`.
-3. Air Quality mini-card grid + Building overview lista (fix immagine 3).
-4. `<ResponsiveChart>` wrapper e retrofit sui widget Energy (fix immagine 2).
-5. Retrofit rimanenti widget Energy/Water con lo stesso pattern.
+### 4) Verifica finale
+- Playwright viewport 390×844, rotta `/#/` (mobile home) → screenshot Overview → confermare card full-width.
+- Navigare a un sito → tab Energy / Air / Water → screenshot → confermare grafici e card leggibili.
+- `tsgo --noEmit` clean.
 
 ## Fuori scope
+- Login, mappa, admin, desktop, ScoreHero (già a posto).
+- Nessuna modifica a logica dati, hook o business rules — solo CSS/markup di presentazione.
 
-- Login e mappa (già ok).
-- Cambio dati/calcoli/telemetria.
-- Ridisegno desktop.
-
-Confermi che partiamo dal punto 1 (ScoreHero) o preferisci che affronti prima la sezione Energy che è quella con più widget?
+## Dettagli tecnici
+File toccati:
+- `src/index.css` — rimuovere regole `.pd-root` invasive, aggiungere blocchi `.pd-energy-module`, `.pd-air-module`, `.pd-water-module` con media query `max-width: 767px`.
+- `src/components/dashboard/ProjectDetail.tsx` — aggiungere le classi scope sui wrapper delle sezioni modulo; nessun cambio a JSX Overview.
