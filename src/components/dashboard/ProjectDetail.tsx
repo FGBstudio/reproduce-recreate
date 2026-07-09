@@ -3965,10 +3965,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </ZoomableChart>
                           {/* Valore Centrale: Totale kWh */}
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-lg md:text-xl font-bold text-slate-900">
+                            <span className="text-sm md:text-xl font-bold text-slate-900 leading-none">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
+                            <span className="text-[8px] md:text-xs text-muted-foreground font-medium mt-0.5 leading-none">{t('pd.total_kwh')}</span>
                           </div>
                         </div>
                       </div>
