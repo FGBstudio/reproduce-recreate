@@ -4305,17 +4305,32 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-full pb-20">
                     
                     {/* WIDGET 1: ACTUAL VS AVERAGE */}
-                    <div className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
+                    <div className="pd-actual-vs-avg lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg flex flex-col">
+                      <div className="pd-avg-header flex justify-between items-start mb-4 gap-2 flex-wrap">
+                        <div className="min-w-0">
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
                           <p className="text-xs text-muted-foreground">Energy Density (kWh/m²)</p>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          {/* BANNER DINAMICO */}
+                          {/* BANNER DINAMICO — inline sotto il titolo su mobile */}
                           {actualVsAverageData.summary && (
-                            <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
+                            <div className={`pd-avg-badge mt-2 md:hidden inline-flex px-3 py-1.5 rounded-lg text-xs font-semibold items-center gap-2 border ${
+                              actualVsAverageData.summary.status === 'above'
+                                ? 'bg-red-50 text-red-700 border-red-100'
+                                : actualVsAverageData.summary.status === 'below'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  : 'bg-gray-50 text-gray-700 border-gray-100'
+                            }`}>
+                              {actualVsAverageData.summary.status === 'above' && '↑'}
+                              {actualVsAverageData.summary.status === 'below' && '↓'}
+                              {actualVsAverageData.summary.status === 'line' && '•'}
+                              <span>You are {Math.abs(actualVsAverageData.summary.diffPct).toFixed(2)}% {actualVsAverageData.summary.status} average</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {/* BANNER DINAMICO — solo desktop */}
+                          {actualVsAverageData.summary && (
+                            <div className={`hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold items-center gap-2 border ${
                               actualVsAverageData.summary.status === 'above' 
                                 ? 'bg-red-50 text-red-700 border-red-100' 
                                 : actualVsAverageData.summary.status === 'below'
@@ -4345,6 +4360,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               tickLine={false} 
                               tick={{ fontSize: 10, fill: '#9ca3af' }} 
                               dy={10}
+                              interval={isMobileView ? 'preserveStartEnd' : undefined}
+                              minTickGap={isMobileView ? 40 : undefined}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4361,16 +4378,18 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             />
                             <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
 
-                            {/* BAND: Peer Range (Area) */}
-                            <Area 
-                              type="monotone" 
-                              dataKey="range" 
-                              fill="#A6A6A6" 
-                              stroke="none" 
-                              fillOpacity={0.2} 
-                              name="Peer Range" 
-                              legendType="rect"
-                            />
+                            {/* BAND: Peer Range (Area) — nascosta su mobile per leggibilità */}
+                            {!isMobileView && (
+                              <Area 
+                                type="monotone" 
+                                dataKey="range" 
+                                fill="#A6A6A6" 
+                                stroke="none" 
+                                fillOpacity={0.2} 
+                                name="Peer Range" 
+                                legendType="rect"
+                              />
+                            )}
 
                             {/* LINE: Peer Average */}
                             <Line 
@@ -4382,24 +4401,26 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               name="Peer Average"
                             />
 
-                            {/* LINE: Benchmark (Dotted) */}
-                            <Line 
-                              type="monotone" 
-                              dataKey="benchmark" 
-                              stroke="#7E0A2F" 
-                              strokeWidth={2} 
-                              strokeDasharray="4 4" 
-                              dot={false} 
-                              name="Benchmark"
-                            />
+                            {/* LINE: Benchmark (Dotted) — nascosta su mobile */}
+                            {!isMobileView && (
+                              <Line 
+                                type="monotone" 
+                                dataKey="benchmark" 
+                                stroke="#7E0A2F" 
+                                strokeWidth={2} 
+                                strokeDasharray="4 4" 
+                                dot={false} 
+                                name="Benchmark"
+                              />
+                            )}
 
                             {/* LINE: Actual (Main) */}
                             <Line 
                               type="monotone" 
                               dataKey="actual" 
                               stroke="#129E97" 
-                              strokeWidth={3} 
-                              dot={{ r: 3, fill: '#129E97', strokeWidth: 0 }} 
+                              strokeWidth={isMobileView ? 3.5 : 3} 
+                              dot={isMobileView ? false : { r: 3, fill: '#129E97', strokeWidth: 0 }} 
                               activeDot={{ r: 6 }} 
                               name="Actual"
                             />
