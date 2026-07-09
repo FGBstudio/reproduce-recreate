@@ -3376,7 +3376,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   ]);
 
   return (
-    <div className="fixed inset-0 z-50 animate-slide-up bg-background">
+    <div className="pd-root fixed inset-0 z-50 animate-slide-up bg-background">
       
       {/* CONTAINER SFONDO GENERALE */}
       <div 
