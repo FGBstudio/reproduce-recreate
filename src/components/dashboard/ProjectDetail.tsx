@@ -3961,24 +3961,23 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </ZoomableChart>
                     </div>
 
-                    {/* Energy Consumption Breakdown Chart - REPLACED */}
                     {/* Energy Consumption Breakdown Chart */}
-                    <div ref={energyDensityRef} className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+                    <div ref={energyDensityRef} className="pd-energy-breakdown-card bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-3 md:mb-4">
                         <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_breakdown')}</h3>
                         <ExportButtons chartRef={energyDensityRef} data={energyDistributionData} filename="energy-breakdown" />
                       </div>
-                      <div className="flex items-center gap-4 md:gap-6">
+                      <div className="pd-energy-breakdown-body flex items-center gap-4 md:gap-6">
                         {/* Legenda a Sinistra */}
-                        <div className="space-y-1.5 md:space-y-2 flex-1 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="pd-energy-breakdown-legend space-y-1.5 md:space-y-2 flex-1 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
                           {energyDistributionData.length === 0 ? (
                             <div className="text-sm text-muted-foreground italic">No data available</div>
                           ) : (
                             energyDistributionData.map((item, idx) => (
                               <div key={idx} className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                                <span className="text-xs md:text-sm text-gray-600 truncate" title={item.name}>{item.name}</span>
-                                <span className="text-xs md:text-sm font-semibold text-gray-800 ml-auto">
+                                <span className="pd-legend-name text-xs md:text-sm text-gray-600 truncate" title={item.name}>{item.name}</span>
+                                <span className="pd-legend-value text-xs md:text-sm font-semibold text-gray-800 ml-auto tabular-nums">
                                   {item.value.toLocaleString('it-IT', { maximumFractionDigits: 0 })} kWh
                                 </span>
                               </div>
@@ -3987,7 +3986,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
 
                         {/* Donut Chart a Destra */}
-                        <div className="relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0">
+                        <div className="pd-energy-breakdown-donut relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0 mx-auto">
                           <ZoomableChart width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -4010,7 +4009,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           </ZoomableChart>
                           {/* Valore Centrale: Totale kWh */}
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-sm md:text-xl font-bold text-slate-900 leading-none">
+                            <span className="pd-donut-total text-sm md:text-xl font-bold text-slate-900 leading-none tabular-nums">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
                             <span className="text-[8px] md:text-xs text-muted-foreground font-medium mt-0.5 leading-none">{t('pd.total_kwh')}</span>
