@@ -372,78 +372,134 @@
 }
 
 /* ============================================================
-   MOBILE-OPTIMIZE LAYER (site dashboard only, <768px)
-   Scoped to .pd-root so we never affect login/map/admin.
+   MOBILE-OPTIMIZE LAYER (module dashboards only, <768px)
+   Scoped to per-module wrappers so Overview stays full-width and
+   only Energy / Air / Water inner dashboards get compacted.
    Presentation-only: no data or logic changes.
    ============================================================ */
 @media (max-width: 767px) {
 
   /* ---- Recharts: shrink & de-clutter ---- */
-  .pd-root .recharts-responsive-container { min-height: 220px !important; }
-  .pd-root .recharts-cartesian-axis-tick text,
-  .pd-root .recharts-polar-angle-axis-tick text,
-  .pd-root .recharts-polar-radius-axis-tick text { font-size: 10px !important; }
-  .pd-root .recharts-label,
-  .pd-root .recharts-cartesian-axis-label { font-size: 10px !important; }
-  .pd-root .recharts-legend-wrapper {
+  .pd-energy-module .recharts-responsive-container,
+  .pd-air-module .recharts-responsive-container,
+  .pd-water-module .recharts-responsive-container { min-height: 220px !important; }
+  .pd-energy-module .recharts-cartesian-axis-tick text,
+  .pd-air-module .recharts-cartesian-axis-tick text,
+  .pd-water-module .recharts-cartesian-axis-tick text,
+  .pd-energy-module .recharts-polar-angle-axis-tick text,
+  .pd-air-module .recharts-polar-angle-axis-tick text,
+  .pd-water-module .recharts-polar-angle-axis-tick text,
+  .pd-energy-module .recharts-polar-radius-axis-tick text,
+  .pd-air-module .recharts-polar-radius-axis-tick text,
+  .pd-water-module .recharts-polar-radius-axis-tick text { font-size: 10px !important; }
+  .pd-energy-module .recharts-label,
+  .pd-air-module .recharts-label,
+  .pd-water-module .recharts-label,
+  .pd-energy-module .recharts-cartesian-axis-label,
+  .pd-air-module .recharts-cartesian-axis-label,
+  .pd-water-module .recharts-cartesian-axis-label { font-size: 10px !important; }
+  .pd-energy-module .recharts-legend-wrapper,
+  .pd-air-module .recharts-legend-wrapper,
+  .pd-water-module .recharts-legend-wrapper {
     position: static !important;
     padding: 8px 4px 0 !important;
     max-width: 100% !important;
   }
-  .pd-root .recharts-default-legend {
+  .pd-energy-module .recharts-default-legend,
+  .pd-air-module .recharts-default-legend,
+  .pd-water-module .recharts-default-legend {
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 4px 10px !important;
     justify-content: center !important;
     font-size: 10px !important;
   }
-  .pd-root .recharts-legend-item { margin-right: 0 !important; }
-  .pd-root .recharts-tooltip-wrapper { font-size: 11px !important; }
-  .pd-root .recharts-tooltip-wrapper .recharts-default-tooltip {
+  .pd-energy-module .recharts-legend-item,
+  .pd-air-module .recharts-legend-item,
+  .pd-water-module .recharts-legend-item { margin-right: 0 !important; }
+  .pd-energy-module .recharts-tooltip-wrapper,
+  .pd-air-module .recharts-tooltip-wrapper,
+  .pd-water-module .recharts-tooltip-wrapper { font-size: 11px !important; }
+  .pd-energy-module .recharts-tooltip-wrapper .recharts-default-tooltip,
+  .pd-air-module .recharts-tooltip-wrapper .recharts-default-tooltip,
+  .pd-water-module .recharts-tooltip-wrapper .recharts-default-tooltip {
     padding: 6px 8px !important;
     border-radius: 10px !important;
   }
 
   /* ---- KPI mini-card grids: force 2 columns instead of 3/4/5 ----
-     Common patterns used inside PD Air/Energy sections. */
-  .pd-root .grid.grid-cols-3,
-  .pd-root .grid.grid-cols-4,
-  .pd-root .grid.grid-cols-5,
-  .pd-root .grid.md\:grid-cols-3,
-  .pd-root .grid.md\:grid-cols-4,
-  .pd-root .grid.md\:grid-cols-5 {
+     Only inside module dashboards — Overview cards stay full-width. */
+  .pd-energy-module .grid.grid-cols-3,
+  .pd-air-module .grid.grid-cols-3,
+  .pd-water-module .grid.grid-cols-3,
+  .pd-energy-module .grid.grid-cols-4,
+  .pd-air-module .grid.grid-cols-4,
+  .pd-water-module .grid.grid-cols-4,
+  .pd-energy-module .grid.grid-cols-5,
+  .pd-air-module .grid.grid-cols-5,
+  .pd-water-module .grid.grid-cols-5,
+  .pd-energy-module .grid.md\:grid-cols-3,
+  .pd-air-module .grid.md\:grid-cols-3,
+  .pd-water-module .grid.md\:grid-cols-3,
+  .pd-energy-module .grid.md\:grid-cols-4,
+  .pd-air-module .grid.md\:grid-cols-4,
+  .pd-water-module .grid.md\:grid-cols-4,
+  .pd-energy-module .grid.md\:grid-cols-5,
+  .pd-air-module .grid.md\:grid-cols-5,
+  .pd-water-module .grid.md\:grid-cols-5 {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
   }
 
-  /* Air/Energy mini-KPI cards: uniform min-height so the number never
-     bleeds into the card above and the layout doesn't "peek". */
-  .pd-root .grid > div[class*="rounded"] { min-height: 84px; }
+  .pd-energy-module .grid > div[class*="rounded"],
+  .pd-air-module .grid > div[class*="rounded"],
+  .pd-water-module .grid > div[class*="rounded"] { min-height: 84px; }
 
   /* ---- Chart card toolbars: allow buttons to wrap instead of overflowing ---- */
-  .pd-root [class*="rounded"] > .flex.items-center.gap-2,
-  .pd-root [class*="rounded"] > .flex.items-center.justify-between {
+  .pd-energy-module [class*="rounded"] > .flex.items-center.gap-2,
+  .pd-air-module [class*="rounded"] > .flex.items-center.gap-2,
+  .pd-water-module [class*="rounded"] > .flex.items-center.gap-2,
+  .pd-energy-module [class*="rounded"] > .flex.items-center.justify-between,
+  .pd-air-module [class*="rounded"] > .flex.items-center.justify-between,
+  .pd-water-module [class*="rounded"] > .flex.items-center.justify-between {
     flex-wrap: wrap;
     gap: 6px !important;
   }
 
   /* ---- Site Alerts / Sensor Health rows: stack, not squeezed side-by-side ---- */
-  .pd-root .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
+  .pd-energy-module .md\:grid-cols-2,
+  .pd-air-module .md\:grid-cols-2,
+  .pd-water-module .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
 
   /* ---- Tables → compact rows ---- */
-  .pd-root table { font-size: 11px !important; }
-  .pd-root table th,
-  .pd-root table td { padding: 6px 8px !important; }
+  .pd-energy-module table,
+  .pd-air-module table,
+  .pd-water-module table { font-size: 11px !important; }
+  .pd-energy-module table th, .pd-energy-module table td,
+  .pd-air-module table th, .pd-air-module table td,
+  .pd-water-module table th, .pd-water-module table td { padding: 6px 8px !important; }
 
   /* ---- Horizontal slider tab strips: wrap chips instead of overflow ---- */
-  .pd-root .overflow-x-auto > .flex { flex-wrap: wrap; }
+  .pd-energy-module .overflow-x-auto > .flex,
+  .pd-air-module .overflow-x-auto > .flex,
+  .pd-water-module .overflow-x-auto > .flex { flex-wrap: wrap; }
 
-  /* ---- Section paddings tightened for narrow viewports ---- */
-  .pd-root .px-16 { padding-left: 12px !important; padding-right: 12px !important; }
-  .pd-root .p-6 { padding: 14px !important; }
-  .pd-root .p-4 { padding: 12px !important; }
+  /* ---- Section paddings tightened for narrow viewports (module only) ---- */
+  .pd-energy-module .px-16,
+  .pd-air-module .px-16,
+  .pd-water-module .px-16 { padding-left: 12px !important; padding-right: 12px !important; }
+  .pd-energy-module .p-6,
+  .pd-air-module .p-6,
+  .pd-water-module .p-6 { padding: 14px !important; }
+  .pd-energy-module .p-4,
+  .pd-air-module .p-4,
+  .pd-water-module .p-4 { padding: 12px !important; }
 
   /* ---- Section titles a hair smaller so headers don't wrap awkwardly ---- */
-  .pd-root h2 { font-size: 18px !important; line-height: 1.2 !important; }
-  .pd-root h3 { font-size: 14px !important; line-height: 1.25 !important; }
+  .pd-energy-module h2,
+  .pd-air-module h2,
+  .pd-water-module h2 { font-size: 18px !important; line-height: 1.2 !important; }
+  .pd-energy-module h3,
+  .pd-air-module h3,
+  .pd-water-module h3 { font-size: 14px !important; line-height: 1.25 !important; }
 }
