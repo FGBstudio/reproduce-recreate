@@ -587,19 +587,91 @@
      ENERGY — Slide 2 (Alerts, Sensor Health, Periods, Heatmap)
      ===================================================== */
 
-  /* Alerts + Sensor Health: stack, cap height so they aren't half-empty */
-  .pd-energy-module .grid.grid-rows-2.xl\:grid-rows-1,
-  .pd-energy-module .grid.grid-rows-2 {
+  /* Alerts + Sensor Health: stack full-width, generous height for readability */
+  .pd-energy-module .pd-alerts-health-grid {
     grid-template-rows: auto auto !important;
     grid-template-columns: 1fr !important;
     min-height: 0 !important;
-    gap: 10px !important;
+    gap: 12px !important;
   }
-  .pd-energy-module .grid.grid-rows-2 > div {
-    max-height: 240px;
-    padding: 12px !important;
+  .pd-energy-module .pd-alerts-card,
+  .pd-energy-module .pd-health-card {
+    min-height: 320px !important;
+    max-height: none !important;
+    padding: 16px !important;
   }
-  .pd-energy-module .grid.grid-rows-2 > div h3 { font-size: 13px !important; margin-bottom: 8px !important; }
+  .pd-energy-module .pd-alerts-card h3,
+  .pd-energy-module .pd-health-card h3 {
+    font-size: 15px !important;
+    margin-bottom: 10px !important;
+  }
+  /* Enlarge inner rows so the widgets breathe */
+  .pd-energy-module .pd-alerts-card .text-xs,
+  .pd-energy-module .pd-health-card .text-xs { font-size: 12px !important; }
+  .pd-energy-module .pd-alerts-card .text-sm,
+  .pd-energy-module .pd-health-card .text-sm { font-size: 13px !important; }
+  .pd-energy-module .pd-alerts-card svg,
+  .pd-energy-module .pd-health-card svg { min-width: 16px; min-height: 16px; }
+
+  /* =====================================================
+     ENERGY — Slide 3 mobile cards (Breakdown, Actual/Avg, Devices)
+     ===================================================== */
+
+  /* Energy Breakdown donut: stack donut on top, legend below, big center number */
+  .pd-energy-module .pd-energy-breakdown-body {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+  .pd-energy-module .pd-energy-breakdown-donut {
+    width: 180px !important;
+    height: 180px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    order: 1;
+  }
+  .pd-energy-module .pd-energy-breakdown-legend {
+    max-height: none !important;
+    order: 2;
+    padding-right: 0 !important;
+  }
+  .pd-energy-module .pd-energy-breakdown-legend .pd-legend-name {
+    font-size: 13px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-width: none !important;
+  }
+  .pd-energy-module .pd-energy-breakdown-legend .pd-legend-value {
+    font-size: 13px !important;
+  }
+  /* Donut center number: shrink font when the number is long, and keep on one line */
+  .pd-energy-module .pd-donut-total {
+    font-size: clamp(14px, 4.4vw, 22px) !important;
+    white-space: nowrap !important;
+    padding: 0 8px;
+    text-align: center;
+  }
+
+  /* Actual vs Average: single-line badge below title, smaller chart height ok */
+  .pd-energy-module .pd-actual-vs-avg .flex-1.min-h-\[300px\] {
+    min-height: 280px !important;
+  }
+  .pd-energy-module .pd-avg-header { align-items: flex-start !important; }
+
+  /* Devices Consumption: taller card, chart scrolls horizontally */
+  .pd-energy-module .pd-devices-cons {
+    min-height: 400px !important;
+  }
+  .pd-energy-module .pd-devices-cons-scroll {
+    min-height: 320px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pd-energy-module .pd-devices-cons-scroll::-webkit-scrollbar { height: 4px; }
+  .pd-energy-module .pd-devices-cons-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--fgb-accent) / 0.35);
+    border-radius: 4px;
+  }
 
   /* Energy Periods table: compact, prices never wrap */
   .pd-energy-module table th,
