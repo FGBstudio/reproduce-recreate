@@ -257,6 +257,7 @@ const Index = () => {
         currentRegion={currentRegion} 
         visible={!selectedProject && currentRegion !== "GLOBAL" && !showBrandOverlay}
         activeFilters={activeFilters}
+        onProjectSelect={handleProjectSelect}
       />
       
       {/* Hide navigation for STORE_USER */}

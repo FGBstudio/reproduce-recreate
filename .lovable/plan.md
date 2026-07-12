@@ -1,23 +1,37 @@
-## Sostituzione logo LEED con icona Award nella sfera "Awards"
+## Goal
+In the region overlay (left "regional performance" card on the map), clicking a site row inside any of the 4 KPI popovers/drawers must open that site's dashboard, exactly like clicking its map marker.
 
-**File:** `src/components/auth/FloatingBentoPanel.tsx` (solo riga ~303, dentro l'hero con le 4 sfere sotto il titolo "Air. Water. Energy. Awards.")
+## Files to change
 
-### Modifica
-Sostituire:
+### 1. `src/pages/Index.tsx`
+Pass the existing `handleProjectSelect` handler down to `RegionOverlay`:
 ```tsx
-<img src="/leed_logo.png" alt="LEED" className="w-[78px] h-[78px] object-contain" />
+<RegionOverlay
+  currentRegion={currentRegion}
+  visible={...}
+  activeFilters={activeFilters}
+  onProjectSelect={handleProjectSelect}
+/>
 ```
-con l'icona `Award` di `lucide-react` (la stessa usata in `LEEDCertificationWidget.tsx` per le certificazioni), stilizzata coerentemente con le altre 3 sfere (Water = droplet, Air = cloud, Energy = zap):
 
-```tsx
-<Award className="w-[42px] h-[42px]" style={{ color: ACCENT, strokeWidth: 1.5 }} />
-```
+### 2. `src/components/dashboard/RegionOverlay.tsx`
+- Extend `RegionOverlayProps` with `onProjectSelect?: (project: Project) => void`.
+- Build a resolver `resolveProject(siteId?: string, name?: string): Project | undefined` that looks up `regionProjects` by `siteId` first, then by `name` as a fallback (needed for `siteAqList`/`siteAlertsList` which come from `aggregated.*` and for `siteStatusList` which already has the project name).
+- Enrich the four list data structures so each row carries a stable identifier:
+  - `siteIntensityList` already has `siteId` → pass through.
+  - `siteAqList` map from `aggregated.sitesWithAir` → also include `siteId`.
+  - `siteAlertsList` map from `aggregated.sites` → also include `siteId`.
+  - `siteStatusList` map from `regionProjects` → include the full `project` reference.
+- Wrap each row in the 4 desktop popovers and 4 mobile drawer sections in a `<button>` (keeping current styling classes) whose `onClick` runs:
+  ```ts
+  const p = resolveProject(row.siteId, row.name);
+  if (p && onProjectSelect) {
+    onProjectSelect(p);
+    setMobileDrawerContent(null); // close drawer on mobile
+  }
+  ```
+- Rows without a match stay non-clickable (no cursor change) so mock/demo entries don't break.
 
-Dimensione e `strokeWidth` allineati alle altre icone della stessa riga (verranno letti dal codice esistente per mantenere identica proporzione). Il colore usa la variabile `ACCENT` già definita nel file (verde FGB), come per le altre sfere.
-
-Aggiungere `Award` all'import esistente da `lucide-react` in cima al file.
-
-### Fuori scope
-- Nessuna modifica alle sfere Water/Air/Energy.
-- Nessuna modifica al resto del pannello (sezione certificazioni più in basso continua a mostrare i loghi PNG LEED/BREEAM/WELL).
-- Nessuna modifica al file `LEEDCertificationWidget.tsx` o ad altri componenti.
+## Out of scope
+- No changes to marker click flow, KPI calculations, or list ordering.
+- No new translations or icons.
