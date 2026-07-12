@@ -273,7 +273,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                   {siteIntensityList.length > 0 ? (
                     <div className="p-2 space-y-1">
                       {siteIntensityList.map((s, i) => (
-                        <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                        <div key={i} onClick={() => goToSite(s.siteId, s.name)} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors cursor-pointer">
                           <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                             <span className="text-muted-foreground/60 font-mono text-[10px] w-4 shrink-0">{i + 1}</span>
                             <span className="text-foreground leading-snug break-words">{s.name}</span>
@@ -341,7 +341,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                   {siteAqList.length > 0 ? (
                     <div className="p-2 space-y-1">
                       {siteAqList.map((s, i) => (
-                        <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                        <div key={i} onClick={() => goToSite(s.siteId, s.name)} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors cursor-pointer">
                           <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                             <Circle className={`w-2 h-2 shrink-0 fill-current ${aqLabelColor(s.label)}`} />
                             <span className="text-foreground leading-snug break-words">{s.name}</span>
@@ -395,7 +395,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     {siteStatusList.length > 0 ? (
                       <div className="p-2 space-y-1">
                         {siteStatusList.map((s, i) => (
-                          <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                          <div key={i} onClick={() => goToSite(s.project.siteId, s.name, s.project)} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors cursor-pointer">
                             <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3">
                               <Circle className={`w-2.5 h-2.5 shrink-0 fill-current ${statusColor(s.status)}`} />
                               <span className="text-foreground leading-snug break-words">{s.name}</span>
@@ -448,7 +448,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                     {siteAlertsList.length > 0 ? (
                       <div className="p-2 space-y-1">
                         {siteAlertsList.map((s, i) => (
-                          <div key={i} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors">
+                          <div key={i} onClick={() => goToSite(s.siteId, s.name)} className="flex items-center justify-between px-3 py-2.5 text-xs rounded-lg hover:bg-accent/10 transition-colors cursor-pointer">
                             <span className="text-foreground leading-snug break-words min-w-0 flex-1 mr-3">{s.name}</span>
                             <div className="flex items-center gap-2 shrink-0">
                               {s.critical > 0 && (
@@ -551,7 +551,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           <div className="space-y-1 pb-6">
             {/* Energy List */}
             {mobileDrawerContent === 'energy' && siteIntensityList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
+              <div key={i} onClick={() => goToSite(s.siteId, s.name)} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5 cursor-pointer">
                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                   <span className="text-muted-foreground/60 font-mono text-[10px] w-4">{i + 1}</span>
                   <span className="text-foreground truncate">{s.name}</span>
@@ -565,7 +565,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
             {/* Air List */}
             {mobileDrawerContent === 'air' && siteAqList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
+              <div key={i} onClick={() => goToSite(s.siteId, s.name)} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5 cursor-pointer">
                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                   <Circle className={`w-2 h-2 shrink-0 fill-current ${aqLabelColor(s.label)}`} />
                   <span className="text-foreground truncate">{s.name}</span>
@@ -582,7 +582,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
             {/* Sites Status List */}
             {mobileDrawerContent === 'sites' && siteStatusList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
+              <div key={i} onClick={() => goToSite(s.project.siteId, s.name, s.project)} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5 cursor-pointer">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3">
                   <Circle className={`w-2.5 h-2.5 shrink-0 fill-current ${statusColor(s.status)}`} />
                   <span className="text-foreground truncate">{s.name}</span>
@@ -593,7 +593,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
             {/* Alerts List */}
             {mobileDrawerContent === 'alerts' && siteAlertsList.length > 0 && siteAlertsList.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5">
+              <div key={i} onClick={() => goToSite(s.siteId, s.name)} className="flex items-center justify-between px-2 py-2.5 text-xs rounded-lg hover:bg-foreground/5 cursor-pointer">
                 <span className="text-foreground truncate min-w-0 flex-1 mr-3">{s.name}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {s.critical > 0 && <span className="px-1.5 py-0.5 rounded-full bg-rose-400/15 text-rose-400 text-[10px] font-semibold">{s.critical} crit</span>}
