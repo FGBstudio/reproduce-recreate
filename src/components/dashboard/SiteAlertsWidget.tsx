@@ -78,11 +78,40 @@ interface SiteAlertsWidgetProps {
   moduleFilter?: 'energy' | 'air' | 'water';
 }
 
-const MODULE_METRIC_PATTERNS: Record<string, string[]> = {
+export const MODULE_METRIC_PATTERNS: Record<string, string[]> = {
   energy: ['energy', 'power'],
   air: ['iaq', 'env'],
   water: ['water', 'leak'],
 };
+
+/**
+ * Shared alert-by-module filter. Used both by SiteAlertsWidget and by
+ * the per-module "Active Alerts" cards in ProjectDetail so counts stay aligned.
+ */
+export function filterAlertsByModule(
+  alerts: ThresholdAlert[],
+  moduleFilter?: 'energy' | 'air' | 'water',
+): ThresholdAlert[] {
+  if (!moduleFilter) return alerts;
+  const patterns = MODULE_METRIC_PATTERNS[moduleFilter] || [];
+  const typeToModule: Record<string, string> = {
+    'air_quality': 'air',
+    'energy_monitor': 'energy',
+    'water_meter': 'water',
+    'air': 'air',
+    'energy': 'energy',
+    'water': 'water',
+  };
+  return alerts.filter(a => {
+    if (!a.metric) return false;
+    const m = a.metric.toLowerCase();
+    if (m.startsWith('system.')) {
+      if (!a.deviceType) return false;
+      return typeToModule[a.deviceType] === moduleFilter;
+    }
+    return patterns.some(p => m.includes(p));
+  });
+}
 
 export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidgetProps) {
   const { t, language } = useLanguage();
@@ -97,33 +126,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
 
   // Filter alerts by module if specified
   const filteredAlerts = useMemo(() => {
-    if (!moduleFilter) return alertStatus.alerts;
-    const patterns = MODULE_METRIC_PATTERNS[moduleFilter] || [];
-    
-    // Mapping DB device_types to module filters
-    const typeToModule: Record<string, string> = {
-      'air_quality': 'air',
-      'energy_monitor': 'energy',
-      'water_meter': 'water',
-      'air': 'air',
-      'energy': 'energy',
-      'water': 'water'
-    };
-
-    return alertStatus.alerts.filter(a => {
-      if (!a.metric) return false;
-      const m = a.metric.toLowerCase();
-      
-      // If it's a system/offline alert, filter by device type
-      if (m.startsWith('system.')) {
-        if (!a.deviceType) return false; // Don't show system alerts if type is missing/unknown for this view
-        const targetModule = typeToModule[a.deviceType];
-        return targetModule === moduleFilter;
-      }
-
-      // Otherwise apply standard metric pattern filter (iaq, env, etc.)
-      return patterns.some(p => m.includes(p));
-    });
+    return filterAlertsByModule(alertStatus.alerts, moduleFilter);
   }, [alertStatus.alerts, moduleFilter]);
 
   // Group alerts by display severity
