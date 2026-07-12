@@ -75,7 +75,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
   const resolveProject = (siteId?: string | null, name?: string | null): Project | undefined => {
     if (siteId) {
-      const bySid = regionProjects.find(p => p.siteId === siteId || p.id === siteId);
+      const bySid = regionProjects.find(p => p.siteId === siteId || String(p.id) === siteId);
       if (bySid) return bySid;
     }
     if (name) {
