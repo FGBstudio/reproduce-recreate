@@ -53,7 +53,7 @@ import {
   getDemoAirDevices,
   getDemoAirDeviceId,
 } from "@/lib/data/demoSiteMocks";
-import { SiteAlertsWidget } from "./SiteAlertsWidget";
+import { SiteAlertsWidget, filterAlertsByModule } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
 import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
 import { Money } from "@/components/Money";
@@ -4023,10 +4023,23 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
                         <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
-                        <p className={`text-xl md:text-3xl font-bold ${pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                          {pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length || 0}
-                        </p>
-                        {pdAlertStatus?.alerts?.filter(a => ['energy', 'power'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'energy_monitor').length > 0 && (
+                        {(() => {
+                          const energyAlertCount = filterAlertsByModule(pdAlertStatus?.alerts ?? [], 'energy').length;
+                          return (
+                            <>
+                              <p className={`text-xl md:text-3xl font-bold ${energyAlertCount > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                {energyAlertCount}
+                              </p>
+                              {energyAlertCount > 0 && (
+                                <>
+                                  <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
+                                  <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+                        {false && (
                           <>
                             <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
                             <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
