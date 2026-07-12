@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { regions, projects as allProjects } from "@/lib/data";
+import { regions, projects as allProjects, type Project } from "@/lib/data";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import { useAllProjects } from "@/hooks/useRealTimeData";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
@@ -17,9 +17,10 @@ interface RegionOverlayProps {
   currentRegion: string;
   visible?: boolean;
   activeFilters?: string[];
+  onProjectSelect?: (project: Project) => void;
 }
 
-const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy', 'air', 'water'] }: RegionOverlayProps) => {
+const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy', 'air', 'water'], onProjectSelect }: RegionOverlayProps) => {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerContent, setMobileDrawerContent] = useState<string | null>(null);
@@ -75,6 +76,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   const siteAqList = useMemo(() => {
     return aggregated.sitesWithAir
       .map(site => ({
+        siteId: site.siteId,
         name: site.siteName,
         co2: site.air.co2,
         label: getAqLabel(site.air.co2),
@@ -91,7 +93,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
       if (siteData) {
         status = siteData.isOnline ? 'online' : 'offline';
       }
-      return { name: p.name, status };
+      return { name: p.name, status, project: p };
     });
     // Sort: online first, then offline, then not installed
     const order = { online: 0, offline: 1, not_installed: 2 };
@@ -103,6 +105,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     return aggregated.sites
       .filter(s => s.alerts.critical > 0 || s.alerts.warning > 0)
       .map(s => ({
+        siteId: s.siteId,
         name: s.siteName,
         critical: s.alerts.critical,
         warning: s.alerts.warning,
