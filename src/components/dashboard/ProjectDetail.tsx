@@ -5348,15 +5348,22 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-5 shadow-lg text-center">
                         <p className="text-sm text-muted-foreground mb-1">{language === 'it' ? 'Perdite Rilevate' : 'Leaks Detected'}</p>
-                        <p className={`text-3xl font-bold ${pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                          {pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length || 0}
-                        </p>
-                        {pdAlertStatus?.alerts?.filter(a => ['water', 'leak'].some(p => a.metric?.toLowerCase().includes(p)) || a.deviceType === 'water_meter').length > 0 && (
-                          <>
-                            <p className="text-xs text-muted-foreground mt-1">{language === 'it' ? 'zone con anomalie' : 'zones with anomalies'}</p>
-                            <div className="mt-2 text-xs text-red-500 font-medium">⚠️ {language === 'it' ? 'Richiede attenzione' : 'Requires attention'}</div>
-                          </>
-                        )}
+                        {(() => {
+                          const waterAlertCount = filterAlertsByModule(pdAlertStatus?.alerts ?? [], 'water').length;
+                          return (
+                            <>
+                              <p className={`text-3xl font-bold ${waterAlertCount > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                {waterAlertCount}
+                              </p>
+                              {waterAlertCount > 0 && (
+                                <>
+                                  <p className="text-xs text-muted-foreground mt-1">{language === 'it' ? 'zone con anomalie' : 'zones with anomalies'}</p>
+                                  <div className="mt-2 text-xs text-red-500 font-medium">⚠️ {language === 'it' ? 'Richiede attenzione' : 'Requires attention'}</div>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
