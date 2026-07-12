@@ -4039,12 +4039,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </>
                           );
                         })()}
-                        {false && (
-                          <>
-                            <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
-                            <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>
