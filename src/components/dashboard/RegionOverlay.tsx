@@ -73,6 +73,25 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   };
   const aqRank: Record<string, number> = { EXCELLENT: 0, GOOD: 1, MODERATE: 2, POOR: 3, "N/A": 4 };
 
+  const resolveProject = (siteId?: string | null, name?: string | null): Project | undefined => {
+    if (siteId) {
+      const bySid = regionProjects.find(p => p.siteId === siteId || p.id === siteId);
+      if (bySid) return bySid;
+    }
+    if (name) {
+      return regionProjects.find(p => p.name === name);
+    }
+    return undefined;
+  };
+
+  const goToSite = (siteId?: string | null, name?: string | null, projectRef?: Project) => {
+    const p = projectRef ?? resolveProject(siteId, name);
+    if (p && onProjectSelect) {
+      onProjectSelect(p);
+      setMobileDrawerContent(null);
+    }
+  };
+
   const siteAqList = useMemo(() => {
     return aggregated.sitesWithAir
       .map(site => ({
