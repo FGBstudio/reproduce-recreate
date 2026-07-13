@@ -1079,6 +1079,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return true;
   };
 
+  // If the currently selected heatmap metric is no longer supported by any
+  // of the selected devices (e.g. all-LEED selection), fall back to CO2.
+  useEffect(() => {
+    if (!supportedAirMetrics.has(activeAirHeatmapMetric as AirMetric)) {
+      setActiveAirHeatmapMetric('iaq.co2');
+    }
+  }, [supportedAirMetrics, activeAirHeatmapMetric]);
+
   // ENERGY PERIOD AVERAGES moved below energyConsumptionData to resolve dependency temporal dead zone
 
   // Heatmap logic for Air Dashboard
