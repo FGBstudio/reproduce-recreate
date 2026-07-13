@@ -1,5 +1,6 @@
 import React from 'react';
 import { Wind, Activity, Thermometer, Droplets, Cloud, Gauge, Sparkles, ChevronUp, ChevronDown, Info } from 'lucide-react';
+import { getSupportedMetricsForDevices, isLeedMonitor, EXTENDED_AIR_METRICS } from '@/lib/airMonitorType';
 
 /**
  * AIR QUALITY CUSTOM COMPONENTS
@@ -120,6 +121,12 @@ export const BuildingOverview = ({
   t
 }: any) => {
 
+  const supported = getSupportedMetricsForDevices(selectedAirDevices || [], deviceAverages || {});
+  const showPM25 = supported.has('iaq.pm25');
+  const showPM10 = supported.has('iaq.pm10');
+  const showCO = supported.has('iaq.co');
+  const showO3 = supported.has('iaq.o3');
+
   return (
     <div className={`${airCardClass} h-full flex flex-col`}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
@@ -160,7 +167,7 @@ export const BuildingOverview = ({
       </div>
 
       <div className="flex-1 overflow-x-auto custom-scrollbar bg-white rounded-xl border border-gray-100 shadow-sm">
-        <table className="w-full text-left border-collapse min-w-[900px] table-fixed">
+        <table className="w-full text-left border-collapse min-w-[600px] table-fixed">
           <thead>
             <tr className="border-b-2 border-gray-100/60 bg-gray-50/50">
               <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap w-[220px]">Device Name</th>
@@ -168,26 +175,29 @@ export const BuildingOverview = ({
               <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">% Hum</th>
               <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">CO₂</th>
               <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">TVOC</th>
-              <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">PM2.5</th>
-              <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">PM10</th>
-              <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">CO PPM</th>
-              <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">O₃ PPB</th>
+              {showPM25 && <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">PM2.5</th>}
+              {showPM10 && <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">PM10</th>}
+              {showCO && <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">CO PPM</th>}
+              {showO3 && <th className="py-4 px-5 text-xs font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">O₃ PPB</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {selectedAirDevices.map((device: any) => {
               const avg = deviceAverages[device.device_id] || deviceAverages[device.id] || {};
+              const deviceIsLeed = isLeedMonitor(device, avg);
 
               const renderCell = (metric: string) => {
                 const val = avg[metric];
                 const config = METRICS_CONFIG[metric];
                 
-                // Aesthetic Placeholder for null/missing values
-                if (val === undefined || val === null) {
+                // If this device physically doesn't measure this metric (LEED)
+                // or the value is null/missing, render an inert placeholder.
+                const unsupported = deviceIsLeed && (EXTENDED_AIR_METRICS as readonly string[]).includes(metric);
+                if (unsupported || val === undefined || val === null) {
                   return (
                     <div className="flex flex-col gap-1.5 w-full pr-5 opacity-40">
                       <div className="flex justify-between items-end">
-                        <span className="text-[13px] font-medium text-slate-600">—</span>
+                        <span className="text-[13px] font-medium text-slate-600">{unsupported ? 'n/a' : '—'}</span>
                         <span className="text-[9px] font-semibold text-slate-600 tracking-widest">{config.unit}</span>
                       </div>
                       <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden"></div>
@@ -216,17 +226,22 @@ export const BuildingOverview = ({
               return (
                 <tr key={device.id} className="hover:bg-teal-50/30 transition-colors group">
                   <td className="py-4 px-5 font-semibold text-teal-800 border-r border-gray-50/50 overflow-hidden">
-                    <div className="text-sm truncate w-full">{airDeviceLabelById.get(device.id)}</div>
+                    <div className="text-sm truncate w-full flex items-center gap-2">
+                      <span className="truncate">{airDeviceLabelById.get(device.id)}</span>
+                      {deviceIsLeed && (
+                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100 flex-shrink-0">LEED</span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-slate-600 uppercase tracking-wider font-medium mt-0.5 truncate w-full">{device.device_id}</div>
                   </td>
                   <td className="py-4 pl-5">{renderCell('env.temperature')}</td>
                   <td className="py-4 pl-5">{renderCell('env.humidity')}</td>
                   <td className="py-4 pl-5">{renderCell('iaq.co2')}</td>
                   <td className="py-4 pl-5">{renderCell('iaq.voc')}</td>
-                  <td className="py-4 pl-5">{renderCell('iaq.pm25')}</td>
-                  <td className="py-4 pl-5">{renderCell('iaq.pm10')}</td>
-                  <td className="py-4 pl-5">{renderCell('iaq.co')}</td>
-                  <td className="py-4 pl-5">{renderCell('iaq.o3')}</td>
+                  {showPM25 && <td className="py-4 pl-5">{renderCell('iaq.pm25')}</td>}
+                  {showPM10 && <td className="py-4 pl-5">{renderCell('iaq.pm10')}</td>}
+                  {showCO && <td className="py-4 pl-5">{renderCell('iaq.co')}</td>}
+                  {showO3 && <td className="py-4 pl-5">{renderCell('iaq.o3')}</td>}
                 </tr>
               );
             })}

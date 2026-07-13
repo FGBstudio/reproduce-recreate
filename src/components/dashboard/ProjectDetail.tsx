@@ -32,6 +32,7 @@ import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 import { ModuleGate } from "@/components/modules/ModuleGate";
 import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
 import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
+import { getSupportedMetricsForDevices, isLeedMonitor, type AirMetric } from "@/lib/airMonitorType";
 import { OverviewSection } from "./OverviewSection";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
@@ -1055,6 +1056,36 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       return devicePeriodAverages;
     }
   }, [devicePeriodAverages, airLatestResp, isToday, isAirLatestStale]);
+
+  // -------------------------------------------------------------------------
+  // Air monitor family detection (WELL 8-metrics vs LEED 4-metrics)
+  // Union of metrics actually reported by the currently selected devices.
+  // Used to hide PM2.5/PM10/CO/O3 UI when no selected device supports them.
+  // -------------------------------------------------------------------------
+  const supportedAirMetrics = useMemo(() => {
+    return getSupportedMetricsForDevices(
+      selectedAirDevices as any,
+      (activeDeviceAverages as any) || {}
+    );
+  }, [selectedAirDevices, activeDeviceAverages]);
+
+  const supportsMetric = (metric: string) => supportedAirMetrics.has(metric as AirMetric);
+  const deviceSupports = (device: any, metric: string) => {
+    const key = device?.device_id || device?.id;
+    const avg = key ? (activeDeviceAverages as any)?.[key] : undefined;
+    if (isLeedMonitor(device, avg)) {
+      return !(['iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3'].includes(metric));
+    }
+    return true;
+  };
+
+  // If the currently selected heatmap metric is no longer supported by any
+  // of the selected devices (e.g. all-LEED selection), fall back to CO2.
+  useEffect(() => {
+    if (!supportedAirMetrics.has(activeAirHeatmapMetric as AirMetric)) {
+      setActiveAirHeatmapMetric('iaq.co2');
+    }
+  }, [supportedAirMetrics, activeAirHeatmapMetric]);
 
   // ENERGY PERIOD AVERAGES moved below energyConsumptionData to resolve dependency temporal dead zone
 
@@ -4792,34 +4823,42 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["env.humidity"] == null ? "—" : Math.round(activeAirMetrics["env.humidity"])}</div>
                               <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">% Humidity</div>
                             </div>
-                            <div className={airKpiCardClass}>
-                              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-                                <Cloud className="w-3.5 h-3.5 text-amber-600" />
+                            {supportsMetric('iaq.pm25') && (
+                              <div className={airKpiCardClass}>
+                                <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                                  <Cloud className="w-3.5 h-3.5 text-amber-600" />
+                                </div>
+                                <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm25"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm25"])}</div>
+                                <div className="text-[9px] text-muted-foreground tracking-wider mt-0.5">µg/m³ PM2.5</div>
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm25"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm25"])}</div>
-                              <div className="text-[9px] text-muted-foreground tracking-wider mt-0.5">µg/m³ PM2.5</div>
-                            </div>
-                            <div className={airKpiCardClass}>
-                              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-                                <Cloud className="w-3.5 h-3.5 text-amber-800" />
+                            )}
+                            {supportsMetric('iaq.pm10') && (
+                              <div className={airKpiCardClass}>
+                                <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                                  <Cloud className="w-3.5 h-3.5 text-amber-800" />
+                                </div>
+                                <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm10"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm10"])}</div>
+                                <div className="text-[9px] text-muted-foreground tracking-wider mt-0.5">µg/m³ PM10</div>
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.pm10"] == null ? "—" : Math.round(activeAirMetrics["iaq.pm10"])}</div>
-                              <div className="text-[9px] text-muted-foreground tracking-wider mt-0.5">µg/m³ PM10</div>
-                            </div>
-                            <div className={airKpiCardClass}>
-                              <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center mb-2">
-                                <Gauge className="w-4 h-4 text-red-500" />
+                            )}
+                            {supportsMetric('iaq.co') && (
+                              <div className={airKpiCardClass}>
+                                <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center mb-2">
+                                  <Gauge className="w-4 h-4 text-red-500" />
+                                </div>
+                                <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.co"] == null ? "—" : activeAirMetrics["iaq.co"].toFixed(2)}</div>
+                                <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppm CO</div>
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.co"] == null ? "—" : activeAirMetrics["iaq.co"].toFixed(2)}</div>
-                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppm CO</div>
-                            </div>
-                            <div className={airKpiCardClass}>
-                              <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center mb-2">
-                                <Sparkles className="w-4 h-4 text-indigo-500" />
+                            )}
+                            {supportsMetric('iaq.o3') && (
+                              <div className={airKpiCardClass}>
+                                <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center mb-2">
+                                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                                </div>
+                                <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.o3"] == null ? "—" : Math.round(activeAirMetrics["iaq.o3"])}</div>
+                                <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppb O₃</div>
                               </div>
-                              <div className="text-lg font-bold text-gray-800 leading-tight">{activeAirMetrics["iaq.o3"] == null ? "—" : Math.round(activeAirMetrics["iaq.o3"])}</div>
-                              <div className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">ppb O₃</div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -4863,7 +4902,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 {/* Slide 2: Air Quality Heatmap */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="mb-4 flex items-center gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit">
-                    {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].map(m => (
+                    {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].filter(m => supportsMetric(m)).map(m => (
                       <button 
                         key={m}
                         onClick={() => setActiveAirHeatmapMetric(m)}
@@ -5001,6 +5040,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 </div>
 
                 {/* Slide 4: Particulate Matter PM2.5 & PM10 */}
+                {(supportsMetric('iaq.pm25') || supportsMetric('iaq.pm10')) && (
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* PM2.5 Chart */}
@@ -5134,8 +5174,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Slide 5: CO & O3 */}
+                {(supportsMetric('iaq.co') || supportsMetric('iaq.o3')) && (
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* CO & O3 Combined Chart */}
@@ -5232,6 +5274,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     })()}
                   </div>
                 </div>
+                )}
               </>
               </ModuleGate>
             )}
