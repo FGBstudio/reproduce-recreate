@@ -4902,7 +4902,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 {/* Slide 2: Air Quality Heatmap */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="mb-4 flex items-center gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit">
-                    {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].map(m => (
+                    {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].filter(m => supportsMetric(m)).map(m => (
                       <button 
                         key={m}
                         onClick={() => setActiveAirHeatmapMetric(m)}
