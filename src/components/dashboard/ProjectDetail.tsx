@@ -1057,6 +1057,28 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     }
   }, [devicePeriodAverages, airLatestResp, isToday, isAirLatestStale]);
 
+  // -------------------------------------------------------------------------
+  // Air monitor family detection (WELL 8-metrics vs LEED 4-metrics)
+  // Union of metrics actually reported by the currently selected devices.
+  // Used to hide PM2.5/PM10/CO/O3 UI when no selected device supports them.
+  // -------------------------------------------------------------------------
+  const supportedAirMetrics = useMemo(() => {
+    return getSupportedMetricsForDevices(
+      selectedAirDevices as any,
+      (activeDeviceAverages as any) || {}
+    );
+  }, [selectedAirDevices, activeDeviceAverages]);
+
+  const supportsMetric = (metric: string) => supportedAirMetrics.has(metric as AirMetric);
+  const deviceSupports = (device: any, metric: string) => {
+    const key = device?.device_id || device?.id;
+    const avg = key ? (activeDeviceAverages as any)?.[key] : undefined;
+    if (isLeedMonitor(device, avg)) {
+      return !(['iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3'].includes(metric));
+    }
+    return true;
+  };
+
   // ENERGY PERIOD AVERAGES moved below energyConsumptionData to resolve dependency temporal dead zone
 
   // Heatmap logic for Air Dashboard
