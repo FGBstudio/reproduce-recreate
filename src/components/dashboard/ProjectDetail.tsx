@@ -5274,6 +5274,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     })()}
                   </div>
                 </div>
+                )}
               </>
               </ModuleGate>
             )}
