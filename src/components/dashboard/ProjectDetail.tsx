@@ -5040,6 +5040,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 </div>
 
                 {/* Slide 4: Particulate Matter PM2.5 & PM10 */}
+                {(supportsMetric('iaq.pm25') || supportsMetric('iaq.pm10')) && (
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* PM2.5 Chart */}
@@ -5173,8 +5174,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Slide 5: CO & O3 */}
+                {(supportsMetric('iaq.co') || supportsMetric('iaq.o3')) && (
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* CO & O3 Combined Chart */}
