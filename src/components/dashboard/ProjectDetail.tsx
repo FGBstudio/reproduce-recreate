@@ -32,6 +32,7 @@ import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 import { ModuleGate } from "@/components/modules/ModuleGate";
 import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
 import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
+import { getSupportedMetricsForDevices, isLeedMonitor, type AirMetric } from "@/lib/airMonitorType";
 import { OverviewSection } from "./OverviewSection";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
