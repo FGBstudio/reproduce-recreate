@@ -618,7 +618,9 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
               </Badge>
             </div>
             <div className="text-right">
-              <div className={`text-xl font-bold ${isCardStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isCardStale ? '-' : status.level}</div>
+              <div className={`text-xl font-bold uppercase ${isCardStale ? 'text-gray-400' : (activeBand ? activeBand.text : getStatusColor(status.level))}`}>
+                {isCardStale ? '-' : (activeBand ? activeBand.label : status.level)}
+              </div>
               <div className="text-[10px] text-slate-600 uppercase">Score {status.score}</div>
             </div>
           </div>
