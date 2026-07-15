@@ -578,9 +578,28 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
 
   const currentCo2 = isCardStale ? undefined : readings.co2.value;
   const avgCo2 = averageMetrics?.['iaq.co2'] ?? averageMetrics?.['co2'];
-  const showAvgCo2 = avgCo2 != null && currentCo2 != null;
-  const co2Delta = showAvgCo2 ? ((currentCo2 - avgCo2) / avgCo2) * 100 : 0;
-  const isCo2Higher = co2Delta > 0;
+
+  // Indice sintetico = stesso score aria dell'app (già passato via `status.score`).
+  // Calcolo lo score medio periodo con la stessa formula usata in airStatus (CO2 → 0-100).
+  const co2ToScore = (co2: number) => Math.round(Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100)));
+  const currentScore = isCardStale ? undefined : (typeof status?.score === 'number' ? status.score : undefined);
+  const avgScore = typeof avgCo2 === 'number' ? co2ToScore(avgCo2) : undefined;
+  const showAvgScore = avgScore != null && currentScore != null && avgScore > 0;
+  const scoreDelta = showAvgScore ? currentScore - avgScore : 0;
+  const isScoreBetter = scoreDelta > 0; // score più alto = aria migliore
+
+  // 4 bande stile Dyson
+  const AQI_BANDS = [
+    { min: 0,  max: 39,  label: 'Critical',  bg: 'bg-red-500',     text: 'text-red-600'     },
+    { min: 40, max: 64,  label: 'OK',        bg: 'bg-amber-500',   text: 'text-amber-600'   },
+    { min: 65, max: 84,  label: 'Good',      bg: 'bg-lime-400',    text: 'text-lime-600'    },
+    { min: 85, max: 100, label: 'Very Good', bg: 'bg-emerald-500', text: 'text-emerald-600' },
+  ];
+  const activeBandIdx = typeof currentScore === 'number'
+    ? AQI_BANDS.findIndex(b => currentScore >= b.min && currentScore <= b.max)
+    : -1;
+  const activeBand = activeBandIdx >= 0 ? AQI_BANDS[activeBandIdx] : null;
+  const markerLeft = typeof currentScore === 'number' ? Math.max(0, Math.min(100, currentScore)) : 0;
 
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
@@ -607,24 +626,44 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
           <div className="mt-4">
             <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-1">{t('overview.indoor_air_quality')}</div>
             <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-5xl font-black tracking-tighter text-gray-900">{formatMaybe(currentCo2, 0)}</span>
-              <span className="text-sm font-bold text-slate-600">ppm</span>
+              <span className="text-5xl font-black tracking-tighter text-gray-900">{currentScore ?? '—'}</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('overview.aqi_title')}</span>
             </div>
 
-            {showAvgCo2 ? (
-              <div className="flex items-center gap-2 text-xs mb-1">
-                <span className="text-slate-600 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{formatMaybe(avgCo2, 0)} ppm</span></span>
-                <span className={`flex items-center font-bold px-1.5 py-0.5 rounded-full ${isCo2Higher ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                  {isCo2Higher ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
-                  {Math.abs(co2Delta).toFixed(1)}%
+            {showAvgScore ? (
+              <div className="flex items-center gap-2 text-xs mb-2">
+                <span className="text-slate-600 font-medium">Avg {periodLabel}: <span className="font-bold text-gray-700">{avgScore}</span></span>
+                <span className={`flex items-center font-bold px-1.5 py-0.5 rounded-full ${isScoreBetter ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                  {isScoreBetter ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
+                  {Math.abs(scoreDelta)}
                 </span>
               </div>
             ) : (
-              <div className="text-xs font-medium text-slate-600 mb-1">Analisi media in corso...</div>
+              <div className="text-xs font-medium text-slate-600 mb-2">Analisi media in corso...</div>
             )}
 
-            <div className="text-xs font-medium text-slate-600 mt-1 pt-1 border-t border-gray-100">
-              Main Proxy: <span className="font-bold text-gray-700">Carbon Dioxide (CO₂)</span>
+            {/* Barra cromatica stile Dyson */}
+            <div className="mt-2">
+              <div className="relative">
+                <div className="flex gap-0.5 h-2 rounded-full overflow-hidden">
+                  {AQI_BANDS.map((b, i) => (
+                    <div key={i} className={`flex-1 ${b.bg} ${activeBandIdx === i ? 'opacity-100' : 'opacity-40'}`} />
+                  ))}
+                </div>
+                {typeof currentScore === 'number' && (
+                  <div
+                    className="absolute -top-1 w-4 h-4 rounded-full bg-white border-2 border-gray-800 shadow-sm"
+                    style={{ left: `calc(${markerLeft}% - 8px)` }}
+                  />
+                )}
+              </div>
+              <div className="flex justify-between mt-1.5 text-[9px] uppercase tracking-wider">
+                {AQI_BANDS.map((b, i) => (
+                  <span key={i} className={activeBandIdx === i ? `font-bold ${b.text}` : 'text-slate-400 font-medium'}>
+                    {t(`overview.aqi_band_${b.label.toLowerCase().replace(' ', '_')}`) || b.label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
