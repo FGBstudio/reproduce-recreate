@@ -1,63 +1,39 @@
-## Obiettivo
-Rilevare in modo stabile se un monitor è **LEED (4 parametri: CO₂, TVOC, TEMP, HUM)** o **WELL (8 parametri, aggiunge PM2.5, PM10, CO, O₃)** e nascondere ovunque nelle dashboard "Aria" i riferimenti ai 4 parametri extra quando non sono monitorati.
+# Indoor Air Quality card — Score come Indice Sintetico + barra Dyson
 
-## Metodo di rilevamento (a due livelli, stabile)
+Modifica confinata alla facciata frontale dell'`AirCard` in `src/components/dashboard/OverviewSection.tsx`. Nessun nuovo helper: uso lo **stesso `status.score` già calcolato** (proprietà `airStatus` — righe 781-786) che oggi popola l'angolo in alto a destra ("Score N" + level). È l'indice sintetico dell'aria dell'app.
 
-Creo un helper `src/lib/airMonitorType.ts` con:
+## 1. Sostituire il valore grezzo CO₂ con l'indice
 
-```ts
-export const EXTENDED_METRICS = ['iaq.pm25','iaq.pm10','iaq.co','iaq.o3'] as const;
-export const BASE_METRICS = ['iaq.co2','iaq.voc','env.temperature','env.humidity'] as const;
+Righe ~607-629 del componente `AirCard`:
 
-// 1) Signal primario: nome/modello device
-export function isLeedByName(device): boolean
-// match case-insensitive di "LEED" in device.model / device.name / device.device_id
-// (esclude "WELL" / "WEEL")
+- Header "Indoor Air Quality" resta invariato.
+- Il grande numero `{formatMaybe(currentCo2, 0)} ppm` viene sostituito da:
+  - Numero grande = `status.score` (0-100), senza unità.
+  - Caption piccola sotto = "Air Quality Index".
+- La riga trend "Avg <periodo>: <n> ppm ±%" resta ma diventa confronto **score corrente vs score medio periodo**, calcolato con la stessa formula già presente (`100 − ((avgCo2 − 400)/600)*100` clampato 0-100) applicata a `averageMetrics['iaq.co2']`. Segno del chip invertito (score più alto = meglio → emerald ↑; più basso = peggio → red ↓).
+- La riga finale "Main Proxy: Carbon Dioxide (CO₂)" viene **rimossa** per liberare lo spazio della barra colorata.
 
-// 2) Fallback telemetrico: se in una finestra ragionevole
-// il device NON ha MAI dato uno dei 4 extra → LEED
-export function isLeedByTelemetry(deviceAverages): boolean
+## 2. Barra cromatica stile Dyson (4 livelli)
 
-// API pubblica combinata:
-export function getSupportedAirMetrics(device, avg?): Set<string>
-export function isLeedMonitor(device, avg?): boolean
-```
+Subito sotto il numero + trend, aggiungere una barra segmentata:
 
-**Regola di priorità:** se il nome contiene "LEED" (o "WELL"/"WEEL") è deterministico. Altrimenti si guarda la telemetria: se `avg` esiste e i 4 metrici extra sono tutti `null/undefined`, si considera LEED. In assenza di segnale (device nuovo, nessuna telemetria) si assume **WELL/8-metric** (nessun nascondimento aggressivo → nessuna regressione visiva).
+- 4 segmenti uguali arrotondati, con colori esistenti già usati nel file:
+  - `bg-emerald-500` → **Very Good** (85-100)
+  - `bg-lime-400` → **Good** (65-84)
+  - `bg-amber-500` → **OK** (40-64)
+  - `bg-red-500` → **Critical** (0-39)
+- Sopra la barra un pallino/indicatore bianco con bordo, posizionato a `left: score%`.
+- Sotto la barra 4 label piccole (`text-[9px] uppercase text-slate-600`): `Very Good · Good · OK · Critical`. La label del band attivo in grassetto e colorata (stesso colore del segmento).
 
-## Modifiche UI
+Le soglie 85/65/40 mappano 1:1 sui 4 livelli richiesti e coincidono in massima con gli step del `getStatusLevel` già in uso (che oggi restituisce EXCELLENT/GOOD/MODERATE/POOR). Il livello mostrato in alto a destra del card (`status.level` — riga 602) viene aggiornato a stringa 4-band coerente: `VERY GOOD | GOOD | OK | CRITICAL`.
 
-Tutte le rimozioni avvengono a livello di rendering, senza toccare fetch/telemetria.
+## 3. Nessuna altra modifica
 
-### 1) `src/components/dashboard/AirCustomComponents.tsx` — Building Overview
-- Passare `airDeviceLabelById`/dispositivi tramite prop (già presenti).
-- Se **tutti** i device selezionati sono LEED → nascondere le 4 colonne PM2.5, PM10, CO, O₃ (header + `<td>`).
-- Se mix (WELL + LEED) → colonne visibili, ma per il singolo device LEED le 4 celle mostrano `—` in stile "opacity-40" (già esistente per null).
+- Nessun nuovo file, nessuna dipendenza, nessuna modifica a telemetria/hook/altre dashboard.
+- Retro della card (Live Gas Diagnostics con TVOC/PM2.5/PM10/Temp/Humidity) invariato.
+- `energyStatus`/`waterStatus`/`overallStatus` invariati (usano già `airStatus.score`).
 
-### 2) `src/components/dashboard/ProjectDetail.tsx` — sezione Air
-Applicare `getSupportedAirMetrics()` calcolato sui `selectedAirDevices` e su `deviceAverages`:
+## File toccati
 
-- **KPI cards Overview air** (~righe 4702-4820): PM2.5, PM10, CO, O₃ → renderizzate solo se almeno un device selezionato le supporta.
-- **Selettore metrica Heatmap** (~riga 4866): filtrare la lista `['iaq.co2','iaq.voc','iaq.pm25','iaq.pm10','iaq.co','iaq.o3','env.temperature','env.humidity']` con `supported.has(m)`. Se `activeAirHeatmapMetric` non è più supportato → reset a `iaq.co2`.
-- **Indoor Avg widget** (~righe 5091-5204): mostrare card PM2.5/PM10/CO/O₃ solo se supportate globalmente.
-- **Grafici per-device** (righe 4990/5075/5160/5163 e sotto 6529+): nel `.map(selectedAirDevices)` saltare (`return null`) i device LEED quando il grafico riguarda PM2.5/PM10/CO/O₃.
-
-### 3) `AirDeviceSelector.tsx` (opzionale, low-risk)
-Aggiungere un piccolo badge testuale "LEED" / "WELL" accanto al nome — solo se rilevabile da nome — per rendere il contratto visibile all'utente. Nessun cambio di logica.
-
-## Fuori scope
-- Nessuna modifica a fetch/telemetria/DB.
-- Nessuna modifica alle certificazioni (LEED/WELL widget in tab certificazioni restano invariati).
-- La sezione Wrapped (`SlideAir`) non viene toccata (usa già solo CO₂/VOC/PM2.5 aggregato).
-- Nessun cambio di stile/palette.
-
-## Dettagli tecnici
-File nuovi:
-- `src/lib/airMonitorType.ts`
-
-File modificati:
-- `src/components/dashboard/AirCustomComponents.tsx` (header/celle condizionali)
-- `src/components/dashboard/ProjectDetail.tsx` (filtro `supported` su cards, heatmap picker, indoor avg, per-device charts)
-- (opz.) `src/components/dashboard/AirDeviceSelector.tsx` (badge)
-
-Il calcolo `supported` è un `useMemo` singolo derivato da `selectedAirDevices` + `deviceAverages`, riutilizzato in tutti i punti sopra per garantire coerenza.
+- `src/components/dashboard/OverviewSection.tsx` (solo blocco frontale `AirCard`, ~30 righe).
+- `src/contexts/LanguageContext.tsx`: aggiungere 5 stringhe IT/EN — `overview.aqi_title` ("Air Quality Index") e le 4 label di banda.
