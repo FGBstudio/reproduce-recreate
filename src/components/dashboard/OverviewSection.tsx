@@ -590,16 +590,20 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
 
   // 4 bande stile Dyson
   const AQI_BANDS = [
-    { min: 0,  max: 39,  label: 'Critical',  bg: 'bg-red-500',     text: 'text-red-600'     },
-    { min: 40, max: 64,  label: 'OK',        bg: 'bg-amber-500',   text: 'text-amber-600'   },
-    { min: 65, max: 84,  label: 'Good',      bg: 'bg-lime-400',    text: 'text-lime-600'    },
-    { min: 85, max: 100, label: 'Very Good', bg: 'bg-emerald-500', text: 'text-emerald-600' },
+    { min: 0,  max: 39,  label: 'Critical',  bg: 'bg-red-500',     text: 'text-red-600',     gradient: 'bg-gradient-to-br from-red-500 to-red-400'     },
+    { min: 40, max: 64,  label: 'OK',        bg: 'bg-amber-500',   text: 'text-amber-600',   gradient: 'bg-gradient-to-br from-amber-500 to-amber-400'   },
+    { min: 65, max: 84,  label: 'Good',      bg: 'bg-lime-400',    text: 'text-lime-600',    gradient: 'bg-gradient-to-br from-lime-400 to-lime-300'    },
+    { min: 85, max: 100, label: 'Very Good', bg: 'bg-emerald-500', text: 'text-emerald-600', gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-400' },
   ];
   const activeBandIdx = typeof currentScore === 'number'
     ? AQI_BANDS.findIndex(b => currentScore >= b.min && currentScore <= b.max)
     : -1;
   const activeBand = activeBandIdx >= 0 ? AQI_BANDS[activeBandIdx] : null;
-  const markerLeft = typeof currentScore === 'number' ? Math.max(0, Math.min(100, currentScore)) : 0;
+  const scoreClass = isCardStale || currentScore == null
+    ? "text-5xl font-black tracking-tighter text-gray-400"
+    : activeBand
+      ? `text-5xl font-black tracking-tighter bg-clip-text text-transparent ${activeBand.gradient}`
+      : "text-5xl font-black tracking-tighter text-gray-900";
 
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
@@ -628,7 +632,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
           <div className="mt-4">
             <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-1">{t('overview.indoor_air_quality')}</div>
             <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-5xl font-black tracking-tighter text-gray-900">{currentScore ?? '—'}</span>
+              <span className={scoreClass}>{currentScore ?? '—'}</span>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('overview.aqi_title')}</span>
             </div>
 
@@ -644,28 +648,13 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
               <div className="text-xs font-medium text-slate-600 mb-2">Analisi media in corso...</div>
             )}
 
-            {/* Barra cromatica stile Dyson */}
-            <div className="mt-2">
-              <div className="relative">
-                <div className="flex gap-0.5 h-2 rounded-full overflow-hidden">
-                  {AQI_BANDS.map((b, i) => (
-                    <div key={i} className={`flex-1 ${b.bg} ${activeBandIdx === i ? 'opacity-100' : 'opacity-40'}`} />
-                  ))}
-                </div>
-                {typeof currentScore === 'number' && (
-                  <div
-                    className="absolute -top-1 w-4 h-4 rounded-full bg-white border-2 border-gray-800 shadow-sm"
-                    style={{ left: `calc(${markerLeft}% - 8px)` }}
-                  />
-                )}
-              </div>
-              <div className="flex justify-between mt-1.5 text-[9px] uppercase tracking-wider">
-                {AQI_BANDS.map((b, i) => (
-                  <span key={i} className={activeBandIdx === i ? `font-bold ${b.text}` : 'text-slate-400 font-medium'}>
-                    {t(`overview.aqi_band_${b.label.toLowerCase().replace(' ', '_')}`) || b.label}
-                  </span>
-                ))}
-              </div>
+            {/* Etichette bande AQI */}
+            <div className="mt-2 flex justify-between text-[9px] uppercase tracking-wider">
+              {AQI_BANDS.map((b, i) => (
+                <span key={i} className={activeBandIdx === i ? `font-bold ${b.text}` : 'text-slate-400 font-medium'}>
+                  {t(`overview.aqi_band_${b.label.toLowerCase().replace(' ', '_')}`) || b.label}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -683,11 +672,12 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
           </div>
           
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm flex-1">
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">CO₂</span><span className="font-bold text-gray-800">{formatMaybe(readings.co2.value, 0)} ppm</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">TVOC</span><span className="font-bold text-gray-800">{formatMaybe(readings.tvoc.value, 0)} ppb</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM2.5</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm25.value, 1)} µg/m³</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM10</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm10.value, 1)} µg/m³</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">Temp</span><span className="font-bold text-gray-800">{formatMaybe(readings.temp.value, 1)} °C</span></div>
-            <div className="flex flex-col col-span-2"><span className="text-[10px] uppercase text-slate-600">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
           </div>
 
           <div className="mt-auto pt-2 flex justify-end">
