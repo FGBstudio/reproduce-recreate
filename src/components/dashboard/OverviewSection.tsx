@@ -648,28 +648,13 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
               <div className="text-xs font-medium text-slate-600 mb-2">Analisi media in corso...</div>
             )}
 
-            {/* Barra cromatica stile Dyson */}
-            <div className="mt-2">
-              <div className="relative">
-                <div className="flex gap-0.5 h-2 rounded-full overflow-hidden">
-                  {AQI_BANDS.map((b, i) => (
-                    <div key={i} className={`flex-1 ${b.bg} ${activeBandIdx === i ? 'opacity-100' : 'opacity-40'}`} />
-                  ))}
-                </div>
-                {typeof currentScore === 'number' && (
-                  <div
-                    className="absolute -top-1 w-4 h-4 rounded-full bg-white border-2 border-gray-800 shadow-sm"
-                    style={{ left: `calc(${markerLeft}% - 8px)` }}
-                  />
-                )}
-              </div>
-              <div className="flex justify-between mt-1.5 text-[9px] uppercase tracking-wider">
-                {AQI_BANDS.map((b, i) => (
-                  <span key={i} className={activeBandIdx === i ? `font-bold ${b.text}` : 'text-slate-400 font-medium'}>
-                    {t(`overview.aqi_band_${b.label.toLowerCase().replace(' ', '_')}`) || b.label}
-                  </span>
-                ))}
-              </div>
+            {/* Etichette bande AQI */}
+            <div className="mt-2 flex justify-between text-[9px] uppercase tracking-wider">
+              {AQI_BANDS.map((b, i) => (
+                <span key={i} className={activeBandIdx === i ? `font-bold ${b.text}` : 'text-slate-400 font-medium'}>
+                  {t(`overview.aqi_band_${b.label.toLowerCase().replace(' ', '_')}`) || b.label}
+                </span>
+              ))}
             </div>
           </div>
 
