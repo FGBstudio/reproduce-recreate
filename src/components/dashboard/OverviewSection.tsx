@@ -632,7 +632,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
           <div className="mt-4">
             <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-1">{t('overview.indoor_air_quality')}</div>
             <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-5xl font-black tracking-tighter text-gray-900">{currentScore ?? '—'}</span>
+              <span className={scoreClass}>{currentScore ?? '—'}</span>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('overview.aqi_title')}</span>
             </div>
 
