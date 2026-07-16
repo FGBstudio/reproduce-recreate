@@ -672,11 +672,12 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
           </div>
           
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm flex-1">
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">CO₂</span><span className="font-bold text-gray-800">{formatMaybe(readings.co2.value, 0)} ppm</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">TVOC</span><span className="font-bold text-gray-800">{formatMaybe(readings.tvoc.value, 0)} ppb</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM2.5</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm25.value, 1)} µg/m³</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM10</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm10.value, 1)} µg/m³</span></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">Temp</span><span className="font-bold text-gray-800">{formatMaybe(readings.temp.value, 1)} °C</span></div>
-            <div className="flex flex-col col-span-2"><span className="text-[10px] uppercase text-slate-600">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
+            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
           </div>
 
           <div className="mt-auto pt-2 flex justify-end">
