@@ -590,16 +590,20 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
 
   // 4 bande stile Dyson
   const AQI_BANDS = [
-    { min: 0,  max: 39,  label: 'Critical',  bg: 'bg-red-500',     text: 'text-red-600'     },
-    { min: 40, max: 64,  label: 'OK',        bg: 'bg-amber-500',   text: 'text-amber-600'   },
-    { min: 65, max: 84,  label: 'Good',      bg: 'bg-lime-400',    text: 'text-lime-600'    },
-    { min: 85, max: 100, label: 'Very Good', bg: 'bg-emerald-500', text: 'text-emerald-600' },
+    { min: 0,  max: 39,  label: 'Critical',  bg: 'bg-red-500',     text: 'text-red-600',     gradient: 'bg-gradient-to-br from-red-500 to-red-400'     },
+    { min: 40, max: 64,  label: 'OK',        bg: 'bg-amber-500',   text: 'text-amber-600',   gradient: 'bg-gradient-to-br from-amber-500 to-amber-400'   },
+    { min: 65, max: 84,  label: 'Good',      bg: 'bg-lime-400',    text: 'text-lime-600',    gradient: 'bg-gradient-to-br from-lime-400 to-lime-300'    },
+    { min: 85, max: 100, label: 'Very Good', bg: 'bg-emerald-500', text: 'text-emerald-600', gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-400' },
   ];
   const activeBandIdx = typeof currentScore === 'number'
     ? AQI_BANDS.findIndex(b => currentScore >= b.min && currentScore <= b.max)
     : -1;
   const activeBand = activeBandIdx >= 0 ? AQI_BANDS[activeBandIdx] : null;
-  const markerLeft = typeof currentScore === 'number' ? Math.max(0, Math.min(100, currentScore)) : 0;
+  const scoreClass = isCardStale || currentScore == null
+    ? "text-5xl font-black tracking-tighter text-gray-400"
+    : activeBand
+      ? `text-5xl font-black tracking-tighter bg-clip-text text-transparent ${activeBand.gradient}`
+      : "text-5xl font-black tracking-tighter text-gray-900";
 
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>
