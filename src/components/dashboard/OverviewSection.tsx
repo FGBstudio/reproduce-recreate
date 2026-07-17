@@ -873,9 +873,9 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-8">
       {/* ── NUOVO LAYOUT ORIZZONTALE TOP (ScoreHero + Fingerprint) ── */}
-      <div className="flex flex-col xl:flex-row gap-4 mb-4 md:mb-6">
+      <div className="@container flex flex-col @[1100px]:flex-row gap-4 mb-4 md:mb-6">
         <ScoreHero
-          className="xl:flex-[2] min-w-0"
+          className="@[1100px]:flex-[2] min-w-0"
           score={overallStatus.score}
           level={overallStatus.level}
           isLive={overallStatus.isLive}
@@ -891,7 +891,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
           onModuleClick={(mod: string) => onNavigate && onNavigate(mod)}
         />
 
-        <Card className="xl:flex-1 xl:min-w-[380px] xl:max-w-[460px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
+        <Card className="@[1100px]:flex-1 @[1100px]:basis-[400px] @[1100px]:max-w-[460px] shrink-0 p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
           <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-2 w-full text-center">Site Fingerprint</div>
           <BuildingFingerprint
             level={overallStatus.level}
