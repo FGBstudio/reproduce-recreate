@@ -241,7 +241,7 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick, infoText
   const tokens = STATUS_TOKENS[level];
   const active = enabled && isLive;
   return (
-    <div className="flex flex-col items-center gap-1.5 md:gap-2 min-w-[76px] md:min-w-[92px]">
+    <div className="flex flex-col items-center gap-1.5 md:gap-2 min-w-[72px] @[860px]:min-w-[92px]">
       <button onClick={onClick} disabled={!onClick} className={`flex flex-col items-center gap-1.5 md:gap-2 group ${onClick ? "cursor-pointer" : "cursor-default"}`}>
       <div className={`w-[56px] h-[56px] md:w-[72px] md:h-[72px] rounded-[14px] md:rounded-[18px] flex items-center justify-center border transition-all duration-200 ${active ? `${tokens.modIconBg} ${tokens.modIconText} border-transparent group-hover:scale-105` : "bg-gray-50 text-slate-600 border-gray-100"}`}>
         {icon}
@@ -256,7 +256,7 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick, infoText
   );
 }
 
-function ModSep() { return <div className="w-px h-12 md:h-16 bg-[#a0d5d6]/40 self-center flex-shrink-0" aria-hidden="true" />; }
+function ModSep() { return <div className="hidden @[560px]:block w-px h-12 md:h-16 bg-[#a0d5d6]/40 self-center flex-shrink-0" aria-hidden="true" />; }
 
 function LiveBadge({ isLive }: { isLive: boolean }) {
   return (
