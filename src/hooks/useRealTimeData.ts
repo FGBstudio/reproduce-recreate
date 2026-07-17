@@ -202,16 +202,30 @@ export function useAllHoldings() {
  */
 export function useAllBrands() {
   const { data: realBrands, isLoading, error, refetch } = useBrands();
+  const { data: realHoldings } = useHoldings();
 
   return useMemo(() => {
     const transformed = realBrands?.map(transformBrand) || [];
 
     // Combine real brands with mock brands
     const realNames = new Set(transformed.map(b => b.name.toLowerCase()));
-    const combined = [
-      ...transformed,
-      ...mockBrands.filter(b => !realNames.has(b.name.toLowerCase())),
-    ];
+
+    // Build mock-holding-name -> real-holding-id map so mock brands (kept
+    // because they have no real twin) can be re-parented to real holdings.
+    const realHoldingIdByName = new Map<string, string>();
+    (realHoldings || []).forEach(h => realHoldingIdByName.set(h.name.toLowerCase(), h.id));
+    const mockHoldingNameById = new Map<string, string>();
+    mockHoldings.forEach(h => mockHoldingNameById.set(h.id, h.name.toLowerCase()));
+
+    const remappedMockBrands = mockBrands
+      .filter(b => !realNames.has(b.name.toLowerCase()))
+      .map(b => {
+        const holdingName = mockHoldingNameById.get(b.holdingId);
+        const realHoldingId = holdingName ? realHoldingIdByName.get(holdingName) : undefined;
+        return realHoldingId ? { ...b, holdingId: realHoldingId } : b;
+      });
+
+    const combined = [...transformed, ...remappedMockBrands];
 
     return {
       brands: combined,
@@ -220,7 +234,7 @@ export function useAllBrands() {
       hasRealData: isSupabaseConfigured && transformed.length > 0,
       refetch,
     };
-  }, [realBrands, isLoading, error, refetch]);
+  }, [realBrands, realHoldings, isLoading, error, refetch]);
 }
 
 /**
@@ -228,6 +242,7 @@ export function useAllBrands() {
  */
 export function useAllProjects() {
   const { data: realSites, isLoading: sitesLoading, error: sitesError, refetch: refetchSites } = useSites();
+  const { data: realBrands } = useBrands();
 
   // Get latest telemetry for all sites to populate project data
   const siteIds = realSites?.map(s => s.id) || [];
@@ -269,12 +284,24 @@ export function useAllProjects() {
       return transformSite(site);
     }) || [];
 
-    // Combine real sites with mock projects
+    // Combine real sites with mock projects.
+    // Remap mock projects' brandId to the real brand id when a brand with the
+    // same name exists in DB, so holding/brand filters (which use real IDs)
+    // still match demo mockup sites.
+    const realBrandIdByName = new Map<string, string>();
+    (realBrands || []).forEach(b => realBrandIdByName.set(b.name.toLowerCase(), b.id));
+    const mockBrandNameById = new Map<string, string>();
+    mockBrands.forEach(b => mockBrandNameById.set(b.id, b.name.toLowerCase()));
+
     const realNames = new Set(transformed.map(p => p.name.toLowerCase()));
-    const combined = [
-      ...transformed,
-      ...mockProjects.filter(p => !realNames.has(p.name.toLowerCase())),
-    ];
+    const remappedMockProjects = mockProjects
+      .filter(p => !realNames.has(p.name.toLowerCase()))
+      .map(p => {
+        const brandName = mockBrandNameById.get(p.brandId);
+        const realBrandId = brandName ? realBrandIdByName.get(brandName) : undefined;
+        return realBrandId ? { ...p, brandId: realBrandId } : p;
+      });
+    const combined = [...transformed, ...remappedMockProjects];
 
     const refetch = () => {
       refetchSites();
@@ -288,7 +315,7 @@ export function useAllProjects() {
       hasRealData: isSupabaseConfigured && transformed.length > 0,
       refetch,
     };
-  }, [realSites, latestData, sitesLoading, sitesError, refetchSites, refetchTelemetry]);
+  }, [realSites, realBrands, latestData, sitesLoading, sitesError, refetchSites, refetchTelemetry]);
 }
 
 /**
