@@ -273,7 +273,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
   const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
 
   return (
-    <Card className={`relative overflow-hidden bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
+    <Card className={`@container relative overflow-hidden bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
       {/* Status-colored corner glow (echoes the dark-gradient screenshot, kept on a light card) */}
       <div
         aria-hidden="true"
@@ -283,7 +283,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           filter: "blur(6px)",
         }}
       />
-      <div className={`relative flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-8 px-4 md:px-8 py-4 md:py-8 h-full`}>
+      <div className={`relative flex flex-col @[720px]:flex-row @[720px]:items-center justify-between gap-4 @[860px]:gap-8 px-4 md:px-8 py-4 md:py-8 h-full`}>
         {/* ── LEFT: Ring + status text ── */}
         <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
@@ -293,7 +293,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
               <LiveBadge isLive={isLive} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
-            <div className={`text-[36px] md:text-[56px] font-semibold leading-none tracking-tight ${tokens.textColor}`}>
+            <div className={`font-semibold leading-none tracking-tight ${tokens.textColor}`} style={{ fontSize: "clamp(28px, 6cqw, 56px)" }}>
               {tokens.word}
             </div>
             <div className="text-[14px] md:text-[16px] text-[#006367] mt-1.5 md:mt-2 leading-snug flex items-center gap-1.5 flex-wrap">
@@ -306,17 +306,17 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
         </div>
 
         {/* ── DIVIDER (xl+) ── */}
-        <div className="hidden xl:block w-px h-32 bg-[#a0d5d6]/40 flex-shrink-0" aria-hidden="true" />
+        <div className="hidden @[720px]:block w-px h-32 bg-[#a0d5d6]/40 flex-shrink-0" aria-hidden="true" />
 
         {/* ── RIGHT: Module pills + Alerts ── */}
-        <div className="flex items-center gap-4 md:gap-7 flex-shrink-0 overflow-x-auto pb-2 xl:pb-0">
+        <div className="flex flex-wrap items-center justify-center @[720px]:justify-end gap-3 @[860px]:gap-6 pb-2 @[720px]:pb-0">
           <ModPill icon={<Zap className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} infoText={MOD_INFO.energy} />
           <ModSep />
           <ModPill icon={<Wind className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} infoText={MOD_INFO.air} />
           <ModSep />
           <ModPill icon={<Droplet className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Water" score={modules.water.score} enabled={modules.water.enabled} isLive={modules.water.isLive} level={level} onClick={modules.water.enabled ? handleModClick("water") : undefined} infoText={MOD_INFO.water} />
           <ModSep />
-          <div className="flex flex-col items-center gap-1.5 md:gap-2 min-w-[76px] md:min-w-[92px]">
+          <div className="flex flex-col items-center gap-1.5 md:gap-2 min-w-[72px] @[860px]:min-w-[92px]">
             <div className={`w-[56px] h-[56px] md:w-[72px] md:h-[72px] rounded-[14px] md:rounded-[18px] flex items-center justify-center border transition-all ${alertStatus.hasAlerts ? 'bg-red-50 text-red-600 border-red-100 hover:scale-105' : 'bg-[#E4F3F3] text-[#006367] border-[#a0d5d6]/40'}`}>
               {alertStatus.hasAlerts ? <AlertTriangle className="w-6 h-6 md:w-7 md:h-7" /> : <Activity className="w-6 h-6 md:w-7 md:h-7" />}
             </div>
