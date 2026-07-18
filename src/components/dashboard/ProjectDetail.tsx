@@ -26,7 +26,7 @@ import {
   getPeriodLabel 
 } from "@/hooks/useTimeFilteredData";
 import { useRealTimeEnergyData, useProjectTelemetry } from "@/hooks/useRealTimeTelemetry";
-import { generatePdfReport } from "./PdfReportGenerator";
+// PDF: caricato on-demand solo quando l'utente genera un report (risparmia ~600KB all'avvio)
 import { Button } from "@/components/ui/button";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 import { ModuleGate } from "@/components/modules/ModuleGate";
@@ -3344,6 +3344,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         };
       });
 
+      const { generatePdfReport } = await import("./PdfReportGenerator");
       await generatePdfReport({
         project: enrichedProject,
         timePeriod,
