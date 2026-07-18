@@ -465,6 +465,64 @@ export const UserAccountDropdown = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        setIsDeleteDialogOpen(open);
+        if (!open) setDeleteConfirmText("");
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-[hsl(var(--rose))]">
+              <AlertTriangle className="w-5 h-5" />
+              {t('account.delete_account') || 'Delete account'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-[hsl(var(--rose))]/30 bg-[hsl(var(--rose))]/5 p-3 text-xs text-foreground/80 space-y-1.5">
+              <p className="font-semibold text-[hsl(var(--rose))]">
+                {t('account.delete_warning_title') || 'This action is irreversible.'}
+              </p>
+              <p>
+                {t('account.delete_warning_body') || 'Your profile, roles, memberships and access to all sites will be permanently removed. You will not be able to sign in again with this email.'}
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="delete-confirm" className="text-xs">
+                {t('account.delete_confirm_prompt') || 'Type DELETE to confirm'}
+              </Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              {t('account.cancel') || 'Cancel'}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== "DELETE" || isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              {t('account.delete_account_confirm') || 'Delete my account'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
