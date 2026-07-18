@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Wind, Droplet, Award, Info } from "lucide-react";
 import { Project, MonitoringType } from "@/lib/data";
@@ -743,4 +743,5 @@ export const SiteMarker = ({
   );
 };
 
-export default SiteMarker;
+// memo: evita il re-render di TUTTI i marker della mappa a ogni cambio di stato del genitore
+export default memo(SiteMarker);

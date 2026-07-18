@@ -13,6 +13,10 @@ export default defineConfig(({ mode, command }) => ({
     host: "::",
     port: 8080,
   },
+  esbuild: {
+    // Rimuove i log di debug SOLO dalla build di produzione (restano in dev)
+    pure: ["console.log", "console.debug"],
+  },
   build: {
     rollupOptions: {
       output: {
