@@ -9,13 +9,9 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * production apps must bundle the static `dist/` output instead.
  */
 const config: CapacitorConfig = {
-  appId: "app.lovable.cbe763268dcc4145a9b933309ffc4d43",
+  appId: "com.fgbstudio.monitoring",
   appName: "FGB Monitoring",
   webDir: "dist",
-  server: {
-    url: "https://cbe76326-8dcc-4145-a9b9-33309ffc4d43.lovableproject.com?forceHideBadge=true",
-    cleartext: true,
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
