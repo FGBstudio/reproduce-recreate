@@ -3208,88 +3208,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return { backgroundColor: '#f0f2f5' };
   }, [project, customBgUrl]);
 
-  if (!project) return null;
-
-  const nextSlide = () => {
-    if (currentSlide < totalSlides - 1) {
-      setCurrentSlide(prev => prev + 1);
-    }
-  };
-
-  const prevSlide = () => {
-    if (currentSlide > 0) {
-      setCurrentSlide(prev => prev - 1);
-    }
-  };
-
-  // Swipe handlers
-  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
-    touchStartX.current = e.targetTouches[0].clientX;
-    touchEndX.current = null;
-  };
-
-  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    
-    if (isLeftSwipe) {
-      nextSlide();
-    } else if (isRightSwipe) {
-      prevSlide();
-    }
-    
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
-
-  const handleDashboardChange = (dashboard: DashboardType) => {
-    setActiveDashboard(dashboard);
-    setCurrentSlide(0);
-  };
-
-  const getAqColor = (aq: string) => {
-    switch (aq) {
-      case "EXCELLENT": return "text-emerald-500";
-      case "GOOD": return "text-emerald-600";
-      case "MODERATE": return "text-yellow-500";
-      case "POOR": return "text-red-500";
-      case "CRITICAL": return "text-red-600 font-black";
-      case "MEDIUM": return "text-amber-500";
-      default: return "text-gray-600";
-    }
-  };
-
-  const getAqBgColor = (aq: string) => {
-    switch (aq) {
-      case "EXCELLENT": return "bg-emerald-500/20 border-emerald-500/30";
-      case "GOOD": return "bg-emerald-500/20 border-emerald-500/30";
-      case "MODERATE": return "bg-yellow-500/20 border-yellow-500/30";
-      case "POOR": return "bg-red-500/20 border-red-500/30";
-      case "CRITICAL": return "bg-red-600/20 border-red-600/30";
-      case "MEDIUM": return "bg-amber-500/20 border-amber-500/30";
-      default: return "bg-gray-500/20 border-gray-500/30";
-    }
-  };
-
-  // Heatmap legend labels based on qualitative judgments
-  const heatmapLegendLabels = [t('pd.hm_excellent'), t('pd.hm_good'), t('pd.hm_moderate'), t('pd.hm_high'), t('pd.hm_critical')];
-  const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
-
-  // Air quality data for export
-  const airQualityData = [
-    { metric: 'Air Quality Index', value: project.data.aq },
-    { metric: 'CO2 (ppm)', value: project.data.co2 },
-    { metric: 'Temperature', value: project.data.temp },
-  ];
-
-  // PDF Export handler
+  // PDF Export handler (dichiarato PRIMA dell'early-return: gli hook devono
+  // essere chiamati nello stesso ordine a ogni render - Rules of Hooks)
   const handleExportPdf = useCallback(async () => {
     if (!project || isGeneratingPdf) return;
     
@@ -3407,6 +3327,89 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     totalBreakdownKwh,
     estimatedCostData
   ]);
+
+  if (!project) return null;
+
+  const nextSlide = () => {
+    if (currentSlide < totalSlides - 1) {
+      setCurrentSlide(prev => prev + 1);
+    }
+  };
+
+  const prevSlide = () => {
+    if (currentSlide > 0) {
+      setCurrentSlide(prev => prev - 1);
+    }
+  };
+
+  // Swipe handlers
+  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = null;
+  };
+
+  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      nextSlide();
+    } else if (isRightSwipe) {
+      prevSlide();
+    }
+    
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  const handleDashboardChange = (dashboard: DashboardType) => {
+    setActiveDashboard(dashboard);
+    setCurrentSlide(0);
+  };
+
+  const getAqColor = (aq: string) => {
+    switch (aq) {
+      case "EXCELLENT": return "text-emerald-500";
+      case "GOOD": return "text-emerald-600";
+      case "MODERATE": return "text-yellow-500";
+      case "POOR": return "text-red-500";
+      case "CRITICAL": return "text-red-600 font-black";
+      case "MEDIUM": return "text-amber-500";
+      default: return "text-gray-600";
+    }
+  };
+
+  const getAqBgColor = (aq: string) => {
+    switch (aq) {
+      case "EXCELLENT": return "bg-emerald-500/20 border-emerald-500/30";
+      case "GOOD": return "bg-emerald-500/20 border-emerald-500/30";
+      case "MODERATE": return "bg-yellow-500/20 border-yellow-500/30";
+      case "POOR": return "bg-red-500/20 border-red-500/30";
+      case "CRITICAL": return "bg-red-600/20 border-red-600/30";
+      case "MEDIUM": return "bg-amber-500/20 border-amber-500/30";
+      default: return "bg-gray-500/20 border-gray-500/30";
+    }
+  };
+
+  // Heatmap legend labels based on qualitative judgments
+  const heatmapLegendLabels = [t('pd.hm_excellent'), t('pd.hm_good'), t('pd.hm_moderate'), t('pd.hm_high'), t('pd.hm_critical')];
+  const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
+
+  // Air quality data for export
+  const airQualityData = [
+    { metric: 'Air Quality Index', value: project.data.aq },
+    { metric: 'CO2 (ppm)', value: project.data.co2 },
+    { metric: 'Temperature', value: project.data.temp },
+  ];
+
+  // PDF Export handler
 
   return (
     <div className="fixed inset-0 z-50 animate-slide-up bg-background">
