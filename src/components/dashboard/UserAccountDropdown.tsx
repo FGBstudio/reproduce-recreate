@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, Settings, Camera, X, Save, Loader2, Sun, Moon, ShieldCheck, Bell, HelpCircle, User as UserIcon } from "lucide-react";
+import { LogOut, Settings, Camera, X, Save, Loader2, Sun, Moon, ShieldCheck, Bell, HelpCircle, User as UserIcon, Trash2, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import { NotificationsTab } from "./NotificationsTab";
 import { HelpTab } from "./HelpTab";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,9 @@ export const UserAccountDropdown = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatar);
   
   // Local form state
@@ -107,6 +111,25 @@ export const UserAccountDropdown = () => {
     
     setIsSaving(false);
     setIsEditDialogOpen(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke('delete-account');
+      if (error) throw error;
+      toast.success(t('account.delete_success') || 'Account deleted');
+      await logout();
+      navigate('/auth');
+    } catch (e: any) {
+      console.error('Delete account error', e);
+      toast.error(e?.message || t('account.delete_error') || 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+      setDeleteConfirmText("");
+    }
   };
 
   const displayName = formData.display_name || `${formData.first_name} ${formData.last_name}`.trim() || user?.name || 'User';
