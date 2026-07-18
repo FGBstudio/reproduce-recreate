@@ -1,17 +1,17 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase as sharedClient } from '@/integrations/supabase/client';
 
 // Environment variables for Supabase connection
 // NOTE: On static hosts (e.g. GitHub Pages) these are baked at build-time.
+// NOTE: devono puntare allo STESSO progetto di src/integrations/supabase/client.ts
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Create Supabase client (or null if not configured)
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+// Riusa l'UNICA istanza condivisa (evita il doppio GoTrueClient e conflitti
+// sui token di sessione). Se env non configurato -> null (modalità demo/mock).
+export const supabase = isSupabaseConfigured ? sharedClient : null;
 
 // Helper to check if we should use real data or mock
 export const useRealData = isSupabaseConfigured;
