@@ -515,9 +515,9 @@ const SLIDES: SlideData[] = [
     backVideo: "/videos/app-nav.mp4",
     visual: (
       <div className="relative w-full h-full flex items-end justify-center">
-        <img src="/FGB_Mac.png" className="relative z-10 w-[70%] drop-shadow-[0_30px_50px_rgba(0,0,0,0.18)] translate-y-1" />
-        <img src="/FGB_Pad.png" className="absolute z-20 w-[22%] left-[6%] bottom-[6%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.18)]" />
-        <img src="/FGB_Phone.png" className="absolute z-30 w-[12%] right-[8%] bottom-[10%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.22)]" />
+        <img src="/FGB_Mac.webp" className="relative z-10 w-[70%] drop-shadow-[0_30px_50px_rgba(0,0,0,0.18)] translate-y-1" />
+        <img src="/FGB_Pad.webp" className="absolute z-20 w-[22%] left-[6%] bottom-[6%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.18)]" />
+        <img src="/FGB_Phone.webp" className="absolute z-30 w-[12%] right-[8%] bottom-[10%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.22)]" />
       </div>
     ),
   },
