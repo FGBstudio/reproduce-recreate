@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, Settings, Camera, X, Save, Loader2, Sun, Moon, ShieldCheck, Bell, HelpCircle, User as UserIcon } from "lucide-react";
+import { LogOut, Settings, Camera, X, Save, Loader2, Sun, Moon, ShieldCheck, Bell, HelpCircle, User as UserIcon, Trash2, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import { NotificationsTab } from "./NotificationsTab";
 import { HelpTab } from "./HelpTab";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,9 @@ export const UserAccountDropdown = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatar);
   
   // Local form state
@@ -107,6 +111,25 @@ export const UserAccountDropdown = () => {
     
     setIsSaving(false);
     setIsEditDialogOpen(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke('delete-account');
+      if (error) throw error;
+      toast.success(t('account.delete_success') || 'Account deleted');
+      await logout();
+      navigate('/auth');
+    } catch (e: any) {
+      console.error('Delete account error', e);
+      toast.error(e?.message || t('account.delete_error') || 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+      setDeleteConfirmText("");
+    }
   };
 
   const displayName = formData.display_name || `${formData.first_name} ${formData.last_name}`.trim() || user?.name || 'User';
@@ -267,6 +290,23 @@ export const UserAccountDropdown = () => {
                       <span className="text-muted-foreground">{t('account.system_role') || 'System role'}</span>
                       <span className="text-foreground font-medium capitalize">{user?.role || 'viewer'}</span>
                     </div>
+                    <div className="pt-3 mt-3 border-t border-foreground/5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--rose))] mb-1.5">
+                        {t('account.danger_zone') || 'Danger zone'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mb-2">
+                        {t('account.delete_warning_short') || 'Permanently delete your account and all associated data.'}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-center gap-1.5 text-xs h-8 border-[hsl(var(--rose))]/40 text-[hsl(var(--rose))] hover:bg-[hsl(var(--rose))]/10 hover:text-[hsl(var(--rose))]"
+                        onClick={() => { setIsOpen(false); setIsDeleteDialogOpen(true); }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {t('account.delete_account') || 'Delete account'}
+                      </Button>
+                    </div>
                   </div>
                 )}
                 {activeTab === 'alerts' && <NotificationsTab />}
@@ -421,6 +461,64 @@ export const UserAccountDropdown = () => {
                 <Save className="w-4 h-4 mr-2" />
               )}
               {t('account.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        setIsDeleteDialogOpen(open);
+        if (!open) setDeleteConfirmText("");
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-[hsl(var(--rose))]">
+              <AlertTriangle className="w-5 h-5" />
+              {t('account.delete_account') || 'Delete account'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-[hsl(var(--rose))]/30 bg-[hsl(var(--rose))]/5 p-3 text-xs text-foreground/80 space-y-1.5">
+              <p className="font-semibold text-[hsl(var(--rose))]">
+                {t('account.delete_warning_title') || 'This action is irreversible.'}
+              </p>
+              <p>
+                {t('account.delete_warning_body') || 'Your profile, roles, memberships and access to all sites will be permanently removed. You will not be able to sign in again with this email.'}
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="delete-confirm" className="text-xs">
+                {t('account.delete_confirm_prompt') || 'Type DELETE to confirm'}
+              </Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              {t('account.cancel') || 'Cancel'}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== "DELETE" || isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              {t('account.delete_account_confirm') || 'Delete my account'}
             </Button>
           </DialogFooter>
         </DialogContent>
