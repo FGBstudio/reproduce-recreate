@@ -290,23 +290,6 @@ export const UserAccountDropdown = () => {
                       <span className="text-muted-foreground">{t('account.system_role') || 'System role'}</span>
                       <span className="text-foreground font-medium capitalize">{user?.role || 'viewer'}</span>
                     </div>
-                    <div className="pt-3 mt-3 border-t border-foreground/5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--rose))] mb-1.5">
-                        {t('account.danger_zone') || 'Danger zone'}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mb-2">
-                        {t('account.delete_warning_short') || 'Permanently delete your account and all associated data.'}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-center gap-1.5 text-xs h-8 border-[hsl(var(--rose))]/40 text-[hsl(var(--rose))] hover:bg-[hsl(var(--rose))]/10 hover:text-[hsl(var(--rose))]"
-                        onClick={() => { setIsOpen(false); setIsDeleteDialogOpen(true); }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        {t('account.delete_account') || 'Delete account'}
-                      </Button>
-                    </div>
                   </div>
                 )}
                 {activeTab === 'alerts' && <NotificationsTab />}
