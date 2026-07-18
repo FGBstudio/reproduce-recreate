@@ -2109,7 +2109,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         }
     });
 
-    let segments = [];
+    const segments = [];
 
     if (energyViewMode === 'category') {
         const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
@@ -2869,7 +2869,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const bp = activePowerBreakdown;
     if (!bp.isRealData && !bp.isStale) return [];
 
-    let segments: { name: string; value: number; color: string }[] = [];
+    const segments: { name: string; value: number; color: string }[] = [];
     const isSim = (bp as any).isSimulated || (isSimulationMode && hasOnlyGeneralMeters);
 
     if (energyViewMode === 'category') {
@@ -3126,7 +3126,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       });
 
       // Ordinamento Buckets (Custom Sort per ogni vista)
-      let sortedData = Array.from(pivotMap.values());
+      const sortedData = Array.from(pivotMap.values());
       const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const weekOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
       const wOrder = ['W1','W2','W3','W4','W5'];

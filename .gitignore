@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Variabili d'ambiente: NON committare mai file .env
+# NOTA: .env è attualmente già tracciato da git (contiene solo la anon key,
+# pubblica per design). Per rimuoverlo dalla storia serve un'azione manuale:
+# vedere CLEANUP_NOTES.md
+.env
+.env.local
+.env.*.local
