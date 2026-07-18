@@ -17,7 +17,6 @@ export default defineConfig(({ mode, command }) => ({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
           'vendor-charts': ['recharts'],
           'vendor-lucide': ['lucide-react'],
         },

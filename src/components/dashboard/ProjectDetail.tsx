@@ -13,7 +13,7 @@ import {
   PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
-import html2canvas from "html2canvas";
+// html2canvas: import dinamico (usato solo per export screenshot)
 import { createPortal } from "react-dom";
 import { TimePeriodSelector, TimePeriod } from "./TimePeriodSelector";
 import { 
@@ -150,6 +150,7 @@ const autoDomainWithPadding: [(dataMin: number) => number, (dataMax: number) => 
 const exportAsImage = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
   if (!ref.current) return;
   try {
+    const { default: html2canvas } = await import("html2canvas");
     const canvas = await html2canvas(ref.current, { backgroundColor: '#ffffff', scale: 2 });
     const link = document.createElement('a');
     link.download = `${filename}.png`;
