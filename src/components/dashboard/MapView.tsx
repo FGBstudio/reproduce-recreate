@@ -7,6 +7,8 @@ import { useAllProjects, useAllBrands } from "@/hooks/useRealTimeData";
 import { MapLoadingSkeleton } from "./DashboardSkeleton";
 import { useTheme } from "@/contexts/ThemeContext";
 import { SiteMarker, ProjectSection } from "./SiteMarker";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
 import { useUserScope } from "@/hooks/useUserScope";
 
 interface MapViewProps {
@@ -24,6 +26,7 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const { theme } = useTheme();
   const { clientRole } = useUserScope();
@@ -142,10 +145,26 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
   useEffect(() => {
     if (!map.current) return;
 
-    // Clear existing markers
+    // Clear existing markers/cluster
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
+    if (clusterGroupRef.current) { clusterGroupRef.current.remove(); clusterGroupRef.current = null; }
     setPortalHosts({});
+
+    // Cluster: raggruppa i siti vicini in un badge numerato brandizzato.
+    // maxClusterRadius contenuto: i cluster si sciolgono presto zoomando.
+    const clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 46,
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      iconCreateFunction: (cluster) => L.divIcon({
+        className: "fgb-cluster",
+        html: `<div style="width:44px;height:44px;border-radius:9999px;background:#0b3a3d;border:2px solid #d9b87c;box-shadow:0 6px 16px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:#f6efe0;font-weight:700;font-size:14px;">${cluster.getChildCount()}</div>`,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      }),
+    });
+    clusterGroupRef.current = clusterGroup;
 
     const nextHosts: Record<string, HTMLElement> = {};
 
@@ -164,26 +183,34 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
       const projectKey = String(project.id);
       const marker = L.marker([project.lat, project.lng], {
         icon: createCustomIcon(projectKey),
-      }).addTo(map.current!);
-
+      });
+      clusterGroup.addLayer(marker);
       markersRef.current.push(marker);
-
-      // Resolve the portal host DOM node after the marker is added
-      const el = (marker.getElement() as HTMLElement | null);
-      const host = el?.querySelector(`[data-marker-portal="${projectKey}"]`) as HTMLElement | null;
-      if (host) {
-        nextHosts[projectKey] = host;
-        // Raise z-index on hover so spheres render above other markers
-        host.addEventListener("mouseenter", () => {
-          if (el) el.style.zIndex = "1000";
-        });
-        host.addEventListener("mouseleave", () => {
-          if (el) el.style.zIndex = "";
-        });
-      }
     });
+    map.current!.addLayer(clusterGroup);
 
-    setPortalHosts(nextHosts);
+    // I marker dentro un cluster NON hanno un elemento DOM finché il cluster
+    // non si espande: risolviamo gli host ogni volta che il layout cambia.
+    const resolveHosts = () => {
+      const hosts: Record<string, HTMLElement> = {};
+      markersRef.current.forEach((marker, i) => {
+        const project = visibleProjects[i];
+        if (!project) return;
+        const projectKey = String(project.id);
+        const el = marker.getElement() as HTMLElement | null;
+        const host = el?.querySelector(`[data-marker-portal="${projectKey}"]`) as HTMLElement | null;
+        if (host) {
+          hosts[projectKey] = host;
+          host.addEventListener("mouseenter", () => { if (el) el.style.zIndex = "1000"; });
+          host.addEventListener("mouseleave", () => { if (el) el.style.zIndex = ""; });
+        }
+      });
+      setPortalHosts(hosts);
+    };
+
+    resolveHosts();
+    clusterGroup.on("animationend spiderfied unspiderfied", resolveHosts);
+    map.current!.on("zoomend", resolveHosts);
   }, [visibleProjects, activeFilters, selectedHolding, selectedBrand]);
 
   const handleSphereClick = (project: Project, section: ProjectSection) => {
