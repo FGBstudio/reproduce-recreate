@@ -203,7 +203,7 @@ const ChartFullscreenModal = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-[24px] w-full max-w-6xl max-h-[90vh] overflow-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] animate-scale-in"
+        className="bg-white rounded-[24px] w-full max-w-6xl max-h-[90dvh] overflow-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-foreground/95 backdrop-blur-xl z-10 flex justify-between items-center px-8 py-5 border-b border-gray-100/80">
@@ -5733,7 +5733,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               };
 
               return (
-                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100vh-80px)] pb-24 custom-scrollbar">
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100dvh-80px)] pb-24 custom-scrollbar">
                   
                   {/* --- TOP CARDS: FLEX ACCORDION --- */}
                   <div className="flex flex-col lg:flex-row gap-4 w-full min-h-[280px] pb-8 pt-2">

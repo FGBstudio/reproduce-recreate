@@ -18,9 +18,12 @@ export const DataSourceBadge = ({
   className = "",
   size = "sm"
 }: DataSourceBadgeProps) => {
-  const sizeClasses = size === "sm" 
-    ? "text-[9px] px-1.5 py-0.5 gap-1" 
-    : "text-[10px] px-2 py-1 gap-1.5";
+  // min-w + justify-center: il badge passa da Loading a Live/Demo con testi di
+  // larghezza diversa — senza larghezza riservata gli elementi accanto slittano
+  // quando arriva il dato (layout shift).
+  const sizeClasses = size === "sm"
+    ? "text-[9px] px-1.5 py-0.5 gap-1 min-w-[3.5rem] justify-center"
+    : "text-[10px] px-2 py-1 gap-1.5 min-w-[4rem] justify-center";
 
   if (isLoading) {
     return (

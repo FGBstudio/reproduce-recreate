@@ -93,7 +93,7 @@ const MobileKpiPanel = ({
       className={`fixed bottom-0 left-0 right-0 md:hidden transition-transform duration-300 ease-out`}
       style={{
         transform: isOpen ? "translateY(0)" : "translateY(100%)",
-        height: "42vh",
+        height: "42dvh",
         background: "rgba(10, 15, 25, 0.90)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",

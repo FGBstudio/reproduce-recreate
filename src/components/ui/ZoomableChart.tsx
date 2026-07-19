@@ -211,7 +211,7 @@ export const ZoomableChart: React.FC<ZoomableChartProps> = ({
       </div>
 
       <Dialog open={expanded} onOpenChange={setExpanded}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[88vh] p-4 sm:p-6 flex flex-col gap-3">
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[88dvh] p-4 sm:p-6 flex flex-col gap-3">
           <div className="flex items-center justify-between shrink-0">
             <h3 className="text-sm font-medium text-foreground">
               {title || "Chart"}
