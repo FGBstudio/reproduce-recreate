@@ -46,3 +46,12 @@
 13. Contatori login in src/lib/companyStats.ts; loghi certificazioni WebP
 14. Video demo: 17,4MB -> 4,2MB (1280p, CRF27, audio preservato)
 15. Hook Wrapped tipizzati (29 any -> 2)
+
+## Terzo lotto — UX mobile
+16. Login: autocomplete/autocapitalize (portachiavi iOS/Android funzionante)
+17. Zoom sbloccato (rimosso user-scalable=no), prefers-reduced-motion, overscroll none
+18. Touch target >=44px su tutte le barre principali; etichette 10->11px
+19. Haptics (lib/native.ts) + back hardware Android gestito
+20. Banner offline globale; overlay progresso PDF; share sheet nativo per il PDF
+21. Wrapped: hold-to-pause aggiunto alle tap-zone esistenti
+NB: nuovi plugin nativi (@capacitor/haptics, app, share, filesystem) -> rifare npx cap sync
