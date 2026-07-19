@@ -6,6 +6,12 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+
+// ── Tipi riga delle query Supabase usate in questo hook ──────────────────────
+type DeviceRow = { id: string; category?: string | null; site_id?: string };
+type EnergyRow = { device_id: string; ts_day: string; value_sum: number | null; metric?: string };
+type MetricRow = { device_id?: string; ts_day?: string; ts?: string; value_sum?: number | null; value_avg?: number | null; value?: number | null; metric?: string };
+type PeerSiteRow = { id: string; name?: string | null; area_m2?: number | null };
 import {
   currentISOWeek, previousISOWeek, pctDelta, co2KgFromKwh, treesEquivFromCo2Kg, eui,
 } from '../lib/wrappedMath';
