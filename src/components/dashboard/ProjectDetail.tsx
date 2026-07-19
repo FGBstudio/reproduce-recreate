@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment } from "react";
+import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment, Children } from "react";
 import { hapticLight } from "@/lib/native";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
@@ -245,6 +245,24 @@ const ExportButtons = ({ chartRef, data, filename, onExpand }: ExportButtonsProp
       <FileJson className="w-3.5 h-3.5 text-muted-foreground" />
     </button>
   </div>
+);
+
+// Monta solo la slide attiva e le due adiacenti; per le altre lascia un
+// placeholder vuoto della stessa larghezza, così il translateX del track non
+// cambia. Evita di tenere montati (e animati) tutti i grafici del dashboard
+// contemporaneamente — su mobile erano 19 SVG e 16 animazioni anche per slide
+// fuori schermo. forceMount: l'export PDF cattura via ref card che possono
+// stare su slide lontane, quindi durante la generazione si monta tutto.
+const LazySlides = ({ current, forceMount, children }: { current: number; forceMount?: boolean; children: ReactNode }) => (
+  <>
+    {Children.toArray(children).map((child, i) =>
+      forceMount || Math.abs(i - current) <= 1 ? (
+        <Fragment key={i}>{child}</Fragment>
+      ) : (
+        <div key={i} className="w-full flex-shrink-0" aria-hidden="true" />
+      )
+    )}
+  </>
 );
 
 interface ProjectDetailProps {
@@ -3223,6 +3241,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     
     setIsGeneratingPdf(true);
     try {
+      // LazySlides: con forceMount le slide lontane si montano solo ora —
+      // attendi il commit del render e la fine delle animazioni recharts
+      // (~1,5s) prima delle catture html2canvas via ref.
+      await new Promise((resolve) => setTimeout(resolve, 1600));
       // 1. Dynamic Telemetry Enrichment
       const enrichedProject = {
         ...project,
@@ -3746,7 +3768,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
               <ModuleGate module="energy" config={resolvedModuleConfig.energy} demoContent={<EnergyDemoContent />}>
-                <>
+                <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Energy Overview */}
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
@@ -4744,14 +4766,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </>
+              </LazySlides>
               </ModuleGate>
             )}
             
             {/* AIR QUALITY DASHBOARD */}
             {activeDashboard === "air" && (
               <ModuleGate module="air" config={resolvedModuleConfig.air} demoContent={<AirDemoContent />}>
-                <>
+                <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Overview + Building Grid */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -5305,14 +5327,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   </div>
                 </div>
                 )}
-              </>
+              </LazySlides>
               </ModuleGate>
             )}
             
             {/* WATER DASHBOARD */}
             {activeDashboard === "water" && (
               <ModuleGate module="water" config={resolvedModuleConfig.water} demoContent={<WaterDemoContent />}>
-                <>
+                <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Consumo idrico & Distribuzione */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -5633,7 +5655,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </>
+              </LazySlides>
               </ModuleGate>
             )}
             
