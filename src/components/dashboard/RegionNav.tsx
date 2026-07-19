@@ -99,7 +99,7 @@ const RegionNav = ({
               <button
                 key={btn.code}
                 onClick={() => onRegionChange(btn.code)}
-                className={`px-2 py-1.5 rounded-full text-[10px] font-semibold tracking-wide transition-all ${
+                className={`px-3 py-3 min-h-[44px] rounded-full text-[11px] font-semibold tracking-wide transition-all active:scale-95 ${
                   currentRegion === btn.code
                     ? "bg-fgb-light text-foreground shadow-[0_0_10px_rgba(0,255,255,0.3)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
@@ -121,7 +121,7 @@ const RegionNav = ({
                 <button
                   key={type}
                   onClick={() => onFilterToggle(type)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition ${
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition active:scale-95 ${
                     isActive
                       ? "bg-foreground text-background"
                       : "text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
@@ -138,7 +138,7 @@ const RegionNav = ({
         {/* Right: KPI button */}
         <button
           onClick={onKpiPanelToggle}
-          className={`glass-panel flex items-center gap-1 rounded-full px-3 py-[7px] transition-all ${
+          className={`glass-panel flex items-center gap-1 rounded-full px-4 min-h-[44px] transition-all active:scale-95 ${
             kpiPanelOpen
               ? "bg-fgb-accent text-background shadow-[0_0_12px_rgba(0,255,255,0.5)]"
               : "text-foreground hover:bg-fgb-light/30"

@@ -194,7 +194,7 @@ function ScoreRing({ score, level, animatedScore }: { score: number; level: Stat
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <span className={`text-[44px] md:text-[64px] font-semibold leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
-        <span className="text-[10px] md:text-[12px] uppercase tracking-widest text-[#006367]/70 mt-1 md:mt-1.5 font-medium">score</span>
+        <span className="text-[11px] md:text-[12px] uppercase tracking-widest text-[#006367]/70 mt-1 md:mt-1.5 font-medium">score</span>
       </div>
     </div>
   );
@@ -254,7 +254,7 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick, infoText
       <span className={`text-[24px] md:text-[30px] font-semibold tabular-nums leading-none ${active ? "text-[#006367]" : "text-slate-600"}`}>{active ? score : "—"}</span>
       </button>
       <div className="flex items-center gap-1">
-        <span className="text-[10px] md:text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">{label}</span>
+        <span className="text-[11px] md:text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">{label}</span>
         {infoText && <InfoDot text={infoText} />}
       </div>
     </div>
@@ -267,7 +267,7 @@ function LiveBadge({ isLive, isRealData = true }: { isLive: boolean; isRealData?
   // Coerenza: "Live" non può accendersi se i dati non sono reali (demo/mock)
   const effectiveLive = isLive && isRealData;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase ${effectiveLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-slate-600 border border-gray-200"}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wider uppercase ${effectiveLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-slate-600 border border-gray-200"}`}>
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${effectiveLive ? "bg-emerald-500 animate-pulse" : "bg-gray-300"}`} aria-hidden="true" />
       {effectiveLive ? "Live" : "Offline"}
     </span>
@@ -296,7 +296,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           <ScoreRing score={score} level={level} animatedScore={animatedScore} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[10px] md:text-[11px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
+              <span className="text-[11px] md:text-[11px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
               <LiveBadge isLive={isLive} isRealData={isRealData} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
@@ -331,7 +331,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
               {alertStatus.hasAlerts ? alertStatus.criticalCount + alertStatus.warningCount : "0"}
             </span>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] md:text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">Alerts</span>
+              <span className="text-[11px] md:text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">Alerts</span>
               <InfoDot text={MOD_INFO.alerts} />
             </div>
           </div>
@@ -455,7 +455,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
 
   if (!enabled) return (
     <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
-      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Zap className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[10px]">DISABLED</Badge></div>
+      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Zap className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[11px]">DISABLED</Badge></div>
       <div className="text-4xl font-bold mb-1">N/A</div>
       <div className="text-base uppercase tracking-wide">Energy Performance</div>
     </div>
@@ -483,13 +483,13 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
               <div className={`w-10 h-10 rounded-full ${isStale ? 'bg-gray-100 text-gray-400' : `${getStatusIconBg(status.level)} ${getStatusColor(status.level)}`} flex items-center justify-center`}>
                 <Zap className="w-5 h-5" />
               </div>
-              <Badge className={`${isToday ? (isStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[10px] uppercase tracking-wider`}>
+              <Badge className={`${isToday ? (isStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[11px] uppercase tracking-wider`}>
                 {isToday ? (isStale ? '-' : 'LIVE') : timePeriod.toUpperCase()}
               </Badge>
             </div>
             <div className="text-right">
               <div className={`text-xl font-bold ${isStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isStale ? '-' : status.level}</div>
-              <div className="text-[10px] text-slate-600 uppercase">Score {status.score}</div>
+              <div className="text-[11px] text-slate-600 uppercase">Score {status.score}</div>
             </div>
           </div>
           
@@ -545,7 +545,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
           </div>
 
           <div className="mt-auto pt-4 flex justify-between items-center">
-             {(readings.hvac.isSimulated) && <span className="text-[10px] text-slate-600 italic">Virtual Submeters</span>}
+             {(readings.hvac.isSimulated) && <span className="text-[11px] text-slate-600 italic">Virtual Submeters</span>}
             <button onClick={onToggleFlip} className="px-4 py-2 rounded-full bg-white hover:bg-gray-100 text-xs font-bold text-gray-600 border transition-colors shadow-sm ml-auto">
               Close Details
             </button>
@@ -577,7 +577,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
 
   if (!enabled) return (
     <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
-      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Wind className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[10px]">DISABLED</Badge></div>
+      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Wind className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[11px]">DISABLED</Badge></div>
       <div className="text-4xl font-bold mb-1">N/A</div>
       <div className="text-base uppercase tracking-wide">Indoor Air Quality</div>
     </div>
@@ -624,7 +624,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
           <div className="flex items-center justify-between mb-auto">
             <div className="flex items-center gap-2">
               <div className={`w-10 h-10 rounded-full ${isCardStale ? 'bg-gray-100 text-gray-400' : `${getStatusIconBg(status.level)} ${getStatusColor(status.level)}`} flex items-center justify-center`}><Wind className="w-5 h-5" /></div>
-              <Badge className={`${isToday ? (isCardStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[10px] uppercase tracking-wider`}>
+              <Badge className={`${isToday ? (isCardStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[11px] uppercase tracking-wider`}>
                 {isToday ? (isCardStale ? '-' : 'LIVE') : timePeriod.toUpperCase()}
               </Badge>
             </div>
@@ -632,7 +632,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
               <div className={`text-xl font-bold uppercase ${isCardStale ? 'text-gray-400' : (activeBand ? activeBand.text : getStatusColor(status.level))}`}>
                 {isCardStale ? '-' : (activeBand ? activeBand.label : status.level)}
               </div>
-              <div className="text-[10px] text-slate-600 uppercase">Score {status.score}</div>
+              <div className="text-[11px] text-slate-600 uppercase">Score {status.score}</div>
             </div>
           </div>
           
@@ -640,7 +640,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
             <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-1">{t('overview.indoor_air_quality')}</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className={scoreClass}>{currentScore ?? '—'}</span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('overview.aqi_title')}</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('overview.aqi_title')}</span>
             </div>
 
             {showAvgScore ? (
@@ -679,12 +679,12 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
           </div>
           
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm flex-1">
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">CO₂</span><span className="font-bold text-gray-800">{formatMaybe(readings.co2.value, 0)} ppm</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">TVOC</span><span className="font-bold text-gray-800">{formatMaybe(readings.tvoc.value, 0)} ppb</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM2.5</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm25.value, 1)} µg/m³</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">PM10</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm10.value, 1)} µg/m³</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">Temp</span><span className="font-bold text-gray-800">{formatMaybe(readings.temp.value, 1)} °C</span></div>
-            <div className="flex flex-col"><span className="text-[10px] uppercase text-slate-600">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
+            <div className="flex flex-col"><span className="text-[11px] uppercase text-slate-600">CO₂</span><span className="font-bold text-gray-800">{formatMaybe(readings.co2.value, 0)} ppm</span></div>
+            <div className="flex flex-col"><span className="text-[11px] uppercase text-slate-600">TVOC</span><span className="font-bold text-gray-800">{formatMaybe(readings.tvoc.value, 0)} ppb</span></div>
+            <div className="flex flex-col"><span className="text-[11px] uppercase text-slate-600">PM2.5</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm25.value, 1)} µg/m³</span></div>
+            <div className="flex flex-col"><span className="text-[11px] uppercase text-slate-600">PM10</span><span className="font-bold text-gray-800">{formatMaybe(readings.pm10.value, 1)} µg/m³</span></div>
+            <div className="flex flex-col"><span className="text-[11px] uppercase text-slate-600">Temp</span><span className="font-bold text-gray-800">{formatMaybe(readings.temp.value, 1)} °C</span></div>
+            <div className="flex flex-col"><span className="text-[11px] uppercase text-slate-600">Humidity</span><span className="font-bold text-gray-800">{formatMaybe(readings.humidity.value, 0)} %</span></div>
           </div>
 
           <div className="mt-auto pt-2 flex justify-end">
@@ -718,7 +718,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
 
   if (!enabled) return (
     <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
-      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Droplet className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[10px]">DISABLED</Badge></div>
+      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Droplet className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[11px]">DISABLED</Badge></div>
       <div className="text-4xl font-bold mb-1">N/A</div>
       <div className="text-base uppercase tracking-wide">Water Consumption</div>
     </div>
@@ -736,13 +736,13 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
           <div className="flex items-center justify-between mb-auto">
             <div className="flex items-center gap-2">
               <div className={`w-10 h-10 rounded-full ${isCardStale ? 'bg-gray-100 text-gray-400' : `${getStatusIconBg(status.level)} ${getStatusColor(status.level)}`} flex items-center justify-center`}><Droplet className="w-5 h-5" /></div>
-              <Badge className={`${isToday ? (isCardStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[10px] uppercase tracking-wider`}>
+              <Badge className={`${isToday ? (isCardStale ? 'bg-gray-400 text-foreground' : getLiveBadgeColor(status.isLive)) : 'bg-gray-500 text-foreground'} text-[11px] uppercase tracking-wider`}>
                 {isToday ? (isCardStale ? '-' : 'LIVE') : timePeriod.toUpperCase()}
               </Badge>
             </div>
             <div className="text-right">
               <div className={`text-xl font-bold ${isCardStale ? 'text-gray-400' : getStatusColor(status.level)}`}>{isCardStale ? '-' : status.level}</div>
-              <div className="text-[10px] text-slate-600 uppercase">Score {status.score}</div>
+              <div className="text-[11px] text-slate-600 uppercase">Score {status.score}</div>
             </div>
           </div>
           

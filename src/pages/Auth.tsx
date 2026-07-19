@@ -369,7 +369,7 @@ const Auth = () => {
                 <p className="text-sm text-foreground/70">
                   {t('auth.no_account')}{" "}
                   <button onClick={() => { setMode("request"); setError(null); setSuccessMessage(null); }}
-                    className="text-foreground hover:underline font-semibold hover:text-foreground/90">{t('auth.request_access')}</button>
+                    className="text-foreground hover:underline font-semibold hover:text-foreground/90 inline-flex items-center min-h-[44px] px-2 -my-2 active:opacity-70">{t('auth.request_access')}</button>
                 </p>
               ) : mode === "request" ? (
                 <button onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}
@@ -381,7 +381,7 @@ const Auth = () => {
             </div>
 
             <div className="mt-[clamp(1rem,2vh,2rem)] text-center">
-              <a href="mailto:support@fgb-studio.com" className="text-sm text-foreground/50 hover:text-foreground transition-colors">
+              <a href="mailto:support@fgb-studio.com" className="text-sm text-foreground/50 hover:text-foreground transition-colors inline-flex items-center min-h-[44px] px-2 active:opacity-70">
                 {t('auth.need_help')}
               </a>
             </div>

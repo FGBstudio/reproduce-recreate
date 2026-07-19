@@ -3566,7 +3566,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           >
             <button 
               onClick={() => handleDashboardChange("overview")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "overview" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3577,7 +3577,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </button>
             <button 
               onClick={() => handleDashboardChange("energy")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "energy" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3588,7 +3588,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </button>
             <button 
               onClick={() => handleDashboardChange("air")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "air" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3599,7 +3599,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </button>
             <button 
               onClick={() => handleDashboardChange("water")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "water" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3611,7 +3611,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {hasCertifications && (
               <button 
                 onClick={() => handleDashboardChange("certification")}
-                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                   activeDashboard === "certification" 
                     ? "bg-fgb-secondary text-foreground" 
                     : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3624,7 +3624,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {hasBillAnalysis && (
               <button 
                 onClick={() => handleDashboardChange("bills")}
-                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                   activeDashboard === "bills" 
                     ? "bg-fgb-secondary text-foreground" 
                     : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3745,7 +3745,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div>
                             {/* TITOLO RINOMINATO */}
                             <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_over_time')}</h3>
-                            <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                            <p className="text-[11px] md:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                               <span>{timeRange.bucket === '1d' ? t('pd.daily_energy_kwh') : t('pd.avg_power_kw')}</span>
                               {isSimulationMode && hasOnlyGeneralMeters && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-teal-500/10 to-purple-500/10 border border-teal-500/20 text-[9px] font-semibold text-teal-700 dark:text-teal-300">
@@ -4004,7 +4004,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <span className="text-lg md:text-xl font-bold text-slate-900">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
+                            <span className="text-[11px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
                           </div>
                         </div>
                       </div>
@@ -4013,15 +4013,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
                         <p className="text-xl md:text-3xl font-bold text-slate-900">{densityValue}</p>
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">kWh/m²</p>
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.in_selected_period')}</div>
+                        <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-muted-foreground font-medium">{t('pd.in_selected_period')}</div>
                       </div>
                       {/* Widget Costo Stimato */}
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">
                           Estimated Cost ({periodLabel})
                         </p>
                         
@@ -4041,10 +4041,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </p>
                         
                         {/* Indicatore Trend (Statico o da calcolare in futuro) */}
-                        {/* <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
+                        {/* <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('energy.efficiency')}</p>
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('energy.efficiency')}</p>
                         <p className={`text-xl md:text-3xl font-bold ${
                           efficiencyData.delta === null ? 'text-muted-foreground' :
                           efficiencyData.delta < 0 ? 'text-emerald-500' : 
@@ -4056,7 +4056,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </p>
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{efficiencySubtitle}</p>
                         {efficiencyData.delta !== null && efficiencyData.delta !== 0 && (
-                          <div className={`mt-1 md:mt-2 text-[10px] md:text-xs font-medium ${
+                          <div className={`mt-1 md:mt-2 text-[11px] md:text-xs font-medium ${
                             efficiencyData.delta < 0 ? 'text-emerald-500' : 'text-red-500'
                           }`}>
                             {efficiencyData.delta < 0 ? '↑' : '↓'} {language === 'it' ? 'efficienza' : 'efficiency'}
@@ -4064,7 +4064,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         )}
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
                         {(() => {
                           const energyAlertCount = filterAlertsByModule(pdAlertStatus?.alerts ?? [], 'energy').length;
                           return (
@@ -4075,7 +4075,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               {energyAlertCount > 0 && (
                                 <>
                                   <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
-                                  <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
+                                  <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
                                 </>
                               )}
                             </>
@@ -4220,7 +4220,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </h3>
                         <div className="flex items-center gap-3">
                           {/* Legendina minimale (scala per-store) */}
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                             <span>Low</span>
                             <div className="flex gap-0.5">
                               {heatmapLegendColors.map((c) => (
@@ -4239,12 +4239,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           {/* Header Colonne (X-Axis) */}
                           <div className="flex">
                             {/* Spacer angolo in alto a sx */}
-                            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-muted-foreground">
+                            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[11px] font-bold text-muted-foreground">
                                 {heatmapGrid.isYearView ? 'GG' : 'HH'}
                             </div>
                             {/* Labels Colonne */}
                             {heatmapGrid.cols.map(col => (
-                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-muted-foreground pb-1">
+                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[11px] font-semibold text-muted-foreground pb-1">
                                     {col.label}
                                 </div>
                             ))}
@@ -4254,7 +4254,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           {heatmapGrid.rows.map(row => (
                               <div key={row} className="flex items-center h-6 mb-0.5">
                                   {/* Label Riga (00:00 o Day 1) */}
-                                  <div className="w-12 flex-shrink-0 text-[10px] text-muted-foreground text-right pr-2">
+                                  <div className="w-12 flex-shrink-0 text-[11px] text-muted-foreground text-right pr-2">
                                       {heatmapGrid.isYearView 
                                         ? row // Giorno mese (1, 2...)
                                         : `${String(row).padStart(2, '0')}:00` // Ora (00:00...)
@@ -4272,7 +4272,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                           >
                                             {/* Tooltip on Hover */}
                                             {val > 0 && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[11px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
                                                     <div className="font-bold">
                                                         {heatmapGrid.isYearView 
                                                             ? `${row} ${col.label}` // "15 GEN"
@@ -4459,7 +4459,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                                   {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground font-medium">kW</span>
+                                <span className="text-[11px] text-muted-foreground font-medium">kW</span>
                               </div>
                            </div>
                         </div>
@@ -4588,7 +4588,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono bg-gray-100 text-muted-foreground px-2 py-1 rounded border border-gray-200">
+                            <span className="text-[11px] font-mono bg-gray-100 text-muted-foreground px-2 py-1 rounded border border-gray-200">
                                 EF: 0.233 kg/kWh
                             </span>
                             <ExportButtons 
@@ -4672,7 +4672,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <span className="text-3xl font-black text-gray-800 tracking-tight">
                               {dayNightSummary.total.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">kWh Total</span>
+                            <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mt-1">kWh Total</span>
                           </div>
                         </div>
 
@@ -4782,7 +4782,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <div ref={airQualityRef} className={`col-span-1 ${airCardClass} flex flex-col`}>
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
                             <div className="flex items-center gap-4">
-                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(dynamicAq)} ${getAqColor(dynamicAq)} text-[10px] font-semibold tracking-wider uppercase`}>
+                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(dynamicAq)} ${getAqColor(dynamicAq)} text-[11px] font-semibold tracking-wider uppercase`}>
                                 {isToday && !isAirLatestStale && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                                 )}
@@ -4917,7 +4917,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <button 
                         key={m}
                         onClick={() => setActiveAirHeatmapMetric(m)}
-                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-foreground shadow-md' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-foreground shadow-md' : 'hover:bg-gray-100 text-muted-foreground'}`}
                       >
                         {m === 'iaq.co2' ? 'CO₂' : m === 'iaq.voc' ? 'TVOC' : m === 'iaq.pm25' ? 'PM2.5' : m === 'iaq.pm10' ? 'PM10' : m === 'iaq.co' ? 'CO' : m === 'iaq.o3' ? 'O₃' : m === 'env.temperature' ? 'TEMP' : 'HUM'}
                       </button>
@@ -5144,8 +5144,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25In != null ? Math.round(pm25In) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Indoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Indoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5155,8 +5155,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25Out != null ? Math.round(pm25Out) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Outdoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Outdoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5166,8 +5166,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10In != null ? Math.round(pm10In) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Indoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Indoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5177,8 +5177,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10Out != null ? Math.round(pm10Out) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Outdoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Outdoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5241,9 +5241,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="text-[11px] text-muted-foreground mt-1">ppm · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Limit</div>
+                              <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-0.5">Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{coLimit} ppm</div>
-                              <div className={`text-[10px] ${coQ.color} mt-1 font-medium`}>● {coQ.label}</div>
+                              <div className={`text-[11px] ${coQ.color} mt-1 font-medium`}>● {coQ.label}</div>
                             </div>
                           </div>
                           <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -5272,9 +5272,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="text-[11px] text-muted-foreground mt-1">ppb · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">WHO Limit</div>
+                              <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-0.5">WHO Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{o3Limit} ppb</div>
-                              <div className={`text-[10px] ${o3Q.color} mt-1 font-medium`}>● {o3Q.label}</div>
+                              <div className={`text-[11px] ${o3Q.color} mt-1 font-medium`}>● {o3Q.label}</div>
                             </div>
                           </div>
                           <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -5752,7 +5752,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
                             <div className="w-14 h-14 rounded-xl bg-[#009193] flex items-center justify-center shadow-sm flex-shrink-0">
-                              <span className="text-foreground font-black text-[10px]">BREEAM</span>
+                              <span className="text-foreground font-black text-[11px]">BREEAM</span>
                             </div>
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">BREEAM In-Use</h3>
@@ -6107,7 +6107,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                           </div>
                                       </div>
                                       <div className="sm:text-right bg-foreground/50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-none border-[#911140]/10">
-                                        <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
+                                        <div className="text-[11px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
                                         <div className="text-xl font-black text-gray-900 tracking-tight">
                                           {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'TBD'}
                                         </div>
@@ -6147,7 +6147,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
         {/* Pagination Dots */}
         <div className="flex justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20">
-          <button onClick={prevSlide} disabled={currentSlide === 0} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition text-gray-700">
+          <button onClick={prevSlide} disabled={currentSlide === 0} className="w-11 h-11 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="flex gap-2 md:gap-3">
@@ -6155,7 +6155,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               <button key={idx} onClick={() => setCurrentSlide(idx)} className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? "w-5 md:w-6 bg-fgb-secondary" : "w-1.5 md:w-2 bg-gray-400 hover:bg-gray-500"}`} />
             ))}
           </div>
-          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition text-gray-700">
+          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="w-11 h-11 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

@@ -47,7 +47,7 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Energy Intensity</div>
         <div className="text-xl font-bold text-foreground">{(displayIntensity / 1000).toFixed(2)}</div>
-        <div className="text-[10px] text-muted-foreground">MWh/m²</div>
+        <div className="text-[11px] text-muted-foreground">MWh/m²</div>
       </div>
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Air Quality</div>
@@ -59,7 +59,7 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
           {aqScore}
         </div>
         {displayCo2 > 0 && (
-          <div className="text-[10px] text-muted-foreground">CO₂: {displayCo2} ppm</div>
+          <div className="text-[11px] text-muted-foreground">CO₂: {displayCo2} ppm</div>
         )}
       </div>
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
@@ -124,7 +124,7 @@ const MobileKpiPanel = ({
       >
         {showBrandOverlay ? (
           <div className="space-y-3">
-            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               {selectedBrand ? "Brand Overview" : "Holding Overview"}
             </h3>
             <p className="text-xs text-muted-foreground text-center py-6">
@@ -135,7 +135,7 @@ const MobileKpiPanel = ({
           </div>
         ) : currentRegion !== "GLOBAL" ? (
           <div className="space-y-3">
-            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               Regional Performance — {currentRegion}
             </h3>
             <RegionPerformanceInline currentRegion={currentRegion} />

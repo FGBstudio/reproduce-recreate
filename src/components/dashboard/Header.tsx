@@ -207,7 +207,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
           {/* Left: Burger — 48×48 touch target */}
           <button
             onClick={onBurgerOpen}
-            className="glass-panel rounded-full p-3 hover:bg-fgb-light/50 transition-colors flex items-center justify-center"
+            className="glass-panel rounded-full p-3 min-w-[44px] min-h-[44px] hover:bg-fgb-light/50 transition-colors active:scale-95 flex items-center justify-center"
             aria-label="Menu"
             style={{ minWidth: 48, minHeight: 48 }}
           >
@@ -272,7 +272,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
             ) : (
               <button
                 onClick={handleSearchToggle}
-                className="glass-panel rounded-full p-3 hover:bg-fgb-light/50 transition-colors flex items-center justify-center"
+                className="glass-panel rounded-full p-3 min-w-[44px] min-h-[44px] hover:bg-fgb-light/50 transition-colors active:scale-95 flex items-center justify-center"
                 title={t("header.search_projects")}
                 style={{ minWidth: 48, minHeight: 48 }}
               >
