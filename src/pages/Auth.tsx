@@ -212,7 +212,7 @@ const Auth = () => {
                   <Label htmlFor="newPassword" className="text-sm text-foreground/80">Nuova Password</Label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Lock className="w-5 h-5" /></div>
-                    <Input id="newPassword" type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                    <Input id="newPassword" type={showPassword ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="••••••••"
                       className={`${inputClass} pr-11`} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -226,7 +226,7 @@ const Auth = () => {
                   <Label htmlFor="confirmPassword" className="text-sm text-foreground/80">Conferma Password</Label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Lock className="w-5 h-5" /></div>
-                    <Input id="confirmPassword" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                    <Input id="confirmPassword" type={showPassword ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••"
                       className={`${inputClass} pr-11`} />
                   </div>
@@ -247,7 +247,7 @@ const Auth = () => {
                   <Label htmlFor="email" className="text-sm text-foreground/80">{t('auth.email')}</Label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Mail className="w-5 h-5" /></div>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    <Input id="email" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
                       className={inputClass} />
                   </div>
@@ -257,7 +257,7 @@ const Auth = () => {
                   <Label htmlFor="password" className="text-sm text-foreground/80">{t('auth.password')}</Label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Lock className="w-5 h-5" /></div>
-                    <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+                    <Input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className={`${inputClass} pr-11`} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -286,14 +286,14 @@ const Auth = () => {
                     <Label htmlFor="firstName" className="text-sm text-foreground/80">{t('auth.first_name')} *</Label>
                     <div className="relative">
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><User className="w-4 h-4" /></div>
-                      <Input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                      <Input id="firstName" type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)}
                         placeholder="Mario"
                         className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="lastName" className="text-sm text-foreground/80">{t('auth.last_name')} *</Label>
-                    <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
+                    <Input id="lastName" type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)}
                       placeholder="Rossi"
                       className={inputClassNoPad} />
                   </div>
@@ -303,7 +303,7 @@ const Auth = () => {
                   <Label htmlFor="reqEmail" className="text-sm text-foreground/80">{t('auth.email')} *</Label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Mail className="w-4 h-4" /></div>
-                    <Input id="reqEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    <Input id="reqEmail" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
                       className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                   </div>
@@ -314,7 +314,7 @@ const Auth = () => {
                     <Label htmlFor="company" className="text-sm text-foreground/80">{t('auth.company')} *</Label>
                     <div className="relative">
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Building2 className="w-4 h-4" /></div>
-                      <Input id="company" type="text" value={company} onChange={(e) => setCompany(e.target.value)}
+                      <Input id="company" type="text" autoComplete="organization" value={company} onChange={(e) => setCompany(e.target.value)}
                         placeholder="Acme Corp"
                         className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                     </div>
@@ -323,7 +323,7 @@ const Auth = () => {
                     <Label htmlFor="jobTitle" className="text-sm text-foreground/80">{t('auth.job_title')}</Label>
                     <div className="relative">
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/60"><Briefcase className="w-4 h-4" /></div>
-                      <Input id="jobTitle" type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}
+                      <Input id="jobTitle" type="text" autoComplete="organization-title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}
                         placeholder="Energy Manager"
                         className="pl-10 h-11 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 focus:border-white focus:ring-white/20 focus:bg-foreground/20 transition-all" />
                     </div>
