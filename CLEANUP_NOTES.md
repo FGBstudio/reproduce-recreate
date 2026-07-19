@@ -36,3 +36,13 @@
 - Se in futuro Lovable riscrive per intero `ProjectDetail.tsx`, ricontrollare
   che il `useCallback` di export PDF resti PRIMA di `if (!project) return null;`
   (lint: `npx eslint src --ext .ts,.tsx | grep rules-of-hooks` deve dare 0 risultati).
+
+## Secondo lotto (stesso branch) — integrità dati e UX
+8. Mock vietati in produzione: fallback a serie vuote, mai dati finti
+9. LiveBadge spento su dati non reali; stato NO_DATA al posto del falso Critical
+10. Soglie CO2 canoniche in src/lib/airQuality.ts (prima 3 versioni incoerenti)
+11. Clustering marker mappa (leaflet.markercluster, badge brandizzato)
+12. PDF: chart catturati a larghezza fissa 1200px anche da mobile
+13. Contatori login in src/lib/companyStats.ts; loghi certificazioni WebP
+14. Video demo: 17,4MB -> 4,2MB (1280p, CRF27, audio preservato)
+15. Hook Wrapped tipizzati (29 any -> 2)
