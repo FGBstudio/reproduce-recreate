@@ -1277,7 +1277,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const periodLabel = getPeriodLabel(timePeriod, dateRange, language);
   
   // Use real data if available, otherwise fall back to mock generators
-  const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : mockEnergyData;
+  // SICUREZZA DATI: i mock sono ammessi SOLO quando Supabase non è configurato
+  // (ambiente demo/sviluppo). In produzione, se la telemetria non è disponibile,
+  // mostriamo serie VUOTE (empty state), MAI dati finti spacciabili per reali.
+  const filteredEnergyData = realTimeEnergy.isRealData
+    ? realTimeEnergy.data
+    : (!isSupabaseConfigured ? mockEnergyData : []);
   
   // Real-time indicator for charts
   const isRealTimeData = realTimeEnergy.isRealData || projectTelemetry.isRealData;

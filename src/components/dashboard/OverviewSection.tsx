@@ -19,7 +19,7 @@ import { useFingerprintVerdict } from "@/hooks/useFingerprintVerdict";
 // Types & Config
 // ─────────────────────────────────────────────
 
-type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL";
+type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL" | "NO_DATA";
 
 interface ModuleStatus {
   score: number;
@@ -56,6 +56,7 @@ const getStatusColor = (level: StatusLevel) => {
     case "OK": return "text-blue-500";
     case "WARNING": return "text-amber-500";
     case "CRITICAL": return "text-red-500";
+    case "NO_DATA": return "text-slate-400";
   }
 };
 
@@ -65,6 +66,7 @@ const getStatusBorderColor = (level: StatusLevel) => {
     case "OK": return "border-blue-500/40";
     case "WARNING": return "border-amber-500/40";
     case "CRITICAL": return "border-red-500/40";
+    case "NO_DATA": return "border-slate-300/60";
   }
 };
 
@@ -74,6 +76,7 @@ const getStatusIconBg = (level: StatusLevel) => {
     case "OK": return "bg-blue-100";
     case "WARNING": return "bg-amber-100";
     case "CRITICAL": return "bg-red-100";
+    case "NO_DATA": return "bg-slate-100";
   }
 };
 
@@ -89,6 +92,7 @@ const STATUS_TOKENS: Record<StatusLevel, { word: string; trackColor: string; rin
   OK: { word: "Ok", trackColor: "bg-[#a0d5d6]", ringColor: "#a0d5d6", ringBg: "#EEF7F7", textColor: "text-[#006367]", modIconBg: "bg-[#EEF7F7]", modIconText: "text-[#006367]" },
   WARNING: { word: "Warning", trackColor: "bg-amber-500", ringColor: "#EF9F27", ringBg: "#FAEEDA", textColor: "text-amber-600", modIconBg: "bg-amber-50", modIconText: "text-amber-700" },
   CRITICAL: { word: "Critical", trackColor: "bg-red-500", ringColor: "#E24B4A", ringBg: "#FCEBEB", textColor: "text-red-600", modIconBg: "bg-red-50", modIconText: "text-red-700" },
+  NO_DATA: { word: "No Data", trackColor: "bg-slate-300", ringColor: "#94A3B8", ringBg: "#F1F5F9", textColor: "text-slate-500", modIconBg: "bg-slate-100", modIconText: "text-slate-500" },
 };
 
 // ─────────────────────────────────────────────
@@ -258,11 +262,13 @@ function ModPill({ icon, label, score, enabled, isLive, level, onClick, infoText
 
 function ModSep() { return <div className="hidden @[560px]:block w-px h-12 md:h-16 bg-[#a0d5d6]/40 self-center flex-shrink-0" aria-hidden="true" />; }
 
-function LiveBadge({ isLive }: { isLive: boolean }) {
+function LiveBadge({ isLive, isRealData = true }: { isLive: boolean; isRealData?: boolean }) {
+  // Coerenza: "Live" non può accendersi se i dati non sono reali (demo/mock)
+  const effectiveLive = isLive && isRealData;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase ${isLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-slate-600 border border-gray-200"}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-300"}`} aria-hidden="true" />
-      {isLive ? "Live" : "Offline"}
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wider uppercase ${effectiveLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-slate-600 border border-gray-200"}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${effectiveLive ? "bg-emerald-500 animate-pulse" : "bg-gray-300"}`} aria-hidden="true" />
+      {effectiveLive ? "Live" : "Offline"}
     </span>
   );
 }
@@ -290,7 +296,7 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-[10px] md:text-[11px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
-              <LiveBadge isLive={isLive} />
+              <LiveBadge isLive={isLive} isRealData={isRealData} />
               <DataSourceBadge isRealData={isRealData} size="sm" />
             </div>
             <div className={`font-semibold leading-none tracking-tight ${tokens.textColor}`} style={{ fontSize: "clamp(28px, 6cqw, 56px)" }}>
@@ -804,31 +810,38 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
 
   const energyStatus = useMemo<ModuleStatus>(() => {
     const powerKw = powerLatest.totalGeneral;
-    if (typeof powerKw !== 'number' || !powerLatest.isRealData) return { score: 0, level: getStatusLevel(0), isLive: false };
+    // Nessuna telemetria reale: stato neutro 'No Data', NON un falso allarme Critical
+    if (typeof powerKw !== 'number' || !powerLatest.isRealData) return { score: 0, level: 'NO_DATA' as StatusLevel, isLive: false };
     const efficiency = Math.min(100, Math.max(0, 100 - (powerKw / 100) * 20));
     return { score: Math.round(efficiency), level: getStatusLevel(Math.round(efficiency)), isLive: !powerLatest.isStale, lastUpdate: powerLatest.lastUpdate };
   }, [powerLatest]);
 
   const airStatus = useMemo<ModuleStatus>(() => {
     const co2 = liveData.metrics['iaq.co2'] ?? liveData.metrics['co2'];
-    if (typeof co2 !== 'number') return { score: 0, level: getStatusLevel(0), isLive: false };
+    if (typeof co2 !== 'number') return { score: 0, level: 'NO_DATA' as StatusLevel, isLive: false };
     const score = Math.round(Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100)));
     return { score, level: getStatusLevel(score), isLive: true };
   }, [liveData.metrics]);
 
   const waterStatus = useMemo<ModuleStatus>(() => {
     const flowRate = liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined;
-    if (typeof flowRate !== 'number') return { score: 0, level: getStatusLevel(0), isLive: false };
+    if (typeof flowRate !== 'number') return { score: 0, level: 'NO_DATA' as StatusLevel, isLive: false };
     return { score: flowRate > 0 ? 85 : 60, level: getStatusLevel(flowRate > 0 ? 85 : 60), isLive: flowRate > 0 };
   }, [liveData]);
 
   const overallStatus = useMemo<ModuleStatus>(() => {
     let totalWeight = 0, weightedSum = 0;
-    if (moduleConfig.energy.enabled) { weightedSum += energyStatus.score * MODULE_WEIGHTS.energy; totalWeight += MODULE_WEIGHTS.energy; }
-    if (moduleConfig.air.enabled) { weightedSum += airStatus.score * MODULE_WEIGHTS.air; totalWeight += MODULE_WEIGHTS.air; }
-    if (moduleConfig.water.enabled) { weightedSum += waterStatus.score * MODULE_WEIGHTS.water; totalWeight += MODULE_WEIGHTS.water; }
-    const avgScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
-    return { score: avgScore, level: getStatusLevel(avgScore), isLive: totalWeight > 0 };
+    // I moduli SENZA telemetria (NO_DATA) non entrano nella media: uno zero
+    // "tecnico" non deve trascinare il punteggio del sito verso Critical.
+    if (moduleConfig.energy.enabled && energyStatus.level !== 'NO_DATA') { weightedSum += energyStatus.score * MODULE_WEIGHTS.energy; totalWeight += MODULE_WEIGHTS.energy; }
+    if (moduleConfig.air.enabled && airStatus.level !== 'NO_DATA') { weightedSum += airStatus.score * MODULE_WEIGHTS.air; totalWeight += MODULE_WEIGHTS.air; }
+    if (moduleConfig.water.enabled && waterStatus.level !== 'NO_DATA') { weightedSum += waterStatus.score * MODULE_WEIGHTS.water; totalWeight += MODULE_WEIGHTS.water; }
+    if (totalWeight === 0) {
+      // Nessun modulo ha dati reali: stato complessivo neutro, non un falso allarme
+      return { score: 0, level: 'NO_DATA' as StatusLevel, isLive: false };
+    }
+    const avgScore = Math.round(weightedSum / totalWeight);
+    return { score: avgScore, level: getStatusLevel(avgScore), isLive: true };
   }, [moduleConfig, energyStatus, airStatus, waterStatus]);
 
   // Calcolo score per gli Alert sul Fingerprint (100 = perfetto, degrada con gli allarmi)
