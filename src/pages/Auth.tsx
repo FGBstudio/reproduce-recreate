@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { COMPANY_STATS } from "@/lib/companyStats";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -390,18 +391,12 @@ const Auth = () => {
         <footer className="p-[clamp(0.75rem,1.5vh,1.5rem)] pb-[max(1rem,env(safe-area-inset-bottom))] text-center shrink-0">
           <div className="mt-8 flex flex-col items-center justify-center space-y-4">
             <div className="flex space-x-8 text-center border-b border-foreground/500 pb-4">
-              <div className="flex flex-col items-center">
-                <span className="text-foreground/70 font-bold text-2xl">60</span>
-                <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">countries</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-foreground/70 font-bold text-2xl">6000+</span>
-                <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">buildings monitored</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-foreground/70 font-bold text-2xl">300</span>
-                <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">clients</span>
-              </div>
+              {COMPANY_STATS.map((s) => (
+                <div key={s.label} className="flex flex-col items-center">
+                  <span className="text-foreground/70 font-bold text-2xl">{s.value}</span>
+                  <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">{s.label}</span>
+                </div>
+              ))}
             </div>
             <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-foreground/30">Powered by FGB Monitoring</p>
           </div> {/* ← DIV CHIUSO QUI */}

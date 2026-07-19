@@ -130,7 +130,10 @@ const getImageDimensions = (base64: string): Promise<{ width: number; height: nu
 const captureChartAsImage = async (ref: React.RefObject<HTMLDivElement | null>): Promise<string | null> => {
   if (!ref?.current) return null;
   try {
+    // windowWidth fissa: su mobile i chart sono stretti; senza questo il PDF
+    // conterrebbe grafici minuscoli catturati alla larghezza del telefono
     const canvas = await html2canvas(ref.current, {
+      windowWidth: 1200,
       backgroundColor: '#ffffff',
       scale: 2.5,
       logging: false,

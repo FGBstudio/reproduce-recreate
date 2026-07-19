@@ -152,7 +152,7 @@ const exportAsImage = async (ref: React.RefObject<HTMLDivElement | null>, filena
   if (!ref.current) return;
   try {
     const { default: html2canvas } = await import("html2canvas");
-    const canvas = await html2canvas(ref.current, { backgroundColor: '#ffffff', scale: 2 });
+    const canvas = await html2canvas(ref.current, { backgroundColor: '#ffffff', scale: 2, windowWidth: 1200 });
     const link = document.createElement('a');
     link.download = `${filename}.png`;
     link.href = canvas.toDataURL('image/png');
@@ -3431,7 +3431,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url(/green.png)`,
+              backgroundImage: `url(/green.webp)`,
               
               // 1. SPAZIATURA: 'space' distanzia i loghi invece di affiancarli stretti
               backgroundRepeat: 'space', 
@@ -5705,7 +5705,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           }`}
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
-                            <img src="/leed_logo.png" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
+                            <img src="/leed_logo.webp" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{leedCert?.cert_type || 'LEED v4 O+M'}</h3>
                                                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">
@@ -5792,7 +5792,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           }`}
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
-                            <img src="/well_logo.png" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
+                            <img src="/well_logo.webp" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{wellCert?.cert_type || 'WELL v2 Core'}</h3>
                                                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">

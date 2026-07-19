@@ -45,9 +45,9 @@ const formatValue = (v: number | undefined | null): string => {
 
 /** Logo asset map per certification type. Types without a logo fall back to the Award icon. */
 const CERT_LOGOS: Partial<Record<CertificationType, string>> = {
-  LEED:   "/leed_logo.png",
-  WELL:   "/well_logo.png",
-  BREEAM: "/breeam_logo.png",
+  LEED:   "/leed_logo.webp",
+  WELL:   "/well_logo.webp",
+  BREEAM: "/breeam_logo.webp",
 };
 
 /* ─────────────────────────── geometry constants ─────────────────────────── */
