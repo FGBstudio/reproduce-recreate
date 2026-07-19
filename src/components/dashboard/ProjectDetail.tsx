@@ -4127,14 +4127,18 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Left Column: Alerts & Health Split */}
-                    <div className="grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 min-h-[400px]">
+                    <div className="grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 lg:min-h-[400px]">
                       <div ref={alertsRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                           <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
                         </div>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SiteAlertsWidget alertStatus={pdAlertStatus} moduleFilter="energy" />
                           </div>
                         </div>
@@ -4144,8 +4148,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                           Sensor Health
                         </h3>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SensorHealthWidget siteId={project?.siteId} moduleFilter="energy" />
                           </div>
                         </div>
@@ -4923,8 +4931,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     <div className="col-span-1 grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 gap-4 h-full">
                       <div className={`${airCardClass} h-full flex flex-col`}>
                         <h3 className="text-sm font-bold text-gray-800 tracking-tight mb-3">{t('pd.site_alerts.title')}</h3>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SiteAlertsWidget alertStatus={pdAlertStatus} moduleFilter="air" />
                           </div>
                         </div>
@@ -4934,8 +4946,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                           Sensor Health
                         </h3>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SensorHealthWidget siteId={project?.siteId} moduleFilter="air" />
                           </div>
                         </div>
