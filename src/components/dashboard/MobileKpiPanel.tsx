@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ChevronDown } from "lucide-react";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
+import { co2Level, CO2_LEVEL_COLORS } from "@/lib/airQuality";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import { useAllProjects } from "@/hooks/useRealTimeData";
 import { regions, projects as allProjects } from "@/lib/data";
@@ -38,14 +39,8 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
     ? aggregated.totals.alertsCritical
     : region?.kpi?.critical ?? 0;
 
-  const aqScore =
-    !displayCo2 || displayCo2 === 0
-      ? "—"
-      : displayCo2 < 600
-      ? "GOOD"
-      : displayCo2 < 1000
-      ? "MODERATE"
-      : "POOR";
+  // Soglie canoniche condivise (lib/airQuality) — stesse etichette in tutta l'app
+  const aqScore = !displayCo2 || displayCo2 === 0 ? "—" : co2Level(displayCo2);
 
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -58,13 +53,7 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
         <div className="text-xs text-muted-foreground mb-1">Air Quality</div>
         <div
           className={`text-xl font-bold ${
-            aqScore === "GOOD"
-              ? "text-emerald-400"
-              : aqScore === "MODERATE"
-              ? "text-yellow-400"
-              : aqScore === "POOR"
-              ? "text-rose-400"
-              : "text-foreground"
+            aqScore === "—" ? "text-foreground" : CO2_LEVEL_COLORS[aqScore]
           }`}
         >
           {aqScore}

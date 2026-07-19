@@ -38,6 +38,7 @@ import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { co2Level } from "@/lib/airQuality";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
@@ -3235,7 +3236,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             ? Math.round(activeAirMetrics["env.humidity"]) 
             : (project.data.humidity || 45),
           aq: activeAirMetrics["iaq.co2"] != null
-            ? (activeAirMetrics["iaq.co2"] <= 600 ? "EXCELLENT" : activeAirMetrics["iaq.co2"] <= 1000 ? "GOOD" : "MODERATE")
+            ? co2Level(activeAirMetrics["iaq.co2"])
             : project.data.aq,
         }
       };

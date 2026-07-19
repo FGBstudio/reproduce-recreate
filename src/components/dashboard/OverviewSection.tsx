@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Project } from "@/lib/data";
 import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, AlertTriangle, ArrowUpRight, RotateCcw, Fan, Lightbulb, Plug, MoreHorizontal, Info } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { co2ToScore } from "@/lib/airQuality";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
@@ -587,7 +588,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
 
   // Indice sintetico = stesso score aria dell'app (già passato via `status.score`).
   // Calcolo lo score medio periodo con la stessa formula usata in airStatus (CO2 → 0-100).
-  const co2ToScore = (co2: number) => Math.round(Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100)));
+  // co2ToScore: fonte canonica in lib/airQuality
   const currentScore = isCardStale ? undefined : (typeof status?.score === 'number' ? status.score : undefined);
   const avgScore = typeof avgCo2 === 'number' ? co2ToScore(avgCo2) : undefined;
   const showAvgScore = avgScore != null && currentScore != null && avgScore > 0;
