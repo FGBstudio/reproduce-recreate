@@ -83,60 +83,58 @@ const RegionNav = ({
       }`}
       data-tour="region-nav"
     >
-      {/* ── MOBILE: Bottom "plancia di comando" galleggiante ── */}
+      {/* ── MOBILE: Bottom "plancia di comando" galleggiante ──
+          flex-wrap: i tre pannelli (regioni, moduli, KPI) si ridistribuiscono
+          da soli su 1-2 righe in base alla larghezza dello schermo. Prima era
+          una riga fissa da ~490px: su 375px il KPI e parte dei toggle finivano
+          fuori schermo senza alcun indicatore. */}
       <div
-        className="md:hidden w-full flex items-center justify-between px-4"
+        className="md:hidden w-full flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 px-2"
         style={{
           paddingBottom: "max(0.875rem, env(safe-area-inset-bottom))",
           paddingTop: "0.5rem",
           background: "transparent",
         }}
       >
-        {/* Left group: Region compact + 3 monitoring toggles */}
-        <div className="flex items-center gap-2">
-          {/* Region Buttons */}
-          <div className="glass-panel rounded-full px-1 py-0.5 flex items-center gap-0">
-            {visibleRegionButtons.map((btn) => (
-              <button
-                key={btn.code}
-                onClick={() => { hapticLight(); return onRegionChange(btn.code); }}
-                className={`px-3 py-3 min-h-[44px] rounded-full text-[11px] font-semibold tracking-wide transition-all active:scale-95 ${
-                  currentRegion === btn.code
-                    ? "bg-fgb-light text-foreground shadow-[0_0_10px_rgba(0,255,255,0.3)]"
-                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
-                }`}
-              >
-                {btn.code === "GLOBAL" ? "🌍" : btn.label.slice(0, 2).toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* Separator */}
-          <div className="w-px h-5 bg-foreground/15" />
-
-          {/* 3 Monitoring toggles */}
-          <div className="glass-panel rounded-full p-0.5 flex gap-0.5">
-            {monitoringFilters.map(({ type, icon: Icon }) => {
-              const isActive = activeFilters.includes(type);
-              return (
-                <button
-                  key={type}
-                  onClick={() => { hapticLight(); return onFilterToggle(type); }}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition active:scale-95 ${
-                    isActive
-                      ? "bg-foreground text-background"
-                      : "text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
-                  }`}
-                  title={`Toggle ${type}`}
-                >
-                  <Icon className="w-4 h-4" />
-                </button>
-              );
-            })}
-          </div>
+        {/* Region Buttons */}
+        <div className="glass-panel rounded-full px-1 py-0.5 flex items-center gap-0">
+          {visibleRegionButtons.map((btn) => (
+            <button
+              key={btn.code}
+              onClick={() => { hapticLight(); return onRegionChange(btn.code); }}
+              className={`px-3 py-3 min-h-[44px] rounded-full text-[11px] font-semibold tracking-wide transition-all active:scale-95 ${
+                currentRegion === btn.code
+                  ? "bg-fgb-light text-foreground shadow-[0_0_10px_rgba(0,255,255,0.3)]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+              }`}
+            >
+              {btn.code === "GLOBAL" ? "🌍" : btn.label.slice(0, 2).toUpperCase()}
+            </button>
+          ))}
         </div>
 
-        {/* Right: KPI button */}
+        {/* 3 Monitoring toggles */}
+        <div className="glass-panel rounded-full p-0.5 flex gap-0.5">
+          {monitoringFilters.map(({ type, icon: Icon }) => {
+            const isActive = activeFilters.includes(type);
+            return (
+              <button
+                key={type}
+                onClick={() => { hapticLight(); return onFilterToggle(type); }}
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition active:scale-95 ${
+                  isActive
+                    ? "bg-foreground text-background"
+                    : "text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
+                }`}
+                title={`Toggle ${type}`}
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* KPI button */}
         <button
           onClick={onKpiPanelToggle}
           className={`glass-panel flex items-center gap-1 rounded-full px-4 min-h-[44px] transition-all active:scale-95 ${

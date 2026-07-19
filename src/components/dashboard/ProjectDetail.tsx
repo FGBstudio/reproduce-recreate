@@ -3583,8 +3583,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             paddingRight: "max(1rem, env(safe-area-inset-right))",
           }}
         >
-          {/* Dashboard Tabs - Scrollable on mobile, 16px from safe edges */}
-          <div className="flex items-center gap-2 md:gap-3 mb-2 overflow-x-auto pb-1 scrollbar-hide px-px"
+          {/* Dashboard Tabs - Su mobile va a capo (icone su una riga, periodo e
+              azioni sulla successiva): prima era overflow-x-auto senza indicatori
+              e Export/Settings finivano fuori schermo (571px in 343 misurati).
+              scrollbar-hide era una classe mai definita (no-op). */}
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-3 mb-2 px-px"
             style={{
               marginLeft: "max(0px, env(safe-area-inset-left))",
               marginRight: "max(0px, env(safe-area-inset-right))",
@@ -4953,7 +4956,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                 {/* Slide 2: Air Quality Heatmap */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="mb-4 flex items-center gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit">
+                  {/* max-w-full + overflow-x-auto: con 8 metriche i bottoni
+                      superano i 375px e senza scroll venivano clippati */}
+                  <div className="mb-4 flex items-center gap-2 md:gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit max-w-full overflow-x-auto">
                     {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].filter(m => supportsMetric(m)).map(m => (
                       <button 
                         key={m}
