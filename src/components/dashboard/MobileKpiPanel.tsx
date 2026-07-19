@@ -120,7 +120,7 @@ const MobileKpiPanel = ({
       {/* Scrollable content — safe-area bottom padding so last item is reachable */}
       <div
         className="overflow-y-auto h-full px-4 pt-2"
-        style={{ paddingBottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+        style={{ paddingBottom: "calc(var(--region-nav-h, 4rem) + 0.5rem)" }}
       >
         {showBrandOverlay ? (
           <div className="space-y-3">

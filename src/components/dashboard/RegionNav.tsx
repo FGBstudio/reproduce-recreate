@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { hapticLight } from "@/lib/native";
 import { Zap, Wind, Droplets, Building2, Tag, BarChart2 } from "lucide-react";
 import { MonitoringType } from "@/lib/data";
@@ -59,6 +59,25 @@ const RegionNav = ({
   const { brands } = useAllBrands();
   const { clientRole } = useUserScope();
 
+  // Pubblica l'altezza reale della barra come CSS var: con flex-wrap le righe
+  // variano (1-2) in base alla larghezza, e i pannelli ancorati in basso
+  // (RegionOverlay mobile, MobileKpiPanel) devono sapere quanto spazio lasciare.
+  // Prima usavano offset fissi (bottom-20, 4rem) calibrati sulla barra a 1 riga.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const update = () =>
+      document.documentElement.style.setProperty("--region-nav-h", `${el.offsetHeight}px`);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty("--region-nav-h");
+    };
+  }, []);
+
   const canSelectHolding = clientRole === 'ADMIN_FGB' || clientRole === 'USER_FGB';
   const canSelectBrand = canSelectHolding || clientRole === 'ADMIN_HOLDING';
   const showSelectorsPanel = canSelectHolding || canSelectBrand;
@@ -78,6 +97,7 @@ const RegionNav = ({
 
   return (
     <nav
+      ref={navRef}
       className={`fixed bottom-0 md:bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col md:flex-row items-center gap-2 md:gap-3 transition-transform duration-500 w-full md:w-auto ${
         visible ? "translate-y-0" : "translate-y-40"
       }`}

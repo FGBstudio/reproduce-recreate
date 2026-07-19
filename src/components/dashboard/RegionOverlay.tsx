@@ -490,7 +490,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     {/* ============================================================ */}
     {/* Mobile: Fixed bottom bar with detail drawers */}
     {/* ============================================================ */}
-    <div className="md:hidden fixed bottom-20 left-2 right-2 z-30 pointer-events-auto">
+    <div
+      className="md:hidden fixed left-2 right-2 z-30 pointer-events-auto"
+      style={{ bottom: "calc(var(--region-nav-h, 5rem) + 0.5rem)" }}
+    >
       <div className="glass-panel rounded-xl p-3">
         <div className="flex items-center justify-between mb-2">
           <div>
