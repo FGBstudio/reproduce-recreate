@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -42,7 +43,8 @@ const App = () => (
             <Sonner />
             <OnboardingTour />
             <HashRouter>
-              <Suspense fallback={<RouteFallback />}>
+              <OfflineBanner />
+            <Suspense fallback={<RouteFallback />}>
               <Routes>
                 {/* Public route - Auth page */}
                 <Route path="/auth" element={<Auth />} />

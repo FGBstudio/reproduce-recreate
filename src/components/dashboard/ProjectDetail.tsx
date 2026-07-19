@@ -297,6 +297,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<string>("");
   const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [customBgUrl, setCustomBgUrl] = useState<string | undefined>(undefined);
@@ -3274,6 +3275,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
       const { generatePdfReport } = await import("./PdfReportGenerator");
       await generatePdfReport({
+        onProgress: setPdfProgress,
         project: enrichedProject,
         timePeriod,
         dateRange,
@@ -3661,6 +3663,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   </>
                 )}
               </Button>
+              {/* Overlay di progresso PDF: la generazione blocca il main thread
+                  per secondi su mobile — senza feedback sembra un freeze */}
+              {isGeneratingPdf && (
+                <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-white" />
+                  <div className="text-white text-sm font-medium px-6 text-center">{pdfProgress || "Generazione report..."}</div>
+                </div>
+              )}
               {/* Settings Button */}
               <Button
                 onClick={() => setSettingsOpen(true)}
