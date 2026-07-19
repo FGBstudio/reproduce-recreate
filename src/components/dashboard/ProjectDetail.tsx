@@ -4343,12 +4343,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <ZoomableChart width="100%" height="100%">
                           <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis 
-                              dataKey="tsLabel" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                            <XAxis
+                              dataKey="tsLabel"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 10, fill: '#9ca3af' }}
                               dy={10}
+                              interval="preserveStartEnd"
+                              minTickGap={24}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4540,10 +4542,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               height={timePeriod === 'week' ? 60 : 40}
                               interval={(() => {
                                 const len = deviceConsumptionData.data.length;
-                                if (timePeriod === 'today') return Math.max(0, Math.floor(len / 12) - 1);
-                                if (timePeriod === 'week') return Math.max(0, Math.floor(len / 28) - 1); // ~4 per day
-                                if (timePeriod === 'month') return Math.max(0, Math.floor(len / 15) - 1);
-                                return Math.max(0, Math.floor(len / 14) - 1);
+                                // Su schermi stretti dimezza la densità dei tick: le label a 9px
+                                // ruotate si sovrappongono in ~300px di plot area
+                                const narrow = typeof window !== 'undefined' && window.innerWidth < 640;
+                                if (timePeriod === 'today') return Math.max(0, Math.floor(len / (narrow ? 6 : 12)) - 1);
+                                if (timePeriod === 'week') return Math.max(0, Math.floor(len / (narrow ? 10 : 28)) - 1); // ~4 per day
+                                if (timePeriod === 'month') return Math.max(0, Math.floor(len / (narrow ? 8 : 15)) - 1);
+                                return Math.max(0, Math.floor(len / (narrow ? 7 : 14)) - 1);
                               })()}
                             />
                             <YAxis 
@@ -4620,12 +4625,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             barGap={2}
                           >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis 
-                              dataKey="bucket" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} 
+                            <XAxis
+                              dataKey="bucket"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }}
                               dy={10}
+                              interval="preserveStartEnd"
+                              minTickGap={24}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4970,7 +4977,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
@@ -5007,7 +5014,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={600} fill="url(#gradTVOC)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
@@ -5044,7 +5051,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTemp)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[(dataMin: number) => Math.floor(dataMin - 2), (dataMax: number) => Math.ceil(dataMax + 2)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '%RH', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
@@ -5090,7 +5097,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
@@ -5131,7 +5138,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={80} fill="url(#gradPM10)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
                             <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
@@ -5217,7 +5224,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'CO PPM', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'O₃ PPB', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
@@ -5327,7 +5334,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </linearGradient>
                           </defs>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'm³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
@@ -5484,7 +5491,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <ZoomableChart width="100%" height={280}>
                         <BarChart data={waterDailyTrendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={20} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'litri', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Bar dataKey="consumption" name="Consumption">
@@ -5535,7 +5542,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <ZoomableChart width="100%" height={280}>
                         <LineChart data={waterQualityData} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
                           <YAxis yAxisId="ph" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[6.5, 8]} label={{ value: 'pH', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <YAxis yAxisId="other" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'NTU / mg/L', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
@@ -6224,7 +6231,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </linearGradient>
             </defs>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kW" />
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -6313,7 +6320,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-            <XAxis dataKey="tsLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} dy={10} />
+            <XAxis dataKey="tsLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} dy={10} interval="preserveStartEnd" minTickGap={24} />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(val) => Number(val).toFixed(2)} />
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -6506,7 +6513,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <BarChart data={carbonChartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-            <XAxis dataKey="bucket" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} dy={10} />
+            <XAxis dataKey="bucket" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} dy={10} interval="preserveStartEnd" minTickGap={24} />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })} label={{ value: 'kgCO₂e', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: 10 } }} />
             <Tooltip 
               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
@@ -6554,7 +6561,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 80, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis yAxisId="energy" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft' }} />
             <YAxis yAxisId="temp" orientation="right" tick={{ ...axisStyle, fill: '#F59E0B' }} axisLine={{ stroke: '#F59E0B' }} tickLine={{ stroke: '#F59E0B' }} tickFormatter={(val) => `${Math.round(val)}°`} />
             <YAxis yAxisId="humidity" orientation="right" tick={{ ...axisStyle, fill: '#3b82f6' }} axisLine={{ stroke: '#3b82f6' }} tickLine={{ stroke: '#3b82f6' }} domain={[0, 100]} tickFormatter={(val) => `${val}%`} width={40} />
@@ -6588,7 +6595,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2FS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6622,7 +6629,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={600} fill="url(#gradTVOCFS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6656,7 +6663,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTempFS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[(dataMin: number) => Math.floor(dataMin - 2), (dataMax: number) => Math.ceil(dataMax + 2)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '%RH', angle: 90, position: 'insideRight' }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
@@ -6693,7 +6700,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={50} fill="url(#gradPM25FS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6731,7 +6738,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={80} fill="url(#gradPM10FS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6759,7 +6766,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             <LineChart data={coO3MultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
@@ -6790,7 +6797,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </linearGradient>
             </defs>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
@@ -6810,7 +6817,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <BarChart data={waterDailyTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={20} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <Tooltip {...tooltipStyle} />
             <Bar dataKey="consumption" name="Consumption">
@@ -6831,7 +6838,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <LineChart data={waterQualityData} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis yAxisId="ph" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[6, 9]} label={{ value: 'pH', angle: -90, position: 'insideLeft' }} />
             <YAxis yAxisId="other" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'mg/L / NTU', angle: 90, position: 'insideRight' }} />
             <Tooltip {...tooltipStyle} />
@@ -6852,7 +6859,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           <ZoomableChart width="100%" height="100%">
             <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
               <YAxis yAxisId="energy" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="temp" orientation="right" tick={{ fontSize: 9, fill: '#F59E0B' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} width={28} />
               <YAxis yAxisId="humidity" orientation="right" tick={{ fontSize: 9, fill: '#3b82f6' }} axisLine={false} tickLine={false} domain={[0, 100]} width={32} />

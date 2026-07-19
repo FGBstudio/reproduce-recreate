@@ -722,7 +722,7 @@ export const BillAnalysisModule = ({ siteId, siteName }: BillAnalysisModuleProps
               <ZoomableChart width="100%" height={240}>
                 <BarChart data={kpis.monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip {...tooltipStyle} />
                   <Bar dataKey="consumption" fill="hsl(175, 60%, 35%)" radius={[4, 4, 0, 0]} name="kWh" />
