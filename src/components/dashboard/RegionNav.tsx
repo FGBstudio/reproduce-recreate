@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { hapticLight } from "@/lib/native";
 import { Zap, Wind, Droplets, Building2, Tag, BarChart2 } from "lucide-react";
 import { MonitoringType } from "@/lib/data";
 import { useAllHoldings, useAllBrands } from "@/hooks/useRealTimeData";
@@ -98,7 +99,7 @@ const RegionNav = ({
             {visibleRegionButtons.map((btn) => (
               <button
                 key={btn.code}
-                onClick={() => onRegionChange(btn.code)}
+                onClick={() => { hapticLight(); return onRegionChange(btn.code); }}
                 className={`px-3 py-3 min-h-[44px] rounded-full text-[11px] font-semibold tracking-wide transition-all active:scale-95 ${
                   currentRegion === btn.code
                     ? "bg-fgb-light text-foreground shadow-[0_0_10px_rgba(0,255,255,0.3)]"
@@ -120,7 +121,7 @@ const RegionNav = ({
               return (
                 <button
                   key={type}
-                  onClick={() => onFilterToggle(type)}
+                  onClick={() => { hapticLight(); return onFilterToggle(type); }}
                   className={`w-11 h-11 rounded-full flex items-center justify-center transition active:scale-95 ${
                     isActive
                       ? "bg-foreground text-background"
@@ -211,7 +212,7 @@ const RegionNav = ({
           {visibleRegionButtons.map((btn) => (
             <button
               key={btn.code}
-              onClick={() => onRegionChange(btn.code)}
+              onClick={() => { hapticLight(); return onRegionChange(btn.code); }}
               className={`px-4 py-2 rounded-full text-sm font-semibold tracking-wide transition-all duration-300 hover:scale-105 ${
                 currentRegion === btn.code
                   ? "bg-fgb-light text-foreground shadow-[0_0_15px_rgba(0,255,255,0.3)]"
@@ -230,7 +231,7 @@ const RegionNav = ({
             return (
               <button
                 key={type}
-                onClick={() => onFilterToggle(type)}
+                onClick={() => { hapticLight(); return onFilterToggle(type); }}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition hover:scale-110 ${
                   isActive
                     ? "bg-foreground text-background"

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment } from "react";
+import { hapticLight } from "@/lib/native";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
@@ -3376,6 +3377,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   };
 
   const handleDashboardChange = (dashboard: DashboardType) => {
+    hapticLight();
     setActiveDashboard(dashboard);
     setCurrentSlide(0);
   };
