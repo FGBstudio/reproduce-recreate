@@ -136,7 +136,7 @@ const MobileBurgerMenu = ({
                         if (val !== "all") setTimeout(() => onClose(), 250);
                       }}
                     >
-                      <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
+                      <SelectTrigger className="flex-1 min-h-[44px] border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
                         <SelectValue placeholder={t('menu.all_holdings')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -159,7 +159,7 @@ const MobileBurgerMenu = ({
                         if (val !== "all") setTimeout(() => onClose(), 250);
                       }}
                     >
-                      <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
+                      <SelectTrigger className="flex-1 min-h-[44px] border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
                         <SelectValue placeholder={t('menu.all_brands')} />
                       </SelectTrigger>
                       <SelectContent>
