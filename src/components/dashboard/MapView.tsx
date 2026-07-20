@@ -161,7 +161,7 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
         className: "fgb-cluster",
         html: `
           <div style="position:relative;width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.40);border:0.5px solid rgba(255,255,255,0.9);box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;overflow:hidden;">
-            <div style="position:absolute;inset:0;background-image:url('/white.png');background-size:650%;background-position:45% 55%;background-repeat:no-repeat;opacity:0.4;pointer-events:none;"></div>
+            <div style="position:absolute;inset:0;background-image:url('/white.png');background-size:650%;background-position:50% 50%;background-repeat:no-repeat;opacity:0.4;pointer-events:none;"></div>
             <span style="position:relative;color:#fff;font-weight:700;font-size:14px;line-height:1;">${cluster.getChildCount()}</span>
           </div>
         `,
