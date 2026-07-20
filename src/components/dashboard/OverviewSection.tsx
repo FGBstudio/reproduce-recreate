@@ -827,11 +827,15 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   }, [powerLatest]);
 
   const airStatus = useMemo<ModuleStatus>(() => {
-    const co2 = liveData.metrics['iaq.co2'] ?? liveData.metrics['co2'];
-    if (typeof co2 !== 'number') return { score: 0, level: 'NO_DATA' as StatusLevel, isLive: false };
-    const score = Math.round(Math.max(0, Math.min(100, 100 - ((co2 - 400) / 600) * 100)));
-    return { score, level: getStatusLevel(score), isLive: true };
-  }, [liveData.metrics]);
+    // No_DATA quando i sensori aria sono spenti o i dati sono stantii:
+    // evita di mostrare 0/Critical con dati non reali.
+    if (liveData.isStale || !liveData.isRealData) {
+      return { score: 0, level: 'NO_DATA' as StatusLevel, isLive: false };
+    }
+    const res = computeAirIndex(liveData.metrics);
+    if (!res) return { score: 0, level: 'NO_DATA' as StatusLevel, isLive: false };
+    return { score: res.score, level: getStatusLevel(res.score), isLive: true, lastUpdate: liveData.lastUpdate };
+  }, [liveData]);
 
   const waterStatus = useMemo<ModuleStatus>(() => {
     const flowRate = liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined;
