@@ -207,7 +207,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
           {/* Left: Burger — 48×48 touch target */}
           <button
             onClick={onBurgerOpen}
-            className="glass-panel rounded-full p-3 hover:bg-fgb-light/50 transition-colors flex items-center justify-center"
+            className="glass-panel rounded-full p-3 min-w-[44px] min-h-[44px] hover:bg-fgb-light/50 transition-colors active:scale-95 flex items-center justify-center"
             aria-label="Menu"
             style={{ minWidth: 48, minHeight: 48 }}
           >
@@ -226,6 +226,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
                 <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                   <Search className="w-4 h-4 text-muted-foreground" />
                   <Input
+                    enterKeyHint="search"
                     ref={searchInputRef}
                     type="text"
                     placeholder={t("header.search_placeholder")}
@@ -272,7 +273,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
             ) : (
               <button
                 onClick={handleSearchToggle}
-                className="glass-panel rounded-full p-3 hover:bg-fgb-light/50 transition-colors flex items-center justify-center"
+                className="glass-panel rounded-full p-3 min-w-[44px] min-h-[44px] hover:bg-fgb-light/50 transition-colors active:scale-95 flex items-center justify-center"
                 title={t("header.search_projects")}
                 style={{ minWidth: 48, minHeight: 48 }}
               >
@@ -304,6 +305,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
                 <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                   <Search className="w-4 h-4 text-muted-foreground" />
                   <Input
+                    enterKeyHint="search"
                     ref={searchInputRef}
                     type="text"
                     placeholder={t("header.search_placeholder")}

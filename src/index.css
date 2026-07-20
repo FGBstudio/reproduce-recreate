@@ -370,3 +370,22 @@
     font-weight: 500;
   }
 }
+
+/* ── UX mobile: overscroll e accessibilità movimento ───────────────────── */
+
+/* Niente bounce/glow di overscroll sul body: l'app è a schermo pieno con
+   mappa e overlay, il rimbalzo del browser è straniante nell'app nativa. */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Rispetto della preferenza di sistema "riduci movimento": disattiva
+   animazioni e transizioni per utenti con sensibilità vestibolare. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

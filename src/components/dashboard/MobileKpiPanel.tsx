@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ChevronDown } from "lucide-react";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
+import { co2Level, CO2_LEVEL_COLORS } from "@/lib/airQuality";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import { useAllProjects } from "@/hooks/useRealTimeData";
 import { regions, projects as allProjects } from "@/lib/data";
@@ -38,39 +39,27 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
     ? aggregated.totals.alertsCritical
     : region?.kpi?.critical ?? 0;
 
-  const aqScore =
-    !displayCo2 || displayCo2 === 0
-      ? "—"
-      : displayCo2 < 600
-      ? "GOOD"
-      : displayCo2 < 1000
-      ? "MODERATE"
-      : "POOR";
+  // Soglie canoniche condivise (lib/airQuality) — stesse etichette in tutta l'app
+  const aqScore = !displayCo2 || displayCo2 === 0 ? "—" : co2Level(displayCo2);
 
   return (
     <div className="grid grid-cols-2 gap-2">
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Energy Intensity</div>
         <div className="text-xl font-bold text-foreground">{(displayIntensity / 1000).toFixed(2)}</div>
-        <div className="text-[10px] text-muted-foreground">MWh/m²</div>
+        <div className="text-[11px] text-muted-foreground">MWh/m²</div>
       </div>
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
         <div className="text-xs text-muted-foreground mb-1">Air Quality</div>
         <div
           className={`text-xl font-bold ${
-            aqScore === "GOOD"
-              ? "text-emerald-400"
-              : aqScore === "MODERATE"
-              ? "text-yellow-400"
-              : aqScore === "POOR"
-              ? "text-rose-400"
-              : "text-foreground"
+            aqScore === "—" ? "text-foreground" : CO2_LEVEL_COLORS[aqScore]
           }`}
         >
           {aqScore}
         </div>
         {displayCo2 > 0 && (
-          <div className="text-[10px] text-muted-foreground">CO₂: {displayCo2} ppm</div>
+          <div className="text-[11px] text-muted-foreground">CO₂: {displayCo2} ppm</div>
         )}
       </div>
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
@@ -104,7 +93,7 @@ const MobileKpiPanel = ({
       className={`fixed bottom-0 left-0 right-0 md:hidden transition-transform duration-300 ease-out`}
       style={{
         transform: isOpen ? "translateY(0)" : "translateY(100%)",
-        height: "42vh",
+        height: "42dvh",
         background: "rgba(10, 15, 25, 0.90)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
@@ -131,11 +120,11 @@ const MobileKpiPanel = ({
       {/* Scrollable content — safe-area bottom padding so last item is reachable */}
       <div
         className="overflow-y-auto h-full px-4 pt-2"
-        style={{ paddingBottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+        style={{ paddingBottom: "calc(var(--region-nav-h, 4rem) + 0.5rem)" }}
       >
         {showBrandOverlay ? (
           <div className="space-y-3">
-            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               {selectedBrand ? "Brand Overview" : "Holding Overview"}
             </h3>
             <p className="text-xs text-muted-foreground text-center py-6">
@@ -146,7 +135,7 @@ const MobileKpiPanel = ({
           </div>
         ) : currentRegion !== "GLOBAL" ? (
           <div className="space-y-3">
-            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               Regional Performance — {currentRegion}
             </h3>
             <RegionPerformanceInline currentRegion={currentRegion} />

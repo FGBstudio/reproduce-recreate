@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Wind, Droplet, Award, Info } from "lucide-react";
 import { Project, MonitoringType } from "@/lib/data";
@@ -45,9 +45,9 @@ const formatValue = (v: number | undefined | null): string => {
 
 /** Logo asset map per certification type. Types without a logo fall back to the Award icon. */
 const CERT_LOGOS: Partial<Record<CertificationType, string>> = {
-  LEED:   "/leed_logo.png",
-  WELL:   "/well_logo.png",
-  BREEAM: "/breeam_logo.png",
+  LEED:   "/leed_logo.webp",
+  WELL:   "/well_logo.webp",
+  BREEAM: "/breeam_logo.webp",
 };
 
 /* ─────────────────────────── geometry constants ─────────────────────────── */
@@ -743,4 +743,5 @@ export const SiteMarker = ({
   );
 };
 
-export default SiteMarker;
+// memo: evita il re-render di TUTTI i marker della mappa a ogni cambio di stato del genitore
+export default memo(SiteMarker);

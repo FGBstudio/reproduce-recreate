@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import './styles/wrapped.css';
 import { useWrapped } from './WrappedContext';
@@ -15,6 +15,15 @@ const WrappedPlayer = () => {
   const { scope, close } = useWrapped();
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Hold-to-pause (gesto standard delle stories): pressione prolungata mette
+  // in pausa; al rilascio dopo un hold il tap NON avanza la slide.
+  const holdStart = useRef<number>(0);
+  const wasHeld = () => Date.now() - holdStart.current > 250;
+  const holdProps = {
+    onPointerDown: () => { holdStart.current = Date.now(); setPaused(true); },
+    onPointerUp: () => setPaused(false),
+    onPointerLeave: () => setPaused(false),
+  };
   const [showSplash, setShowSplash] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
@@ -132,8 +141,8 @@ const WrappedPlayer = () => {
         ))}
       </div>
 
-      <div className="wr-cz left" onClick={() => go(idx - 1)} />
-      <div className="wr-cz right" onClick={() => go(idx + 1)} />
+      <div className="wr-cz left" {...holdProps} onClick={() => { if (!wasHeld()) go(idx - 1); }} />
+      <div className="wr-cz right" {...holdProps} onClick={() => { if (!wasHeld()) go(idx + 1); }} />
 
       <div className="wr-nar left" style={{ opacity: idx === 0 ? 0.18 : 1 }} aria-hidden>‹</div>
       <div className="wr-nar right" style={{ opacity: idx >= total - 1 ? 0.18 : 1 }} aria-hidden>›</div>

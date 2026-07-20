@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { registerAndroidBackButton } from "@/lib/native";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -58,5 +59,7 @@ if ((isPreviewHost || isInIframe) && "serviceWorker" in navigator) {
     /* Capacitor not available — running in a normal browser */
   }
 })();
+
+registerAndroidBackButton();
 
 createRoot(document.getElementById("root")!).render(<App />);

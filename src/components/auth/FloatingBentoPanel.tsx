@@ -515,9 +515,9 @@ const SLIDES: SlideData[] = [
     backVideo: "/videos/app-nav.mp4",
     visual: (
       <div className="relative w-full h-full flex items-end justify-center">
-        <img src="/FGB_Mac.png" className="relative z-10 w-[70%] drop-shadow-[0_30px_50px_rgba(0,0,0,0.18)] translate-y-1" />
-        <img src="/FGB_Pad.png" className="absolute z-20 w-[22%] left-[6%] bottom-[6%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.18)]" />
-        <img src="/FGB_Phone.png" className="absolute z-30 w-[12%] right-[8%] bottom-[10%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.22)]" />
+        <img src="/FGB_Mac.webp" className="relative z-10 w-[70%] drop-shadow-[0_30px_50px_rgba(0,0,0,0.18)] translate-y-1" />
+        <img src="/FGB_Pad.webp" className="absolute z-20 w-[22%] left-[6%] bottom-[6%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.18)]" />
+        <img src="/FGB_Phone.webp" className="absolute z-30 w-[12%] right-[8%] bottom-[10%] drop-shadow-[0_20px_40px_rgba(0,0,0,0.22)]" />
       </div>
     ),
   },
@@ -558,14 +558,14 @@ const SLIDES: SlideData[] = [
     visual: (
       <div className="grid grid-cols-2 md:grid-cols-4 items-center justify-items-center gap-x-8 md:gap-x-10 gap-y-10 md:gap-y-12 w-full max-w-[600px] mx-auto">
         {[
-          { src: "/leed_logo.png", alt: "LEED" },
-          { src: "/breeam_logo.png", alt: "BREEAM" },
-          { src: "/well_logo.png", alt: "WELL" },
-          { src: "/life_logo.png", alt: "LIFE" },
-          { src: "/fitwel_logo.png", alt: "fitwel" },
-          { src: "/logo_gresb.png", alt: "GRESB" },
+          { src: "/leed_logo.webp", alt: "LEED" },
+          { src: "/breeam_logo.webp", alt: "BREEAM" },
+          { src: "/well_logo.webp", alt: "WELL" },
+          { src: "/life_logo.webp", alt: "LIFE" },
+          { src: "/fitwel_logo.webp", alt: "fitwel" },
+          { src: "/logo_gresb.webp", alt: "GRESB" },
           { src: "/Logo_ESG.png", alt: "ESG" },
-          { src: "/envision.png", alt: "envision" },
+          { src: "/envision.webp", alt: "envision" },
         ].map((logo) => (
           <div key={logo.alt} className="flex items-center justify-center h-14 w-28">
             <img src={logo.src} alt={logo.alt} className="max-h-full max-w-full object-contain opacity-80" />

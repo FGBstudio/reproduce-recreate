@@ -490,7 +490,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     {/* ============================================================ */}
     {/* Mobile: Fixed bottom bar with detail drawers */}
     {/* ============================================================ */}
-    <div className="md:hidden fixed bottom-20 left-2 right-2 z-30 pointer-events-auto">
+    <div
+      className="md:hidden fixed left-2 right-2 z-30 pointer-events-auto"
+      style={{ bottom: "calc(var(--region-nav-h, 5rem) + 0.5rem)" }}
+    >
       <div className="glass-panel rounded-xl p-3">
         <div className="flex items-center justify-between mb-2">
           <div>
@@ -537,7 +540,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
 
     {/* Mobile Drawer for KPI Details */}
     <Drawer open={!!mobileDrawerContent} onOpenChange={(open) => !open && setMobileDrawerContent(null)}>
-      <DrawerContent className="max-h-[85vh] border-t border-foreground/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
+      <DrawerContent className="max-h-[85dvh] border-t border-foreground/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
         <DrawerHeader className="text-left pb-2">
           <DrawerTitle className="text-foreground">
             {mobileDrawerContent === 'energy' && t('region.energy_intensity')}
@@ -547,7 +550,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
           </DrawerTitle>
           <DrawerDescription className="text-muted-foreground">{region.name}</DrawerDescription>
         </DrawerHeader>
-        <ScrollArea className="flex-1 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+        <ScrollArea className="flex-1 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ maxHeight: 'calc(85dvh - 100px)' }}>
           <div className="space-y-1 pb-6">
             {/* Energy List */}
             {mobileDrawerContent === 'energy' && siteIntensityList.map((s, i) => (

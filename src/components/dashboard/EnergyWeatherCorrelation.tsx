@@ -288,6 +288,8 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                 stroke="#94a3b8"
                 fontSize={10}
                 tick={{ fill: '#94a3b8' }}
+                interval="preserveStartEnd"
+                minTickGap={24}
               />
               <YAxis 
                 yAxisId="left" 

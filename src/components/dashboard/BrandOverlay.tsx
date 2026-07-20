@@ -831,7 +831,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
       {/* Mobile Detail Drawer */}
       <Drawer open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
-        <DrawerContent className="max-h-[90vh] border-t border-foreground/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
+        <DrawerContent className="max-h-[90dvh] border-t border-foreground/10" style={{ background: 'rgba(10, 15, 25, 0.95)', backdropFilter: 'blur(24px)' }}>
           <DrawerHeader className="text-left pb-2">
             <DrawerTitle className="text-foreground flex items-center gap-2">
               {displayEntity.logo ? (
@@ -843,7 +843,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
             </DrawerDescription>
           </DrawerHeader>
-          <ScrollArea className="flex-1 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ maxHeight: 'calc(90vh - 100px)' }}>
+          <ScrollArea className="flex-1 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ maxHeight: 'calc(90dvh - 100px)' }}>
             <div className="space-y-6 pb-6">
 
               {/* Energy Leaderboard */}

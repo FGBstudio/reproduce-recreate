@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment } from "react";
+import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment, Children } from "react";
+import { hapticLight } from "@/lib/native";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
@@ -13,7 +14,7 @@ import {
   PieChart, Pie, Cell, ComposedChart,
 } from "recharts";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
-import html2canvas from "html2canvas";
+// html2canvas: import dinamico (usato solo per export screenshot)
 import { createPortal } from "react-dom";
 import { TimePeriodSelector, TimePeriod } from "./TimePeriodSelector";
 import { 
@@ -26,7 +27,7 @@ import {
   getPeriodLabel 
 } from "@/hooks/useTimeFilteredData";
 import { useRealTimeEnergyData, useProjectTelemetry } from "@/hooks/useRealTimeTelemetry";
-import { generatePdfReport } from "./PdfReportGenerator";
+// PDF: caricato on-demand solo quando l'utente genera un report (risparmia ~600KB all'avvio)
 import { Button } from "@/components/ui/button";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 import { ModuleGate } from "@/components/modules/ModuleGate";
@@ -38,6 +39,7 @@ import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { co2Level } from "@/lib/airQuality";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
@@ -54,6 +56,7 @@ import {
   getDemoAirDevices,
   getDemoAirDeviceId,
 } from "@/lib/data/demoSiteMocks";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { SiteAlertsWidget, filterAlertsByModule } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
 import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
@@ -150,7 +153,8 @@ const autoDomainWithPadding: [(dataMin: number) => number, (dataMax: number) => 
 const exportAsImage = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
   if (!ref.current) return;
   try {
-    const canvas = await html2canvas(ref.current, { backgroundColor: '#ffffff', scale: 2 });
+    const { default: html2canvas } = await import("html2canvas");
+    const canvas = await html2canvas(ref.current, { backgroundColor: '#ffffff', scale: 2, windowWidth: 1200 });
     const link = document.createElement('a');
     link.download = `${filename}.png`;
     link.href = canvas.toDataURL('image/png');
@@ -200,7 +204,7 @@ const ChartFullscreenModal = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-[24px] w-full max-w-6xl max-h-[90vh] overflow-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] animate-scale-in"
+        className="bg-white rounded-[24px] w-full max-w-6xl max-h-[90dvh] overflow-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-foreground/95 backdrop-blur-xl z-10 flex justify-between items-center px-8 py-5 border-b border-gray-100/80">
@@ -242,6 +246,24 @@ const ExportButtons = ({ chartRef, data, filename, onExpand }: ExportButtonsProp
       <FileJson className="w-3.5 h-3.5 text-muted-foreground" />
     </button>
   </div>
+);
+
+// Monta solo la slide attiva e le due adiacenti; per le altre lascia un
+// placeholder vuoto della stessa larghezza, così il translateX del track non
+// cambia. Evita di tenere montati (e animati) tutti i grafici del dashboard
+// contemporaneamente — su mobile erano 19 SVG e 16 animazioni anche per slide
+// fuori schermo. forceMount: l'export PDF cattura via ref card che possono
+// stare su slide lontane, quindi durante la generazione si monta tutto.
+const LazySlides = ({ current, forceMount, children }: { current: number; forceMount?: boolean; children: ReactNode }) => (
+  <>
+    {Children.toArray(children).map((child, i) =>
+      forceMount || Math.abs(i - current) <= 1 ? (
+        <Fragment key={i}>{child}</Fragment>
+      ) : (
+        <div key={i} className="w-full flex-shrink-0" aria-hidden="true" />
+      )
+    )}
+  </>
 );
 
 interface ProjectDetailProps {
@@ -294,6 +316,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<string>("");
   const [energyViewMode, setEnergyViewMode] = useState<'category' | 'device'>('category');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [customBgUrl, setCustomBgUrl] = useState<string | undefined>(undefined);
@@ -417,6 +440,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
+
+  // Overview mobile a schermo intero: niente header/barre/frecce, la vista
+  // gestisce da sé navigazione (CTA + chip) e controlli (barra glass in basso)
+  const isMobile = useIsMobile();
 
   // Fetch latest outdoor temperature from weather_data
   const [outdoorTemp, setOutdoorTemp] = useState<number | null>(null);
@@ -1276,7 +1303,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const periodLabel = getPeriodLabel(timePeriod, dateRange, language);
   
   // Use real data if available, otherwise fall back to mock generators
-  const filteredEnergyData = realTimeEnergy.isRealData ? realTimeEnergy.data : mockEnergyData;
+  // SICUREZZA DATI: i mock sono ammessi SOLO quando Supabase non è configurato
+  // (ambiente demo/sviluppo). In produzione, se la telemetria non è disponibile,
+  // mostriamo serie VUOTE (empty state), MAI dati finti spacciabili per reali.
+  const filteredEnergyData = realTimeEnergy.isRealData
+    ? realTimeEnergy.data
+    : (!isSupabaseConfigured ? mockEnergyData : []);
   
   // Real-time indicator for charts
   const isRealTimeData = realTimeEnergy.isRealData || projectTelemetry.isRealData;
@@ -2108,7 +2140,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         }
     });
 
-    let segments = [];
+    const segments = [];
 
     if (energyViewMode === 'category') {
         const subTotal = totalHVAC + totalLighting + totalPlugs + totalOtherDefined;
@@ -2868,7 +2900,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     const bp = activePowerBreakdown;
     if (!bp.isRealData && !bp.isStale) return [];
 
-    let segments: { name: string; value: number; color: string }[] = [];
+    const segments: { name: string; value: number; color: string }[] = [];
     const isSim = (bp as any).isSimulated || (isSimulationMode && hasOnlyGeneralMeters);
 
     if (energyViewMode === 'category') {
@@ -3125,7 +3157,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       });
 
       // Ordinamento Buckets (Custom Sort per ogni vista)
-      let sortedData = Array.from(pivotMap.values());
+      const sortedData = Array.from(pivotMap.values());
       const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const weekOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
       const wOrder = ['W1','W2','W3','W4','W5'];
@@ -3207,93 +3239,17 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return { backgroundColor: '#f0f2f5' };
   }, [project, customBgUrl]);
 
-  if (!project) return null;
-
-  const nextSlide = () => {
-    if (currentSlide < totalSlides - 1) {
-      setCurrentSlide(prev => prev + 1);
-    }
-  };
-
-  const prevSlide = () => {
-    if (currentSlide > 0) {
-      setCurrentSlide(prev => prev - 1);
-    }
-  };
-
-  // Swipe handlers
-  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
-    touchStartX.current = e.targetTouches[0].clientX;
-    touchEndX.current = null;
-  };
-
-  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    
-    if (isLeftSwipe) {
-      nextSlide();
-    } else if (isRightSwipe) {
-      prevSlide();
-    }
-    
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
-
-  const handleDashboardChange = (dashboard: DashboardType) => {
-    setActiveDashboard(dashboard);
-    setCurrentSlide(0);
-  };
-
-  const getAqColor = (aq: string) => {
-    switch (aq) {
-      case "EXCELLENT": return "text-emerald-500";
-      case "GOOD": return "text-emerald-600";
-      case "MODERATE": return "text-yellow-500";
-      case "POOR": return "text-red-500";
-      case "CRITICAL": return "text-red-600 font-black";
-      case "MEDIUM": return "text-amber-500";
-      default: return "text-gray-600";
-    }
-  };
-
-  const getAqBgColor = (aq: string) => {
-    switch (aq) {
-      case "EXCELLENT": return "bg-emerald-500/20 border-emerald-500/30";
-      case "GOOD": return "bg-emerald-500/20 border-emerald-500/30";
-      case "MODERATE": return "bg-yellow-500/20 border-yellow-500/30";
-      case "POOR": return "bg-red-500/20 border-red-500/30";
-      case "CRITICAL": return "bg-red-600/20 border-red-600/30";
-      case "MEDIUM": return "bg-amber-500/20 border-amber-500/30";
-      default: return "bg-gray-500/20 border-gray-500/30";
-    }
-  };
-
-  // Heatmap legend labels based on qualitative judgments
-  const heatmapLegendLabels = [t('pd.hm_excellent'), t('pd.hm_good'), t('pd.hm_moderate'), t('pd.hm_high'), t('pd.hm_critical')];
-  const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
-
-  // Air quality data for export
-  const airQualityData = [
-    { metric: 'Air Quality Index', value: project.data.aq },
-    { metric: 'CO2 (ppm)', value: project.data.co2 },
-    { metric: 'Temperature', value: project.data.temp },
-  ];
-
-  // PDF Export handler
+  // PDF Export handler (dichiarato PRIMA dell'early-return: gli hook devono
+  // essere chiamati nello stesso ordine a ogni render - Rules of Hooks)
   const handleExportPdf = useCallback(async () => {
     if (!project || isGeneratingPdf) return;
     
     setIsGeneratingPdf(true);
     try {
+      // LazySlides: con forceMount le slide lontane si montano solo ora —
+      // attendi il commit del render e la fine delle animazioni recharts
+      // (~1,5s) prima delle catture html2canvas via ref.
+      await new Promise((resolve) => setTimeout(resolve, 1600));
       // 1. Dynamic Telemetry Enrichment
       const enrichedProject = {
         ...project,
@@ -3309,7 +3265,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             ? Math.round(activeAirMetrics["env.humidity"]) 
             : (project.data.humidity || 45),
           aq: activeAirMetrics["iaq.co2"] != null
-            ? (activeAirMetrics["iaq.co2"] <= 600 ? "EXCELLENT" : activeAirMetrics["iaq.co2"] <= 1000 ? "GOOD" : "MODERATE")
+            ? co2Level(activeAirMetrics["iaq.co2"])
             : project.data.aq,
         }
       };
@@ -3344,7 +3300,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         };
       });
 
+      const { generatePdfReport } = await import("./PdfReportGenerator");
       await generatePdfReport({
+        onProgress: setPdfProgress,
         project: enrichedProject,
         timePeriod,
         dateRange,
@@ -3406,6 +3364,93 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     estimatedCostData
   ]);
 
+  if (!project) return null;
+
+  // Overview mobile = esperienza a schermo intero senza chrome
+  const isMobileOverview = isMobile && activeDashboard === "overview";
+
+  const nextSlide = () => {
+    if (currentSlide < totalSlides - 1) {
+      setCurrentSlide(prev => prev + 1);
+    }
+  };
+
+  const prevSlide = () => {
+    if (currentSlide > 0) {
+      setCurrentSlide(prev => prev - 1);
+    }
+  };
+
+  // Swipe handlers
+  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = null;
+  };
+
+  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      nextSlide();
+    } else if (isRightSwipe) {
+      prevSlide();
+    }
+    
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  const handleDashboardChange = (dashboard: DashboardType) => {
+    hapticLight();
+    setActiveDashboard(dashboard);
+    setCurrentSlide(0);
+  };
+
+  const getAqColor = (aq: string) => {
+    switch (aq) {
+      case "EXCELLENT": return "text-emerald-500";
+      case "GOOD": return "text-emerald-600";
+      case "MODERATE": return "text-yellow-500";
+      case "POOR": return "text-red-500";
+      case "CRITICAL": return "text-red-600 font-black";
+      case "MEDIUM": return "text-amber-500";
+      default: return "text-gray-600";
+    }
+  };
+
+  const getAqBgColor = (aq: string) => {
+    switch (aq) {
+      case "EXCELLENT": return "bg-emerald-500/20 border-emerald-500/30";
+      case "GOOD": return "bg-emerald-500/20 border-emerald-500/30";
+      case "MODERATE": return "bg-yellow-500/20 border-yellow-500/30";
+      case "POOR": return "bg-red-500/20 border-red-500/30";
+      case "CRITICAL": return "bg-red-600/20 border-red-600/30";
+      case "MEDIUM": return "bg-amber-500/20 border-amber-500/30";
+      default: return "bg-gray-500/20 border-gray-500/30";
+    }
+  };
+
+  // Heatmap legend labels based on qualitative judgments
+  const heatmapLegendLabels = [t('pd.hm_excellent'), t('pd.hm_good'), t('pd.hm_moderate'), t('pd.hm_high'), t('pd.hm_critical')];
+  const heatmapColors = ['#e8f5e9', '#81c784', '#fdd835', '#f57c00', '#d32f2f'];
+
+  // Air quality data for export
+  const airQualityData = [
+    { metric: 'Air Quality Index', value: project.data.aq },
+    { metric: 'CO2 (ppm)', value: project.data.co2 },
+    { metric: 'Temperature', value: project.data.temp },
+  ];
+
+  // PDF Export handler
+
   return (
     <div className="fixed inset-0 z-50 animate-slide-up bg-background">
       
@@ -3420,7 +3465,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url(/green.png)`,
+              backgroundImage: `url(/green.webp)`,
               
               // 1. SPAZIATURA: 'space' distanzia i loghi invece di affiancarli stretti
               backgroundRepeat: 'space', 
@@ -3442,9 +3487,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         
       </div>
 
-      {/* Header — safe-area top, sticky solid background */}
+      {/* Header — safe-area top, sticky solid background.
+          Nascosto nell'overview mobile: il back è affidato al gesto/tasto
+          nativo e il Wrapped si sposta dentro la vista. */}
       <div
-        className="absolute top-0 left-0 w-full flex justify-between items-center z-10"
+        className={`absolute top-0 left-0 w-full justify-between items-center z-10 ${isMobileOverview ? "hidden" : "flex"}`}
         style={{
           paddingTop: "max(0.75rem, env(safe-area-inset-top))",
           paddingBottom: "0.75rem",
@@ -3452,9 +3499,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           paddingRight: "max(1rem, env(safe-area-inset-right))",
         }}
       >
-        <button 
+        {/* Su mobile la freccia sparisce: si torna alla mappa col back di
+            sistema (hardware Android / swipe iOS, history gestita in Index) */}
+        <button
           onClick={onClose}
-          className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold text-foreground transition-all group border border-foreground/10"
+          className="hidden md:flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold text-foreground transition-all group border border-foreground/10"
           style={{ minHeight: 44 }}
         >
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
@@ -3530,24 +3579,94 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         </label>
       </div>
 
-      {/* Main Content */}
+      {/* ── Overlay dell'overview mobile a schermo intero ── */}
+      {isMobileOverview && (
+        <>
+          {/* Wrapped: unica azione dell'header che sopravvive, dentro la vista */}
+          {project?.siteId && (
+            <button
+              onClick={() => openWrapped({
+                kind: 'site',
+                siteId: project.siteId!,
+                siteName: project.name,
+                areaM2: project.area_m2 ?? null,
+              })}
+              className="absolute z-30 w-11 h-11 rounded-full bg-white/15 backdrop-blur-xl border border-white/30 flex items-center justify-center active:scale-95 transition-transform"
+              style={{ top: "max(0.75rem, env(safe-area-inset-top))", right: "max(1rem, env(safe-area-inset-right))" }}
+              title="FGB Weekly Wrapped"
+            >
+              <Sparkles className="w-5 h-5 text-fgb-accent" />
+            </button>
+          )}
+          {/* Barra glass in basso: periodo + report PDF + settings — le stesse
+              funzioni della barra top, che qui è nascosta */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-white/15 backdrop-blur-xl border border-white/30 shadow-lg max-w-[calc(100vw-1.5rem)]"
+            style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          >
+            <TimePeriodSelector
+              value={timePeriod}
+              onChange={setTimePeriod}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
+            <Button
+              onClick={handleExportPdf}
+              disabled={isGeneratingPdf}
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0 bg-white/90 border-gray-200 rounded-full text-gray-800 hover:bg-fgb-secondary hover:text-foreground flex-shrink-0"
+              title={t('pd.export_pdf')}
+            >
+              {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            </Button>
+            <Button
+              onClick={() => setSettingsOpen(true)}
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0 bg-white/90 border-gray-200 rounded-full text-gray-800 hover:bg-fgb-secondary hover:text-foreground flex-shrink-0"
+              title={t('pd.project_settings')}
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Main Content — nell'overview mobile niente fasce sopra/sotto:
+          la vista occupa l'intero schermo */}
       <div
         className="absolute inset-0 flex flex-col"
-        style={{
+        style={isMobileOverview ? undefined : {
           paddingTop: "calc(3.5rem + max(1rem, env(safe-area-inset-top)))",
           paddingBottom: "max(3.5rem, calc(3.5rem + env(safe-area-inset-bottom)))",
         }}
       >
-        {/* Title Area with Dashboard Tabs */}
+        {/* Overlay di progresso PDF: la generazione blocca il main thread
+            per secondi su mobile — senza feedback sembra un freeze. Sta FUORI
+            dal blocco tab (hidden nell'overview mobile: display:none su un
+            antenato nasconderebbe anche i position:fixed). */}
+        {isGeneratingPdf && (
+          <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-white" />
+            <div className="text-white text-sm font-medium px-6 text-center">{pdfProgress || "Generazione report..."}</div>
+          </div>
+        )}
+
+        {/* Title Area with Dashboard Tabs — nascosta nell'overview mobile
+            (periodo/report/settings passano alla barra glass in basso) */}
         <div
-          className="mb-2 md:mb-4 relative z-20"
+          className={`mb-2 md:mb-4 relative z-20 ${isMobileOverview ? "hidden" : ""}`}
           style={{
             paddingLeft: "max(1rem, env(safe-area-inset-left))",
             paddingRight: "max(1rem, env(safe-area-inset-right))",
           }}
         >
-          {/* Dashboard Tabs - Scrollable on mobile, 16px from safe edges */}
-          <div className="flex items-center gap-2 md:gap-3 mb-2 overflow-x-auto pb-1 scrollbar-hide px-px"
+          {/* Dashboard Tabs - Su mobile va a capo (icone su una riga, periodo e
+              azioni sulla successiva): prima era overflow-x-auto senza indicatori
+              e Export/Settings finivano fuori schermo (571px in 343 misurati).
+              scrollbar-hide era una classe mai definita (no-op). */}
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-3 mb-2 px-px"
             style={{
               marginLeft: "max(0px, env(safe-area-inset-left))",
               marginRight: "max(0px, env(safe-area-inset-right))",
@@ -3555,7 +3674,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           >
             <button 
               onClick={() => handleDashboardChange("overview")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "overview" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3566,7 +3685,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </button>
             <button 
               onClick={() => handleDashboardChange("energy")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "energy" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3577,7 +3696,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </button>
             <button 
               onClick={() => handleDashboardChange("air")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "air" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3588,7 +3707,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </button>
             <button 
               onClick={() => handleDashboardChange("water")}
-              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 activeDashboard === "water" 
                   ? "bg-fgb-secondary text-foreground" 
                   : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3600,7 +3719,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {hasCertifications && (
               <button 
                 onClick={() => handleDashboardChange("certification")}
-                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                   activeDashboard === "certification" 
                     ? "bg-fgb-secondary text-foreground" 
                     : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3611,9 +3730,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </button>
             )}
             {hasBillAnalysis && (
-              <button 
+              <button
                 onClick={() => handleDashboardChange("bills")}
-                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                   activeDashboard === "bills" 
                     ? "bg-fgb-secondary text-foreground" 
                     : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3704,9 +3823,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             className="flex h-full transition-transform duration-700 ease-in-out"
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
-            {/* OVERVIEW DASHBOARD */}
+            {/* OVERVIEW DASHBOARD
+                Su mobile l'overview è a piena altezza e gestisce da sé lo
+                scroll a sezioni: niente padding né scroll del contenitore */}
             {activeDashboard === "overview" && (
-              <div className="w-full flex-shrink-0 overflow-y-auto pb-4 px-4 md:px-0">
+              <div className="w-full flex-shrink-0 overflow-hidden md:overflow-y-auto md:pb-4">
                 <OverviewSection 
                   project={project ? { ...project, timezone: siteTimezone } : null} 
                   moduleConfig={resolvedModuleConfig} 
@@ -3716,6 +3837,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   energyAverages={energyPeriodAverages}
                   onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
                   benchmarkMatrix={benchmarkMatrix}
+                  certifications={projectCertifications}
+                  outdoorTempC={outdoorTemp}
                 />
               </div>
             )}
@@ -3723,7 +3846,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             {/* ENERGY DASHBOARD */}
             {activeDashboard === "energy" && (
               <ModuleGate module="energy" config={resolvedModuleConfig.energy} demoContent={<EnergyDemoContent />}>
-                <>
+                <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Energy Overview */}
                 <div className="w-full flex-shrink-0 px-3 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
@@ -3734,7 +3857,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div>
                             {/* TITOLO RINOMINATO */}
                             <h3 className="text-base md:text-lg font-bold text-gray-800">{t('pd.energy_over_time')}</h3>
-                            <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                            <p className="text-[11px] md:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                               <span>{timeRange.bucket === '1d' ? t('pd.daily_energy_kwh') : t('pd.avg_power_kw')}</span>
                               {isSimulationMode && hasOnlyGeneralMeters && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-teal-500/10 to-purple-500/10 border border-teal-500/20 text-[9px] font-semibold text-teal-700 dark:text-teal-300">
@@ -3993,7 +4116,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <span className="text-lg md:text-xl font-bold text-slate-900">
                               {totalBreakdownKwh.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
+                            <span className="text-[11px] md:text-xs text-muted-foreground font-medium">{t('pd.total_kwh')}</span>
                           </div>
                         </div>
                       </div>
@@ -4002,15 +4125,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
                         <p className="text-xl md:text-3xl font-bold text-slate-900">{densityValue}</p>
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">kWh/m²</p>
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
-                        <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-muted-foreground font-medium">{t('pd.in_selected_period')}</div>
+                        <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-muted-foreground font-medium">{t('pd.in_selected_period')}</div>
                       </div>
                       {/* Widget Costo Stimato */}
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">
                           Estimated Cost ({periodLabel})
                         </p>
                         
@@ -4030,10 +4153,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </p>
                         
                         {/* Indicatore Trend (Statico o da calcolare in futuro) */}
-                        {/* <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
+                        {/* <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-emerald-500 font-medium">↓ €4,200 vs anno prec.</div> */}
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('energy.efficiency')}</p>
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('energy.efficiency')}</p>
                         <p className={`text-xl md:text-3xl font-bold ${
                           efficiencyData.delta === null ? 'text-muted-foreground' :
                           efficiencyData.delta < 0 ? 'text-emerald-500' : 
@@ -4045,7 +4168,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </p>
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{efficiencySubtitle}</p>
                         {efficiencyData.delta !== null && efficiencyData.delta !== 0 && (
-                          <div className={`mt-1 md:mt-2 text-[10px] md:text-xs font-medium ${
+                          <div className={`mt-1 md:mt-2 text-[11px] md:text-xs font-medium ${
                             efficiencyData.delta < 0 ? 'text-emerald-500' : 'text-red-500'
                           }`}>
                             {efficiencyData.delta < 0 ? '↑' : '↓'} {language === 'it' ? 'efficienza' : 'efficiency'}
@@ -4053,7 +4176,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         )}
                       </div>
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('overview.active_alerts')}</p>
                         {(() => {
                           const energyAlertCount = filterAlertsByModule(pdAlertStatus?.alerts ?? [], 'energy').length;
                           return (
@@ -4064,7 +4187,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               {energyAlertCount > 0 && (
                                 <>
                                   <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
-                                  <div className="mt-1 md:mt-2 text-[10px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
+                                  <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
                                 </>
                               )}
                             </>
@@ -4079,14 +4202,18 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Left Column: Alerts & Health Split */}
-                    <div className="grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 min-h-[400px]">
+                    <div className="grid grid-rows-2 xl:grid-rows-1 xl:grid-cols-2 gap-4 lg:min-h-[400px]">
                       <div ref={alertsRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
                           <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
                         </div>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SiteAlertsWidget alertStatus={pdAlertStatus} moduleFilter="energy" />
                           </div>
                         </div>
@@ -4096,8 +4223,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                           Sensor Health
                         </h3>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SensorHealthWidget siteId={project?.siteId} moduleFilter="energy" />
                           </div>
                         </div>
@@ -4209,7 +4340,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </h3>
                         <div className="flex items-center gap-3">
                           {/* Legendina minimale (scala per-store) */}
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                             <span>Low</span>
                             <div className="flex gap-0.5">
                               {heatmapLegendColors.map((c) => (
@@ -4228,12 +4359,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           {/* Header Colonne (X-Axis) */}
                           <div className="flex">
                             {/* Spacer angolo in alto a sx */}
-                            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-muted-foreground">
+                            <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[11px] font-bold text-muted-foreground">
                                 {heatmapGrid.isYearView ? 'GG' : 'HH'}
                             </div>
                             {/* Labels Colonne */}
                             {heatmapGrid.cols.map(col => (
-                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-muted-foreground pb-1">
+                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[11px] font-semibold text-muted-foreground pb-1">
                                     {col.label}
                                 </div>
                             ))}
@@ -4243,7 +4374,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           {heatmapGrid.rows.map(row => (
                               <div key={row} className="flex items-center h-6 mb-0.5">
                                   {/* Label Riga (00:00 o Day 1) */}
-                                  <div className="w-12 flex-shrink-0 text-[10px] text-muted-foreground text-right pr-2">
+                                  <div className="w-12 flex-shrink-0 text-[11px] text-muted-foreground text-right pr-2">
                                       {heatmapGrid.isYearView 
                                         ? row // Giorno mese (1, 2...)
                                         : `${String(row).padStart(2, '0')}:00` // Ora (00:00...)
@@ -4261,7 +4392,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                           >
                                             {/* Tooltip on Hover */}
                                             {val > 0 && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[11px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
                                                     <div className="font-bold">
                                                         {heatmapGrid.isYearView 
                                                             ? `${row} ${col.label}` // "15 GEN"
@@ -4320,12 +4451,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <ZoomableChart width="100%" height="100%">
                           <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis 
-                              dataKey="tsLabel" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fontSize: 10, fill: '#9ca3af' }} 
+                            <XAxis
+                              dataKey="tsLabel"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 10, fill: '#9ca3af' }}
                               dy={10}
+                              interval="preserveStartEnd"
+                              minTickGap={24}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4448,7 +4581,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                                   {totalPowerKw.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground font-medium">kW</span>
+                                <span className="text-[11px] text-muted-foreground font-medium">kW</span>
                               </div>
                            </div>
                         </div>
@@ -4517,10 +4650,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               height={timePeriod === 'week' ? 60 : 40}
                               interval={(() => {
                                 const len = deviceConsumptionData.data.length;
-                                if (timePeriod === 'today') return Math.max(0, Math.floor(len / 12) - 1);
-                                if (timePeriod === 'week') return Math.max(0, Math.floor(len / 28) - 1); // ~4 per day
-                                if (timePeriod === 'month') return Math.max(0, Math.floor(len / 15) - 1);
-                                return Math.max(0, Math.floor(len / 14) - 1);
+                                // Su schermi stretti dimezza la densità dei tick: le label a 9px
+                                // ruotate si sovrappongono in ~300px di plot area
+                                const narrow = typeof window !== 'undefined' && window.innerWidth < 640;
+                                if (timePeriod === 'today') return Math.max(0, Math.floor(len / (narrow ? 6 : 12)) - 1);
+                                if (timePeriod === 'week') return Math.max(0, Math.floor(len / (narrow ? 10 : 28)) - 1); // ~4 per day
+                                if (timePeriod === 'month') return Math.max(0, Math.floor(len / (narrow ? 8 : 15)) - 1);
+                                return Math.max(0, Math.floor(len / (narrow ? 7 : 14)) - 1);
                               })()}
                             />
                             <YAxis 
@@ -4577,7 +4713,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono bg-gray-100 text-muted-foreground px-2 py-1 rounded border border-gray-200">
+                            <span className="text-[11px] font-mono bg-gray-100 text-muted-foreground px-2 py-1 rounded border border-gray-200">
                                 EF: 0.233 kg/kWh
                             </span>
                             <ExportButtons 
@@ -4597,12 +4733,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             barGap={2}
                           >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis 
-                              dataKey="bucket" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} 
+                            <XAxis
+                              dataKey="bucket"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }}
                               dy={10}
+                              interval="preserveStartEnd"
+                              minTickGap={24}
                             />
                             <YAxis 
                               axisLine={false} 
@@ -4661,7 +4799,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <span className="text-3xl font-black text-gray-800 tracking-tight">
                               {dayNightSummary.total.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                             </span>
-                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">kWh Total</span>
+                            <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mt-1">kWh Total</span>
                           </div>
                         </div>
 
@@ -4714,14 +4852,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </>
+              </LazySlides>
               </ModuleGate>
             )}
             
             {/* AIR QUALITY DASHBOARD */}
             {activeDashboard === "air" && (
               <ModuleGate module="air" config={resolvedModuleConfig.air} demoContent={<AirDemoContent />}>
-                <>
+                <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Overview + Building Grid */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -4771,7 +4909,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <div ref={airQualityRef} className={`col-span-1 ${airCardClass} flex flex-col`}>
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
                             <div className="flex items-center gap-4">
-                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(dynamicAq)} ${getAqColor(dynamicAq)} text-[10px] font-semibold tracking-wider uppercase`}>
+                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getAqBgColor(dynamicAq)} ${getAqColor(dynamicAq)} text-[11px] font-semibold tracking-wider uppercase`}>
                                 {isToday && !isAirLatestStale && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                                 )}
@@ -4868,8 +5006,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     <div className="col-span-1 grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 gap-4 h-full">
                       <div className={`${airCardClass} h-full flex flex-col`}>
                         <h3 className="text-sm font-bold text-gray-800 tracking-tight mb-3">{t('pd.site_alerts.title')}</h3>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SiteAlertsWidget alertStatus={pdAlertStatus} moduleFilter="air" />
                           </div>
                         </div>
@@ -4879,8 +5021,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                           Sensor Health
                         </h3>
-                        <div className="flex-1 min-h-0 relative overflow-hidden">
-                          <div className="absolute inset-0 overflow-y-auto pr-1 stylish-scrollbar">
+                        <div className="flex-1 min-h-0 relative lg:overflow-hidden">
+                          {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
+                              scrolla già): il pattern absolute+scroll interno collassava la
+                              card a solo titolo o tagliava il contenuto. Da lg: layout
+                              compatto con scroll interno come prima. */}
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1 stylish-scrollbar">
                             <SensorHealthWidget siteId={project?.siteId} moduleFilter="air" />
                           </div>
                         </div>
@@ -4901,12 +5047,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                 {/* Slide 2: Air Quality Heatmap */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  <div className="mb-4 flex items-center gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit">
+                  {/* max-w-full + overflow-x-auto: con 8 metriche i bottoni
+                      superano i 375px e senza scroll venivano clippati */}
+                  <div className="mb-4 flex items-center gap-2 md:gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit max-w-full overflow-x-auto">
                     {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].filter(m => supportsMetric(m)).map(m => (
                       <button 
                         key={m}
                         onClick={() => setActiveAirHeatmapMetric(m)}
-                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-foreground shadow-md' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-foreground shadow-md' : 'hover:bg-gray-100 text-muted-foreground'}`}
                       >
                         {m === 'iaq.co2' ? 'CO₂' : m === 'iaq.voc' ? 'TVOC' : m === 'iaq.pm25' ? 'PM2.5' : m === 'iaq.pm10' ? 'PM10' : m === 'iaq.co' ? 'CO' : m === 'iaq.o3' ? 'O₃' : m === 'env.temperature' ? 'TEMP' : 'HUM'}
                       </button>
@@ -4932,7 +5080,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
-                      <div className="relative w-full h-[200px]">
+                      <div className="relative w-full h-[260px] md:h-[200px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -4947,10 +5095,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -4969,7 +5117,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
-                      <div className="relative w-full h-[200px]">
+                      <div className="relative w-full h-[260px] md:h-[200px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -4984,10 +5132,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={600} fill="url(#gradTVOC)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -5006,7 +5154,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
-                      <div className="relative w-full h-[220px]">
+                      <div className="relative w-full h-[280px] md:h-[220px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <defs>
@@ -5021,11 +5169,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTemp)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[(dataMin: number) => Math.floor(dataMin - 2), (dataMax: number) => Math.ceil(dataMax + 2)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '%RH', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
                             ))}
@@ -5052,7 +5200,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
-                      <div className="relative w-full h-[250px]">
+                      <div className="relative w-full h-[300px] md:h-[250px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -5067,10 +5215,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={50} fill="url(#gradPM25)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -5093,7 +5241,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
-                      <div className="relative w-full h-[250px]">
+                      <div className="relative w-full h-[300px] md:h-[250px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -5108,10 +5256,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </defs>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea y1={0} y2={80} fill="url(#gradPM10)" fillOpacity={1} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -5133,8 +5281,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25In != null ? Math.round(pm25In) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Indoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Indoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5144,8 +5292,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm25Out != null ? Math.round(pm25Out) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Outdoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM2.5 Outdoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5155,8 +5303,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10In != null ? Math.round(pm10In) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Indoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Indoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5166,8 +5314,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         return (
                           <div className={airCardClass + " text-center"}>
                             <div className={`text-3xl font-bold ${q.color}`}>{pm10Out != null ? Math.round(pm10Out) : '—'}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Outdoor</div>
-                            <div className={`text-[10px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
+                            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">PM10 Outdoor</div>
+                            <div className={`text-[11px] ${q.color} mt-1 font-medium`}>● {q.label}</div>
                           </div>
                         );
                       })()}
@@ -5189,16 +5337,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
-                      <div className="relative w-full h-[280px]">
+                      <div className="relative w-full h-[320px] md:h-[280px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <CartesianGrid {...gridStyle} />
                             <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
-                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+                            <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'CO PPM', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'O₃ PPB', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
                             ))}
@@ -5230,9 +5378,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="text-[11px] text-muted-foreground mt-1">ppm · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Limit</div>
+                              <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-0.5">Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{coLimit} ppm</div>
-                              <div className={`text-[10px] ${coQ.color} mt-1 font-medium`}>● {coQ.label}</div>
+                              <div className={`text-[11px] ${coQ.color} mt-1 font-medium`}>● {coQ.label}</div>
                             </div>
                           </div>
                           <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -5261,9 +5409,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <div className="text-[11px] text-muted-foreground mt-1">ppb · {periodLabel}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">WHO Limit</div>
+                              <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-0.5">WHO Limit</div>
                               <div className="text-lg font-semibold text-gray-700">{o3Limit} ppb</div>
-                              <div className={`text-[10px] ${o3Q.color} mt-1 font-medium`}>● {o3Q.label}</div>
+                              <div className={`text-[11px] ${o3Q.color} mt-1 font-medium`}>● {o3Q.label}</div>
                             </div>
                           </div>
                           <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -5275,14 +5423,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   </div>
                 </div>
                 )}
-              </>
+              </LazySlides>
               </ModuleGate>
             )}
             
             {/* WATER DASHBOARD */}
             {activeDashboard === "water" && (
               <ModuleGate module="water" config={resolvedModuleConfig.water} demoContent={<WaterDemoContent />}>
-                <>
+                <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Consumo idrico & Distribuzione */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
                   <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -5304,7 +5452,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </linearGradient>
                           </defs>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'm³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 10 }} />
@@ -5461,7 +5609,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <ZoomableChart width="100%" height={280}>
                         <BarChart data={waterDailyTrendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={20} />
                           <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'litri', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
                           <Bar dataKey="consumption" name="Consumption">
@@ -5512,7 +5660,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <ZoomableChart width="100%" height={280}>
                         <LineChart data={waterQualityData} margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
                           <CartesianGrid {...gridStyle} />
-                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+                          <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
                           <YAxis yAxisId="ph" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[6.5, 8]} label={{ value: 'pH', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <YAxis yAxisId="other" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[0, 2]} label={{ value: 'NTU / mg/L', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                           <Tooltip {...tooltipStyle} />
@@ -5603,7 +5751,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     </div>
                   </div>
                 </div>
-              </>
+              </LazySlides>
               </ModuleGate>
             )}
             
@@ -5676,7 +5824,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               };
 
               return (
-                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100vh-80px)] pb-24 custom-scrollbar">
+                <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto max-h-[calc(100dvh-80px)] pb-24 custom-scrollbar">
                   
                   {/* --- TOP CARDS: FLEX ACCORDION --- */}
                   <div className="flex flex-col lg:flex-row gap-4 w-full min-h-[280px] pb-8 pt-2">
@@ -5694,7 +5842,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           }`}
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
-                            <img src="/leed_logo.png" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
+                            <img src="/leed_logo.webp" alt="LEED" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{leedCert?.cert_type || 'LEED v4 O+M'}</h3>
                                                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">
@@ -5741,7 +5889,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
                             <div className="w-14 h-14 rounded-xl bg-[#009193] flex items-center justify-center shadow-sm flex-shrink-0">
-                              <span className="text-foreground font-black text-[10px]">BREEAM</span>
+                              <span className="text-foreground font-black text-[11px]">BREEAM</span>
                             </div>
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">BREEAM In-Use</h3>
@@ -5781,7 +5929,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           }`}
                         >
                           <div className="flex items-start gap-4 mb-4 whitespace-nowrap">
-                            <img src="/well_logo.png" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
+                            <img src="/well_logo.webp" alt="WELL" className="w-14 h-14 rounded-xl object-contain shadow-sm bg-white p-1 flex-shrink-0" />
                             <div className={`transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:hidden xl:block xl:opacity-100' : 'opacity-100'}`}>
                               <h3 className="text-xl font-bold text-gray-800">{wellCert?.cert_type || 'WELL v2 Core'}</h3>
                                                              <span className="inline-block px-3 py-1 bg-[#a0d5d6]/30 text-[#006367] border border-[#009193]/20 rounded-full text-xs font-semibold mt-1">
@@ -6096,7 +6244,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                           </div>
                                       </div>
                                       <div className="sm:text-right bg-foreground/50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-none border-[#911140]/10">
-                                        <div className="text-[10px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
+                                        <div className="text-[11px] uppercase tracking-wider text-[#911140] font-bold mb-1">Due By</div>
                                         <div className="text-xl font-black text-gray-900 tracking-tight">
                                           {cert?.expiry_date ? new Date(cert.expiry_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'TBD'}
                                         </div>
@@ -6134,9 +6282,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           </div>
         </div>
 
-        {/* Pagination Dots */}
-        <div className="flex justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20">
-          <button onClick={prevSlide} disabled={currentSlide === 0} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition text-gray-700">
+        {/* Pagination Dots — nell'overview mobile la banda sparisce
+            (la vista ha il proprio scroll a sezioni) */}
+        <div className={`justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20 ${isMobileOverview ? "hidden" : "flex"}`}>
+          <button onClick={prevSlide} disabled={currentSlide === 0} className="w-11 h-11 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="flex gap-2 md:gap-3">
@@ -6144,7 +6293,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               <button key={idx} onClick={() => setCurrentSlide(idx)} className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? "w-5 md:w-6 bg-fgb-secondary" : "w-1.5 md:w-2 bg-gray-400 hover:bg-gray-500"}`} />
             ))}
           </div>
-          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition text-gray-700">
+          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="w-11 h-11 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -6201,7 +6350,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </linearGradient>
             </defs>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} unit=" kW" />
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -6290,7 +6439,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <ComposedChart data={actualVsAverageData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-            <XAxis dataKey="tsLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} dy={10} />
+            <XAxis dataKey="tsLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} dy={10} interval="preserveStartEnd" minTickGap={24} />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(val) => Number(val).toFixed(2)} />
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -6483,7 +6632,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <BarChart data={carbonChartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-            <XAxis dataKey="bucket" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} dy={10} />
+            <XAxis dataKey="bucket" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }} dy={10} interval="preserveStartEnd" minTickGap={24} />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(val) => Number(val).toLocaleString('it-IT', { notation: "compact" })} label={{ value: 'kgCO₂e', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: 10 } }} />
             <Tooltip 
               cursor={{ fill: '#f9fafb', opacity: 0.5 }}
@@ -6531,7 +6680,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 80, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis yAxisId="energy" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft' }} />
             <YAxis yAxisId="temp" orientation="right" tick={{ ...axisStyle, fill: '#F59E0B' }} axisLine={{ stroke: '#F59E0B' }} tickLine={{ stroke: '#F59E0B' }} tickFormatter={(val) => `${Math.round(val)}°`} />
             <YAxis yAxisId="humidity" orientation="right" tick={{ ...axisStyle, fill: '#3b82f6' }} axisLine={{ stroke: '#3b82f6' }} tickLine={{ stroke: '#3b82f6' }} domain={[0, 100]} tickFormatter={(val) => `${val}%`} width={40} />
@@ -6565,7 +6714,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={1200} fill="url(#gradCO2FS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6599,7 +6748,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={600} fill="url(#gradTVOCFS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6633,7 +6782,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea yAxisId="temp" y1={10} y2={35} fill="url(#gradTempFS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[(dataMin: number) => Math.floor(dataMin - 2), (dataMax: number) => Math.ceil(dataMax + 2)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '%RH', angle: 90, position: 'insideRight' }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
@@ -6670,7 +6819,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={50} fill="url(#gradPM25FS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6708,7 +6857,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </defs>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea y1={0} y2={80} fill="url(#gradPM10FS)" fillOpacity={1} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'μg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
               <Legend wrapperStyle={{ fontSize: 12, fontWeight: 500, fontFamily: "'Futura', sans-serif" }} />
@@ -6736,7 +6885,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             <LineChart data={coO3MultiSeries as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
               <ReferenceArea yAxisId="co" y1={0} y2={2} fill="#10b981" fillOpacity={0.03} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
               <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm CO', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb O₃', angle: 90, position: 'insideRight' }} />
               <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
@@ -6767,7 +6916,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </linearGradient>
             </defs>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="label" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <Tooltip {...tooltipStyle} />
             <Legend />
@@ -6787,7 +6936,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <BarChart data={waterDailyTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="hour" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={20} />
             <YAxis tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
             <Tooltip {...tooltipStyle} />
             <Bar dataKey="consumption" name="Consumption">
@@ -6808,7 +6957,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         <ZoomableChart width="100%" height={500}>
           <LineChart data={waterQualityData} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
             <CartesianGrid {...gridStyle} />
-            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+            <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis yAxisId="ph" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} domain={[6, 9]} label={{ value: 'pH', angle: -90, position: 'insideLeft' }} />
             <YAxis yAxisId="other" orientation="right" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'mg/L / NTU', angle: 90, position: 'insideRight' }} />
             <Tooltip {...tooltipStyle} />
@@ -6829,7 +6978,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           <ZoomableChart width="100%" height="100%">
             <LineChart data={energyOutdoorLiveData as any} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
               <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} />
+              <XAxis dataKey="time" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} interval="preserveStartEnd" minTickGap={24} />
               <YAxis yAxisId="energy" tick={axisStyle} axisLine={{ stroke: '#e2e8f0' }} tickLine={{ stroke: '#e2e8f0' }} label={{ value: 'kWh', angle: -90, position: 'insideLeft' }} />
               <YAxis yAxisId="temp" orientation="right" tick={{ fontSize: 9, fill: '#F59E0B' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} width={28} />
               <YAxis yAxisId="humidity" orientation="right" tick={{ fontSize: 9, fill: '#3b82f6' }} axisLine={false} tickLine={false} domain={[0, 100]} width={32} />

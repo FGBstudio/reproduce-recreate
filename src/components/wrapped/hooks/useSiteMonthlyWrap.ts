@@ -21,6 +21,12 @@ import {
 } from '../lib/wrappedMath';
 import type { SiteWeeklyData, DailyKwh } from './useSiteWeeklyWrap';
 
+// ── Tipi riga delle query Supabase usate in questo hook ──────────────────────
+type DeviceRow = { id: string; category?: string | null; site_id?: string };
+type EnergyRow = { device_id: string; ts_day: string; value_sum: number | null; metric?: string };
+type MetricRow = { device_id?: string; ts_day?: string; ts?: string; value_sum?: number | null; value_avg?: number | null; value?: number | null; metric?: string };
+type PeerSiteRow = { id: string; name?: string | null; area_m2?: number | null };
+
 const ENERGY_METRICS = ['energy.active_import_kwh', 'energy.active_energy'];
 const CO2_METRICS  = ['iaq.co2', 'CO2', 'co2'];
 const VOC_METRICS  = ['iaq.voc', 'iaq.tvoc', 'voc', 'tvoc'];
@@ -128,8 +134,8 @@ async function fetchEnergyDailyByCategory(
   const all = devs ?? [];
   if (all.length === 0) return { daily: [], byCategory: null, totalKwh: null };
 
-  const ids = all.map((d: any) => d.id);
-  const catById = new Map<string, string>(all.map((d: any) => [d.id, (d.category ?? '').toLowerCase()]));
+  const ids = all.map((d: DeviceRow) => d.id);
+  const catById = new Map<string, string>(all.map((d: DeviceRow) => [d.id, (d.category ?? '').toLowerCase()]));
 
   const { data } = await supabase
     .from('energy_daily')
@@ -142,7 +148,7 @@ async function fetchEnergyDailyByCategory(
   // Daily totals from 'general' meters (trunk), like the weekly hook.
   const byDay = new Map<string, number>();
   const sumByCat: Record<string, number> = { hvac: 0, lighting: 0, plugs: 0, general: 0, other: 0 };
-  (data ?? []).forEach((r: any) => {
+  (data ?? []).forEach((r: MetricRow) => {
     if (r.value_sum == null) return;
     const v = Number(r.value_sum);
     const cat = catById.get(r.device_id) ?? 'other';
@@ -181,7 +187,7 @@ async function fetchEnergyTotal(siteId: string, start: string, end: string): Pro
   if (!supabase) return null;
   const { data: devs } = await supabase
     .from('devices').select('id').eq('site_id', siteId).eq('category', 'general');
-  const ids = (devs ?? []).map((d: any) => d.id);
+  const ids = (devs ?? []).map((d: DeviceRow) => d.id);
   if (ids.length === 0) return null;
   const { data } = await supabase
     .from('energy_daily')
@@ -200,7 +206,7 @@ async function fetchEnergyHourlyProfile(siteId: string, start: string, end: stri
   if (!supabase) return empty;
   const { data: devs } = await supabase
     .from('devices').select('id').eq('site_id', siteId).eq('category', 'general');
-  const ids = (devs ?? []).map((d: any) => d.id);
+  const ids = (devs ?? []).map((d: DeviceRow) => d.id);
   if (ids.length === 0) return empty;
 
   try {
@@ -215,7 +221,7 @@ async function fetchEnergyHourlyProfile(siteId: string, start: string, end: stri
     if (error) return empty;
     const sums = Array.from({ length: 24 }, () => 0);
     const counts = Array.from({ length: 24 }, () => 0);
-    (data ?? []).forEach((r: any) => {
+    (data ?? []).forEach((r: MetricRow) => {
       if (r.value_sum == null) return;
       const h = new Date(r.ts_hour).getUTCHours();
       sums[h] += Number(r.value_sum);
@@ -234,7 +240,7 @@ async function fetchAirHourly(siteId: string, start: string, end: string): Promi
   if (!supabase) return empty;
   const { data: devs } = await supabase
     .from('devices').select('id').eq('site_id', siteId).eq('device_type', 'air_quality');
-  const ids = (devs ?? []).map((d: any) => d.id);
+  const ids = (devs ?? []).map((d: DeviceRow) => d.id);
   if (ids.length === 0) return empty;
 
   const allMetrics = [...CO2_METRICS, ...VOC_METRICS, ...PM25_METRICS];
@@ -251,7 +257,7 @@ async function fetchAirHourly(siteId: string, start: string, end: string): Promi
 
     // Bucket per-hour averages per kind
     const byHour = new Map<string, { co2: number[]; voc: number[]; pm25: number[] }>();
-    (data ?? []).forEach((r: any) => {
+    (data ?? []).forEach((r: MetricRow) => {
       if (r.value_avg == null) return;
       const key = r.ts_hour;
       const v = Number(r.value_avg);
@@ -300,7 +306,7 @@ async function fetchAirDailyAvg(siteId: string, start: string, end: string): Pro
   if (!supabase) return empty;
   const { data: devs } = await supabase
     .from('devices').select('id').eq('site_id', siteId).eq('device_type', 'air_quality');
-  const ids = (devs ?? []).map((d: any) => d.id);
+  const ids = (devs ?? []).map((d: DeviceRow) => d.id);
   if (ids.length === 0) return empty;
 
   const { data } = await supabase
@@ -311,7 +317,7 @@ async function fetchAirDailyAvg(siteId: string, start: string, end: string): Pro
     .lte('ts_day', end)
     .in('metric', CO2_METRICS);
   const groups = new Map<string, number[]>();
-  (data ?? []).forEach((r: any) => {
+  (data ?? []).forEach((r: MetricRow) => {
     if (r.value_avg == null) return;
     if (!groups.has(r.ts_day)) groups.set(r.ts_day, []);
     groups.get(r.ts_day)!.push(Number(r.value_avg));
@@ -358,7 +364,7 @@ async function fetchAlerts(siteId: string, weekStart: string, weekEnd: string) {
 
   const sevOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
   const items: AlertItem[] = (data ?? [])
-    .map((r: any) => {
+    .map((r: MetricRow) => {
       const created = r.triggered_at ? new Date(r.triggered_at).getTime() : null;
       const resolved = r.resolved_at ? new Date(r.resolved_at).getTime() : null;
       const durationMin = created != null && resolved != null
@@ -408,13 +414,13 @@ async function fetchPeerBenchmark(
   if (peerSites.length < 2) return null;
 
   // 3) Devices (general) per peer site → device_id → site_id
-  const peerIds = peerSites.map((p: any) => p.id);
+  const peerIds = peerSites.map((p: PeerSiteRow) => p.id);
   const { data: devs } = await supabase
     .from('devices')
     .select('id, site_id')
     .in('site_id', peerIds)
     .eq('category', 'general');
-  const siteByDevice = new Map<string, string>((devs ?? []).map((d: any) => [d.id, d.site_id]));
+  const siteByDevice = new Map<string, string>((devs ?? []).map((d: DeviceRow) => [d.id, d.site_id ?? ""]));
   const deviceIds = Array.from(siteByDevice.keys());
   if (deviceIds.length === 0) return null;
 
@@ -427,7 +433,7 @@ async function fetchPeerBenchmark(
     .lte('ts_day', monthEnd)
     .in('metric', ENERGY_METRICS);
   const kwhBySite = new Map<string, number>();
-  (rows ?? []).forEach((r: any) => {
+  (rows ?? []).forEach((r: MetricRow) => {
     if (r.value_sum == null) return;
     const sid = siteByDevice.get(r.device_id);
     if (!sid) return;
@@ -435,9 +441,9 @@ async function fetchPeerBenchmark(
   });
 
   // 5) Build scoring rows (lower kWh/m² is better → higher score)
-  const useEui = peerSites.every((p: any) => p.area_m2 && p.area_m2 > 0);
+  const useEui = peerSites.every((p: PeerSiteRow) => !!p.area_m2 && p.area_m2 > 0);
   const scored = peerSites
-    .map((p: any) => {
+    .map((p: PeerSiteRow) => {
       const kwh = kwhBySite.get(p.id) ?? null;
       if (kwh == null || kwh <= 0) return null;
       const metric = useEui ? kwh / Number(p.area_m2) : kwh;

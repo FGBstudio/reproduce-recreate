@@ -82,11 +82,11 @@ export interface Project {
 }
 
 export const holdings: Holding[] = [
-  { id: "fgb-holding", name: "FGB Holding", logo: "/green.png" },
+  { id: "fgb-holding", name: "FGB Holding", logo: "/green.webp" },
 ];
 
 export const brands: Brand[] = [
-  { id: "fgb", name: "FGB", holdingId: "fgb-holding", logo: "/green.png" },
+  { id: "fgb", name: "FGB", holdingId: "fgb-holding", logo: "/green.webp" },
 ];
 
 export const regions: Record<string, Region> = {

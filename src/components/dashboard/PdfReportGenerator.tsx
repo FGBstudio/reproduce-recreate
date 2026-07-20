@@ -130,7 +130,10 @@ const getImageDimensions = (base64: string): Promise<{ width: number; height: nu
 const captureChartAsImage = async (ref: React.RefObject<HTMLDivElement | null>): Promise<string | null> => {
   if (!ref?.current) return null;
   try {
+    // windowWidth fissa: su mobile i chart sono stretti; senza questo il PDF
+    // conterrebbe grafici minuscoli catturati alla larghezza del telefono
     const canvas = await html2canvas(ref.current, {
+      windowWidth: 1200,
       backgroundColor: '#ffffff',
       scale: 2.5,
       logging: false,
@@ -797,6 +800,21 @@ export const generatePdfReport = async ({
 
   onProgress?.(t.progress.savingPdf);
   const filename = `Report_${project.name.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
+  // Su app nativa: share sheet di sistema (WhatsApp, Mail, AirDrop...) invece
+  // del download del blob, che su mobile è goffo e spesso "sparisce".
+  const { Capacitor } = await import("@capacitor/core");
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { Filesystem, Directory } = await import("@capacitor/filesystem");
+      const { Share } = await import("@capacitor/share");
+      const base64 = doc.output("datauristring").split(",")[1];
+      const write = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache });
+      await Share.share({ title: filename, files: [write.uri] });
+      return;
+    } catch (e) {
+      console.error("Native share failed, fallback to download", e);
+    }
+  }
   doc.save(filename);
 };
 

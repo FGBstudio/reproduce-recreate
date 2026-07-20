@@ -103,7 +103,7 @@ const MobileBurgerMenu = ({
 
           {/* Language
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Lingua / Language</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-3">Lingua / Language</p>
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-3 w-full p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/8"
@@ -122,7 +122,7 @@ const MobileBurgerMenu = ({
           {/* Global Filters */}
           {(canChangeHolding || canChangeBrand) && (
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.global_filters')}</p>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.global_filters')}</p>
               <div className="space-y-2">
                 {canChangeHolding && (
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/8">
@@ -136,7 +136,7 @@ const MobileBurgerMenu = ({
                         if (val !== "all") setTimeout(() => onClose(), 250);
                       }}
                     >
-                      <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
+                      <SelectTrigger className="flex-1 min-h-[44px] border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
                         <SelectValue placeholder={t('menu.all_holdings')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -159,7 +159,7 @@ const MobileBurgerMenu = ({
                         if (val !== "all") setTimeout(() => onClose(), 250);
                       }}
                     >
-                      <SelectTrigger className="flex-1 h-7 border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
+                      <SelectTrigger className="flex-1 min-h-[44px] border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
                         <SelectValue placeholder={t('menu.all_brands')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -177,7 +177,7 @@ const MobileBurgerMenu = ({
 
           {/* User settings */}
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.user_settings')}</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-3">{t('menu.user_settings')}</p>
             <div className="space-y-2">
               {user && (
                 <div className="p-3 rounded-xl bg-white/5 border border-white/8">

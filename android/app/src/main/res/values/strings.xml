@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FGB Monitoring</string>
+    <string name="title_activity_main">FGB Monitoring</string>
+    <string name="package_name">com.fgbstudio.monitoring</string>
+    <string name="custom_url_scheme">com.fgbstudio.monitoring</string>
+</resources>

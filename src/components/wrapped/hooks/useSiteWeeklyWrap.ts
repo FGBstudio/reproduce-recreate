@@ -4,6 +4,12 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+
+// ── Tipi riga delle query Supabase usate in questo hook ──────────────────────
+type DeviceRow = { id: string; category?: string | null; site_id?: string };
+type EnergyRow = { device_id: string; ts_day: string; value_sum: number | null; metric?: string };
+type MetricRow = { device_id?: string; ts_day?: string; ts?: string; value_sum?: number | null; value_avg?: number | null; value?: number | null; metric?: string };
+type PeerSiteRow = { id: string; name?: string | null; area_m2?: number | null };
 import {
   currentISOWeek, previousISOWeek, pctDelta, co2KgFromKwh, treesEquivFromCo2Kg, eui,
 } from '../lib/wrappedMath';
@@ -60,7 +66,7 @@ async function fetchEnergyDailyForSite(siteId: string, start: string, end: strin
     .select('id')
     .eq('site_id', siteId)
     .eq('category', 'general');
-  const deviceIds = (devs ?? []).map((d: any) => d.id);
+  const deviceIds = (devs ?? []).map((d: DeviceRow) => d.id);
   if (deviceIds.length === 0) return [];
 
   const { data } = await supabase
@@ -72,7 +78,7 @@ async function fetchEnergyDailyForSite(siteId: string, start: string, end: strin
     .in('metric', ENERGY_METRICS);
 
   const byDay = new Map<string, number>();
-  (data ?? []).forEach((r: any) => {
+  (data ?? []).forEach((r: MetricRow) => {
     if (r.value_sum == null) return;
     byDay.set(r.ts_day, (byDay.get(r.ts_day) ?? 0) + Number(r.value_sum));
   });
@@ -94,7 +100,7 @@ async function fetchAirCo2(siteId: string, start: string, end: string): Promise<
     .select('id')
     .eq('site_id', siteId)
     .eq('device_type', 'air_quality');
-  const deviceIds = (devs ?? []).map((d: any) => d.id);
+  const deviceIds = (devs ?? []).map((d: DeviceRow) => d.id);
   if (deviceIds.length === 0) return [];
 
   const { data } = await supabase
@@ -106,7 +112,7 @@ async function fetchAirCo2(siteId: string, start: string, end: string): Promise<
     .in('metric', CO2_METRICS);
 
   const groups = new Map<string, number[]>();
-  (data ?? []).forEach((r: any) => {
+  (data ?? []).forEach((r: MetricRow) => {
     if (r.value_avg == null) return;
     if (!groups.has(r.ts_day)) groups.set(r.ts_day, []);
     groups.get(r.ts_day)!.push(Number(r.value_avg));
