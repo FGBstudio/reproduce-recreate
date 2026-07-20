@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Project } from "@/lib/data";
 import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, AlertTriangle, ArrowUpRight, RotateCcw, Fan, Lightbulb, Plug, MoreHorizontal, Info } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { co2ToScore } from "@/lib/airQuality";
+import { co2ToScore, computeAirIndex } from "@/lib/airQuality";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRealTimeLatestData } from "@/hooks/useRealTimeTelemetry";
@@ -596,7 +596,9 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
   // Calcolo lo score medio periodo con la stessa formula usata in airStatus (CO2 → 0-100).
   // co2ToScore: fonte canonica in lib/airQuality
   const currentScore = isCardStale ? undefined : (typeof status?.score === 'number' ? status.score : undefined);
-  const avgScore = typeof avgCo2 === 'number' ? co2ToScore(avgCo2) : undefined;
+  // Score medio periodo: stessa formula sintetica multi-parametro applicata alle medie.
+  const avgIndex = averageMetrics ? computeAirIndex(averageMetrics) : null;
+  const avgScore = avgIndex ? avgIndex.score : (typeof avgCo2 === 'number' ? co2ToScore(avgCo2) : undefined);
   const showAvgScore = avgScore != null && currentScore != null && avgScore > 0;
   const scoreDelta = showAvgScore ? currentScore - avgScore : 0;
   const isScoreBetter = scoreDelta > 0; // score più alto = aria migliore
