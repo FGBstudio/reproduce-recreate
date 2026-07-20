@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Header from "@/components/dashboard/Header";
 import RegionNav from "@/components/dashboard/RegionNav";
 import RegionOverlay from "@/components/dashboard/RegionOverlay";
@@ -167,9 +167,45 @@ const Index = () => {
     setSelectedProject(project);
   };
 
+  // ── Back nativo per la vista sito ──
+  // Il sito è puro stato React: senza una entry di history il tasto back
+  // Android (lib/native.ts fa history.back()) e lo swipe-back iOS
+  // uscirebbero dall'app invece di tornare alla mappa. All'apertura si pusha
+  // un'entry; popstate (gesto/tasto/freccia browser) chiude il sito.
+  const sitePushedRef = useRef(false);
+  useEffect(() => {
+    if (selectedProject && !sitePushedRef.current) {
+      window.history.pushState({ fgbSiteView: true }, "");
+      sitePushedRef.current = true;
+    }
+  }, [selectedProject]);
+  useEffect(() => {
+    const onPop = () => {
+      if (sitePushedRef.current) {
+        sitePushedRef.current = false;
+        // STORE_USER col progetto auto-aperto non può chiudere: ripristina l'entry
+        if (clientRole === 'STORE_USER' && autoOpenProject) {
+          window.history.pushState({ fgbSiteView: true }, "");
+          sitePushedRef.current = true;
+          return;
+        }
+        setSelectedProject(null);
+        setInitialSection(undefined);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [clientRole, autoOpenProject]);
+
   const handleCloseProject = () => {
     // If STORE_USER, don't allow closing their only project
     if (clientRole === 'STORE_USER' && autoOpenProject) {
+      return;
+    }
+    if (sitePushedRef.current) {
+      // Consuma l'entry di history: la chiusura effettiva avviene nel popstate,
+      // così freccia desktop e back nativo seguono lo stesso percorso
+      window.history.back();
       return;
     }
     setSelectedProject(null);

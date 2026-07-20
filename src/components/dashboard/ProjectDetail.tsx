@@ -56,6 +56,7 @@ import {
   getDemoAirDevices,
   getDemoAirDeviceId,
 } from "@/lib/data/demoSiteMocks";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { SiteAlertsWidget, filterAlertsByModule } from "./SiteAlertsWidget";
 import { SensorHealthWidget } from "./SensorHealthWidget";
 import EnergyWeatherCorrelation from "./EnergyWeatherCorrelation";
@@ -439,6 +440,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   // MODIFICA 2: Hook per recuperare i brand reali + mock
   const { brands } = useAllBrands();
+
+  // Overview mobile a schermo intero: niente header/barre/frecce, la vista
+  // gestisce da sé navigazione (CTA + chip) e controlli (barra glass in basso)
+  const isMobile = useIsMobile();
 
   // Fetch latest outdoor temperature from weather_data
   const [outdoorTemp, setOutdoorTemp] = useState<number | null>(null);
@@ -3361,6 +3366,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   if (!project) return null;
 
+  // Overview mobile = esperienza a schermo intero senza chrome
+  const isMobileOverview = isMobile && activeDashboard === "overview";
+
   const nextSlide = () => {
     if (currentSlide < totalSlides - 1) {
       setCurrentSlide(prev => prev + 1);
@@ -3479,9 +3487,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         
       </div>
 
-      {/* Header — safe-area top, sticky solid background */}
+      {/* Header — safe-area top, sticky solid background.
+          Nascosto nell'overview mobile: il back è affidato al gesto/tasto
+          nativo e il Wrapped si sposta dentro la vista. */}
       <div
-        className="absolute top-0 left-0 w-full flex justify-between items-center z-10"
+        className={`absolute top-0 left-0 w-full justify-between items-center z-10 ${isMobileOverview ? "hidden" : "flex"}`}
         style={{
           paddingTop: "max(0.75rem, env(safe-area-inset-top))",
           paddingBottom: "0.75rem",
@@ -3489,9 +3499,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           paddingRight: "max(1rem, env(safe-area-inset-right))",
         }}
       >
-        <button 
+        {/* Su mobile la freccia sparisce: si torna alla mappa col back di
+            sistema (hardware Android / swipe iOS, history gestita in Index) */}
+        <button
           onClick={onClose}
-          className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold text-foreground transition-all group border border-foreground/10"
+          className="hidden md:flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs md:text-sm font-semibold text-foreground transition-all group border border-foreground/10"
           style={{ minHeight: 44 }}
         >
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
@@ -3567,17 +3579,84 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         </label>
       </div>
 
-      {/* Main Content */}
+      {/* ── Overlay dell'overview mobile a schermo intero ── */}
+      {isMobileOverview && (
+        <>
+          {/* Wrapped: unica azione dell'header che sopravvive, dentro la vista */}
+          {project?.siteId && (
+            <button
+              onClick={() => openWrapped({
+                kind: 'site',
+                siteId: project.siteId!,
+                siteName: project.name,
+                areaM2: project.area_m2 ?? null,
+              })}
+              className="absolute z-30 w-11 h-11 rounded-full bg-white/15 backdrop-blur-xl border border-white/30 flex items-center justify-center active:scale-95 transition-transform"
+              style={{ top: "max(0.75rem, env(safe-area-inset-top))", right: "max(1rem, env(safe-area-inset-right))" }}
+              title="FGB Weekly Wrapped"
+            >
+              <Sparkles className="w-5 h-5 text-fgb-accent" />
+            </button>
+          )}
+          {/* Barra glass in basso: periodo + report PDF + settings — le stesse
+              funzioni della barra top, che qui è nascosta */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-white/15 backdrop-blur-xl border border-white/30 shadow-lg max-w-[calc(100vw-1.5rem)]"
+            style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          >
+            <TimePeriodSelector
+              value={timePeriod}
+              onChange={setTimePeriod}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
+            <Button
+              onClick={handleExportPdf}
+              disabled={isGeneratingPdf}
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0 bg-white/90 border-gray-200 rounded-full text-gray-800 hover:bg-fgb-secondary hover:text-foreground flex-shrink-0"
+              title={t('pd.export_pdf')}
+            >
+              {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            </Button>
+            <Button
+              onClick={() => setSettingsOpen(true)}
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0 bg-white/90 border-gray-200 rounded-full text-gray-800 hover:bg-fgb-secondary hover:text-foreground flex-shrink-0"
+              title={t('pd.project_settings')}
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Main Content — nell'overview mobile niente fasce sopra/sotto:
+          la vista occupa l'intero schermo */}
       <div
         className="absolute inset-0 flex flex-col"
-        style={{
+        style={isMobileOverview ? undefined : {
           paddingTop: "calc(3.5rem + max(1rem, env(safe-area-inset-top)))",
           paddingBottom: "max(3.5rem, calc(3.5rem + env(safe-area-inset-bottom)))",
         }}
       >
-        {/* Title Area with Dashboard Tabs */}
+        {/* Overlay di progresso PDF: la generazione blocca il main thread
+            per secondi su mobile — senza feedback sembra un freeze. Sta FUORI
+            dal blocco tab (hidden nell'overview mobile: display:none su un
+            antenato nasconderebbe anche i position:fixed). */}
+        {isGeneratingPdf && (
+          <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-white" />
+            <div className="text-white text-sm font-medium px-6 text-center">{pdfProgress || "Generazione report..."}</div>
+          </div>
+        )}
+
+        {/* Title Area with Dashboard Tabs — nascosta nell'overview mobile
+            (periodo/report/settings passano alla barra glass in basso) */}
         <div
-          className="mb-2 md:mb-4 relative z-20"
+          className={`mb-2 md:mb-4 relative z-20 ${isMobileOverview ? "hidden" : ""}`}
           style={{
             paddingLeft: "max(1rem, env(safe-area-inset-left))",
             paddingRight: "max(1rem, env(safe-area-inset-right))",
@@ -3650,10 +3729,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <Award className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             )}
+            {/* Bills: non integrato in modalità app — tab solo desktop */}
             {hasBillAnalysis && (
-              <button 
+              <button
                 onClick={() => handleDashboardChange("bills")}
-                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full hidden md:flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                   activeDashboard === "bills" 
                     ? "bg-fgb-secondary text-foreground" 
                     : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3688,14 +3768,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   </>
                 )}
               </Button>
-              {/* Overlay di progresso PDF: la generazione blocca il main thread
-                  per secondi su mobile — senza feedback sembra un freeze */}
-              {isGeneratingPdf && (
-                <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-white" />
-                  <div className="text-white text-sm font-medium px-6 text-center">{pdfProgress || "Generazione report..."}</div>
-                </div>
-              )}
               {/* Settings Button */}
               <Button
                 onClick={() => setSettingsOpen(true)}
@@ -3756,7 +3828,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 Su mobile l'overview è a piena altezza e gestisce da sé lo
                 scroll a sezioni: niente padding né scroll del contenitore */}
             {activeDashboard === "overview" && (
-              <div className="w-full flex-shrink-0 overflow-hidden px-4 md:overflow-y-auto md:pb-4 md:px-0">
+              <div className="w-full flex-shrink-0 overflow-hidden md:overflow-y-auto md:pb-4">
                 <OverviewSection 
                   project={project ? { ...project, timezone: siteTimezone } : null} 
                   moduleConfig={resolvedModuleConfig} 
@@ -3766,6 +3838,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   energyAverages={energyPeriodAverages}
                   onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
                   benchmarkMatrix={benchmarkMatrix}
+                  certifications={projectCertifications}
                 />
               </div>
             )}
@@ -6209,8 +6282,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           </div>
         </div>
 
-        {/* Pagination Dots */}
-        <div className="flex justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20">
+        {/* Pagination Dots — nell'overview mobile la banda sparisce
+            (la vista ha il proprio scroll a sezioni) */}
+        <div className={`justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20 ${isMobileOverview ? "hidden" : "flex"}`}>
           <button onClick={prevSlide} disabled={currentSlide === 0} className="w-11 h-11 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronLeft className="w-4 h-4" />
           </button>

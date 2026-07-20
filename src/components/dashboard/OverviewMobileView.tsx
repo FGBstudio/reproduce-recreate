@@ -15,7 +15,7 @@
  * carosello che intercetta gli swipe orizzontali.
  */
 
-import { Zap, Wind, Droplet, AlertTriangle } from "lucide-react";
+import { Zap, Wind, Droplet, AlertTriangle, Award } from "lucide-react";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL" | "NO_DATA";
@@ -65,6 +65,8 @@ interface OverviewMobileViewProps {
   verdictHeadline?: string;
   isRealData: boolean;
   onNavigate?: (tab: string) => void;
+  /** Certificazioni attive del sito (LEED, BREEAM, ...): sezione grigia dedicata */
+  certifications?: string[];
 }
 
 const VERDICT: Record<StatusLevel, string> = {
@@ -215,7 +217,7 @@ const ModuleScreen = ({
   <section className="h-full snap-start snap-always flex flex-col shrink-0">
     <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} />
     <div
-      className={`flex-1 flex flex-col items-center text-center relative -mt-[26px] px-5 pt-11 pb-5 ${buildingClass} ${
+      className={`flex-1 flex flex-col items-center text-center relative -mt-[26px] px-5 pt-11 pb-16 ${buildingClass} ${
         light ? "text-[#01474b]" : "text-white"
       }`}
       style={{ clipPath: "polygon(0 26px, 7% 0, 93% 0, 100% 26px, 100% 100%, 0 100%)" }}
@@ -271,7 +273,7 @@ const ModuleScreen = ({
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, periodLabel, overall, energy, air, water, moduleConfig,
   power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, fingerprintAxes,
-  verdictHeadline, isRealData, onNavigate,
+  verdictHeadline, isRealData, onNavigate, certifications,
 }: OverviewMobileViewProps) => {
   const energyRatio = ratioFromLimit(power.total, energyLimitKw);
   const energyPct = energyLimitKw ? Math.round(energyRatio * 100) : undefined;
@@ -285,9 +287,10 @@ export const OverviewMobileView = ({
   ];
 
   return (
-    <div className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth motion-reduce:scroll-auto -mx-4">
+    <div className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth motion-reduce:scroll-auto">
       {/* ── 1 · HERO: score complessivo ── */}
-      <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-5 pt-10 pb-4 bg-gradient-to-b from-[#016368] via-[#009193] to-[#33a7a9]">
+      {/* pb-16: clearance per la barra periodo/report/settings in overlay */}
+      <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-5 pt-10 pb-16 bg-gradient-to-b from-[#016368] via-[#009193] to-[#33a7a9]">
         <div className="font-bold text-[19px] tracking-wide">{siteName}</div>
         <div className="text-[11px] opacity-80 tracking-[0.08em]">
           {[city, typeof outdoorTemp === "number" ? `${Math.round(outdoorTemp)}°` : null, periodLabel]
@@ -426,8 +429,24 @@ export const OverviewMobileView = ({
         onCta={() => moduleConfig.water.enabled && onNavigate?.("water")}
       />
 
+      {/* ── 4b · CERTIFICATIONS (grigio, solo se presenti) ── */}
+      {certifications && certifications.length > 0 && (
+        <ModuleScreen
+          city={city} outdoorTemp={outdoorTemp}
+          icon={Award} label="Certifications"
+          buildingClass="bg-gradient-to-b from-[#7d8a8f] to-[#5c696e]"
+          verdict="Certified"
+          scoreLine={`${certifications.length} active certification${certifications.length > 1 ? "s" : ""}`}
+          big={String(certifications.length)}
+          bigUnit="ACTIVE CERTIFICATIONS"
+          rows={certifications.slice(0, 6).map((c) => ({ label: c, value: "✓" }))}
+          ctaLabel="CERTIFICATIONS →"
+          onCta={() => onNavigate?.("certification")}
+        />
+      )}
+
       {/* ── 5 · FINGERPRINT + ALERTS ── */}
-      <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-5 bg-gradient-to-b from-[#016368] to-[#01474b]">
+      <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b]">
         <h4 className="m-0 text-[9px] font-bold tracking-[0.3em] opacity-75">SITE FINGERPRINT</h4>
         <FingerprintRadar axes={fingerprintAxes} />
 
