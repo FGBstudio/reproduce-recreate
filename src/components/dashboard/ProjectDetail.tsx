@@ -5005,7 +5005,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={co2TrendRef} data={co2MultiSeries as any} filename="co2-trend" onExpand={() => setFullscreenChart('co2Trend')} />
                       </div>
-                      <div className="relative w-full h-[200px]">
+                      <div className="relative w-full h-[260px] md:h-[200px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={co2MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -5023,7 +5023,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppm', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -5042,7 +5042,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={tvocTrendRef} data={tvocMultiSeries as any} filename="tvoc-trend" onExpand={() => setFullscreenChart('tvocTrend')} />
                       </div>
-                      <div className="relative w-full h-[200px]">
+                      <div className="relative w-full h-[260px] md:h-[200px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={tvocMultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -5060,7 +5060,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'ppb', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -5079,7 +5079,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={tempHumidityRef} data={tempHumidityMultiSeries as any} filename="temp-humidity" onExpand={() => setFullscreenChart('tempHumidity')} />
                       </div>
-                      <div className="relative w-full h-[220px]">
+                      <div className="relative w-full h-[280px] md:h-[220px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={tempHumidityMultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <defs>
@@ -5098,7 +5098,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <YAxis yAxisId="temp" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[(dataMin: number) => Math.floor(dataMin - 2), (dataMax: number) => Math.ceil(dataMax + 2)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '°C', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="humidity" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: '%RH', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={`${d.id}-temp`} yAxisId="temp" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_temp`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · Temp`} />
                             ))}
@@ -5125,7 +5125,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={pm25Ref} data={pm25MultiSeries as any} filename="pm25" onExpand={() => setFullscreenChart('pm25')} />
                       </div>
-                      <div className="relative w-full h-[250px]">
+                      <div className="relative w-full h-[300px] md:h-[250px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={pm25MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -5143,7 +5143,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -5166,7 +5166,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={pm10Ref} data={pm10MultiSeries as any} filename="pm10" onExpand={() => setFullscreenChart('pm10')} />
                       </div>
-                      <div className="relative w-full h-[250px]">
+                      <div className="relative w-full h-[300px] md:h-[250px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={pm10MultiSeries as any} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                             <defs>
@@ -5184,7 +5184,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <XAxis dataKey="time" tick={axisStyle} axisLine={airChartAxisLine} tickLine={airTickLine} interval="preserveStartEnd" minTickGap={24} />
                             <YAxis tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'µg/m³', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={d.id} type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={airDeviceLabelById.get(d.id) || d.id} />
                             ))}
@@ -5262,7 +5262,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                         </div>
                         <ExportButtons chartRef={coO3Ref} data={coO3MultiSeries as any} filename="co-o3" onExpand={() => setFullscreenChart('coO3')} />
                       </div>
-                      <div className="relative w-full h-[280px]">
+                      <div className="relative w-full h-[320px] md:h-[280px]">
                         <ZoomableChart width="100%" height="100%">
                           <LineChart data={coO3MultiSeries as any} margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                             <CartesianGrid {...gridStyle} />
@@ -5271,7 +5271,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <YAxis yAxisId="co" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'CO PPM', angle: -90, position: 'insideLeft', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <YAxis yAxisId="o3" orientation="right" tick={axisStyle} axisLine={false} tickLine={airTickLine} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tickFormatter={(val) => Math.round(val).toString()} label={{ value: 'O₃ PPB', angle: 90, position: 'insideRight', style: { ...axisStyle, textAnchor: 'middle' } }} />
                             <Tooltip {...tooltipStyle} formatter={(value: any, name: string) => [Number(value).toFixed(2), name]} itemSorter={(item: any) => -Number(item.value)} />
-                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 500, paddingTop: 12, fontFamily: "'Futura', sans-serif" }} />
+                            <Legend iconSize={9} wrapperStyle={{ fontSize: 10, fontWeight: 500, paddingTop: 6, fontFamily: "'Futura', sans-serif" }} />
                             {selectedAirDevices.map((d) => (
                               <Line key={`${d.id}-co`} yAxisId="co" type="monotone" dataKey={`d_${d.id.replace(/-/g, "")}_co`} stroke={airColorById.get(d.id)} strokeWidth={1.5} opacity={0.85} dot={false} name={`${airDeviceLabelById.get(d.id) || d.id} · CO`} />
                             ))}
