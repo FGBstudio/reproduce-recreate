@@ -15,7 +15,7 @@
  * carosello che intercetta gli swipe orizzontali.
  */
 
-import { Zap, Wind, Droplet, AlertTriangle, Award } from "lucide-react";
+import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud } from "lucide-react";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL" | "NO_DATA";
@@ -68,6 +68,14 @@ interface OverviewMobileViewProps {
   /** Certificazioni attive del sito (LEED, BREEAM, ...): sezione grigia dedicata */
   certifications?: string[];
 }
+
+// Loghi ufficiali già presenti in public/ (stessi path di SiteMarker).
+// Le certificazioni senza logo (ISO, energy audit) mostrano il nome.
+const CERT_LOGOS: Record<string, string> = {
+  LEED: "/leed_logo.webp",
+  WELL: "/well_logo.webp",
+  BREEAM: "/breeam_logo.webp",
+};
 
 const VERDICT: Record<StatusLevel, string> = {
   GOOD: "Good",
@@ -140,9 +148,23 @@ const Outdoor = ({ city, temp, extra }: { city?: string; temp?: number; extra?: 
     <div className="text-[9px] font-bold tracking-[0.26em] opacity-70">
       {(city || "OUTDOOR").toUpperCase()}{city ? " · OUTDOOR" : ""}
     </div>
-    <div className="text-[17px] font-semibold mt-1">
+    <div className="text-[17px] font-semibold mt-1 flex items-center justify-center gap-1.5">
+      <Cloud className="w-4 h-4 opacity-80" aria-hidden="true" />
       {typeof temp === "number" ? `${Math.round(temp)}°` : "—"}{extra ? ` · ${extra}` : ""}
     </div>
+    {/* skyline: i "comignoli" appoggiati sulla linea del tetto (come nel mockup) */}
+    <div
+      aria-hidden="true"
+      className="absolute inset-x-0 bottom-0 h-9 opacity-[0.16] pointer-events-none"
+      style={{
+        background: [
+          "linear-gradient(#01565b,#01565b) 5% 100%/24px 32px no-repeat",
+          "linear-gradient(#01565b,#01565b) 20% 100%/16px 20px no-repeat",
+          "linear-gradient(#01565b,#01565b) 70% 100%/28px 26px no-repeat",
+          "linear-gradient(#01565b,#01565b) 86% 100%/14px 15px no-repeat",
+        ].join(", "),
+      }}
+    />
   </div>
 );
 
@@ -213,6 +235,7 @@ const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onC
 const ModuleScreen = ({
   city, outdoorTemp, outdoorExtra, icon, label, verdict, scoreLine,
   values, limitRatio, big, bigUnit, bigColor, rows, ctaLabel, onCta, light, buildingClass, pitch,
+  centerContent,
 }: any) => (
   <section className="h-full snap-start snap-always flex flex-col shrink-0">
     <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} />
@@ -242,12 +265,16 @@ const ModuleScreen = ({
             <div className="text-[11px] opacity-75 tracking-wide">{scoreLine}</div>
             {values && <ValueRow items={values} light={light} />}
             {typeof limitRatio === "number" && <LimitBar ratio={limitRatio} light={light} />}
-            <div className="my-auto py-2">
-              <div className="text-[64px] font-bold leading-none tracking-tight" style={bigColor ? { color: bigColor } : undefined}>
-                {big}
+            {centerContent ? (
+              <div className="my-auto py-2 w-full">{centerContent}</div>
+            ) : (
+              <div className="my-auto py-2">
+                <div className="text-[64px] font-bold leading-none tracking-tight" style={bigColor ? { color: bigColor } : undefined}>
+                  {big}
+                </div>
+                <div className="text-[9px] tracking-[0.26em] font-bold opacity-75 mt-2">{bigUnit}</div>
               </div>
-              <div className="text-[9px] tracking-[0.26em] font-bold opacity-75 mt-2">{bigUnit}</div>
-            </div>
+            )}
             {rows && rows.length > 0 && (
               <div className="grid grid-cols-2 gap-x-8 gap-y-1 mb-4 text-[12.5px] w-full max-w-[250px]">
                 {rows.map((r: any) => (
@@ -292,9 +319,17 @@ export const OverviewMobileView = ({
       {/* pb-16: clearance per la barra periodo/report/settings in overlay */}
       <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-5 pt-10 pb-16 bg-gradient-to-b from-[#016368] via-[#009193] to-[#33a7a9]">
         <div className="font-bold text-[19px] tracking-wide">{siteName}</div>
-        <div className="text-[11px] opacity-80 tracking-[0.08em]">
-          {[city, typeof outdoorTemp === "number" ? `${Math.round(outdoorTemp)}°` : null, periodLabel]
-            .filter(Boolean).join(" · ").toUpperCase()}
+        <div className="text-[11px] opacity-80 tracking-[0.08em] flex items-center justify-center gap-1">
+          <span>{(city || "").toUpperCase()}</span>
+          {typeof outdoorTemp === "number" && (
+            <>
+              <span>·</span>
+              <span className="flex items-center gap-0.5">
+                {Math.round(outdoorTemp)}° <Cloud className="w-3.5 h-3.5" aria-hidden="true" />
+              </span>
+            </>
+          )}
+          <span>· {periodLabel.toUpperCase()}</span>
         </div>
         {isRealData && (
           <div className="mt-1.5">
@@ -437,9 +472,26 @@ export const OverviewMobileView = ({
           buildingClass="bg-gradient-to-b from-[#7d8a8f] to-[#5c696e]"
           verdict="Certified"
           scoreLine={`${certifications.length} active certification${certifications.length > 1 ? "s" : ""}`}
-          big={String(certifications.length)}
-          bigUnit="ACTIVE CERTIFICATIONS"
-          rows={certifications.slice(0, 6).map((c) => ({ label: c, value: "✓" }))}
+          centerContent={
+            /* I loghi ufficiali al centro, distribuiti uniformemente;
+               chip bianco per leggibilità sul grigio */
+            <div className="flex flex-wrap items-center justify-evenly gap-6 px-2">
+              {certifications.slice(0, 6).map((c) => (
+                <div
+                  key={c}
+                  className="w-[104px] h-[104px] rounded-2xl bg-white shadow-lg flex items-center justify-center p-3"
+                >
+                  {CERT_LOGOS[c] ? (
+                    <img src={CERT_LOGOS[c]} alt={c} className="max-w-full max-h-full object-contain" />
+                  ) : (
+                    <span className="text-[13px] font-bold text-[#5c696e] text-center leading-tight">
+                      {c.replace(/_/g, " ")}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          }
           ctaLabel="CERTIFICATIONS →"
           onCta={() => onNavigate?.("certification")}
         />

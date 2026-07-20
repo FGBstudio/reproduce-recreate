@@ -3729,11 +3729,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 <Award className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             )}
-            {/* Bills: non integrato in modalità app — tab solo desktop */}
             {hasBillAnalysis && (
               <button
                 onClick={() => handleDashboardChange("bills")}
-                className={`w-11 h-11 md:w-10 md:h-10 rounded-full hidden md:flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
+                className={`w-11 h-11 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                   activeDashboard === "bills" 
                     ? "bg-fgb-secondary text-foreground" 
                     : "bg-white/80 dark:bg-foreground/50 text-gray-700 dark:text-gray-600 hover:bg-fgb-secondary/30 dark:hover:bg-foreground/80"
@@ -3839,6 +3838,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
                   benchmarkMatrix={benchmarkMatrix}
                   certifications={projectCertifications}
+                  outdoorTempC={outdoorTemp}
                 />
               </div>
             )}

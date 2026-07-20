@@ -46,6 +46,8 @@ interface OverviewSectionProps {
   benchmarkMatrix?: any[];
   /** Nomi delle certificazioni attive (per la sezione mobile) */
   certifications?: string[];
+  /** Temperatura esterna reale (weather_data), con fallback a project.data.temp */
+  outdoorTempC?: number | null;
 }
 
 const getStatusLevel = (score: number): StatusLevel => {
@@ -789,7 +791,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
 // ─────────────────────────────────────────────
 // MAIN COMPONENT EXPORT
 // ─────────────────────────────────────────────
-export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix, certifications }: OverviewSectionProps) => {
+export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix, certifications, outdoorTempC }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
   const isMobile = useIsMobile();
 
@@ -906,7 +908,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
       <OverviewMobileView
         siteName={project.name}
         city={project.address}
-        outdoorTemp={project.data?.temp}
+        outdoorTemp={outdoorTempC ?? project.data?.temp}
         periodLabel={periodLabel}
         overall={overallStatus}
         energy={energyStatus}
