@@ -159,7 +159,12 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
       spiderfyOnMaxZoom: true,
       iconCreateFunction: (cluster) => L.divIcon({
         className: "fgb-cluster",
-        html: `<div style="width:44px;height:44px;border-radius:9999px;background:#0b3a3d;border:2px solid #d9b87c;box-shadow:0 6px 16px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:#f6efe0;font-weight:700;font-size:14px;">${cluster.getChildCount()}</div>`,
+        html: `
+          <div style="position:relative;width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.40);border:0.5px solid rgba(255,255,255,0.9);box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            <img src="/green.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0.4;filter:brightness(0) invert(1);pointer-events:none;" />
+            <span style="position:relative;color:#fff;font-weight:700;font-size:14px;line-height:1;">${cluster.getChildCount()}</span>
+          </div>
+        `,
         iconSize: [44, 44],
         iconAnchor: [22, 22],
       }),
