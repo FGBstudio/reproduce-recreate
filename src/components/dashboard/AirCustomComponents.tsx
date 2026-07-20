@@ -113,8 +113,59 @@ const METRICS_CONFIG: Record<string, any> = {
   },
 };
 
-export const BuildingOverview = ({ 
-  selectedAirDevices, 
+// Etichette brevi per la vista mobile a card
+const METRIC_LABELS: Record<string, string> = {
+  'env.temperature': '°C Temp',
+  'env.humidity': '% Hum',
+  'iaq.co2': 'CO₂',
+  'iaq.voc': 'TVOC',
+  'iaq.pm25': 'PM2.5',
+  'iaq.pm10': 'PM10',
+  'iaq.co': 'CO ppm',
+  'iaq.o3': 'O₃ ppb',
+};
+
+// Cella metrica (valore + barra colore soglia) — condivisa tra la tabella
+// desktop e la lista card mobile.
+const MetricCell = ({ metric, avg, deviceIsLeed }: any) => {
+  const val = avg[metric];
+  const config = METRICS_CONFIG[metric];
+
+  // If this device physically doesn't measure this metric (LEED)
+  // or the value is null/missing, render an inert placeholder.
+  const unsupported = deviceIsLeed && (EXTENDED_AIR_METRICS as readonly string[]).includes(metric);
+  if (unsupported || val === undefined || val === null) {
+    return (
+      <div className="flex flex-col gap-1.5 w-full md:pr-5 opacity-40">
+        <div className="flex justify-between items-end">
+          <span className="text-[13px] font-medium text-slate-600">{unsupported ? 'n/a' : '—'}</span>
+          <span className="text-[9px] font-semibold text-slate-600 tracking-widest">{config.unit}</span>
+        </div>
+        <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden"></div>
+      </div>
+    );
+  }
+
+  const colorClass = config.getColor(val);
+  const min = config.min;
+  const range = config.max - min;
+  const percent = Math.max(0, Math.min(100, ((val - min) / range) * 100));
+
+  return (
+    <div className="flex flex-col gap-1.5 w-full md:pr-5">
+      <div className="flex justify-between items-end">
+        <span className="text-[13px] font-bold text-gray-700">{val.toFixed(1)}</span>
+        <span className="text-[9px] font-semibold text-slate-600 tracking-widest">{config.unit}</span>
+      </div>
+      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-1000 ${colorClass}`} style={{ width: `${percent}%`, minWidth: percent > 0 ? '4px' : '0' }}></div>
+      </div>
+    </div>
+  );
+};
+
+export const BuildingOverview = ({
+  selectedAirDevices,
   deviceAverages,
   airDeviceLabelById,
   airCardClass,
@@ -135,15 +186,18 @@ export const BuildingOverview = ({
         </div>
         
         {/* Aesthetic Legend Block */}
-        <div className="flex gap-4 items-center bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 text-[10px] uppercase font-bold text-slate-600 shadow-sm border-b-2">
+        <div className="flex flex-wrap gap-2 md:gap-4 items-center bg-gray-50/80 px-3 md:px-4 py-2 rounded-xl border border-gray-100 text-[10px] uppercase font-bold text-slate-600 shadow-sm border-b-2">
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></div> Optimal</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-sm"></div> Moderate</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></div> Poor</div>
-          
+
           <div className="relative group flex items-center ml-2 pl-4 border-l border-gray-200">
-             <Info className="w-4 h-4 text-teal-600 hover:text-teal-700 cursor-help transition-colors" />
-             {/* Tooltip */}
-             <div className="absolute right-0 top-full mt-2 w-[340px] p-4 bg-gray-900 rounded-xl text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+             {/* button + focus-within: su touch (niente hover) il tooltip si apre col tap */}
+             <button type="button" aria-label="Threshold reference" className="p-1 -m-1">
+               <Info className="w-4 h-4 text-teal-600 hover:text-teal-700 cursor-help transition-colors" />
+             </button>
+             {/* Tooltip — larghezza mai oltre lo schermo */}
+             <div className="absolute right-0 top-full mt-2 w-[min(340px,calc(100vw-2rem))] p-4 bg-gray-900 rounded-xl text-xs text-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
                <div className="font-bold text-sm mb-3 border-b border-gray-700 pb-2 text-gray-100">Threshold Reference Logic</div>
                <div className="grid grid-cols-4 gap-2 text-[10px] uppercase tracking-wider font-bold text-slate-600 mb-2">
                  <div className="col-span-1">Metric</div>
@@ -166,7 +220,43 @@ export const BuildingOverview = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto custom-scrollbar bg-white rounded-xl border border-gray-100 shadow-sm">
+      {/* MOBILE: lista card per device — la tabella a 9 colonne richiedeva
+          scroll laterale ed era illeggibile su 375px */}
+      <div className="md:hidden flex-1 space-y-3">
+        {selectedAirDevices.map((device: any) => {
+          const avg = deviceAverages[device.device_id] || deviceAverages[device.id] || {};
+          const deviceIsLeed = isLeedMonitor(device, avg);
+          const metrics = [
+            'env.temperature', 'env.humidity', 'iaq.co2', 'iaq.voc',
+            ...(showPM25 ? ['iaq.pm25'] : []),
+            ...(showPM10 ? ['iaq.pm10'] : []),
+            ...(showCO ? ['iaq.co'] : []),
+            ...(showO3 ? ['iaq.o3'] : []),
+          ];
+          return (
+            <div key={device.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-teal-800 truncate">{airDeviceLabelById.get(device.id)}</span>
+                {deviceIsLeed && (
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100 flex-shrink-0">LEED</span>
+                )}
+              </div>
+              <div className="text-[10px] text-slate-600 uppercase tracking-wider font-medium mt-0.5 mb-3 truncate">{device.device_id}</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {metrics.map((m) => (
+                  <div key={m}>
+                    <div className="text-[9px] uppercase tracking-widest font-bold text-slate-500 mb-1">{METRIC_LABELS[m]}</div>
+                    <MetricCell metric={m} avg={avg} deviceIsLeed={deviceIsLeed} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP: tabella completa (invariata) */}
+      <div className="hidden md:block flex-1 overflow-x-auto custom-scrollbar bg-white rounded-xl border border-gray-100 shadow-sm">
         <table className="w-full text-left border-collapse min-w-[600px] table-fixed">
           <thead>
             <tr className="border-b-2 border-gray-100/60 bg-gray-50/50">
@@ -186,42 +276,10 @@ export const BuildingOverview = ({
               const avg = deviceAverages[device.device_id] || deviceAverages[device.id] || {};
               const deviceIsLeed = isLeedMonitor(device, avg);
 
-              const renderCell = (metric: string) => {
-                const val = avg[metric];
-                const config = METRICS_CONFIG[metric];
-                
-                // If this device physically doesn't measure this metric (LEED)
-                // or the value is null/missing, render an inert placeholder.
-                const unsupported = deviceIsLeed && (EXTENDED_AIR_METRICS as readonly string[]).includes(metric);
-                if (unsupported || val === undefined || val === null) {
-                  return (
-                    <div className="flex flex-col gap-1.5 w-full pr-5 opacity-40">
-                      <div className="flex justify-between items-end">
-                        <span className="text-[13px] font-medium text-slate-600">{unsupported ? 'n/a' : '—'}</span>
-                        <span className="text-[9px] font-semibold text-slate-600 tracking-widest">{config.unit}</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden"></div>
-                    </div>
-                  );
-                }
-                
-                const colorClass = config.getColor(val);
-                const min = config.min;
-                const range = config.max - min;
-                const percent = Math.max(0, Math.min(100, ((val - min) / range) * 100));
-
-                return (
-                  <div className="flex flex-col gap-1.5 w-full pr-5">
-                    <div className="flex justify-between items-end">
-                      <span className="text-[13px] font-bold text-gray-700">{val.toFixed(1)}</span>
-                      <span className="text-[9px] font-semibold text-slate-600 tracking-widest">{config.unit}</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-1000 ${colorClass}`} style={{ width: `${percent}%`, minWidth: percent > 0 ? '4px' : '0' }}></div>
-                    </div>
-                  </div>
-                );
-              };
+              // Cella condivisa con la vista mobile (MetricCell, sopra)
+              const renderCell = (metric: string) => (
+                <MetricCell metric={metric} avg={avg} deviceIsLeed={deviceIsLeed} />
+              );
 
               return (
                 <tr key={device.id} className="hover:bg-teal-50/30 transition-colors group">
