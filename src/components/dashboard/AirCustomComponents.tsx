@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Wind, Activity, Thermometer, Droplets, Cloud, Gauge, Sparkles, ChevronUp, ChevronDown, Info } from 'lucide-react';
 import { getSupportedMetricsForDevices, isLeedMonitor, EXTENDED_AIR_METRICS } from '@/lib/airMonitorType';
 
@@ -323,6 +323,14 @@ export const AirHeatmap = ({
   // Use the helper for colors
   const getColor = (val: number, scale: any) => getHeatmapColor(val, scale);
 
+  // Label colonne: 1 ogni N, così non si accavallano ("20/0621/0622/06...")
+  // quando le celle sono più strette del testo della data.
+  const labelStep = Math.max(1, Math.ceil((heatmapGrid.cols?.length || 1) / 6));
+
+  // Tooltip su tap (il group-hover non esiste su touch): la cella selezionata
+  // mostra i suoi valori in un chip fisso sotto la griglia.
+  const [selectedCell, setSelectedCell] = useState<{ key: string; label: string; val: number } | null>(null);
+
   return (
     <div ref={heatmapRef} className={`${airCardClass} flex flex-col`}>
       <div className="flex justify-between items-center mb-4">
@@ -348,9 +356,9 @@ export const AirHeatmap = ({
             <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-slate-600">
                 {heatmapGrid.isYearView ? 'GG' : 'HH'}
             </div>
-            {heatmapGrid.cols.map((col: any) => (
-                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-slate-600 pb-1">
-                    {col.label}
+            {heatmapGrid.cols.map((col: any, i: number) => (
+                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-slate-600 pb-1 whitespace-nowrap">
+                    {i % labelStep === 0 ? col.label : ''}
                 </div>
             ))}
           </div>
@@ -366,10 +374,17 @@ export const AirHeatmap = ({
                   
                   {heatmapGrid.cols.map((col: any) => {
                       const val = heatmapGrid.valueMap.get(`${row}_${col.key}`) || 0;
+                      const cellKey = `${row}-${col.key}`;
+                      const cellLabel = heatmapGrid.isYearView ? `${row} ${col.label}` : `${col.label} ${row}:00`;
                       return (
-                          <div 
-                            key={`${row}-${col.key}`} 
-                            className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group"
+                          <div
+                            key={cellKey}
+                            onClick={() => val > 0 && setSelectedCell(
+                              selectedCell?.key === cellKey ? null : { key: cellKey, label: cellLabel, val }
+                            )}
+                            className={`flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group ${
+                              selectedCell?.key === cellKey ? 'ring-2 ring-teal-700 ring-offset-1 z-10' : ''
+                            }`}
                             style={{ backgroundColor: getColor(val, heatmapGrid.scale) }}
                           >
                             {val > 0 && (
@@ -387,6 +402,14 @@ export const AirHeatmap = ({
           ))}
         </div>
       </div>
+
+      {/* Chip valore della cella toccata — il tooltip hover non esiste su touch */}
+      {selectedCell && (
+        <div className="mt-2 flex items-center justify-between gap-3 text-xs bg-gray-900 text-foreground rounded-lg px-3 py-2 md:hidden">
+          <span className="font-bold">{selectedCell.label}</span>
+          <span>{selectedCell.val.toFixed(1)}</span>
+        </div>
+      )}
     </div>
   );
 };
