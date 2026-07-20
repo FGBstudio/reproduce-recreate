@@ -15,6 +15,8 @@ import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 import { useFingerprintVerdict } from "@/hooks/useFingerprintVerdict";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { OverviewMobileView } from "./OverviewMobileView";
 
 // ─────────────────────────────────────────────
 // Types & Config
@@ -787,7 +789,8 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
 // ─────────────────────────────────────────────
 export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
-  
+  const isMobile = useIsMobile();
+
   const liveData = useRealTimeLatestData(project.siteId);
   const powerLatest = useEnergyPowerByCategory(project.siteId);
 
@@ -883,6 +886,71 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
     },
     fallback: ruleVerdict,
   });
+
+  // ── Vista mobile: sezioni immersive a scorrimento ──
+  // Biforca SOLO la presentazione: tutti i valori qui sotto sono gli stessi
+  // calcolati sopra per il desktop, così le due viste non possono divergere.
+  // L'early return sta dopo tutti gli hook (Rules of Hooks rispettate).
+  if (isMobile) {
+    // Breakdown per categoria: si passano i valori REALI. Quando il sito ha il
+    // solo contatore generale, il desktop mostra una ripartizione stimata
+    // (logica interna a EnergyCard); qui le righe si nascondono invece di
+    // duplicare quel calcolo e rischiare numeri diversi tra le due viste.
+    const hasBreakdown = [powerLatest.hvac, powerLatest.lighting, powerLatest.plugs]
+      .some((v) => typeof v === 'number');
+    const realPower = powerLatest.isRealData && !powerLatest.isStale;
+
+    return (
+      <OverviewMobileView
+        siteName={project.name}
+        city={project.address}
+        outdoorTemp={project.data?.temp}
+        periodLabel={periodLabel}
+        overall={overallStatus}
+        energy={energyStatus}
+        air={airStatus}
+        water={waterStatus}
+        moduleConfig={moduleConfig}
+        power={{
+          total: realPower ? powerLatest.totalGeneral : undefined,
+          hvac: hasBreakdown ? powerLatest.hvac : undefined,
+          lighting: hasBreakdown ? powerLatest.lighting : undefined,
+          plugs: hasBreakdown ? powerLatest.plugs : undefined,
+          other: hasBreakdown ? powerLatest.other : undefined,
+        }}
+        energyAvgKw={energyAverages?.totalGeneral}
+        energyLimitKw={thresholds?.energy_power_limit_kw}
+        airMetrics={{
+          co2: liveData.metrics['iaq.co2'] ?? liveData.metrics['co2'],
+          avgCo2: airAverages?.['iaq.co2'],
+          co2Limit: thresholds?.co2_warning_ppm,
+          temperature: liveData.metrics['env.temperature'] ?? liveData.metrics['temperature'],
+          humidity: liveData.metrics['env.humidity'] ?? liveData.metrics['humidity'],
+          voc: liveData.metrics['iaq.voc'] ?? liveData.metrics['voc'],
+          pm25: liveData.metrics['iaq.pm25'] ?? liveData.metrics['pm25'],
+        }}
+        waterFlow={liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined}
+        alerts={{
+          criticalCount: alertStatus.criticalCount,
+          warningCount: alertStatus.warningCount,
+          list: (alertStatus.alerts || []).map((a: ThresholdAlert) => ({
+            title: a.deviceName ? `${a.deviceName}: ${a.message}` : a.message,
+            severity: a.severity,
+          })),
+        }}
+        fingerprintAxes={{
+          score: { label: "Score", value: overallStatus.score },
+          energy: { label: "Energy", value: moduleConfig.energy.enabled ? energyStatus.score : 0 },
+          air: { label: "Air", value: moduleConfig.air.enabled ? airStatus.score : 0 },
+          water: { label: "Water", value: moduleConfig.water.enabled ? waterStatus.score : 0 },
+          alerts: { label: "Alerts", value: alertFingerprintScore },
+        }}
+        verdictHeadline={verdict.headline}
+        isRealData={liveData.isRealData || powerLatest.isRealData}
+        onNavigate={onNavigate}
+      />
+    );
+  }
 
   return (
     <div className="px-3 md:px-16 mb-4 md:mb-8">

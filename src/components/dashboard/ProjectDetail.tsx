@@ -3752,9 +3752,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             className="flex h-full transition-transform duration-700 ease-in-out"
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
-            {/* OVERVIEW DASHBOARD */}
+            {/* OVERVIEW DASHBOARD
+                Su mobile l'overview è a piena altezza e gestisce da sé lo
+                scroll a sezioni: niente padding né scroll del contenitore */}
             {activeDashboard === "overview" && (
-              <div className="w-full flex-shrink-0 overflow-y-auto pb-4 px-4 md:px-0">
+              <div className="w-full flex-shrink-0 overflow-hidden px-4 md:overflow-y-auto md:pb-4 md:px-0">
                 <OverviewSection 
                   project={project ? { ...project, timezone: siteTimezone } : null} 
                   moduleConfig={resolvedModuleConfig} 
