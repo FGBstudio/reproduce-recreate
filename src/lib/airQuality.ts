@@ -74,29 +74,67 @@ export interface AirIndexResult {
   driver: PollutantKey; // inquinante peggiore
 }
 
+export interface AirIndexOptions {
+  /** Pollutant keys allowed to contribute. Others are ignored (LEED vs WELL). */
+  allowed?: Partial<Record<PollutantKey, boolean>>;
+  /**
+   * When true (default) drop a single obviously-anomalous pollutant if the
+   * others agree that the air is fine. Prevents a stuck / mis-calibrated
+   * sensor (e.g. VOC 2839 ppb) from forcing the whole site to 0/Critical.
+   */
+  suppressOutliers?: boolean;
+}
+
+/** Values above these caps are treated as sensor artifacts and dropped. */
+const SANITY_CAPS: Record<PollutantKey, number> = {
+  co2:  5000,
+  voc:  2000,
+  pm25: 500,
+  pm10: 500,
+  o3:   400,
+  co:   50,
+};
+
 /**
  * Calcola l'Air Quality Index sintetico da un dizionario di metriche telemetriche.
  * Ritorna `null` se nessun inquinante mappato è disponibile.
  */
 export function computeAirIndex(
   metrics: Record<string, number | undefined | null> | null | undefined,
+  options: AirIndexOptions = {},
 ): AirIndexResult | null {
   if (!metrics) return null;
+  const { allowed, suppressOutliers = true } = options;
   const components: Partial<Record<PollutantKey, number>> = {};
 
   (Object.keys(POLLUTANT_CURVES) as PollutantKey[]).forEach((key) => {
+    if (allowed && allowed[key] === false) return;
     const { best, worst, metricKeys } = POLLUTANT_CURVES[key];
     for (const mk of metricKeys) {
       const v = metrics[mk];
       if (typeof v === "number" && Number.isFinite(v)) {
+        // Sensor sanity clip: valori oltre la scala fisica plausibile → artefatto, ignora.
+        if (v > SANITY_CAPS[key]) return;
         components[key] = subScore(v, best, worst);
         return;
       }
     }
   });
 
-  const entries = Object.entries(components) as [PollutantKey, number][];
+  let entries = Object.entries(components) as [PollutantKey, number][];
   if (entries.length === 0) return null;
+
+  // Outlier suppression: se abbiamo ≥3 sub-score e uno solo è "critico" (<10)
+  // mentre gli altri sono ≥60, quel valore è quasi certamente un guasto sensore
+  // e viene rimosso dal calcolo dell'indice.
+  if (suppressOutliers && entries.length >= 3) {
+    const bad = entries.filter(([, s]) => s < 10);
+    const good = entries.filter(([, s]) => s >= 60);
+    if (bad.length === 1 && good.length >= entries.length - 1) {
+      entries = entries.filter(([k]) => k !== bad[0][0]);
+      delete components[bad[0][0]];
+    }
+  }
 
   let driver: PollutantKey = entries[0][0];
   let min = entries[0][1];
