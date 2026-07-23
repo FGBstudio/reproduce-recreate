@@ -44,6 +44,17 @@ const Auth = () => {
   const [requestMessage, setRequestMessage] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  // Bridge: "Create One" CTA in the landing panel switches this form to request mode
+  useEffect(() => {
+    const handler = () => {
+      setMode("request");
+      setError(null);
+      setSuccessMessage(null);
+    };
+    window.addEventListener("fgb:create-account", handler);
+    return () => window.removeEventListener("fgb:create-account", handler);
+  }, []);
+
   // INTERCETTAZIONE: Forza la UI in modalità aggiornamento se il context segnala il recovery
   useEffect(() => {
     if (isPasswordRecovery) {
