@@ -189,7 +189,7 @@ const Hero: React.FC<{ onScroll: () => void }> = ({ onScroll }) => (
 );
 
 /* ───────── Discovery of World (WATER / AIR / ENERGY) ───────── */
-type DiscoveryTile = { title: string; Icon: React.FC<{ className?: string; strokeWidth?: number; style?: React.CSSProperties }> };
+type DiscoveryTile = { title: string; Icon: React.ComponentType<any> };
 
 const DISCOVERY: DiscoveryTile[] = [
   { title: "WATER", Icon: Droplet },
