@@ -244,6 +244,13 @@ export type Database = {
             foreignKeyName: "audit_logs_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "audit_logs_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -399,6 +406,82 @@ export type Database = {
           },
         ]
       }
+      cert_collaborations: {
+        Row: {
+          admin_id: string | null
+          admin_note: string | null
+          certification_id: string
+          created_at: string
+          decided_at: string | null
+          estimated_hours: number | null
+          guest_pm_id: string
+          id: string
+          message: string | null
+          owner_pm_id: string
+          phase_ids: string[]
+          scope: Database["public"]["Enums"]["cert_collab_scope"]
+          status: Database["public"]["Enums"]["cert_collab_status"]
+          task_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          admin_id?: string | null
+          admin_note?: string | null
+          certification_id: string
+          created_at?: string
+          decided_at?: string | null
+          estimated_hours?: number | null
+          guest_pm_id: string
+          id?: string
+          message?: string | null
+          owner_pm_id: string
+          phase_ids?: string[]
+          scope?: Database["public"]["Enums"]["cert_collab_scope"]
+          status?: Database["public"]["Enums"]["cert_collab_status"]
+          task_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string | null
+          admin_note?: string | null
+          certification_id?: string
+          created_at?: string
+          decided_at?: string | null
+          estimated_hours?: number | null
+          guest_pm_id?: string
+          id?: string
+          message?: string | null
+          owner_pm_id?: string
+          phase_ids?: string[]
+          scope?: Database["public"]["Enums"]["cert_collab_scope"]
+          status?: Database["public"]["Enums"]["cert_collab_status"]
+          task_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cert_collaborations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cert_collaborations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "cert_collaborations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+        ]
+      }
       cert_payment_milestones: {
         Row: {
           amount: number
@@ -461,6 +544,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cert_payment_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "cert_payment_milestones_certification_id_fkey"
@@ -569,6 +659,13 @@ export type Database = {
             foreignKeyName: "cert_tasks_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "cert_tasks_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -613,6 +710,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cert_wbs_phases_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "cert_wbs_phases_certification_id_fkey"
@@ -702,6 +806,13 @@ export type Database = {
             foreignKeyName: "certification_milestones_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "certification_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -760,6 +871,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certification_stakeholders_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "certification_stakeholders_certification_id_fkey"
@@ -986,6 +1104,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_requests_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "change_requests_certification_id_fkey"
@@ -2850,6 +2975,13 @@ export type Database = {
             foreignKeyName: "payment_milestones_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "payment_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -2904,6 +3036,13 @@ export type Database = {
             foreignKeyName: "pm_calendar_slots_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "pm_calendar_slots_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -2916,6 +3055,84 @@ export type Database = {
           },
           {
             foreignKeyName: "pm_calendar_slots_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "view_milestone_hours_burn"
+            referencedColumns: ["milestone_id"]
+          },
+        ]
+      }
+      pm_weekly_allocations: {
+        Row: {
+          certification_id: string
+          created_at: string
+          has_conflict: boolean
+          has_overbudget: boolean
+          id: string
+          milestone_id: string | null
+          note: string | null
+          planned_hours: number
+          updated_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          certification_id: string
+          created_at?: string
+          has_conflict?: boolean
+          has_overbudget?: boolean
+          id?: string
+          milestone_id?: string | null
+          note?: string | null
+          planned_hours?: number
+          updated_at?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          certification_id?: string
+          created_at?: string
+          has_conflict?: boolean
+          has_overbudget?: boolean
+          id?: string
+          milestone_id?: string | null
+          note?: string | null
+          planned_hours?: number
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_weekly_allocations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_weekly_allocations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "pm_weekly_allocations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_hours_burn"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "pm_weekly_allocations_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "certification_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_weekly_allocations_milestone_id_fkey"
             columns: ["milestone_id"]
             isOneToOne: false
             referencedRelation: "view_milestone_hours_burn"
@@ -3068,6 +3285,13 @@ export type Database = {
             foreignKeyName: "project_allocations_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "project_allocations_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -3129,6 +3353,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_canvas_entries_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "project_canvas_entries_certification_id_fkey"
@@ -3214,6 +3445,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "project_tasks_certification_id_fkey"
@@ -3312,6 +3550,13 @@ export type Database = {
             foreignKeyName: "projects_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "projects_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -3365,6 +3610,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_budget_history_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "quotation_budget_history_certification_id_fkey"
@@ -3536,6 +3788,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_air_records_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "site_air_records_certification_id_fkey"
@@ -4026,6 +4285,13 @@ export type Database = {
             foreignKeyName: "site_energy_records_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "site_energy_records_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -4331,6 +4597,13 @@ export type Database = {
             foreignKeyName: "site_water_records_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "site_water_records_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
@@ -4630,6 +4903,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certifications"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_alerts_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
           },
           {
             foreignKeyName: "task_alerts_certification_id_fkey"
@@ -5459,6 +5739,27 @@ export type Database = {
           },
         ]
       }
+      view_cert_allocation_status: {
+        Row: {
+          budget: number | null
+          certification_id: string | null
+          handover_date: string | null
+          is_red: boolean | null
+          planned: number | null
+          pm_id: string | null
+          unallocated_hours: number | null
+          weeks_to_deadline: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certifications_pm_id_fkey"
+            columns: ["pm_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       view_cert_hours_burn: {
         Row: {
           allocated_hours: number | null
@@ -5501,10 +5802,28 @@ export type Database = {
             foreignKeyName: "certification_milestones_certification_id_fkey"
             columns: ["certification_id"]
             isOneToOne: false
+            referencedRelation: "view_cert_allocation_status"
+            referencedColumns: ["certification_id"]
+          },
+          {
+            foreignKeyName: "certification_milestones_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
             referencedRelation: "view_cert_hours_burn"
             referencedColumns: ["certification_id"]
           },
         ]
+      }
+      view_pm_week_load: {
+        Row: {
+          cap_effective: number | null
+          off_days: number | null
+          saturation_pct: number | null
+          total_planned: number | null
+          user_id: string | null
+          week_start: string | null
+        }
+        Relationships: []
       }
       view_resource_saturation: {
         Row: {
@@ -5854,6 +6173,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["device_type"]
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_cert_collaborator: {
+        Args: { _cert_id: string; _uid: string }
+        Returns: boolean
+      }
       is_cert_on_hold: { Args: { _cert_id: string }; Returns: boolean }
       is_cert_pm: {
         Args: { p_certification_id: string; p_user_id: string }
@@ -5985,6 +6308,13 @@ export type Database = {
         | "specialist"
         | "energy_modeler"
         | "cxa"
+      cert_collab_scope: "certification" | "phase" | "tasks"
+      cert_collab_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "changes_requested"
+        | "revoked"
       device_status: "online" | "offline" | "warning" | "error" | "maintenance"
       device_type:
         | "air_quality"
@@ -6171,6 +6501,14 @@ export const Constants = {
         "specialist",
         "energy_modeler",
         "cxa",
+      ],
+      cert_collab_scope: ["certification", "phase", "tasks"],
+      cert_collab_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "changes_requested",
+        "revoked",
       ],
       device_status: ["online", "offline", "warning", "error", "maintenance"],
       device_type: [
