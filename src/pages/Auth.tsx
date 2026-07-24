@@ -1,20 +1,45 @@
-import { useState, useEffect } from "react";
-import { COMPANY_STATS } from "@/lib/companyStats";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  User, Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft,
-  Building2, Briefcase, MessageSquare
-} from "lucide-react";
-import brandImg from "@/assets/brand-white.png";
 import FloatingBentoPanel from "@/components/auth/FloatingBentoPanel";
+
+const Auth = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading, isPasswordRecovery } = useAuth();
+  const { t } = useLanguage();
+
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && !isPasswordRecovery) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, authLoading, isPasswordRecovery, navigate]);
+
+  useEffect(() => {
+    if (isPasswordRecovery) {
+      window.dispatchEvent(new CustomEvent("fgb:open-login"));
+    }
+  }, [isPasswordRecovery]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-[100dvh] w-full">
+      <FloatingBentoPanel />
+    </div>
+  );
+};
+
+export default Auth;
 
 type AuthMode = "login" | "request" | "update_password";
 
