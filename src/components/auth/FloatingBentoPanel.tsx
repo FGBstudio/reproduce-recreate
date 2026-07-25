@@ -5,7 +5,6 @@ import Globe3D from "./Globe3D";
 import IdleOverlay from "./IdleOverlay";
 import CityTicker from "./CityTicker";
 import LoginModal from "./LoginModal";
-import { COMPANY_STATS } from "@/lib/companyStats";
 
 /* ───────── design tokens (Apple-minimal, FGB green) ───────── */
 const INK = "#1d1d1f";
@@ -31,9 +30,17 @@ const Hero: React.FC<{ onScroll: () => void; onLogin: () => void; blurGlobe: boo
       style={{ background: BG }}
     >
       <div className="w-full pt-8 px-8 flex items-center justify-between z-20">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: ACCENT }}>
-          Future Green Building
-        </p>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: ACCENT, boxShadow: `0 8px 20px -8px ${ACCENT}80` }}
+          >
+            <img src="/green.webp" alt="FGB" className="w-6 h-6 object-contain" style={{ filter: "brightness(0) invert(1)" }} />
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: ACCENT }}>
+            Future Green Building
+          </p>
+        </div>
         <button
           type="button"
           onClick={onLogin}
@@ -68,18 +75,6 @@ const Hero: React.FC<{ onScroll: () => void; onLogin: () => void; blurGlobe: boo
         transition={{ duration: 1, ease: EASE, delay: 0.3 }}
         className="w-full text-center px-8 z-10"
       >
-        <div className="flex items-center justify-center gap-10 mb-4">
-          {COMPANY_STATS.map((s) => (
-            <div key={s.label} className="flex flex-col items-center">
-              <span className="text-[clamp(1.25rem,2vw,1.75rem)] font-semibold tracking-tight" style={{ color: INK }}>
-                {s.value}
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: SUB }}>
-                {s.label}
-              </span>
-            </div>
-          ))}
-        </div>
         <h1 className="text-[clamp(1.5rem,2.6vw,2.4rem)] font-semibold tracking-tight" style={{ color: INK }}>
           Precisely measured. Globally connected.
         </h1>
@@ -100,12 +95,9 @@ const Hero: React.FC<{ onScroll: () => void; onLogin: () => void; blurGlobe: boo
 /* ───────── LEVEL 1 — Certifications ───────── */
 const CERTIFICATIONS = [
   { name: "BREEAM", src: "/breeam_logo.webp" },
-  { name: "Envision", src: "/envision.webp" },
   { name: "Fitwel", src: "/fitwel_logo.webp" },
   { name: "GRESB", src: "/logo_gresb.webp" },
   { name: "LEED", src: "/leed_logo.webp" },
-  { name: "LIFE", src: "/life_logo.webp" },
-  { name: "WELL", src: "/well_logo.webp" },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const Certifications: React.FC = () => (
