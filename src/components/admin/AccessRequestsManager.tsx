@@ -49,7 +49,7 @@ export const AccessRequestsManager = () => {
       }
       const { data, error } = await query;
       if (error) throw error;
-      setRequests(data || []);
+      setRequests((data || []) as any);
     } catch (error) {
       console.error('Error fetching access requests:', error);
       toast.error('Errore nel caricamento delle richieste');
