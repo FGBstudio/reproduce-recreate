@@ -153,10 +153,10 @@ export async function fetchDevices(siteId?: string): Promise<DbDevice[]> {
     return [];
   }
   
-  return data || [];
-}
-
-export async function fetchLatestTelemetry(siteId: string): Promise<DbTelemetryLatest[]> {
+  return (data || []) as any;
+ }
+ 
+ export async function fetchLatestTelemetry(siteId: string): Promise<DbTelemetryLatest[]> {
   if (!supabase) return [];
   
   const { data, error } = await supabase
@@ -212,7 +212,7 @@ export async function fetchTimeseries(
 }>> {
   if (!supabase) return [];
   
-  const { data, error } = await supabase.rpc('get_telemetry_timeseries', {
+  const { data, error } = await supabase.rpc('get_telemetry_timeseries' as any, {
     p_device_ids: deviceIds,
     p_metrics: metrics,
     p_start: start,
@@ -225,5 +225,5 @@ export async function fetchTimeseries(
     return [];
   }
   
-  return data || [];
+  return (data || []) as any;
 }

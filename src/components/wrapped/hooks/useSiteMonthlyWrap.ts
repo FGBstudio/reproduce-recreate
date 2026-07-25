@@ -24,7 +24,7 @@ import type { SiteWeeklyData, DailyKwh } from './useSiteWeeklyWrap';
 // ── Tipi riga delle query Supabase usate in questo hook ──────────────────────
 type DeviceRow = { id: string; category?: string | null; site_id?: string };
 type EnergyRow = { device_id: string; ts_day: string; value_sum: number | null; metric?: string };
-type MetricRow = { device_id?: string; ts_day?: string; ts?: string; value_sum?: number | null; value_avg?: number | null; value?: number | null; metric?: string };
+type MetricRow = { device_id?: string; ts_day?: string; ts?: string; ts_hour?: string; value_sum?: number | null; value_avg?: number | null; value?: number | null; metric?: string; id?: string; message?: string; severity?: string; status?: string; triggered_at?: string; resolved_at?: string };
 type PeerSiteRow = { id: string; name?: string | null; area_m2?: number | null };
 
 const ENERGY_METRICS = ['energy.active_import_kwh', 'energy.active_energy'];

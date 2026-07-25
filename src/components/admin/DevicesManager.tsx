@@ -154,7 +154,7 @@ export const DevicesManager = () => {
         .order('created_at', { ascending: false });
 
       if (devicesError) throw devicesError;
-      setDevices(devicesData || []);
+      setDevices((devicesData || []) as any);
 
       // Fetch all sites with brand and holding info
       const { data: sitesData, error: sitesError } = await supabase
@@ -266,7 +266,7 @@ export const DevicesManager = () => {
 
         const { error } = await supabase
           .from('devices')
-          .update(updates)
+          .update(updates as any)
           .in('id', Array.from(selectedDevices));
 
         if (error) throw error;

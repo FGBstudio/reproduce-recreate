@@ -103,7 +103,7 @@ export function useThresholdAlerts(
       } else if (data) {
         const mapped: ThresholdAlert[] = data.map(d => ({
           id: d.id,
-          severity: d.severity,
+          severity: d.severity as any,
           metric: d.metric,
           message: d.message,
           currentValue: d.value_at_trigger || d.current_value || 0,
@@ -112,7 +112,7 @@ export function useThresholdAlerts(
           hysteresis_pct: d.alert_rules?.hysteresis_pct || 5,
           recommendation: d.recommendation,
           timestamp: d.triggered_at,
-          status: d.status,
+          status: d.status as any,
           deviceId: d.device_id,
         }));
         setDbAlerts(mapped);

@@ -114,7 +114,7 @@ interface VerdictInput {
   alerts: { hasAlerts: boolean; criticalCount: number; warningCount: number };
 }
 
-interface Verdict { headline: string; reason: string; tone: StatusLevel }
+interface Verdict { headline: string; reason: string; tone: "GOOD" | "OK" | "WARNING" | "CRITICAL" }
 
 function buildFingerprintVerdict(v: VerdictInput): Verdict {
   if (v.alerts.criticalCount > 0) {
@@ -933,7 +933,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         airMetrics={{
           co2: liveData.metrics['iaq.co2'] ?? liveData.metrics['co2'],
           avgCo2: airAverages?.['iaq.co2'],
-          co2Limit: thresholds?.co2_warning_ppm,
+          co2Limit: thresholds?.air_co2_warning_ppm,
           temperature: liveData.metrics['env.temperature'] ?? liveData.metrics['temperature'],
           humidity: liveData.metrics['env.humidity'] ?? liveData.metrics['humidity'],
           voc: liveData.metrics['iaq.voc'] ?? liveData.metrics['voc'],

@@ -277,14 +277,14 @@ export async function fetchDevicesApi(params?: {
   const typeFilter = params?.device_type ?? params?.type;
   if (typeFilter) {
     if (Array.isArray(typeFilter)) {
-      query = query.in('device_type', typeFilter);
+      query = query.in('device_type', typeFilter as any);
     } else {
-      query = query.eq('device_type', typeFilter);
+      query = query.eq('device_type', typeFilter as any);
     }
   }
 
   if (params?.status) {
-    query = query.eq('status', params.status);
+    query = query.eq('status', params.status as any);
   }
 
   if (params?.model) {
