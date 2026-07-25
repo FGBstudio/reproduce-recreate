@@ -198,7 +198,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
         milestone_type: 'scorecard',
         status: m.score >= m.maxScore && m.maxScore > 0 ? 'achieved' : m.score > 0 ? 'in_progress' : 'pending',
       }));
-      await supabase.from('certification_milestones').insert(scorecardToInsert);
+      await supabase.from('certification_milestones').insert(scorecardToInsert as any);
 
       // 3. Aggiorna (UPSERT) la Timeline modificata dal PM
       if (timelineMilestones.length > 0) {
@@ -220,7 +220,7 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
             order_index: tm.order_index
           };
         });
-        await supabase.from('certification_milestones').upsert(timelineUpdates);
+        await supabase.from('certification_milestones').upsert(timelineUpdates as any);
       }
 
       queryClient.invalidateQueries({ queryKey: ['certifications'] });
