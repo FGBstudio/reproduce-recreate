@@ -103,7 +103,7 @@ export function useThresholdAlerts(
       } else if (data) {
         const mapped: ThresholdAlert[] = data.map(d => ({
           id: d.id,
-          severity: d.severity,
+          severity: d.severity as any,
           metric: d.metric,
           message: d.message,
           currentValue: d.value_at_trigger || d.current_value || 0,
