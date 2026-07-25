@@ -112,7 +112,7 @@ export function useThresholdAlerts(
           hysteresis_pct: d.alert_rules?.hysteresis_pct || 5,
           recommendation: d.recommendation,
           timestamp: d.triggered_at,
-          status: d.status,
+          status: d.status as any,
           deviceId: d.device_id,
         }));
         setDbAlerts(mapped);
