@@ -62,6 +62,11 @@ export default {
           "teal-ring": "hsl(var(--fgb-teal-ring))",
           navy: "hsl(var(--fgb-navy))",
           "navy-ring": "hsl(var(--fgb-navy-ring))",
+          "brand-light": "#9fd5d9",
+          "brand-medium": "#009193",
+          "brand-dark": "#016368",
+          "brand-accent": "#931841",
+          "brand-peach": "#f9cace",
         },
         lens: {
           card: "hsl(var(--lens-card))",
@@ -93,7 +98,6 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      // UNITO: Un solo blocco keyframes
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -108,7 +112,6 @@ export default {
           '100%': { transform: 'translateX(-50%)' },
         },
       },
-      // UNITO: Un solo blocco animation
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
