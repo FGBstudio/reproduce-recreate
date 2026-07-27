@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
+import { COMPANY_STATS } from "@/lib/companyStats";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
-import FloatingBentoPanel from "@/components/auth/FloatingBentoPanel";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Building2, Briefcase, MessageSquare, ArrowLeft } from "lucide-react";
-import { COMPANY_STATS } from "@/lib/companyStats";
-
-const brandImg = "/placeholder.svg";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  User, Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft,
+  Building2, Briefcase, MessageSquare
+} from "lucide-react";
+import brandImg from "@/assets/brand-white.png";
+import FloatingBentoPanel from "@/components/auth/FloatingBentoPanel";
 
 type AuthMode = "login" | "request" | "update_password";
 
@@ -41,17 +43,6 @@ const Auth = () => {
   const [jobTitle, setJobTitle] = useState("");
   const [requestMessage, setRequestMessage] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
-
-  // Bridge: "Create One" CTA in the landing panel switches this form to request mode
-  useEffect(() => {
-    const handler = () => {
-      setMode("request");
-      setError(null);
-      setSuccessMessage(null);
-    };
-    window.addEventListener("fgb:create-account", handler);
-    return () => window.removeEventListener("fgb:create-account", handler);
-  }, []);
 
   // INTERCETTAZIONE: Forza la UI in modalità aggiornamento se il context segnala il recovery
   useEffect(() => {
@@ -405,11 +396,10 @@ const Auth = () => {
                   <span className="text-foreground/70 font-bold text-2xl">{s.value}</span>
                   <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">{s.label}</span>
                 </div>
-              </div>
               ))}
             </div>
             <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-foreground/30">Powered by FGB Monitoring</p>
-          </div>
+          </div> {/* ← DIV CHIUSO QUI */}
         </footer>
       </div>
 
