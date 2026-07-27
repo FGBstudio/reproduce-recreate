@@ -1,9 +1,18 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import FloatingBentoPanel from "@/components/auth/FloatingBentoPanel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Building2, Briefcase, MessageSquare, ArrowLeft } from "lucide-react";
+import { COMPANY_STATS } from "@/lib/companyStats";
 
+const brandImg = "/placeholder.svg";
 
 type AuthMode = "login" | "request" | "update_password";
 
@@ -396,10 +405,11 @@ const Auth = () => {
                   <span className="text-foreground/70 font-bold text-2xl">{s.value}</span>
                   <span className="text-foreground/80 font-mono text-xs uppercase tracking-wider">{s.label}</span>
                 </div>
+              </div>
               ))}
             </div>
             <p className="text-[clamp(0.625rem,0.8vw,0.75rem)] text-foreground/30">Powered by FGB Monitoring</p>
-          </div> {/* ← DIV CHIUSO QUI */}
+          </div>
         </footer>
       </div>
 
