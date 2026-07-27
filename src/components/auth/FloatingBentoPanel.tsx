@@ -97,7 +97,7 @@ const CERTIFICATIONS = [
   { name: "LEED", src: "/leed_logo.webp" },
   { name: "LIFE", src: "/life_logo.webp" },
   { name: "WELL", src: "/well_logo.webp" },
-  { name: "ESG", src: "/esg_logo.webp" },
+  { name: "ESG", src: "/Logo_ESG.webp" },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const Certifications: React.FC = () => (
