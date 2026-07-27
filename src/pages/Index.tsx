@@ -8,6 +8,7 @@ import ProjectDetail from "@/components/dashboard/ProjectDetail";
 import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
 import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
 import WrappedPlayer from "@/components/wrapped/WrappedPlayer";
+import PostLoginOnboarding from "@/components/onboarding/PostLoginOnboarding";
 import { Project, MonitoringType } from "@/lib/data";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -26,6 +27,15 @@ const Index = () => {
   // Mobile-only state
   const [isBurgerOpen, setIsBurgerOpen] = useState(false);
   const [isKpiPanelOpen, setIsKpiPanelOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("fgb_onboarding_done") !== "1";
+  });
+
+  const dismissOnboarding = () => {
+    sessionStorage.setItem("fgb_onboarding_done", "1");
+    setShowOnboarding(false);
+  };
 
   // User scope detection for role-based routing
   const { clientRole, holdingId, brandId, siteId, allowedRegions, isLoading: scopeLoading } = useUserScope();
@@ -325,6 +335,9 @@ const Index = () => {
 
       {/* FGB Weekly Wrapped — fullscreen overlay player */}
       <WrappedPlayer />
+
+      {/* First-of-session immersive onboarding */}
+      {showOnboarding && <PostLoginOnboarding onComplete={dismissOnboarding} />}
     </div>
   );
 };
