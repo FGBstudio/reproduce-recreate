@@ -8,7 +8,7 @@ const IdleOverlay: React.FC<{
   delayMs?: number;
   onLoginClick?: () => void;
   onScrollHint?: () => void;
-}> = ({ targetRef, delayMs = 3000, onLoginClick, onScrollHint }) => {
+}> = ({ targetRef, delayMs = 3500, onLoginClick, onScrollHint }) => {
   const [visible, setVisible] = useState(false);
   const dismissedRef = useRef(false);
   const timerRef = useRef<number | null>(null);
