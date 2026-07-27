@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Globe from "react-globe.gl";
+import * as THREE from "three"; // <-- Importa il motore 3D nativo
 
 type GeoIP = { country_code?: string; latitude?: number; longitude?: number };
 
@@ -22,22 +23,23 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [countries, setCountries] = useState({ features: [] });
 
-  // 1. Fetch GeoJSON per i continenti vettoriali
+  // 1. Definisci il materiale nativo per gli oceani (FGB Dark)
+  const customGlobeMaterial = useMemo(() => {
+    return new THREE.MeshPhongMaterial({
+      color: "#016368", // Colore oceani
+      emissive: "#009193", // Leggero glow base (FGB Medium)
+      emissiveIntensity: 0.1,
+      shininess: 0.8,
+    });
+  }, []);
+
+  // 2. Fetch GeoJSON per i continenti vettoriali
   useEffect(() => {
     fetch('https://raw.githubusercontent.com/vasturiano/react-globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson')
       .then(res => res.json())
       .then(setCountries)
       .catch(console.error);
   }, []);
-
-  // 2. Forza il colore FGB Dark sull'Oceano (Sphere Material nativo)
-  useEffect(() => {
-    if (globeRef.current) {
-      const globeMaterial = globeRef.current.globeMaterial();
-      globeMaterial.color.set('#016368'); // Oceani FGB Dark
-      globeMaterial.roughness = 0.8;
-    }
-  }, [countries]);
 
   useEffect(() => {
     if (!wrapRef.current) return;
@@ -104,13 +106,14 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
         height={dims.h}
         backgroundColor="rgba(0,0,0,0)"
         globeImageUrl={null} 
+        globeMaterial={customGlobeMaterial} // <-- INIETTATO COME PROP
         showAtmosphere={true}
-        atmosphereColor="#009193" // Glow FGB Medium
+        atmosphereColor="#009193" // Glow atmosferico (FGB Medium)
         atmosphereAltitude={0.15}
         polygonsData={countries.features}
-        polygonCapColor={() => '#9fd5d9'} // Continenti FGB Light
+        polygonCapColor={() => '#9fd5d9'} // Continenti (FGB Light)
         polygonSideColor={() => '#016368'} 
-        polygonStrokeColor={() => '#009193'}
+        polygonStrokeColor={() => '#009193'} // Bordi
         pointsData={pointsData}
         pointLat={(d: any) => d.lat}
         pointLng={(d: any) => d.lng}
