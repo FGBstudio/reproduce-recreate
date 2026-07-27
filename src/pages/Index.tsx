@@ -9,7 +9,6 @@ import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
 import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
 import WrappedPlayer from "@/components/wrapped/WrappedPlayer";
 import PostLoginOnboarding from "@/components/onboarding/PostLoginOnboarding";
-import ServiceHub from "@/components/dashboard/ServiceHub";
 import { Project, MonitoringType } from "@/lib/data";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -32,14 +31,6 @@ const Index = () => {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem("fgb_onboarding_done") !== "1";
   });
-  const [showHub, setShowHub] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return sessionStorage.getItem("fgb_hub_seen") !== "1";
-  });
-  const dismissHub = () => {
-    sessionStorage.setItem("fgb_hub_seen", "1");
-    setShowHub(false);
-  };
 
   const dismissOnboarding = () => {
     sessionStorage.setItem("fgb_onboarding_done", "1");
@@ -347,11 +338,6 @@ const Index = () => {
 
       {/* First-of-session immersive onboarding */}
       {showOnboarding && <PostLoginOnboarding onComplete={dismissOnboarding} />}
-
-      {/* Service Hub — post-login welcome (skipped for STORE_USER auto-open) */}
-      {showHub && !isStoreUserLocked && !selectedProject && (
-        <ServiceHub onEnter={dismissHub} />
-      )}
     </div>
   );
 };
