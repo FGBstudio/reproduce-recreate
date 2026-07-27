@@ -290,5 +290,4 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
     </div>
   );
 };
-
 export default LoginForm;
