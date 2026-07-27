@@ -25,5 +25,4 @@ const LoginModal: React.FC<{
     </Dialog>
   );
 };
-
 export default LoginModal;
