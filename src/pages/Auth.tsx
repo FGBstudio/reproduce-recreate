@@ -40,6 +40,10 @@ const Auth = () => {
 };
 
 export default Auth;
+
+type AuthMode = "login" | "request" | "update_password";
+
+const Auth = () => {
   const navigate = useNavigate();
   // RADAR: Estratte le nuove variabili dal context
   const { login, isAuthenticated, isLoading: authLoading, isPasswordRecovery, updatePassword } = useAuth();
