@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { Award, ChevronDown, Droplet, Wind, Zap } from "lucide-react";
 import Globe3D from "./Globe3D";
 import IdleOverlay from "./IdleOverlay";
@@ -7,12 +7,14 @@ import CityTicker from "./CityTicker";
 import LoginModal from "./LoginModal";
 import { COMPANY_STATS } from "@/lib/companyStats";
 
-/* ───────── design tokens (Apple-minimal, FGB green) ───────── */
+/* ───────── design tokens (FGB Palette) ───────── */
 const INK = "#1d1d1f";
 const SUB = "#86868b";
 const BG = "#fbfbfd";
 const SURFACE = "#ffffff";
-const ACCENT = "#006367";
+// Variabili colore allineate al nuovo design system
+const BRAND_MEDIUM = "#009193"; 
+const BRAND_DARK = "#016368";
 const ACCENT_SOFT = "#a0d5d6";
 const EASE: [number, number, number, number] = [0.25, 1, 0.5, 1];
 
@@ -23,37 +25,26 @@ const Hero: React.FC<{ onScroll: () => void; onLogin: () => void; blurGlobe: boo
   blurGlobe,
 }) => {
   const heroRef = useRef<HTMLDivElement>(null);
+  
   return (
     <section
       ref={heroRef}
       id="top"
-      className="relative w-full min-h-[100dvh] snap-start overflow-hidden flex flex-col items-center justify-between"
+      className="relative w-full min-h-[100dvh] snap-start overflow-hidden flex flex-col items-center pt-24 justify-center"
       style={{ background: BG }}
     >
-      <div className="w-full pt-8 px-8 flex items-center justify-between z-20">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: ACCENT }}>
-          Future Green Building
-        </p>
-        <button
-          type="button"
-          onClick={onLogin}
-          className="px-5 py-2 rounded-full text-[12px] font-semibold uppercase tracking-wider text-white transition-transform hover:scale-[1.03]"
-          style={{ background: ACCENT, boxShadow: `0 10px 24px -10px ${ACCENT}80` }}
-        >
-          Sign in
-        </button>
-      </div>
+      {/* RIMOSSO: Il vecchio header testuale "Future Green Building" e i bottoni duplicati che causavano sovrapposizione */}
 
       <div
-        className="relative flex-1 w-full flex items-center justify-center transition-[filter] duration-500"
+        className="relative flex-1 w-full flex flex-col items-center justify-center transition-[filter] duration-500 mt-8"
         style={{ filter: blurGlobe ? "blur(14px) saturate(0.9)" : "none" }}
       >
-        <div className="relative w-[min(640px,72vw)] aspect-square">
+        <div className="relative w-[min(640px,72vw)] aspect-square z-10">
           <div
             aria-hidden
             className="absolute inset-[-15%] rounded-full pointer-events-none"
             style={{
-              background: `radial-gradient(circle at 50% 50%, ${ACCENT}22 0%, transparent 65%)`,
+              background: `radial-gradient(circle at 50% 50%, ${BRAND_MEDIUM}22 0%, transparent 65%)`,
               filter: "blur(30px)",
             }}
           />
@@ -66,7 +57,7 @@ const Hero: React.FC<{ onScroll: () => void; onLogin: () => void; blurGlobe: boo
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1, ease: EASE, delay: 0.3 }}
-        className="w-full text-center px-8 z-10"
+        className="w-full text-center px-8 z-10 mb-8"
       >
         <div className="flex items-center justify-center gap-10 mb-4">
           {COMPANY_STATS.map((s) => (
@@ -85,11 +76,11 @@ const Hero: React.FC<{ onScroll: () => void; onLogin: () => void; blurGlobe: boo
         </h1>
       </motion.div>
 
-      <div className="w-full mt-6">
+      <div className="w-full mt-2 z-10 opacity-70">
         <CityTicker />
       </div>
 
-      <button onClick={onScroll} className="mt-2 mb-4 flex flex-col items-center gap-1" style={{ color: SUB }}>
+      <button onClick={onScroll} className="mt-4 mb-6 flex flex-col items-center gap-1 z-20" style={{ color: SUB }}>
         <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Scroll</span>
         <ChevronDown className="w-4 h-4 animate-bounce" />
       </button>
@@ -116,15 +107,15 @@ const Certifications: React.FC = () => (
   >
     <div className="w-full max-w-[1080px] text-center">
       <div className="inline-flex items-center gap-2 justify-center mb-3">
-        <Award className="w-4 h-4" style={{ color: ACCENT }} />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: ACCENT }}>
+        <Award className="w-4 h-4" style={{ color: BRAND_DARK }} />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: BRAND_DARK }}>
           Level 1 · Certifications & Partners
         </p>
       </div>
       <h2 className="text-[clamp(1.5rem,2.5vw,2.25rem)] font-semibold tracking-tight" style={{ color: INK }}>
         Your path to Sustainability excellence.
         <br />
-        <span style={{ color: ACCENT }}>Precisely measured.</span>
+        <span style={{ color: BRAND_DARK }}>Precisely measured.</span>
       </h2>
 
       <div className="mt-14 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 justify-items-center">
@@ -152,7 +143,7 @@ const TILES: Tile[] = [
 const LynxHardwareAnimation: React.FC<{ Icon: Tile["Icon"] }> = ({ Icon }) => (
   <div
     className="relative w-full aspect-square rounded-3xl overflow-hidden"
-    style={{ background: `linear-gradient(160deg, ${SURFACE}, ${ACCENT}08)` }}
+    style={{ background: `linear-gradient(160deg, ${SURFACE}, ${BRAND_MEDIUM}08)` }}
   >
     <motion.div
       className="absolute left-1/2 top-1/2"
@@ -164,10 +155,10 @@ const LynxHardwareAnimation: React.FC<{ Icon: Tile["Icon"] }> = ({ Icon }) => (
         className="w-[110px] h-[110px] rounded-2xl flex items-center justify-center"
         style={{
           background: `linear-gradient(160deg, #fff, ${ACCENT_SOFT}55)`,
-          boxShadow: `0 20px 40px -15px ${ACCENT}55, inset 0 0 0 1px ${ACCENT}22`,
+          boxShadow: `0 20px 40px -15px ${BRAND_MEDIUM}55, inset 0 0 0 1px ${BRAND_MEDIUM}22`,
         }}
       >
-        <Icon className="w-14 h-14" strokeWidth={1.5} style={{ color: ACCENT }} />
+        <Icon className="w-14 h-14" strokeWidth={1.5} style={{ color: BRAND_DARK }} />
       </div>
     </motion.div>
   </div>
@@ -179,7 +170,7 @@ const Monitoring: React.FC = () => (
     className="relative w-full min-h-[100dvh] snap-start flex flex-col items-center justify-center px-8 py-20"
     style={{ background: BG }}
   >
-    <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: ACCENT }}>
+    <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: BRAND_DARK }}>
       Level 2 · Monitoring
     </p>
     <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-[1080px]">
@@ -211,7 +202,7 @@ const PricingCTA: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
   >
     <div className="w-full max-w-[1080px]">
       <div className="text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: ACCENT }}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: BRAND_DARK }}>
           Access
         </p>
         <h2 className="mt-3 text-[clamp(1.75rem,3vw,2.5rem)] font-semibold tracking-tight" style={{ color: INK }}>
@@ -233,7 +224,7 @@ const PricingCTA: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
           >
             <div
               className="text-[clamp(2rem,3vw,2.75rem)] font-semibold tracking-tight"
-              style={{ color: ACCENT }}
+              style={{ color: BRAND_DARK }}
             >
               {p.title}
             </div>
@@ -252,7 +243,7 @@ const PricingCTA: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
           type="button"
           onClick={onCreate}
           className="h-14 px-10 rounded-full text-[15px] font-semibold text-white transition-transform hover:scale-[1.03]"
-          style={{ background: ACCENT, boxShadow: `0 20px 40px -12px ${ACCENT}80` }}
+          style={{ background: BRAND_DARK, boxShadow: `0 20px 40px -12px ${BRAND_DARK}80` }}
         >
           Create One →
         </button>
@@ -267,6 +258,7 @@ const FloatingBentoPanel: React.FC = () => {
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginMode, setLoginMode] = useState<"login" | "request">("login");
 
+  // Ascoltatori Eventi Globali
   useEffect(() => {
     const openLogin = () => { setLoginMode("login"); setLoginOpen(true); };
     const openRequest = () => { setLoginMode("request"); setLoginOpen(true); };
@@ -281,12 +273,23 @@ const FloatingBentoPanel: React.FC = () => {
   const scrollToNext = () => {
     scrollerRef.current?.scrollBy({ top: window.innerHeight, behavior: "smooth" });
   };
+  
   const scrollToId = (id: string) => {
     const el = scrollerRef.current?.querySelector(`#${id}`) as HTMLElement | null;
     if (el && scrollerRef.current) {
       scrollerRef.current.scrollTo({ top: el.offsetTop, behavior: "smooth" });
     }
   };
+
+  // --- LOGICA ANIMAZIONE SCROLL-LINKED DEL LOGO ---
+  const { scrollY } = useScroll({ container: scrollerRef });
+  
+  // Trasformazioni vincolate allo scroll (da 0px a 400px di scroll)
+  const logoScale = useTransform(scrollY, [0, 400], [1, 0.22]);
+  const logoTop = useTransform(scrollY, [0, 400], ["65%", "24px"]); // Parte nella metà inferiore
+  const logoLeft = useTransform(scrollY, [0, 400], ["50%", "32px"]); // Parte dal centro, finisce a sinistra
+  const logoX = useTransform(scrollY, [0, 400], ["-50%", "0%"]);
+  const logoY = useTransform(scrollY, [0, 400], ["-50%", "0%"]);
 
   return (
     <div
@@ -296,27 +299,58 @@ const FloatingBentoPanel: React.FC = () => {
     >
       <style>{`.fb-scroll::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Top nav — minimal, centered */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 pointer-events-none">
-        <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-8 text-[13px] font-medium pointer-events-auto" style={{ color: INK }}>
+      {/* IL LOGO FGB ANIMATO */}
+      <motion.img
+        src="/green.webp"
+        alt="FGB Logo"
+        style={{
+          position: "fixed",
+          top: logoTop,
+          left: logoLeft,
+          x: logoX,
+          y: logoY,
+          scale: logoScale,
+          transformOrigin: "top left",
+          zIndex: 110, // Costantemente sopra il resto
+        }}
+        className="w-[280px] md:w-[400px] pointer-events-none drop-shadow-2xl"
+      />
+
+      {/* TOP NAV: PULITA, ALLINEATA, NESSUNA SOVRAPPOSIZIONE */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-8 py-5 pointer-events-none">
+        
+        {/* Menu di Navigazione Centrale */}
+        <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-8 text-[13px] font-bold uppercase tracking-wider pointer-events-auto" style={{ color: BRAND_DARK }}>
           <button onClick={() => scrollToId("certifications")} className="hover:opacity-70 transition-opacity">Certifications</button>
           <button onClick={() => scrollToId("discovery")} className="hover:opacity-70 transition-opacity">Monitoring</button>
           <button onClick={() => scrollToId("pricing")} className="hover:opacity-70 transition-opacity">Access</button>
         </div>
-        <div className="ml-auto flex items-center gap-2 pointer-events-auto">
+        
+        {/* Blocco Pulsanti in Alto a Destra (Flexbox + Gap 16px) */}
+        <div className="ml-auto flex items-center gap-4 pointer-events-auto">
+          {/* SIGN IN: Stile Ghost */}
           <button
             type="button"
             onClick={() => { setLoginMode("login"); setLoginOpen(true); }}
-            className="px-5 py-2 text-xs font-semibold uppercase tracking-wider rounded-full border transition-all"
-            style={{ borderColor: `${ACCENT}55`, color: ACCENT, background: "rgba(255,255,255,0.7)", backdropFilter: "blur(10px)" }}
+            className="px-6 py-2 text-[12px] font-bold uppercase tracking-wider rounded-full transition-all duration-300 hover:bg-opacity-10"
+            style={{ 
+              backgroundColor: "transparent", 
+              border: `1px solid ${BRAND_MEDIUM}`, 
+              color: BRAND_MEDIUM 
+            }}
           >
             Sign in
           </button>
+          
+          {/* CREATE ONE: Stile Solid */}
           <button
             type="button"
             onClick={() => { setLoginMode("request"); setLoginOpen(true); }}
-            className="px-5 py-2 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all"
-            style={{ background: ACCENT, boxShadow: `0 8px 20px -8px ${ACCENT}80` }}
+            className="px-6 py-2 text-[12px] font-bold uppercase tracking-wider text-white rounded-full transition-all duration-300 hover:scale-105 shadow-lg"
+            style={{ 
+              backgroundColor: BRAND_DARK, 
+              boxShadow: `0 8px 20px -8px ${BRAND_DARK}80` 
+            }}
           >
             Create One
           </button>
