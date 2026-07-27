@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Globe from "react-globe.gl";
 
-const ACCENT = "#006367";
-
 type GeoIP = { country_code?: string; latitude?: number; longitude?: number };
 
 function countryToLatLng(cc?: string): { lat: number; lng: number } | null {
@@ -12,8 +10,7 @@ function countryToLatLng(cc?: string): { lat: number; lng: number } | null {
     IT: { lat: 41.9, lng: 12.5 }, FR: { lat: 46.2, lng: 2.2 }, DE: { lat: 51.1, lng: 10.4 },
     ES: { lat: 40.4, lng: -3.7 }, GB: { lat: 51.5, lng: -0.1 }, US: { lat: 39.8, lng: -98.6 },
     CA: { lat: 56.1, lng: -106.3 }, BR: { lat: -14.2, lng: -51.9 }, CN: { lat: 35.9, lng: 104.2 },
-    JP: { lat: 36.2, lng: 138.3 }, SG: { lat: 1.35, lng: 103.8 }, AE: { lat: 23.4, lng: 53.8 },
-    AU: { lat: -25.3, lng: 133.8 }, IN: { lat: 20.6, lng: 78.96 }, NL: { lat: 52.1, lng: 5.3 },
+    AE: { lat: 23.4, lng: 53.8 }, AU: { lat: -25.3, lng: 133.8 }, SG: { lat: 1.35, lng: 103.8 },
   };
   return map[c] || null;
 }
@@ -23,6 +20,24 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ w: 600, h: 600 });
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [countries, setCountries] = useState({ features: [] });
+
+  // 1. Fetch GeoJSON per i continenti vettoriali
+  useEffect(() => {
+    fetch('https://raw.githubusercontent.com/vasturiano/react-globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson')
+      .then(res => res.json())
+      .then(setCountries)
+      .catch(console.error);
+  }, []);
+
+  // 2. Forza il colore FGB Dark sull'Oceano (Sphere Material nativo)
+  useEffect(() => {
+    if (globeRef.current) {
+      const globeMaterial = globeRef.current.globeMaterial();
+      globeMaterial.color.set('#016368'); // Oceani FGB Dark
+      globeMaterial.roughness = 0.8;
+    }
+  }, [countries]);
 
   useEffect(() => {
     if (!wrapRef.current) return;
@@ -38,7 +53,6 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
   useEffect(() => {
     const g = globeRef.current;
     if (!g) return;
-    // initial camera + slow auto-rotate
     g.pointOfView({ lat: 30, lng: 10, altitude: 2.2 }, 0);
     const controls = g.controls();
     if (controls) {
@@ -48,6 +62,7 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
     }
   }, []);
 
+  // GeoIP pin logic
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -60,10 +75,10 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
           if (data) localStorage.setItem("fgb_geoip", JSON.stringify(data));
         }
         if (cancelled || !data) return;
-        const target =
-          (typeof data.latitude === "number" && typeof data.longitude === "number"
+        const target = (typeof data.latitude === "number" && typeof data.longitude === "number"
             ? { lat: data.latitude, lng: data.longitude }
             : countryToLatLng(data.country_code)) || null;
+            
         if (!target) return;
         setPin(target);
         setTimeout(() => {
@@ -73,34 +88,29 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
           if (controls) controls.autoRotate = false;
           g.pointOfView({ lat: target.lat, lng: target.lng, altitude: 1.8 }, 2200);
         }, 900);
-      } catch {
-        /* silent */
-      }
+      } catch {}
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const pointsData = useMemo(() => (pin ? [pin] : []), [pin]);
   const ringsData = useMemo(() => (pin ? [pin] : []), [pin]);
 
   return (
-    <div
-      ref={wrapRef}
-      className="w-full h-full flex items-center justify-center"
-      style={size ? { width: size, height: size } : undefined}
-    >
+    <div ref={wrapRef} className="w-full h-full flex items-center justify-center" style={size ? { width: size, height: size } : undefined}>
       <Globe
         ref={globeRef}
         width={dims.w}
         height={dims.h}
         backgroundColor="rgba(0,0,0,0)"
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-        showAtmosphere
-        atmosphereColor={ACCENT}
-        atmosphereAltitude={0.18}
+        globeImageUrl={null} 
+        showAtmosphere={true}
+        atmosphereColor="#009193" // Glow FGB Medium
+        atmosphereAltitude={0.15}
+        polygonsData={countries.features}
+        polygonCapColor={() => '#9fd5d9'} // Continenti FGB Light
+        polygonSideColor={() => '#016368'} 
+        polygonStrokeColor={() => '#009193'}
         pointsData={pointsData}
         pointLat={(d: any) => d.lat}
         pointLng={(d: any) => d.lng}
@@ -110,7 +120,7 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
         ringsData={ringsData}
         ringLat={(d: any) => d.lat}
         ringLng={(d: any) => d.lng}
-        ringColor={() => (t: number) => `rgba(0,99,103,${1 - t})`}
+        ringColor={() => (t: number) => `rgba(0,145,147,${1 - t})`}
         ringMaxRadius={5}
         ringPropagationSpeed={2}
         ringRepeatPeriod={1200}
