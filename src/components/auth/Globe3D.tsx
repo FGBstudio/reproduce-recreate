@@ -2,12 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Globe from "react-globe.gl";
 
 const ACCENT = "#006367";
-const LAND = "#0f2a2c";
-const OCEAN = "#0a1a1c";
-const BORDER = "rgba(160, 213, 214, 0.35)";
-
-const COUNTRIES_URL =
-  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 type GeoIP = { country_code?: string; latitude?: number; longitude?: number };
 
@@ -29,7 +23,6 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ w: 600, h: 600 });
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
-  const [polygons, setPolygons] = useState<any[]>([]);
 
   useEffect(() => {
     if (!wrapRef.current) return;
@@ -53,27 +46,6 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
       controls.autoRotateSpeed = 0.35;
       controls.enableZoom = false;
     }
-  }, []);
-
-  // Load high-fidelity country polygons (crisp continents on top of texture)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [{ feature }, topo] = await Promise.all([
-          import("topojson-client"),
-          fetch(COUNTRIES_URL).then((r) => r.json()),
-        ]);
-        if (cancelled) return;
-        const geo: any = feature(topo, topo.objects.countries);
-        setPolygons(geo.features || []);
-      } catch (e) {
-        /* silent — fallback to texture only */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {
@@ -124,16 +96,11 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
         width={dims.w}
         height={dims.h}
         backgroundColor="rgba(0,0,0,0)"
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
         bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         showAtmosphere
         atmosphereColor={ACCENT}
         atmosphereAltitude={0.18}
-        polygonsData={polygons}
-        polygonAltitude={0.008}
-        polygonCapColor={() => LAND}
-        polygonSideColor={() => OCEAN}
-        polygonStrokeColor={() => BORDER}
         pointsData={pointsData}
         pointLat={(d: any) => d.lat}
         pointLng={(d: any) => d.lng}
