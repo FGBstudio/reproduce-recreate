@@ -290,7 +290,7 @@ const FloatingBentoPanel: React.FC = () => {
   const logoLeft = useTransform(scrollY, [0, 400], ["220%", "32px"]); 
 
   // --- LOGICA ANIMAZIONE LOGO DESTRO (SPECULARE) ---
-  const logoRightScale = useTransform(scrollY, [0, 400], [1, 0.22]);
+  const logoRightScale = useTransform(scrollY, [0, 400], [1, 0.5]);
   const logoRightTop = useTransform(scrollY, [0, 400], ["300%", "140px"]);
   const logoRightRight = useTransform(scrollY, [0, 400], ["220%", "100px"]);
 
