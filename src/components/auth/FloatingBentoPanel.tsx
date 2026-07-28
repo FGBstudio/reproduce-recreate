@@ -290,6 +290,19 @@ const FloatingBentoPanel: React.FC = () => {
   const logoTop = useTransform(scrollY, [0, 400], ["330%", "24px"]);
   const logoLeft = useTransform(scrollY, [0, 400], ["250%", "32px"]); 
 
+  // --- LOGICA ANIMAZIONE LOGO SINISTRO ---
+  const logoScale = useTransform(scrollY, [0, 400], [1, 0.22]);
+  const logoTop = useTransform(scrollY, [0, 400], ["40%", "24px"]);
+  const logoLeft = useTransform(scrollY, [0, 400], ["15%", "32px"]); 
+
+  // --- NUOVA LOGICA: ANIMAZIONE LOGO DESTRO (SPECULARE) ---
+  const logoRightScale = useTransform(scrollY, [0, 400], [1, 0.22]);
+  const logoRightTop = useTransform(scrollY, [0, 400], ["40%", "24px"]);
+  
+  // Parte a 15% dal bordo destro (speculare al sinistro).
+  // Finisce a "260px" dal bordo destro (esattamente prima del blocco pulsanti Sign In / Create One).
+  const logoRightRight = useTransform(scrollY, [0, 400], ["15%", "260px"]);
+
   return (
     <div
       ref={scrollerRef}
@@ -309,6 +322,36 @@ const FloatingBentoPanel: React.FC = () => {
           scale: logoScale,
           transformOrigin: "top left",
           zIndex: 110, // Costantemente sopra il resto
+        }}
+        className="w-[280px] md:w-[400px] pointer-events-none drop-shadow-2xl"
+      />
+
+      {/* IL LOGO FGB ANIMATO - SINISTRA */}
+      <motion.img
+        src="/green.webp"
+        alt="FGB Logo Left"
+        style={{
+          position: "fixed",
+          top: logoTop,
+          left: logoLeft,
+          scale: logoScale,
+          transformOrigin: "top left",
+          zIndex: 110,
+        }}
+        className="w-[280px] md:w-[400px] pointer-events-none drop-shadow-2xl"
+      />
+
+      {/* IL LOGO FGB ANIMATO - DESTRA (SPECULARE) */}
+      <motion.img
+        src="/green.webp"
+        alt="FGB Logo Right"
+        style={{
+          position: "fixed",
+          top: logoRightTop,
+          right: logoRightRight, // Usiamo RIGHT invece di LEFT
+          scale: logoRightScale,
+          transformOrigin: "top right", // L'ancora è spostata in alto a DESTRA
+          zIndex: 110,
         }}
         className="w-[280px] md:w-[400px] pointer-events-none drop-shadow-2xl"
       />
