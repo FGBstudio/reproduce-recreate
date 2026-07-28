@@ -1,4 +1,4 @@
-package com.fgbstudio.monitoring;
+package com.fgb.world;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -9,8 +9,8 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * production apps must bundle the static `dist/` output instead.
  */
 const config: CapacitorConfig = {
-  appId: "com.fgbstudio.monitoring",
-  appName: "FGB Monitoring",
+  appId: "com.fgb.world",
+  appName: "FGB",
   webDir: "dist",
   plugins: {
     SplashScreen: {
