@@ -287,8 +287,8 @@ const FloatingBentoPanel: React.FC = () => {
   
   // Trasformazioni vincolate allo scroll (da 0px a 400px di scroll)
   const logoScale = useTransform(scrollY, [0, 400], [1, 0.22]);
-  const logoTop = useTransform(scrollY, [0, 400], ["350%", "24px"]);
-  const logoLeft = useTransform(scrollY, [0, 400], ["25%", "32px"]); 
+  const logoTop = useTransform(scrollY, [0, 400], ["330%", "24px"]);
+  const logoLeft = useTransform(scrollY, [0, 400], ["250%", "32px"]); 
 
   return (
     <div
