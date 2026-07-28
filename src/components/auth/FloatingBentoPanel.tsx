@@ -282,25 +282,16 @@ const FloatingBentoPanel: React.FC = () => {
     }
   };
 
-  // --- LOGICA ANIMAZIONE SCROLL-LINKED DEL LOGO ---
   const { scrollY } = useScroll({ container: scrollerRef });
   
-  // Trasformazioni vincolate allo scroll (da 0px a 400px di scroll)
-  const logoScale = useTransform(scrollY, [0, 400], [1, 0.22]);
-  const logoTop = useTransform(scrollY, [0, 400], ["330%", "24px"]);
-  const logoLeft = useTransform(scrollY, [0, 400], ["250%", "32px"]); 
-
   // --- LOGICA ANIMAZIONE LOGO SINISTRO ---
   const logoScale = useTransform(scrollY, [0, 400], [1, 0.22]);
   const logoTop = useTransform(scrollY, [0, 400], ["40%", "24px"]);
   const logoLeft = useTransform(scrollY, [0, 400], ["15%", "32px"]); 
 
-  // --- NUOVA LOGICA: ANIMAZIONE LOGO DESTRO (SPECULARE) ---
+  // --- LOGICA ANIMAZIONE LOGO DESTRO (SPECULARE) ---
   const logoRightScale = useTransform(scrollY, [0, 400], [1, 0.22]);
   const logoRightTop = useTransform(scrollY, [0, 400], ["40%", "24px"]);
-  
-  // Parte a 15% dal bordo destro (speculare al sinistro).
-  // Finisce a "260px" dal bordo destro (esattamente prima del blocco pulsanti Sign In / Create One).
   const logoRightRight = useTransform(scrollY, [0, 400], ["15%", "260px"]);
 
   return (
@@ -310,21 +301,6 @@ const FloatingBentoPanel: React.FC = () => {
       style={{ background: BG, scrollbarWidth: "none", msOverflowStyle: "none" }}
     >
       <style>{`.fb-scroll::-webkit-scrollbar{display:none}`}</style>
-
-      {/* IL LOGO FGB ANIMATO */}
-      <motion.img
-        src="/green.webp"
-        alt="FGB Logo"
-        style={{
-          position: "fixed",
-          top: logoTop,
-          left: logoLeft,
-          scale: logoScale,
-          transformOrigin: "top left",
-          zIndex: 110, // Costantemente sopra il resto
-        }}
-        className="w-[280px] md:w-[400px] pointer-events-none drop-shadow-2xl"
-      />
 
       {/* IL LOGO FGB ANIMATO - SINISTRA */}
       <motion.img
@@ -348,9 +324,9 @@ const FloatingBentoPanel: React.FC = () => {
         style={{
           position: "fixed",
           top: logoRightTop,
-          right: logoRightRight, // Usiamo RIGHT invece di LEFT
+          right: logoRightRight, // Ancorato a destra
           scale: logoRightScale,
-          transformOrigin: "top right", // L'ancora è spostata in alto a DESTRA
+          transformOrigin: "top right", // Punto di origine invertito
           zIndex: 110,
         }}
         className="w-[280px] md:w-[400px] pointer-events-none drop-shadow-2xl"
