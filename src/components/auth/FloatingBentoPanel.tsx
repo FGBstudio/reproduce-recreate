@@ -319,7 +319,7 @@ const FloatingBentoPanel: React.FC = () => {
 
       {/* IL LOGO FGB ANIMATO - DESTRA (SPECULARE) */}
       <motion.img
-        src="/green.webp"
+        src="/lince_mondo.png"
         alt="FGB Logo Right"
         style={{
           position: "fixed",
