@@ -15,6 +15,7 @@
  * carosello che intercetta gli swipe orizzontali.
  */
 
+import { useCallback, useRef, useState } from "react";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud } from "lucide-react";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 
@@ -217,6 +218,30 @@ const LimitBar = ({ ratio, light }: { ratio: number; light?: boolean }) => (
   </div>
 );
 
+/**
+ * Indicatore di posizione fra le schermate: sostituisce la scrollbar di
+ * sistema, che sul WebView si materializzava come una banda opaca sul bordo
+ * destro (la regola globale in index.css le dà una larghezza esplicita, quindi
+ * occupa spazio invece di stare in overlay).
+ */
+const ScrollDots = ({ count, active, light }: { count: number; active: number; light?: boolean }) => (
+  <div
+    aria-hidden="true"
+    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-[5px] pointer-events-none"
+  >
+    {Array.from({ length: count }, (_, i) => (
+      <span
+        key={i}
+        className={`w-[3px] rounded-full transition-all duration-300 ${
+          i === active
+            ? `h-4 ${light ? "bg-[#01474b]/80" : "bg-white/90"}`
+            : `h-[3px] ${light ? "bg-[#01474b]/35" : "bg-white/40"}`
+        }`}
+      />
+    ))}
+  </div>
+);
+
 const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onClick?: () => void; light?: boolean }) => (
   <button
     type="button"
@@ -313,8 +338,28 @@ export const OverviewMobileView = ({
     { key: "water", icon: Droplet, score: water.score, enabled: moduleConfig.water.enabled, level: water.level },
   ];
 
+  const hasCerts = !!certifications && certifications.length > 0;
+  // hero, energy, air, water, [certifications], fingerprint
+  const screenCount = hasCerts ? 6 : 5;
+  const AIR_INDEX = 2; // unica schermata a fondo chiaro: i puntini vanno scuri
+
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [activeScreen, setActiveScreen] = useState(0);
+  const onScroll = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el || !el.clientHeight) return;
+    const i = Math.min(screenCount - 1, Math.max(0, Math.round(el.scrollTop / el.clientHeight)));
+    setActiveScreen((prev) => (prev === i ? prev : i));
+  }, [screenCount]);
+
   return (
-    <div className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth motion-reduce:scroll-auto">
+    <div className="relative h-full">
+      <ScrollDots count={screenCount} active={activeScreen} light={activeScreen === AIR_INDEX} />
+      <div
+        ref={scrollerRef}
+        onScroll={onScroll}
+        className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth motion-reduce:scroll-auto no-scrollbar"
+      >
       {/* ── 1 · HERO: score complessivo ── */}
       {/* pb-16: clearance per la barra periodo/report/settings in overlay */}
       <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-5 pt-10 pb-16 bg-gradient-to-b from-[#016368] via-[#009193] to-[#33a7a9]">
@@ -522,6 +567,7 @@ export const OverviewMobileView = ({
           <CtaGlass onClick={() => onNavigate?.("energy")}>ALL ALERTS →</CtaGlass>
         </div>
       </section>
+      </div>
     </div>
   );
 };

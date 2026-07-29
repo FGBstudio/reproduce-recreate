@@ -61,7 +61,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
   return (
     <div
       ref={scrollerRef}
-      className="fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth"
+      className="fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth no-scrollbar"
       style={{ background: BG }}
     >
       {/* ── Hero ── */}

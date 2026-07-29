@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 8080
+    },
+    {
+      "name": "demo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--mode", "demo", "--port", "8081"],
+      "port": 8081
     }
   ]
 }

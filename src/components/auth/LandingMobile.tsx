@@ -72,8 +72,8 @@ const LandingMobile: React.FC<{
 }> = ({ onSignIn, onCreate, blurGlobe }) => (
   <div className="relative h-[100dvh] w-full overflow-hidden text-white" style={{ background: SCREEN_BG }}>
     <div
-      className="h-full w-full overflow-y-auto overflow-x-hidden scroll-smooth"
-      style={{ scrollSnapType: "y mandatory", scrollbarWidth: "none" }}
+      className="h-full w-full overflow-y-auto overflow-x-hidden scroll-smooth no-scrollbar"
+      style={{ scrollSnapType: "y mandatory" }}
     >
       {/* 1 · HERO */}
       <Section>
