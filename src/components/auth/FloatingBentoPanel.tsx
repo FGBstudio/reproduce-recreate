@@ -110,7 +110,7 @@ const Certifications: React.FC = () => (
       <div className="inline-flex items-center gap-2 justify-center mb-3">
         <Award className="w-4 h-4" style={{ color: BRAND_DARK }} />
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: BRAND_DARK }}>
-          Level 1 · Certifications & Partners
+          Certifications & Partners
         </p>
       </div>
       <h2 className="text-[clamp(1.5rem,2.5vw,2.25rem)] font-semibold tracking-tight" style={{ color: INK }}>
@@ -135,10 +135,11 @@ const Certifications: React.FC = () => (
 
 /* ───────── LEVEL 2 — Monitoring (Water / Air / Energy) ───────── */
 type Tile = { title: string; Icon: React.ComponentType<any> };
+// Ordine alfabetico, coerente con la vista mobile
 const TILES: Tile[] = [
-  { title: "WATER", Icon: Droplet },
   { title: "AIR", Icon: Wind },
   { title: "ENERGY", Icon: Zap },
+  { title: "WATER", Icon: Droplet },
 ];
 
 const LynxHardwareAnimation: React.FC<{ Icon: Tile["Icon"] }> = ({ Icon }) => (
@@ -172,7 +173,7 @@ const Monitoring: React.FC = () => (
     style={{ background: BG }}
   >
     <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: BRAND_DARK }}>
-      Level 2 · Monitoring
+      Monitoring
     </p>
     <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-[1080px]">
       {TILES.map((tile, i) => (
