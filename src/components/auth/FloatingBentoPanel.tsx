@@ -5,7 +5,9 @@ import Globe3D from "./Globe3D";
 import IdleOverlay from "./IdleOverlay";
 import CityTicker from "./CityTicker";
 import LoginModal from "./LoginModal";
+import LandingMobile from "./LandingMobile";
 import { COMPANY_STATS } from "@/lib/companyStats";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /* ───────── design tokens (FGB Palette) ───────── */
 const INK = "#1d1d1f";
@@ -259,11 +261,13 @@ const FloatingBentoPanel: React.FC = () => {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginMode, setLoginMode] = useState<"login" | "request">("login");
+  const isMobile = useIsMobile();
+
+  const openLogin = () => { setLoginMode("login"); setLoginOpen(true); };
+  const openRequest = () => { setLoginMode("request"); setLoginOpen(true); };
 
   // Ascoltatori Eventi Globali
   useEffect(() => {
-    const openLogin = () => { setLoginMode("login"); setLoginOpen(true); };
-    const openRequest = () => { setLoginMode("request"); setLoginOpen(true); };
     window.addEventListener("fgb:open-login", openLogin);
     window.addEventListener("fgb:create-account", openRequest);
     return () => {
@@ -294,6 +298,17 @@ const FloatingBentoPanel: React.FC = () => {
   const logoRightScale = useTransform(scrollY, [0, 400], [1, 0.5]);
   const logoRightTop = useTransform(scrollY, [0, 400], ["300%", "140px"]);
   const logoRightRight = useTransform(scrollY, [0, 400], ["220%", "100px"]);
+
+  // Sotto i 768px la landing desktop non regge (sezioni più alte del viewport
+  // dentro uno snap obbligatorio): si biforca la presentazione, non la logica.
+  if (isMobile) {
+    return (
+      <>
+        <LandingMobile onSignIn={openLogin} onCreate={openRequest} blurGlobe={loginOpen} />
+        <LoginModal open={loginOpen} onOpenChange={setLoginOpen} initialMode={loginMode} />
+      </>
+    );
+  }
 
   return (
     <div

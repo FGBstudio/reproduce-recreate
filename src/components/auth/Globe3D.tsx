@@ -19,7 +19,7 @@ function countryToLatLng(cc?: string): { lat: number; lng: number } | null {
 const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
   const globeRef = useRef<any>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [dims, setDims] = useState({ w: 600, h: 600 });
+  const [dims, setDims] = useState({ w: size ?? 600, h: size ?? 600 });
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [countries, setCountries] = useState({ features: [] });
 
@@ -42,6 +42,12 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
   }, []);
 
   useEffect(() => {
+    // Con `size` la dimensione è dichiarata dal chiamante: niente osservatore,
+    // che altrimenti tiene il canvas ai 600px iniziali dentro box più piccoli.
+    if (size) {
+      setDims({ w: size, h: size });
+      return;
+    }
     if (!wrapRef.current) return;
     const ro = new ResizeObserver(() => {
       const r = wrapRef.current!.getBoundingClientRect();
@@ -50,7 +56,7 @@ const Globe3D: React.FC<{ size?: number }> = ({ size }) => {
     });
     ro.observe(wrapRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [size]);
 
   useEffect(() => {
     const g = globeRef.current;
