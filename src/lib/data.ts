@@ -82,11 +82,12 @@ export interface Project {
 }
 
 export const holdings: Holding[] = [
+  { id: "d698ebb7-83a4-4a26-96fe-34da76a03d18", name: "FGB Holding", logo: "/green.webp" },
   { id: "fgb-holding", name: "FGB Holding", logo: "/green.webp" },
 ];
 
 export const brands: Brand[] = [
-  { id: "fgb", name: "FGB", holdingId: "fgb-holding", logo: "/green.webp" },
+  { id: "fgb", name: "FGB", holdingId: "d698ebb7-83a4-4a26-96fe-34da76a03d18", logo: "/green.webp" },
 ];
 
 export const regions: Record<string, Region> = {
@@ -143,6 +144,7 @@ export const projects: Project[] = [
     data: { hvac: 38, light: 32, total: 88, co2: 560, temp: 21.5, humidity: 55, alerts: 1, aq: "GOOD", area_m2: 1200, energy_price_kwh: 0.23 },
     monitoring: ["energy", "air"],
     brandId: "fgb",
+    siteId: "s-dior-paris",
     area_m2: 1200,
     energy_price_kwh: 0.23,
     currency: "EUR",
@@ -160,6 +162,7 @@ export const projects: Project[] = [
     data: { hvac: 46, light: 38, total: 110, co2: 610, temp: 20.5, humidity: 62, alerts: 0, aq: "GOOD", area_m2: 2400, energy_price_kwh: 0.28 },
     monitoring: ["energy", "air", "water"],
     brandId: "fgb",
+    siteId: "s-burberry-london",
     area_m2: 2400,
     energy_price_kwh: 0.28,
     currency: "GBP",
@@ -191,6 +194,7 @@ export const projects: Project[] = [
     data: { hvac: 54, light: 36, total: 105, co2: 520, temp: 23.5, humidity: 42, alerts: 1, aq: "GOOD", area_m2: 1500, energy_price_kwh: 0.21 },
     monitoring: ["energy", "air", "water"],
     brandId: "fgb",
+    siteId: "s-fgb-la",
     area_m2: 1500,
     energy_price_kwh: 0.21,
     currency: "USD",
