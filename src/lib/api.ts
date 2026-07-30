@@ -5,6 +5,7 @@
 
 import { useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { isValidUUID } from './utils';
 
 // =============================================================================
 // Timestamp parsing helper (handles Postgres formats, Unix, ISO)
@@ -269,7 +270,15 @@ export async function fetchDevicesApi(params?: {
 
   // 2. Apply filters
   if (params?.site_id) {
-    query = query.eq('site_id', params.site_id);
+    if (Array.isArray(params.site_id)) {
+      const validUuids = params.site_id.filter(isValidUUID);
+      if (validUuids.length === 0) return { data: [], meta: { total: 0, limit: 100, offset: 0, has_more: false } };
+      query = query.in('site_id', validUuids);
+    } else if (isValidUUID(params.site_id)) {
+      query = query.eq('site_id', params.site_id);
+    } else {
+      return { data: [], meta: { total: 0, limit: 100, offset: 0, has_more: false } };
+    }
   }
   
   // FIX: Check both parameter names and map to the correct DB column 'device_type'
@@ -346,9 +355,13 @@ export async function fetchLatestApi(params?: {
   // Filters
   if (params?.site_id) {
     if (Array.isArray(params.site_id)) {
-      query = query.in('devices.site_id', params.site_id);
-    } else {
+      const validUuids = params.site_id.filter(isValidUUID);
+      if (validUuids.length === 0) return { data: {}, timestamp: new Date().toISOString() };
+      query = query.in('devices.site_id', validUuids);
+    } else if (isValidUUID(params.site_id)) {
       query = query.eq('devices.site_id', params.site_id);
+    } else {
+      return { data: {}, timestamp: new Date().toISOString() };
     }
   }
   if (params?.device_ids && params.device_ids.length > 0) {
@@ -796,9 +809,17 @@ export async function fetchEnergyTimeseriesApi(params: {
     if (params.device_ids && params.device_ids.length > 0) {
       baseQuery = baseQuery.in('device_id', params.device_ids);
     } else if (params.site_id) {
-      baseQuery = baseQuery.eq('site_id', params.site_id);
+      if (Array.isArray(params.site_id)) {
+        const validUuids = params.site_id.filter(isValidUUID);
+        if (validUuids.length === 0) return null;
+        baseQuery = baseQuery.in('site_id', validUuids);
+      } else if (isValidUUID(params.site_id)) {
+        baseQuery = baseQuery.eq('site_id', params.site_id);
+      } else {
+        return null;
+      }
     }
-    return baseQuery.in('metric', metricFilter);
+    return baseQuery ? baseQuery.in('metric', metricFilter) : null;
   };
 
   // Execute query based on route - use ENERGY-specific tables
@@ -997,7 +1018,7 @@ export async function fetchWeatherTimeseriesApi(params: {
   end: string;
   bucket?: string;
 }): Promise<ApiTimeseriesResponse | null> {
-  if (!supabase) return null;
+  if (!supabase || !isValidUUID(params.site_id)) return null;
 
   // Determine granularity based on duration
   const startDate = new Date(params.start);
@@ -1132,6 +1153,9 @@ export async function fetchEnergyLatestApi(params?: {
   metrics?: string[];
 }): Promise<ApiLatestResponse | null> {
   if (!supabase) return null;
+  if (params?.site_id && !isValidUUID(params.site_id)) {
+    return { data: {}, timestamp: new Date().toISOString() };
+  }
 
   let query = supabase
     .from('energy_latest')
@@ -1315,12 +1339,12 @@ export function useEnergyTimeseries(
   options?: Omit<UseQueryOptions<ApiTimeseriesResponse | null>, 'queryKey' | 'queryFn'>
 ) {
   const hasDevices = params.device_ids && params.device_ids.length > 0;
-  const hasSite = !!params.site_id;
+  const hasValidSite = !!params.site_id && (Array.isArray(params.site_id) ? params.site_id.some(isValidUUID) : isValidUUID(params.site_id));
   
   return useQuery({
     queryKey: queryKeys.energyTimeseries(params),
     queryFn: () => fetchEnergyTimeseriesApi(params),
-    enabled: isSupabaseConfigured && (hasDevices || hasSite),
+    enabled: isSupabaseConfigured && (hasDevices || hasValidSite),
     staleTime: 60 * 1000, // 1 minute
     ...options,
   });
