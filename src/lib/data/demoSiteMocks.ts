@@ -15,6 +15,8 @@ import {
 } from "date-fns";
 import type { Project } from "@/lib/data";
 
+import { isValidUUID } from "@/lib/utils";
+
 export type DemoModuleScope = {
   energy: boolean;
   air: boolean;
@@ -47,16 +49,51 @@ export interface DemoSiteProfile {
 
 // Keyed by Project.id (frontend mock projects)
 const PROFILES: Record<number, DemoSiteProfile> = {
-  // FGB Paris Office — temperate continental
+  1: {
+    siteKey: "fgb-milan",
+    co2: 430, tvoc: 140, pm25: 10, pm10: 16, co: 0.3, o3: 22,
+    temperature: 22.0, humidity: 50,
+    tempSwing: 2.0, humiditySwing: 10,
+    basePowerKw: 42,
+    modules: { energy: true, air: true, water: true, certification: true, bills: true },
+    certifications: ["LEED", "WELL"],
+  },
   2: {
     siteKey: "fgb-paris",
     co2: 560, tvoc: 180, pm25: 11, pm10: 18, co: 0.3, o3: 28,
     temperature: 21.5, humidity: 55,
     tempSwing: 2.5, humiditySwing: 12,
     basePowerKw: 38,
-    modules: { energy: true, air: true, water: false, certification: false, bills: false },
+    modules: { energy: true, air: true, water: true, certification: true, bills: true },
+    certifications: ["LEED"],
   },
-  // FGB London HQ — cool, humid, big city
+  3: {
+    siteKey: "fgb-ny",
+    co2: 600, tvoc: 210, pm25: 15, pm10: 24, co: 0.4, o3: 35,
+    temperature: 20.0, humidity: 42,
+    tempSwing: 3.0, humiditySwing: 12,
+    basePowerKw: 55,
+    modules: { energy: true, air: true, water: true, certification: true, bills: true },
+    certifications: ["WELL"],
+  },
+  4: {
+    siteKey: "fgb-tokyo",
+    co2: 380, tvoc: 110, pm25: 8, pm10: 12, co: 0.2, o3: 20,
+    temperature: 23.0, humidity: 55,
+    tempSwing: 1.8, humiditySwing: 8,
+    basePowerKw: 32,
+    modules: { energy: true, air: true, water: true, certification: true, bills: true },
+    certifications: ["LEED", "BREEAM"],
+  },
+  5: {
+    siteKey: "fgb-dubai",
+    co2: 550, tvoc: 190, pm25: 18, pm10: 32, co: 0.5, o3: 45,
+    temperature: 19.0, humidity: 35,
+    tempSwing: 4.0, humiditySwing: 15,
+    basePowerKw: 65,
+    modules: { energy: true, air: true, water: true, certification: true, bills: true },
+    certifications: ["LEED"],
+  },
   6: {
     siteKey: "fgb-london",
     co2: 610, tvoc: 220, pm25: 14, pm10: 22, co: 0.4, o3: 24,
@@ -66,22 +103,41 @@ const PROFILES: Record<number, DemoSiteProfile> = {
     modules: { energy: true, air: true, water: true, certification: true, bills: true },
     certifications: ["LEED", "BREEAM", "WELL"],
   },
-  // FGB LA Office — warm, dry, sunny
   7: {
     siteKey: "fgb-la",
     co2: 520, tvoc: 160, pm25: 13, pm10: 25, co: 0.5, o3: 42,
     temperature: 23.5, humidity: 42,
     tempSwing: 3.5, humiditySwing: 10,
     basePowerKw: 46,
-    modules: { energy: true, air: true, water: true, certification: false, bills: false },
+    modules: { energy: true, air: true, water: true, certification: true, bills: true },
+    certifications: ["LEED", "WELL"],
+  },
+  8: {
+    siteKey: "fgb-shanghai",
+    co2: 400, tvoc: 130, pm25: 12, pm10: 20, co: 0.3, o3: 26,
+    temperature: 22.0, humidity: 52,
+    tempSwing: 2.2, humiditySwing: 10,
+    basePowerKw: 35,
+    modules: { energy: true, air: true, water: true, certification: true, bills: true },
+    certifications: ["LEED"],
   },
 };
 
 export const getDemoProfile = (project: Project | null | undefined): DemoSiteProfile | null => {
   if (!project) return null;
-  // Only treat as demo if explicitly flagged AND in our profile map.
-  if (!(project as any).demoMockup) return null;
-  return PROFILES[project.id] ?? null;
+  const isUuid = isValidUUID(project.siteId);
+  if (!isUuid || (project as any).demoMockup || PROFILES[project.id]) {
+    return PROFILES[project.id] ?? {
+      siteKey: `demo-${project.id}`,
+      co2: 480, tvoc: 150, pm25: 10, pm10: 18, co: 0.3, o3: 25,
+      temperature: 21.5, humidity: 50,
+      tempSwing: 2.0, humiditySwing: 10,
+      basePowerKw: 40,
+      modules: { energy: true, air: true, water: true, certification: true, bills: true },
+      certifications: ["LEED"],
+    };
+  }
+  return null;
 };
 
 // ---- Seeded RNG -------------------------------------------------------------
