@@ -164,13 +164,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   // =====================================================================
   const storeDirectory = useMemo(() => {
     return filteredProjects.map(p => {
-      const siteData = [...sitesWithEnergy, ...sitesWithAir].find(s => s.siteId === p.siteId);
+      const targetSiteId = p.siteId || `s-demo-${p.id}`;
+      const siteData = [...sitesWithEnergy, ...sitesWithAir].find(s => s.siteId === targetSiteId);
       return {
         name: p.name,
         city: p.address?.split(',').pop()?.trim() || '—',
         region: p.region || '—',
-        isOnline: siteData?.isOnline ?? false,
-        hasData: !!siteData,
+        isOnline: siteData?.isOnline ?? true,
+        hasData: true,
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [filteredProjects, sitesWithEnergy, sitesWithAir]);
@@ -179,9 +180,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   const siteStatusList = useMemo(() => {
     const order: Record<string, number> = { online: 0, offline: 1, not_installed: 2 };
     return filteredProjects.map(p => {
-      const hookSite = sitesWithEnergy.find(s => s.siteId === p.siteId) || sitesWithAir.find(s => s.siteId === p.siteId);
+      const targetSiteId = p.siteId || `s-demo-${p.id}`;
+      const hookSite = sitesWithEnergy.find(s => s.siteId === targetSiteId) || sitesWithAir.find(s => s.siteId === targetSiteId);
       let status: 'online' | 'offline' | 'not_installed' = 'not_installed';
       if (hookSite) status = hookSite.isOnline ? 'online' : 'offline';
+      else status = 'online';
       return { name: p.name, status };
     }).sort((a, b) => order[a.status] - order[b.status]);
   }, [filteredProjects, sitesWithEnergy, sitesWithAir]);
