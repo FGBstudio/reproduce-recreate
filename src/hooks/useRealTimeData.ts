@@ -172,6 +172,24 @@ function mapRegion(regionOrCountry?: string): string {
 // =============================================================================
 
 /**
+ * I dati mock sono la vetrina dimostrativa del brand FGB: vanno mostrati solo a
+ * chi ha accesso a quel brand (account demo e staff FGB). Un cliente reale deve
+ * vedere esclusivamente i propri dati — mai siti inventati accanto ai suoi.
+ *
+ * Il perimetro arriva gia' filtrato dalle RLS: se fra le entita' visibili c'e'
+ * FGB, l'utente e' autorizzato alla vetrina. Senza Supabase configurato
+ * (modalita' demo locale) i mock restano sempre visibili.
+ */
+const FGB_SHOWCASE_NAMES = ['fgb', 'fgb holding'];
+
+function canSeeMockShowcase(entities?: Array<{ name?: string | null }> | null): boolean {
+  if (!isSupabaseConfigured) return true;
+  return (entities || []).some(
+    e => e?.name && FGB_SHOWCASE_NAMES.includes(e.name.trim().toLowerCase())
+  );
+}
+
+/**
  * Hook to get all holdings (real + mock) with loading/error states
  */
 export function useAllHoldings() {
@@ -182,10 +200,12 @@ export function useAllHoldings() {
 
     // Combine real holdings with mock holdings (avoiding duplicates by name)
     const realNames = new Set(transformed.map(h => h.name.toLowerCase()));
-    const combined = [
-      ...transformed,
-      ...mockHoldings.filter(h => !realNames.has(h.name.toLowerCase())),
-    ];
+    const combined = canSeeMockShowcase(realHoldings)
+      ? [
+          ...transformed,
+          ...mockHoldings.filter(h => !realNames.has(h.name.toLowerCase())),
+        ]
+      : transformed;
 
     return {
       holdings: combined,
@@ -225,7 +245,9 @@ export function useAllBrands() {
         return realHoldingId ? { ...b, holdingId: realHoldingId } : b;
       });
 
-    const combined = [...transformed, ...remappedMockBrands];
+    const combined = canSeeMockShowcase(realBrands)
+      ? [...transformed, ...remappedMockBrands]
+      : transformed;
 
     return {
       brands: combined,
@@ -301,7 +323,9 @@ export function useAllProjects() {
         const realBrandId = brandName ? realBrandIdByName.get(brandName) : undefined;
         return realBrandId ? { ...p, brandId: realBrandId } : p;
       });
-    const combined = [...transformed, ...remappedMockProjects];
+    const combined = canSeeMockShowcase(realBrands)
+      ? [...transformed, ...remappedMockProjects]
+      : transformed;
 
     const refetch = () => {
       refetchSites();
