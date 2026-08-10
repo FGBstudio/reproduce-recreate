@@ -55,7 +55,13 @@ type PollutantKey = "co2" | "voc" | "pm25" | "pm10" | "o3" | "co";
 
 const POLLUTANT_CURVES: Record<PollutantKey, { best: number; worst: number; metricKeys: string[] }> = {
   co2:  { best: 400,  worst: 1500, metricKeys: ["iaq.co2",  "co2"] },
-  voc:  { best: 200,  worst: 1000, metricKeys: ["iaq.voc",  "tvoc", "voc"] },
+  // TVOC in ppb. La soglia critica segue la scala UBA (Germania), la piu' usata
+  // per gli ambienti indoor: "buono" fino a ~660 ppb, "critico" oltre ~2200.
+  // Il valore precedente (worst 1000) saturava troppo presto: i sensori in campo
+  // arrivano a 60000 ppb (vedi mqtt-ingestion/src/index.ts), quindi una lettura
+  // mediocre ma non allarmante finiva a score 0 e, essendo l'indice
+  // worst-pollutant, azzerava la qualita' dell'aria dell'intero sito.
+  voc:  { best: 200,  worst: 3000, metricKeys: ["iaq.voc",  "tvoc", "voc"] },
   pm25: { best: 5,    worst: 35,   metricKeys: ["iaq.pm25", "pm25"] },
   pm10: { best: 15,   worst: 50,   metricKeys: ["iaq.pm10", "pm10"] },
   o3:   { best: 60,   worst: 120,  metricKeys: ["iaq.o3",   "o3"] },
