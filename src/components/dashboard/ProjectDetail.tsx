@@ -41,6 +41,8 @@ import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp } from "@/lib/api";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { co2Level } from "@/lib/airQuality";
+import { SITE_MATERIAL_SKIN } from "@/lib/siteTheme";
+import SitePatternBackground from "./SitePatternBackground";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
@@ -3627,40 +3629,52 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   // PDF Export handler
 
+  // Veste "Material" (flag in src/lib/siteTheme.ts): pattern organico chiaro
+  // e card opache. Non tocca la vista mobile dell'overview (design proprio) e
+  // cede il passo a uno sfondo caricato dall'utente in sessione.
+  const materialSkin = SITE_MATERIAL_SKIN && !isMobileOverview;
+  const materialBackground = materialSkin && !customBgUrl;
+
   return (
-    <div className="fixed inset-0 z-50 animate-slide-up bg-background">
-      
+    <div className={`fixed inset-0 z-50 animate-slide-up bg-background ${materialSkin ? "fgb-mat" : ""}`}>
+
       {/* CONTAINER SFONDO GENERALE */}
-      <div 
+      <div
         className="absolute inset-0 transition-all duration-500 overflow-hidden"
-        style={backgroundStyle} // Applica il colore di fondo o l'immagine Hero
+        style={materialBackground ? undefined : backgroundStyle} // Colore di fondo o immagine Hero
       >
-        
+        {materialBackground ? (
+          /* Pattern organico chiaro: sostituisce foto/pattern loghi e overlay
+             scuro. Con il flag spento si torna al ramo sottostante, intatto. */
+          <SitePatternBackground />
+        ) : (
+          <>
         {/* LIVELLO PATTERN LOGO (Sempre logo FGB come fallback, indipendentemente dal brand) */}
         {!project?.img && (
-          <div 
+          <div
             className="absolute inset-0 pointer-events-none"
             style={{
               backgroundImage: `url(/green.webp)`,
-              
+
               // 1. SPAZIATURA: 'space' distanzia i loghi invece di affiancarli stretti
-              backgroundRepeat: 'space', 
-              
+              backgroundRepeat: 'space',
+
               // 2. DIMENSIONE: 180px (1.5 volte più grande di prima)
-              backgroundSize: '180px',   
-              
+              backgroundSize: '180px',
+
               backgroundPosition: 'center',
-              
-              // 3. TRASPARENZA: 0.03 = 3% di opacità. 
+
+              // 3. TRASPARENZA: 0.03 = 3% di opacità.
               // Molto leggero ed elegante. Se lo vuoi più visibile metti 0.05 o 0.08
-              opacity: 0.08 
+              opacity: 0.08
             }}
           />
         )}
 
         {/* LIVELLO OVERLAY SFUMATO (Cinematic Gradient for maximum readability and visual depth) */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/10 to-black/65 pointer-events-none" />
-        
+          </>
+        )}
       </div>
 
       {/* Header — safe-area top, sticky solid background.
