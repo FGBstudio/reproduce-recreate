@@ -1653,9 +1653,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const energyConsumptionData = useMemo(() => {
     const rawData = energyTimeseriesResp?.data;
     if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
-      // Lightweight diurnal energy fallback for demo sites
-      const profile = demoProfile || { basePowerKw: 45 };
-      const basePower = profile.basePowerKw || 45;
+      // Andamento dimostrativo riservato ai siti vetrina FGB. Per gli altri
+      // la serie resta vuota: meglio un grafico senza dati che un grafico
+      // con dati inventati indistinguibili da quelli reali.
+      if (!demoProfile) return [];
+      const basePower = demoProfile.basePowerKw;
       const siteTz = resolveTimezone(siteTimezone);
       const now = new Date();
 
@@ -2450,8 +2452,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const energyPeriodsData = useMemo(() => {
     const rawData = periodsResp?.data;
     if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
-      // Lightweight annual breakdown fallback for demo sites (Jan to Dec)
-      const basePower = (demoProfile?.basePowerKw || 45);
+      // La serie annuale dimostrativa vale SOLO per i siti vetrina FGB.
+      // Un sito reale senza dati non deve mostrare dodici mesi di consumi
+      // generati: resta vuoto, e il grafico segnala l'assenza di dati.
+      if (!demoProfile) return [];
+      const basePower = demoProfile.basePowerKw;
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       return months.map((m, idx) => {
         const monthNum = String(idx + 1).padStart(2, '0');
@@ -2694,8 +2699,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       bucketMap.set(bucketKey, (bucketMap.get(bucketKey) || 0) + val);
     });
 
-    if (bucketMap.size === 0) {
-      const basePower = (demoProfile?.basePowerKw || 45);
+    // Idem per la heatmap: si popola con valori dimostrativi solo sui siti
+    // vetrina. Altrove la mappa resta vuota e le celle non riportano valori.
+    if (bucketMap.size === 0 && demoProfile) {
+      const basePower = demoProfile.basePowerKw;
       const dayMs = 24 * 60 * 60 * 1000;
       const cursor = new Date(heatmapConfig.start.getTime());
       const maxDays = 31;

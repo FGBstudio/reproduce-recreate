@@ -371,22 +371,33 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       let alerts = aggregatedData?.alerts[siteId] ?? { critical: 0, warning: 0, info: 0 };
       const hasLatestTs = !!aggregatedData?.latestTs[siteId];
 
+      // I valori di ripiego valgono SOLO per i siti vetrina FGB, che hanno un
+      // profilo esplicito con valori deterministici. Per ogni altro sito i dati
+      // mancanti restano null: un negozio senza contatore non deve mai mostrare
+      // consumi inventati. La versione precedente applicava il fallback anche ai
+      // siti reali privi di telemetria, con la conseguenza che TUTTI finivano per
+      // esporre gli stessi 45 kW * 24 * 30 = 32,4 MWh e gli stessi 420 ppm.
       const profile = getDemoProfile(project);
-      if (profile || !isValidUUID(siteId) || (!monthlyKwh && !airData)) {
-        // Fallback for hardcoded / demo showcase sites so they contribute to Group Overview stats
-        const basePower = profile?.basePowerKw || 45;
-        const baseCo2 = profile?.baseCo2 || 420;
-        monthlyKwh = monthlyKwh ?? Math.round(basePower * 24 * 30);
+      if (profile) {
+        monthlyKwh = monthlyKwh ?? Math.round(profile.basePowerKw * 24 * 30);
         hvacKwh = hvacKwh ?? Math.round(monthlyKwh * 0.45);
         lightingKwh = lightingKwh ?? Math.round(monthlyKwh * 0.35);
         plugsKwh = plugsKwh ?? Math.round(monthlyKwh * 0.20);
-        airData = airData ?? { co2: baseCo2, temperature: 21.5, humidity: 48, voc: 32 };
+        airData = airData ?? {
+          co2: profile.co2,
+          temperature: profile.temperature,
+          humidity: profile.humidity,
+          voc: profile.tvoc,
+        };
         isOnline = true;
       }
 
       const hasEnergyData = monthlyKwh !== null && monthlyKwh > 0;
       const hasAirData = airData !== null && (airData.co2 !== null || airData.temperature !== null);
-      const hasWaterData = true;
+      // Nessuna aggregazione idrica e' disponibile: finche' non esiste, il modulo
+      // acqua non ha dati da mostrare. Prima qui c'era `true` con un consumo
+      // fisso di 450 L, che rendeva "monitorato" ogni sito del gruppo.
+      const hasWaterData = false;
 
       // Include site if it has ANY real data, any telemetry ever, or is online
       if (!hasEnergyData && !hasAirData && !isOnline && !hasLatestTs) return;
@@ -400,7 +411,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
         hasWaterData,
         energy: { monthlyKwh, hvacKwh, lightingKwh, plugsKwh },
         air: airData ?? { co2: null, temperature: null, humidity: null, voc: null },
-        water: { consumption: 450 },
+        water: { consumption: null },
         alerts,
       });
     });
