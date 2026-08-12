@@ -94,21 +94,10 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
   // 4. Data Cleansing & Formatting (Combined Flow)
   const { chartData, validPoints, hasRealData } = useMemo(() => {
     if (!rawData || rawData.length === 0) {
-       const mock = Array.from({ length: 48 }, (_, i) => {
-         const t = 15 + Math.sin(i / 10) * 10 + Math.random() * 2;
-         return {
-           ts: new Date(Date.now() - i * 3600000).toISOString(),
-           energy: 5 + (t * 0.4) + Math.random() * 3,
-           temp: t,
-           humidity: 50 + Math.cos(i / 10) * 20 + Math.random() * 5,
-         };
-       }).reverse();
-       
-       return { 
-         chartData: mock, 
-         validPoints: mock.map(d => ({ temp: d.temp, energy: d.energy, humidity: d.humidity })), 
-         hasRealData: false 
-       };
+      // Niente correlazione senza dati: il grafico resta vuoto. Prima veniva
+      // sintetizzata una serie di 48 ore (temperatura, energia, umidita')
+      // per QUALSIASI sito privo di dati, col solo chip "Demo" a distinguerla.
+      return { chartData: [], validPoints: [], hasRealData: false };
     }
 
     const cleaned = rawData.map(d => {

@@ -82,8 +82,10 @@ function mapDbMonitoringTypeToFrontend(dbType: string): MonitoringType | null {
 function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): Project {
   // Calculate ProjectData from latest telemetry or use defaults
   const data: ProjectData = {
-    hvac: latestData?.['energy.hvac_kw'] ?? Math.round(20 + Math.random() * 40),
-    light: latestData?.['energy.lighting_kw'] ?? Math.round(15 + Math.random() * 35),
+    // Se il breakdown non arriva dalla telemetria resta null: questi sono
+    // siti REALI del DB, mai valori estratti a sorte (prima: 20-60 kW random).
+    hvac: latestData?.['energy.hvac_kw'] ?? null,
+    light: latestData?.['energy.lighting_kw'] ?? null,
     total: latestData?.['energy.power_kw'] ?? null,
     co2: latestData?.['iaq.co2'] ?? null,
     temp: latestData?.['env.temperature'] ?? null,

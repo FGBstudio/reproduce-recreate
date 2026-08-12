@@ -13,6 +13,7 @@
 import { useMemo } from 'react';
 import { useEnergyLatest, useDevices } from '@/lib/api';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { isValidUUID } from '@/lib/utils';
 
 export interface EnergyPowerBreakdown {
   /** Total power from 'general' category devices (main meter) */
@@ -80,6 +81,16 @@ export function useEnergyPowerByCategory(siteId: string | undefined): EnergyPowe
       devicesResp.data.length > 0
     );
 
+    // Il breakdown dimostrativo (device fittizi "HVAC System" ecc.) vale SOLO
+    // per i siti vetrina (id non-UUID) o la demo locale senza Supabase.
+    // Un sito reale senza letture restituisce il breakdown vuoto: prima
+    // riceveva questo mock con isRealData: true, cioe' device inventati
+    // presentati come reali.
+    const isShowcaseSite = !siteId || !isValidUUID(siteId) || !isSupabaseConfigured;
+    if (!hasRealData && !isShowcaseSite) {
+      return empty;
+    }
+
     if (!hasRealData) {
       // Calculate lightweight diurnal occupancy factor for demo sites
       const now = new Date();
@@ -108,7 +119,7 @@ export function useEnergyPowerByCategory(siteId: string | undefined): EnergyPowe
         lighting,
         plugs,
         other: 0,
-        isRealData: true,
+        isRealData: false, // dato dimostrativo: il badge deve dire DEMO
         isStale: false,
         lastUpdate: now.toISOString(),
         isLoading,
@@ -207,5 +218,5 @@ export function useEnergyPowerByCategory(siteId: string | undefined): EnergyPowe
       isLoading,
       deviceBreakdown,
     };
-  }, [energyLatestResp, devicesResp, isLoading]);
+  }, [energyLatestResp, devicesResp, isLoading, siteId]);
 }

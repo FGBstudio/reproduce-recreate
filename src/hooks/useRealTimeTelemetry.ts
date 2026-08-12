@@ -369,14 +369,16 @@ export function useRealTimeEnergyData(
   });
 
   return useMemo(() => {
-    // If no Supabase or no site or non-UUID site, use mock data
+    // Serie dimostrativa SOLO per la modalita' demo locale (niente Supabase)
+    // o per i siti vetrina, che non hanno un UUID. Mai marcata come reale:
+    // il badge deve dire DEMO.
     if (!isSupabaseConfigured || !siteId || !isValidUUID(siteId)) {
       return {
         data: generateMockEnergyData(timePeriod, dateRange, language),
         isLoading: false,
         isError: false,
         error: null,
-        isRealData: true,
+        isRealData: false,
         refetch: () => {},
       };
     }
@@ -393,15 +395,16 @@ export function useRealTimeEnergyData(
       };
     }
 
-    // No data returned - use mock fallback
+    // Sito reale senza dati nel periodo: serie VUOTA, mai una curva inventata.
+    // (Prima qui scattava generateMockEnergyData con isRealData: true — ogni
+    // negozio senza contatore mostrava consumi finti col badge LIVE.)
     if (!timeseriesData?.data?.length) {
-      console.log('[useRealTimeEnergyData] No energy data found, using mock. Meta:', timeseriesData?.meta);
       return {
-        data: generateMockEnergyData(timePeriod, dateRange, language),
+        data: [],
         isLoading: false,
         isError: false,
         error: null,
-        isRealData: true,
+        isRealData: false,
         refetch,
       };
     }
@@ -486,32 +489,40 @@ export function useRealTimeLatestData(siteId: string | undefined) {
       ? Date.now() - new Date(latestTimestamp).getTime() > TWO_DAYS_MS
       : false;
 
-    // Generate realistic diurnal fallback metrics for demo sites or when DB data is not present
+    // Metriche diurne dimostrative SOLO per i siti vetrina (id non-UUID).
+    // Un sito reale senza letture restituisce metriche vuote e
+    // isRealData: false — le card mostrano NO_DATA, mai numeri inventati.
+    // (Prima il fallback valeva per tutti, con isRealData sempre true:
+    // potenza, CO2, umidita' e flusso d'acqua finti col badge LIVE.)
     const now = new Date();
-    const { occupancy } = getDiurnalFactor(now);
-    const mockPowerKw = Math.round(15 + occupancy * 65);
-    const fallbackMetrics: Record<string, number> = {
-      'energy.power_kw': mockPowerKw,
-      'energy.hvac_kw': Math.round(mockPowerKw * 0.45),
-      'energy.lighting_kw': Math.round(mockPowerKw * 0.35),
-      'energy.plugs_kw': Math.round(mockPowerKw * 0.20),
-      'iaq.co2': Math.round(415 + occupancy * 260),
-      'iaq.temperature': Number((19.8 + occupancy * 2.7).toFixed(1)),
-      'iaq.humidity': Math.round(48 + Math.sin(now.getTime() / 10000) * 4),
-      'water.flow_rate': Number((0.2 + occupancy * 2.8).toFixed(1)),
-    };
+    const isShowcaseSite = !!siteId && !isValidUUID(siteId);
+    let effectiveMetrics = metrics;
+    if (!hasRealData && isShowcaseSite) {
+      const { occupancy } = getDiurnalFactor(now);
+      const mockPowerKw = Math.round(15 + occupancy * 65);
+      effectiveMetrics = {
+        'energy.power_kw': mockPowerKw,
+        'energy.hvac_kw': Math.round(mockPowerKw * 0.45),
+        'energy.lighting_kw': Math.round(mockPowerKw * 0.35),
+        'energy.plugs_kw': Math.round(mockPowerKw * 0.20),
+        'iaq.co2': Math.round(415 + occupancy * 260),
+        'iaq.temperature': Number((19.8 + occupancy * 2.7).toFixed(1)),
+        'iaq.humidity': Math.round(48 + Math.sin(now.getTime() / 10000) * 4),
+        'water.flow_rate': Number((0.2 + occupancy * 2.8).toFixed(1)),
+      };
+    }
 
     return {
-      metrics: hasRealData ? metrics : fallbackMetrics,
+      metrics: effectiveMetrics,
       isLoading,
       isError,
       error: error as Error | null,
-      isRealData: true, // Always true to render active live cards smoothly
+      isRealData: hasRealData,
       isStale: hasRealData ? isStale : false,
       lastUpdate: latestTimestamp || now.toISOString(),
       refetch,
     };
-  }, [latestData, isLoading, isError, error, refetch]);
+  }, [latestData, isLoading, isError, error, refetch, siteId]);
 }
 
 /**

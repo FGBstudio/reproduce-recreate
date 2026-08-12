@@ -1378,19 +1378,22 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const waterDistributionRef = useRef<HTMLDivElement>(null);
   const waterEfficiencyRef = useRef<HTMLDivElement>(null);
 
-  // Generate heatmap data
+  // Heatmap 24x7 del modal fullscreen: livelli casuali, quindi ammessa SOLO
+  // sui siti vetrina. Sui siti reali la griglia resta vuota (la heatmap vera,
+  // calcolata dai bucket di telemetria, vive nella sezione energia).
   const heatmapData = useMemo(() => {
+    if (!demoProfile) return [] as number[][];
     const hours = [];
     for (let h = 0; h < 24; h++) {
       const row = [];
       for (let d = 0; d < 7; d++) {
-        const r = Math.random();
+        const r = seededRandom(h * 7 + d + 1);
         row.push(r > 0.85 ? 4 : r > 0.6 ? 3 : r > 0.35 ? 2 : 1);
       }
       hours.push(row);
     }
     return hours;
-  }, [project?.id]);
+  }, [demoProfile]);
 
   const heatmapExportData = useMemo(() => {
     const days = ['27-05', '28-05', '29-05', '30-05', '31-05', '01-06', '02-06'];
@@ -2148,8 +2151,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       september: 0,
     }));
 
-    return out.length ? out : carbonData;
-  }, [bucketHours, buildEnergySeriesSum, carbonData, isSupabaseConfigured]);
+    // Sito reale senza serie: grafico vuoto, niente ripiego sui 12 mesi
+    // hardcoded (che restano solo per la modalita' demo locale, sopra).
+    return out;
+  }, [bucketHours, buildEnergySeriesSum, isSupabaseConfigured]);
 
   // 1. Chiamata all'hook che fa il join tra energia e meteo
   const { data: energyOutdoorData, isLoading: isEnergyOutdoorLoading, categoryLabel: energyCategoryLabel } = useEnergyWeatherAnalysis(

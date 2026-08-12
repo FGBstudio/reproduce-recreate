@@ -15,6 +15,7 @@ import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveTimezone, getPartsInTz } from "@/lib/timezoneUtils";
 import { useFingerprintVerdict } from "@/hooks/useFingerprintVerdict";
+import { getDemoProfile } from "@/lib/data/demoSiteMocks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OverviewMobileView } from "./OverviewMobileView";
 
@@ -722,9 +723,15 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
     const totalLiters = isReal ? m['water.total_liters'] : undefined;
     const flowRate = isReal ? m['water.flow_rate'] : undefined;
 
-    // Lightweight fallback for demo sites (e.g. 450 L/day)
-    const demoLiters = 450 + (seededRandom((project?.id || 1) * 31) * 200 - 100);
-    const dailyConsumption = typeof totalLiters === 'number' ? Math.round(totalLiters) : Math.round(demoLiters);
+    // Il consumo dimostrativo (~450 L/day) vale SOLO per i siti vetrina FGB.
+    // Su un sito reale senza contatore il valore resta undefined e la card
+    // mostra "—": prima ogni sito del parco esibiva litri inventati.
+    const demoLiters = getDemoProfile(project)
+      ? 450 + (seededRandom((project?.id || 1) * 31) * 200 - 100)
+      : undefined;
+    const dailyConsumption = typeof totalLiters === 'number'
+      ? Math.round(totalLiters)
+      : (typeof demoLiters === 'number' ? Math.round(demoLiters) : undefined);
 
     return {
       dailyConsumption,
