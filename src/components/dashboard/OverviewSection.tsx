@@ -96,6 +96,34 @@ const getStatusIconBg = (level: StatusLevel) => {
 const getLiveBadgeColor = (isLive: boolean) => isLive ? "bg-emerald-500 text-foreground" : "bg-gray-400 text-foreground";
 
 const formatMaybe = (value: number | undefined, digits = 1) => typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
+
+/**
+ * Card per modulo NON attivo: invito all'attivazione con gli stessi testi
+ * della vista mobile (OverviewMobileView), come da indicazione del
+ * proprietario. Niente "N/A": la card spiega cosa si otterrebbe attivando.
+ */
+const MODULE_PITCH: Record<"energy" | "air" | "water", { title: string; body: string }> = {
+  energy: { title: "Every kWh has a story.", body: "See where energy goes, hour by hour — and what it costs you." },
+  air: { title: "You breathe it all day.", body: "CO₂, humidity and particles — measured where your people actually work." },
+  water: { title: "You can't save what you don't measure.", body: "Leaks, waste and savings — spotted live, before they hit the bill." },
+};
+
+const DisabledModuleCard = ({ module, icon }: { module: "energy" | "air" | "water"; icon: React.ReactNode }) => {
+  const pitch = MODULE_PITCH[module];
+  return (
+    <div className="w-full h-[320px] rounded-xl border border-dashed border-gray-300 bg-white/70 flex flex-col p-6 text-slate-600">
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">{icon}</div>
+        <Badge className="bg-transparent border border-dashed border-gray-300 text-gray-500 text-[10px] uppercase tracking-wider">Not monitored</Badge>
+      </div>
+      <div className="mt-auto">
+        <div className="text-xl font-semibold text-gray-800 leading-snug mb-2">{pitch.title}</div>
+        <p className="text-sm text-slate-500 leading-relaxed mb-4">{pitch.body}</p>
+        <span className="text-xs font-bold tracking-widest text-[#006367] uppercase">Ask us how →</span>
+      </div>
+    </div>
+  );
+};
 const formatMaybeInt = (value: number | undefined) => typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "—";
 
 const MODULE_WEIGHTS = { energy: 0.80, air: 0.05, water: 0.15 };
@@ -465,13 +493,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
     };
   }, [powerData, project, benchmarkMatrix, isStale]);
 
-  if (!enabled) return (
-    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
-      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Zap className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[11px]">DISABLED</Badge></div>
-      <div className="text-4xl font-bold mb-1">N/A</div>
-      <div className="text-base uppercase tracking-wide">Energy Performance</div>
-    </div>
-  );
+  if (!enabled) return <DisabledModuleCard module="energy" icon={<Zap className="w-5 h-5" />} />;
 
   const currentPower = isStale ? undefined : readings.totalPower;
   const isCriticalVal = threshold && currentPower != null && currentPower > threshold;
@@ -587,13 +609,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
     };
   }, [liveData, isCardStale]);
 
-  if (!enabled) return (
-    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
-      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Wind className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[11px]">DISABLED</Badge></div>
-      <div className="text-4xl font-bold mb-1">N/A</div>
-      <div className="text-base uppercase tracking-wide">Indoor Air Quality</div>
-    </div>
-  );
+  if (!enabled) return <DisabledModuleCard module="air" icon={<Wind className="w-5 h-5" />} />;
 
   const currentCo2 = isCardStale ? undefined : readings.co2.value;
   const avgCo2 = averageMetrics?.['iaq.co2'] ?? averageMetrics?.['co2'];
@@ -741,13 +757,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
     };
   }, [liveData, isCardStale, project?.id]);
 
-  if (!enabled) return (
-    <div className="w-full h-[320px] rounded-xl border bg-gray-100 flex flex-col p-6 text-slate-600">
-      <div className="flex items-center gap-2 mb-3"><div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center"><Droplet className="w-5 h-5" /></div><Badge className="bg-gray-400 text-foreground text-[11px]">DISABLED</Badge></div>
-      <div className="text-4xl font-bold mb-1">N/A</div>
-      <div className="text-base uppercase tracking-wide">Water Consumption</div>
-    </div>
-  );
+  if (!enabled) return <DisabledModuleCard module="water" icon={<Droplet className="w-5 h-5" />} />;
 
   return (
     <div className="relative w-full h-[320px]" style={{ perspective: "1500px" }}>

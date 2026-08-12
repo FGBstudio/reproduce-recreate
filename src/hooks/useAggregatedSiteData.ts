@@ -371,6 +371,18 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       let alerts = aggregatedData?.alerts[siteId] ?? { critical: 0, warning: 0, info: 0 };
       const hasLatestTs = !!aggregatedData?.latestTs[siteId];
 
+      // Il perimetro dei moduli attivi vale anche negli aggregati di gruppo:
+      // se un progetto non ha il modulo energia (o aria), i suoi numeri non
+      // entrano in leaderboard, scatter e health matrix. La mappa
+      // siteModuleConfig esisteva ma non veniva mai consultata.
+      const cfg = siteModuleConfig.get(siteId);
+      if (cfg && !cfg.energy) {
+        monthlyKwh = null; hvacKwh = null; lightingKwh = null; plugsKwh = null;
+      }
+      if (cfg && !cfg.air) {
+        airData = null;
+      }
+
       // I valori di ripiego valgono SOLO per i siti vetrina FGB, che hanno un
       // profilo esplicito con valori deterministici. Per ogni altro sito i dati
       // mancanti restano null: un negozio senza contatore non deve mai mostrare
