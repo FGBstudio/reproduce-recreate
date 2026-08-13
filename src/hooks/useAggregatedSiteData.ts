@@ -320,33 +320,9 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
 // =============================================================================
 
 export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOverlayData {
-  const { projects: adminProjects } = useAdminData();
-
   const siteIds = useMemo(() => {
     return filteredProjects.map(p => p.siteId || `s-demo-${p.id}`);
   }, [filteredProjects]);
-
-  const siteModuleConfig = useMemo(() => {
-    const config = new Map<string, { energy: boolean; air: boolean; water: boolean }>();
-    filteredProjects.forEach(project => {
-      if (!project.siteId) return;
-      const adminProject = adminProjects.find(ap => ap.siteId === project.siteId || ap.id === project.siteId);
-      if (adminProject) {
-        config.set(project.siteId, {
-          energy: adminProject.modules.energy.enabled,
-          air: adminProject.modules.air.enabled,
-          water: adminProject.modules.water.enabled,
-        });
-      } else {
-        config.set(project.siteId, {
-          energy: project.monitoring?.includes('energy') ?? false,
-          air: project.monitoring?.includes('air') ?? false,
-          water: project.monitoring?.includes('water') ?? false,
-        });
-      }
-    });
-    return config;
-  }, [filteredProjects, adminProjects]);
 
   const { data: aggregatedData, isLoading, isError } = useQuery({
     queryKey: ['aggregated-site-data-v4', [...siteIds].sort().join(',')],
@@ -371,17 +347,14 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       let alerts = aggregatedData?.alerts[siteId] ?? { critical: 0, warning: 0, info: 0 };
       const hasLatestTs = !!aggregatedData?.latestTs[siteId];
 
-      // Il perimetro dei moduli attivi vale anche negli aggregati di gruppo:
-      // se un progetto non ha il modulo energia (o aria), i suoi numeri non
-      // entrano in leaderboard, scatter e health matrix. La mappa
-      // siteModuleConfig esisteva ma non veniva mai consultata.
-      const cfg = siteModuleConfig.get(siteId);
-      if (cfg && !cfg.energy) {
-        monthlyKwh = null; hvacKwh = null; lightingKwh = null; plugsKwh = null;
-      }
-      if (cfg && !cfg.air) {
-        airData = null;
-      }
+      // NEGLI AGGREGATI DECIDONO I DISPOSITIVI, NON I FLAG MODULI.
+      // Verificato sul DB (13/08/2026): module_energy_enabled e' true per 11
+      // siti su 1113, module_air per 107, water per 0 — Luxottica ha 119 siti
+      // con device che trasmettono e ZERO flag attivi (il trigger di
+      // auto-attivazione non e' mai scattato per loro). Filtrare su quei flag
+      // svuota leaderboard e health matrix di dati REALI. Qui vale la
+      // presenza di dati veri; i flag restano autorevoli solo nella vista di
+      // dettaglio sito (ModuleGate), dove l'admin li cura esplicitamente.
 
       // I valori di ripiego valgono SOLO per i siti vetrina FGB, che hanno un
       // profilo esplicito con valori deterministici. Per ogni altro sito i dati
@@ -457,7 +430,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       isError,
       hasRealData: sites.length > 0,
     };
-  }, [filteredProjects, siteModuleConfig, aggregatedData, isLoading, isError]);
+  }, [filteredProjects, aggregatedData, isLoading, isError]);
 }
 
 /**

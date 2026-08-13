@@ -114,10 +114,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   // Chart 3: Health Matrix data
   // =====================================================================
   const healthMatrixData = useMemo(() => {
-    const allSites = [...sitesWithEnergy];
-    sitesWithAir.forEach(s => {
-      if (!allSites.find(e => e.siteId === s.siteId)) allSites.push(s);
-    });
+    // Base: TUTTI i siti monitorati (dispositivi con dati, online oppure con
+    // storico), non solo quelli con energia/aria valorizzate. Un sito offline
+    // deve comparire in matrice con i suoi trattini e il pallino spento:
+    // e' il triage che questa vista promette ("Immediate triage").
+    const allSites = [...allSitesData];
 
     return allSites.map(site => {
       const airData = sitesWithAir.find(s => s.siteId === site.siteId);
@@ -157,7 +158,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       };
       return score(b) - score(a);
     });
-  }, [sitesWithEnergy, sitesWithAir]);
+  }, [allSitesData, sitesWithAir]);
 
   // =====================================================================
   // Chart 4: Store Directory
