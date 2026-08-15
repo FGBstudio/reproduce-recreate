@@ -267,8 +267,15 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
         .from('telemetry_latest')
         .select('site_id, metric, value')
         .in('site_id', siteIds)
-        .in('metric', ['env.temperature', 'env.humidity', 'iaq.voc', 'temp', 'temperature', 'humidity', 'voc']);
-      
+        .in('metric', ['env.temperature', 'env.humidity', 'iaq.voc', 'temp', 'temperature', 'humidity', 'voc', 'iaq.co2', 'co2', 'CO2']);
+
+      // CO2 di ripiego dai valori correnti: telemetry_daily puo' non avere
+      // righe anche per device che trasmettono (verificato: 119 monitor
+      // Luxottica online e ZERO aggregati giornalieri — il job non li copre).
+      // La media 30gg, quando esiste, ha la precedenza; altrimenti si usa la
+      // media dei valori correnti per sito. Dato reale, non aggregato.
+      const latestCo2BySite: Record<string, number[]> = {};
+
       if (latestAir) {
         latestAir.forEach((row: any) => {
           if (!row.site_id || row.value === null) return;
@@ -282,9 +289,20 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
             result.airAvg[row.site_id].humidity = Number(row.value);
           } else if (m === 'iaq.voc' || m === 'voc') {
             result.airAvg[row.site_id].voc = Number(row.value);
+          } else if (m === 'iaq.co2' || m === 'co2' || m === 'CO2') {
+            (latestCo2BySite[row.site_id] = latestCo2BySite[row.site_id] || []).push(Number(row.value));
           }
         });
       }
+
+      Object.entries(latestCo2BySite).forEach(([sId, values]) => {
+        if (result.airAvg[sId]?.co2 == null && values.length > 0) {
+          const valid = values.filter(v => Number.isFinite(v) && v > 0);
+          if (valid.length > 0) {
+            result.airAvg[sId].co2 = Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+          }
+        }
+      });
     } catch (e) {
       console.warn('[useAggregatedSiteData] AQ query failed:', e);
     }

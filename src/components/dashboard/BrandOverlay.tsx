@@ -177,11 +177,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         alerts: { value: site.alerts.critical + site.alerts.warning, status: alertsStatus },
       };
     }).sort((a, b) => {
+      // Ordine richiesto: prima gli OK, poi i warning, in fondo i critical.
       const score = (s: typeof a) => {
         const map: Record<string, number> = { critical: 3, moderate: 2, good: 1, none: 0 };
         return (map[s.energy.status] || 0) + (map[s.air.status] || 0) + (map[s.alerts.status] || 0);
       };
-      return score(b) - score(a);
+      return score(a) - score(b);
     });
   }, [allSitesData]);
 
