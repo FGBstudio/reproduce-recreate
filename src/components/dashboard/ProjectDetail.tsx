@@ -3634,11 +3634,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   // PDF Export handler
 
-  // Veste "Material" (flag in src/lib/siteTheme.ts): pattern organico chiaro
-  // e card opache. Non tocca la vista mobile dell'overview (design proprio) e
-  // cede il passo a uno sfondo caricato dall'utente in sessione.
+  // Veste "Material" (flag in src/lib/siteTheme.ts): pattern con i loghi FGB
+  // come DEFAULT per tutti i siti. L'immagine del sito (project.img) o uno
+  // sfondo caricato in sessione hanno la precedenza: il pattern e' il
+  // fallback, come richiesto. La vista mobile dell'overview resta esclusa.
   const materialSkin = SITE_MATERIAL_SKIN && !isMobileOverview;
-  const materialBackground = materialSkin && !customBgUrl;
+  const materialBackground = materialSkin && !customBgUrl && !project?.img;
 
   return (
     <div className={`fixed inset-0 z-50 animate-slide-up bg-background ${materialSkin ? "fgb-mat" : ""}`}>
@@ -3844,7 +3845,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         {isGeneratingPdf && (
           <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-white" />
-            <div className="text-white text-sm font-medium px-6 text-center">{pdfProgress || "Generazione report..."}</div>
+            <div className="text-white text-sm font-medium px-6 text-center">{pdfProgress || "Generating report..."}</div>
           </div>
         )}
 
@@ -4555,7 +4556,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <div className="flex">
                             {/* Spacer angolo in alto a sx */}
                             <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[11px] font-bold text-muted-foreground">
-                                {heatmapGrid.isYearView ? 'GG' : 'HH'}
+                                {heatmapGrid.isYearView ? "DD" : "HH"}
                             </div>
                             {/* Labels Colonne */}
                             {heatmapGrid.cols.map(col => (
@@ -4585,13 +4586,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                             className="flex-1 min-w-[24px] h-full mx-[1px] rounded-sm transition-all hover:opacity-80 hover:scale-110 cursor-pointer relative group"
                                             style={{ backgroundColor: getHeatmapColor(val, heatmapGrid.scale) }}
                                           >
-                                            {/* Tooltip on Hover */}
+                                            {/* Tooltip on Hover — text-white esplicito: text-foreground
+                                                sotto la skin chiara diventa inchiostro, illeggibile su gray-900 */}
                                             {val > 0 && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[11px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-white text-[11px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
                                                     <div className="font-bold">
-                                                        {heatmapGrid.isYearView 
-                                                            ? `${row} ${col.label}` // "15 GEN"
-                                                            : `${col.label} ore ${row}:00` // "01/03 ore 14:00"
+                                                        {heatmapGrid.isYearView
+                                                            ? `${row} ${col.label}` // "15 JAN"
+                                                            : `${col.label} · ${String(row).padStart(2, '0')}:00`
                                                         }
                                                     </div>
                                                     <div>{val.toFixed(2)} kWh</div>
@@ -5633,7 +5635,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     <div ref={waterConsumptionRef} className="lg:col-span-2 bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-800">Consumo Idrico</h3>
+                          <h3 className="text-lg font-bold text-gray-800">Water Consumption</h3>
                           <p className="text-xs text-muted-foreground">Confronto con target e anno precedente</p>
                         </div>
                         <ExportButtons chartRef={waterConsumptionRef} data={filteredWaterData} filename="water-consumption" onExpand={() => setFullscreenChart('waterConsumption')} />

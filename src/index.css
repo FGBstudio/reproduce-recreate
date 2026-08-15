@@ -415,11 +415,22 @@ html, body {
   box-shadow: none;
 }
 
-/* Testi e chip dell'header: da bianco-su-scuro a inchiostro-su-salvia */
+/* Testi e chip dell'header: da bianco-su-scuro a inchiostro-su-salvia.
+   Coperte anche le varianti con opacita' (la riga "MILANO, Italy | 33° | FGB"
+   usa text-foreground/90 ecc.: bianco semitrasparente, illeggibile sul chiaro). */
 .fgb-mat .text-foreground {
   color: #171d1b;
 }
+.fgb-mat .text-foreground\/90 { color: rgba(23, 29, 27, 0.9); }
+.fgb-mat .text-foreground\/80 { color: rgba(23, 29, 27, 0.8); }
+.fgb-mat .text-foreground\/70 { color: rgba(23, 29, 27, 0.7); }
+.fgb-mat .text-foreground\/60 { color: rgba(23, 29, 27, 0.6); }
+.fgb-mat .text-foreground\/40 { color: rgba(23, 29, 27, 0.4); }
 .fgb-mat .bg-foreground\/10 {
   background: #ffffff;
   border-color: transparent;
+}
+/* Le ombre sul testo servivano al fondo scuro: sul chiaro sporcano. */
+.fgb-mat [class*="drop-shadow"] {
+  filter: none;
 }

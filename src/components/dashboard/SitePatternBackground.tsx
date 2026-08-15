@@ -54,6 +54,21 @@ const SitePatternBackground = () => (
         Future Green Building
       </text>
     </svg>
+    {/* Trama di loghi FGB (pwa-192x192.png), default per TUTTI i siti:
+        distanziata ('space') e molto tenue, resta texture e non rumore.
+        L'immagine caricata per il sito, quando c'e', sostituisce l'intero
+        pattern (vedi ProjectDetail). */}
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: 'url(/pwa-192x192.png)',
+        backgroundRepeat: 'space',
+        backgroundSize: '110px',
+        backgroundPosition: 'center',
+        opacity: 0.05,
+      }}
+    />
   </div>
 );
 

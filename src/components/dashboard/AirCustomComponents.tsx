@@ -197,7 +197,7 @@ export const BuildingOverview = ({
                <Info className="w-4 h-4 text-teal-600 hover:text-teal-700 cursor-help transition-colors" />
              </button>
              {/* Tooltip — larghezza mai oltre lo schermo */}
-             <div className="absolute right-0 top-full mt-2 w-[min(340px,calc(100vw-2rem))] p-4 bg-gray-900 rounded-xl text-xs text-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+             <div className="absolute right-0 top-full mt-2 w-[min(340px,calc(100vw-2rem))] p-4 bg-gray-900 rounded-xl text-xs text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
                <div className="font-bold text-sm mb-3 border-b border-gray-700 pb-2 text-gray-100">Threshold Reference Logic</div>
                <div className="grid grid-cols-4 gap-2 text-[10px] uppercase tracking-wider font-bold text-slate-600 mb-2">
                  <div className="col-span-1">Metric</div>
@@ -388,7 +388,7 @@ export const AirHeatmap = ({
                             style={{ backgroundColor: getColor(val, heatmapGrid.scale) }}
                           >
                             {val > 0 && (
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg">
                                     <div className="font-bold">
                                         {heatmapGrid.isYearView ? `${row} ${col.label}` : `${col.label} ${row}:00`}
                                     </div>
@@ -405,7 +405,7 @@ export const AirHeatmap = ({
 
       {/* Chip valore della cella toccata — il tooltip hover non esiste su touch */}
       {selectedCell && (
-        <div className="mt-2 flex items-center justify-between gap-3 text-xs bg-gray-900 text-foreground rounded-lg px-3 py-2 md:hidden">
+        <div className="mt-2 flex items-center justify-between gap-3 text-xs bg-gray-900 text-white rounded-lg px-3 py-2 md:hidden">
           <span className="font-bold">{selectedCell.label}</span>
           <span>{selectedCell.val.toFixed(1)}</span>
         </div>
