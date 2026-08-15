@@ -3835,7 +3835,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         className="absolute inset-0 flex flex-col"
         style={isMobileOverview ? undefined : {
           paddingTop: "calc(3.5rem + max(1rem, env(safe-area-inset-top)))",
-          paddingBottom: "max(3.5rem, calc(3.5rem + env(safe-area-inset-bottom)))",
+          // Ridotto (era 3.5rem): la barra di paginazione ora e' un overlay
+          // sfumato sul fondo, serve solo lo spazio perche' il contenuto
+          // non finisca sotto i comandi.
+          paddingBottom: "max(2.25rem, calc(2.25rem + env(safe-area-inset-bottom)))",
         }}
       >
         {/* Overlay di progresso PDF: la generazione blocca il main thread
@@ -6479,18 +6482,24 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           </div>
         </div>
 
-        {/* Pagination Dots — nell'overview mobile la banda sparisce
-            (la vista ha il proprio scroll a sezioni) */}
-        <div className={`justify-center items-center gap-4 md:gap-6 mt-1 md:mt-2 relative z-20 ${isMobileOverview ? "hidden" : "flex"}`}>
-          <button onClick={prevSlide} disabled={currentSlide === 0} className="w-11 h-11 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
+        {/* Pagination Dots — banda ridotta al minimo: overlay assoluto sul
+            fondo, con gradiente che sfuma in trasparente verso l'alto cosi'
+            otticamente la fascia "non esiste". Su mobile i target restano
+            >=44px (regola lotto 3); su desktop i comandi si fanno discreti.
+            Nell'overview mobile la banda sparisce (scroll a sezioni proprio). */}
+        <div
+          className={`absolute bottom-0 inset-x-0 justify-center items-center gap-4 md:gap-5 pt-8 z-20 pointer-events-none bg-gradient-to-t ${materialSkin ? "from-[#EDF5F2] via-[#EDF5F2]/55" : "from-black/45 via-black/15"} to-transparent ${isMobileOverview ? "hidden" : "flex"}`}
+          style={{ paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))" }}
+        >
+          <button onClick={prevSlide} disabled={currentSlide === 0} className="pointer-events-auto w-11 h-11 md:w-8 md:h-8 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <div className="flex gap-2 md:gap-3">
+          <div className="flex gap-2 md:gap-2.5 pointer-events-auto">
             {Array(totalSlides).fill(0).map((_, idx) => (
-              <button key={idx} onClick={() => setCurrentSlide(idx)} className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? "w-5 md:w-6 bg-fgb-secondary" : "w-1.5 md:w-2 bg-gray-400 hover:bg-gray-500"}`} />
+              <button key={idx} onClick={() => setCurrentSlide(idx)} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide ? "w-5 bg-fgb-secondary" : "w-1.5 bg-gray-400 hover:bg-gray-500"}`} />
             ))}
           </div>
-          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="w-11 h-11 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
+          <button onClick={nextSlide} disabled={currentSlide === totalSlides - 1} className="pointer-events-auto w-11 h-11 md:w-8 md:h-8 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
