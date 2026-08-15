@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
-import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
+import { useAggregatedSiteData, type SiteState } from "@/hooks/useAggregatedSiteData";
+import { CO2_THRESHOLDS } from "@/lib/airQuality";
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   Cell, ReferenceLine, BarChart, Bar, Legend
@@ -17,19 +18,49 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 
+/** Stati della directory (spec Q5): etichette, pallino e pillola per stato. */
+const DIR_STATE_META: Record<SiteState | 'all', { label: { en: string; it: string }; dot: string; pill: string }> = {
+  all: { label: { en: 'All', it: 'Tutti' }, dot: '', pill: '' },
+  online: {
+    label: { en: 'Online', it: 'Online' },
+    dot: 'text-emerald-500',
+    pill: 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10',
+  },
+  offline: {
+    label: { en: 'Offline', it: 'Offline' },
+    dot: 'text-gray-400',
+    pill: 'border-gray-400/30 text-gray-400 bg-gray-400/10',
+  },
+  stale: {
+    label: { en: 'Stale', it: 'Stale' },
+    dot: 'text-yellow-500',
+    pill: 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10',
+  },
+  not_installed: {
+    label: { en: 'Not installed', it: 'Non installato' },
+    dot: 'text-foreground/20',
+    pill: 'border-foreground/15 text-muted-foreground bg-foreground/5',
+  },
+};
+
 interface BrandOverlayProps {
   selectedBrand: string | null;
   selectedHolding: string | null;
   visible?: boolean;
   currentRegion?: string;
   activeFilters?: string[];
+  /** Spec Q3/Q4: click su una riga di leaderboard o matrix apre il sito */
+  onOpenSite?: (siteId: string) => void;
 }
 
-const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentRegion = 'GLOBAL', activeFilters = ['energy', 'air', 'water'] }: BrandOverlayProps) => {
+const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentRegion = 'GLOBAL', activeFilters = ['energy', 'air', 'water'], onOpenSite }: BrandOverlayProps) => {
   const { t, language } = useLanguage();
   const [chartsExpanded, setChartsExpanded] = useState(false);
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [dirFilter, setDirFilter] = useState<SiteState | 'all'>('all');
+  const [showAllEnergyRank, setShowAllEnergyRank] = useState(false);
+  const [showAllAirRank, setShowAllAirRank] = useState(false);
 
   const { brands } = useAllBrands();
   const { holdings } = useAllHoldings();
@@ -96,17 +127,20 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   // =====================================================================
   // Chart 2: Leaderboard data (Top consumers & worst air)
   // =====================================================================
+  // Spec Q3: kWh assoluti 30gg (niente m²: nessun sito escluso per anagrafica
+  // incompleta); aria = CO2 media 30gg del singolo sito, barre scalate sul
+  // massimo riscontrato. Solo siti con dato nel periodo: mai zeri finti.
   const energyLeaderboard = useMemo(() => {
     return sitesWithEnergy
       .filter(s => (s.energy.monthlyKwh ?? 0) > 0)
-      .map(s => ({ name: s.siteName, value: s.energy.monthlyKwh ?? 0 }))
+      .map(s => ({ siteId: s.siteId, name: s.siteName, value: s.energy.monthlyKwh ?? 0 }))
       .sort((a, b) => b.value - a.value);
   }, [sitesWithEnergy]);
 
   const airLeaderboard = useMemo(() => {
     return sitesWithAir
       .filter(s => (s.air.co2 ?? 0) > 0)
-      .map(s => ({ name: s.siteName, value: Math.round(s.air.co2 ?? 0) }))
+      .map(s => ({ siteId: s.siteId, name: s.siteName, value: Math.round(s.air.co2 ?? 0) }))
       .sort((a, b) => b.value - a.value);
   }, [sitesWithAir]);
 
@@ -114,42 +148,33 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   // Chart 3: Health Matrix data
   // =====================================================================
   const healthMatrixData = useMemo(() => {
-    // Base: TUTTI i siti monitorati (dispositivi con dati, online oppure con
-    // storico), non solo quelli con energia/aria valorizzate. Un sito offline
-    // deve comparire in matrice con i suoi trattini e il pallino spento:
-    // e' il triage che questa vista promette ("Immediate triage").
-    const allSites = [...allSitesData];
+    // Spec Q4: righe = tutti i siti monitorati, offline inclusi (attenuati).
+    // Energia: baseline PROPRIA del sito (media 30gg vs 90gg) — verde <=+10%,
+    // giallo +10-25%, rosso >+25%. Aria: soglie canoniche di airQuality.ts.
+    // Alert: da site_alerts, rosso se >=1 critical. "—" se il dominio non e'
+    // installato o non ha dati.
+    return allSitesData.map(site => {
+      const co2 = site.air.co2;
+      const delta = site.baselineDeltaPct;
 
-    return allSites.map(site => {
-      const airData = sitesWithAir.find(s => s.siteId === site.siteId);
-      const kwh = site.energy.monthlyKwh ?? 0;
-      const co2 = airData?.air.co2 ?? 0;
-      const alerts = site.alerts.critical + site.alerts.warning;
-
-      const getEnergyStatus = (v: number) => {
-        if (v === 0) return 'none';
-        if (v < 2000) return 'good';
-        if (v < 5000) return 'moderate';
-        return 'critical';
-      };
-      const getAirStatus = (v: number) => {
-        if (v === 0) return 'none';
-        if (v < 600) return 'good';
-        if (v < 1000) return 'moderate';
-        return 'critical';
-      };
-      const getAlertStatus = (v: number) => {
-        if (v === 0) return 'good';
-        if (v <= 3) return 'moderate';
-        return 'critical';
-      };
+      const energyStatus = !site.capabilities.energy || delta === null
+        ? 'none'
+        : delta <= 10 ? 'good' : delta <= 25 ? 'moderate' : 'critical';
+      const airStatus = !site.capabilities.air || co2 === null || co2 <= 0
+        ? 'none'
+        : co2 <= CO2_THRESHOLDS.good ? 'good' : co2 <= CO2_THRESHOLDS.moderate ? 'moderate' : 'critical';
+      const alertsStatus = site.alerts.critical >= 1
+        ? 'critical'
+        : site.alerts.warning >= 1 ? 'moderate' : 'good';
 
       return {
+        siteId: site.siteId,
         name: site.siteName,
         isOnline: site.isOnline,
-        energy: { value: kwh, status: getEnergyStatus(kwh) },
-        air: { value: co2, status: getAirStatus(co2) },
-        alerts: { value: alerts, status: getAlertStatus(alerts) },
+        state: site.state,
+        energy: { value: delta, kwh: site.energy.monthlyKwh, status: energyStatus },
+        air: { value: co2 !== null ? Math.round(co2) : null, status: airStatus },
+        alerts: { value: site.alerts.critical + site.alerts.warning, status: alertsStatus },
       };
     }).sort((a, b) => {
       const score = (s: typeof a) => {
@@ -158,37 +183,40 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       };
       return score(b) - score(a);
     });
-  }, [allSitesData, sitesWithAir]);
+  }, [allSitesData]);
 
   // =====================================================================
   // Chart 4: Store Directory
   // =====================================================================
+  // Spec Q5: la directory e' il censimento dell'INTERO portfolio, ma con stati
+  // veri a quattro livelli. Lo stato si giudica sui soli domini installati
+  // (aria monitorata e online => sito Online, anche senza energia); un sito
+  // senza alcun dispositivo e' Not installed — MAI "Online" per default,
+  // com'era prima (isOnline ?? true e hasData cablato a true: da li' il
+  // 96 "Online" contro 38 online veri).
   const storeDirectory = useMemo(() => {
     return filteredProjects.map(p => {
       const targetSiteId = p.siteId || `s-demo-${p.id}`;
-      const siteData = [...sitesWithEnergy, ...sitesWithAir].find(s => s.siteId === targetSiteId);
+      const siteData = allSitesData.find(s => s.siteId === targetSiteId);
+      const state: SiteState = siteData?.state ?? 'not_installed';
       return {
+        siteId: targetSiteId,
         name: p.name,
         city: p.address?.split(',').pop()?.trim() || '—',
         region: p.region || '—',
-        isOnline: siteData?.isOnline ?? true,
-        hasData: true,
+        state,
+        capabilities: siteData?.capabilities ?? { energy: false, air: false, water: false },
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredProjects, sitesWithEnergy, sitesWithAir]);
+  }, [filteredProjects, allSitesData]);
 
   // === Popover drill-down lists ===
   const siteStatusList = useMemo(() => {
-    const order: Record<string, number> = { online: 0, offline: 1, not_installed: 2 };
-    return filteredProjects.map(p => {
-      const targetSiteId = p.siteId || `s-demo-${p.id}`;
-      const hookSite = sitesWithEnergy.find(s => s.siteId === targetSiteId) || sitesWithAir.find(s => s.siteId === targetSiteId);
-      let status: 'online' | 'offline' | 'not_installed' = 'not_installed';
-      if (hookSite) status = hookSite.isOnline ? 'online' : 'offline';
-      else status = 'online';
-      return { name: p.name, status };
-    }).sort((a, b) => order[a.status] - order[b.status]);
-  }, [filteredProjects, sitesWithEnergy, sitesWithAir]);
+    const order: Record<SiteState, number> = { online: 0, offline: 1, stale: 2, not_installed: 3 };
+    return storeDirectory
+      .map(d => ({ name: d.name, status: d.state }))
+      .sort((a, b) => order[a.status] - order[b.status]);
+  }, [storeDirectory]);
 
   const energyRankedList = useMemo(() => {
     return sitesWithEnergy
@@ -338,7 +366,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </TooltipContent>
                     </UITooltip>
                   </div>
-                  <div className="text-2xl font-bold text-foreground mt-0.5">{hasRealData ? totals.sitesOnline : '—'}</div>
+                  <div className="text-2xl font-bold text-foreground mt-0.5">{hasRealData ? `${totals.sitesOnline} / ${totals.sitesMonitored}` : "—"}</div>
                   <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.sites_online')}</div>
                 </div>
               </PopoverTrigger>
@@ -414,6 +442,12 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     {filterAir && hasRealData && totals.avgCo2 > 0 ? totals.avgCo2 : '—'}
                   </div>
                   <div className="text-[11px] uppercase text-muted-foreground mt-1">Avg CO₂</div>
+                  {/* Spec Q1: la media dichiara il proprio denominatore */}
+                  {filterAir && hasRealData && sitesWithAir.length > 0 && (
+                    <div className="text-[10px] text-muted-foreground/70 mt-0.5">
+                      {language === 'it' ? `su ${sitesWithAir.length} siti con aria` : `across ${sitesWithAir.length} air sites`}
+                    </div>
+                  )}
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
@@ -452,11 +486,17 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </UITooltip>
                   </div>
                   <div className="text-2xl font-bold text-foreground mt-0.5">
-                    {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0) 
+                    {hasRealData && (totals.alertsCritical > 0 || totals.alertsWarning > 0)
                       ? <span className={totals.alertsCritical > 0 ? 'text-destructive' : 'text-yellow-500'}>{totals.alertsCritical + totals.alertsWarning}</span>
                       : '0'}
                   </div>
                   <div className="text-[11px] uppercase text-muted-foreground mt-1">{t('brand.active_alerts')}</div>
+                  {/* Spec Q1b: lo stale e' "no-data", mai mescolato ai critical */}
+                  {hasRealData && totals.alertsNoData > 0 && (
+                    <div className="text-[10px] text-muted-foreground/70 mt-0.5">
+                      {totals.alertsNoData} no-data
+                    </div>
+                  )}
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
@@ -613,14 +653,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
-                          {energyLeaderboard.map((s, i) => {
+                          {(showAllEnergyRank ? energyLeaderboard : energyLeaderboard.slice(0, 10)).map((s, i) => {
                             const maxVal = energyLeaderboard[0]?.value || 1;
                             const pct = (s.value / maxVal) * 100;
                             const barColor = pct > 80 ? 'bg-red-500/70' : pct > 50 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
                             return (
-                              <div key={i} className="group">
+                              <div key={i} className={`group ${onOpenSite ? 'cursor-pointer' : ''}`} onClick={() => onOpenSite?.(s.siteId)}>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                  <span className="text-sm text-foreground truncate max-w-[140px] group-hover:underline" title={s.name}>{s.name}</span>
                                   <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{(s.value / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-muted-foreground font-normal text-xs">MWh</span></span>
                                 </div>
                                 <div className="w-full h-2 bg-foreground/5 rounded-full overflow-hidden">
@@ -629,6 +669,16 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                               </div>
                             );
                           })}
+                          {energyLeaderboard.length > 10 && (
+                            <button
+                              onClick={() => setShowAllEnergyRank(v => !v)}
+                              className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 transition-colors"
+                            >
+                              {showAllEnergyRank
+                                ? (language === 'it' ? 'Mostra meno' : 'Show less')
+                                : (language === 'it' ? `Vedi tutti (${energyLeaderboard.length})` : `See all (${energyLeaderboard.length})`)}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -641,14 +691,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </p>
                       <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-2.5">
-                          {airLeaderboard.map((s, i) => {
+                          {(showAllAirRank ? airLeaderboard : airLeaderboard.slice(0, 10)).map((s, i) => {
                             const maxVal = airLeaderboard[0]?.value || 1;
                             const pct = (s.value / maxVal) * 100;
                             const barColor = s.value > 1000 ? 'bg-red-500/70' : s.value > 600 ? 'bg-yellow-500/70' : 'bg-emerald-500/70';
                             return (
-                              <div key={i} className="group">
+                              <div key={i} className={`group ${onOpenSite ? 'cursor-pointer' : ''}`} onClick={() => onOpenSite?.(s.siteId)}>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-sm text-foreground truncate max-w-[140px]" title={s.name}>{s.name}</span>
+                                  <span className="text-sm text-foreground truncate max-w-[140px] group-hover:underline" title={s.name}>{s.name}</span>
                                   <span className="text-sm font-semibold text-foreground tabular-nums ml-2">{s.value.toLocaleString()} <span className="text-muted-foreground font-normal text-xs">ppm</span></span>
                                 </div>
                                 <div className="w-full h-2 bg-foreground/5 rounded-full overflow-hidden">
@@ -657,6 +707,16 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                               </div>
                             );
                           })}
+                          {airLeaderboard.length > 10 && (
+                            <button
+                              onClick={() => setShowAllAirRank(v => !v)}
+                              className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 transition-colors"
+                            >
+                              {showAllAirRank
+                                ? (language === 'it' ? 'Mostra meno' : 'Show less')
+                                : (language === 'it' ? `Vedi tutti (${airLeaderboard.length})` : `See all (${airLeaderboard.length})`)}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -702,22 +762,25 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="space-y-1">
                     {healthMatrixData.map((site, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-foreground/5 transition-colors">
+                      /* Spec Q4: offline/stale inclusi ma attenuati; la cella
+                         energia mostra lo scostamento dalla PROPRIA baseline
+                         (media 30gg vs 90gg), non un kWh assoluto. */
+                      <div key={i} onClick={() => onOpenSite?.(site.siteId)} className={`grid grid-cols-[1fr_70px_70px_70px] gap-2 items-center py-1.5 px-1 rounded-lg hover:bg-foreground/5 transition-colors ${site.state !== 'online' ? 'opacity-55' : ''} ${onOpenSite ? 'cursor-pointer' : ''}`}>
                         <div className="flex items-center gap-2 min-w-0">
-                          <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${site.isOnline ? 'text-emerald-500' : 'text-red-400'}`} />
+                          <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${DIR_STATE_META[site.state].dot}`} />
                           <span className="text-sm text-foreground truncate" title={site.name}>{site.name}</span>
                         </div>
                         {filterEnergy ? (
-                          <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.energy.status]}`}>
+                          <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.energy.status]}`} title={site.energy.kwh != null ? `${Math.round(site.energy.kwh)} kWh / 30gg` : undefined}>
                             <span className="text-xs font-semibold text-foreground">
-                              {site.energy.value > 0 ? (site.energy.value > 999 ? `${(site.energy.value / 1000).toFixed(1)}k` : site.energy.value) : '—'}
+                              {site.energy.value !== null ? `${site.energy.value > 0 ? '+' : ''}${site.energy.value}%` : '—'}
                             </span>
                           </div>
                         ) : <div className="rounded-md py-1.5 bg-muted/20" />}
                         {filterAir ? (
                           <div className={`rounded-md py-1.5 text-center ${healthStatusColors[site.air.status]}`}>
                             <span className="text-xs font-semibold text-foreground">
-                              {site.air.value > 0 ? site.air.value : '—'}
+                              {site.air.value !== null && site.air.value > 0 ? site.air.value : '—'}
                             </span>
                           </div>
                         ) : <div className="rounded-md py-1.5 bg-muted/20" />}
@@ -741,35 +804,55 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {t('brand.site_directory')}
                 </h4>
               </div>
-              <p className="text-sm text-muted-foreground mb-4 shrink-0">
-                {`${storeDirectory.length} ${t('brand.sites_alpha')}`}
+              {/* Spec Q5: sottotitolo riconciliabile + filtro rapido per stato.
+                  Il numero di pillole "Online" e il KPI SITES ONLINE derivano
+                  dalla stessa definizione (lettura < 60 min): coincidono per
+                  costruzione. */}
+              <p className="text-sm text-muted-foreground mb-2 shrink-0">
+                {`${storeDirectory.length} ${language === 'it' ? 'siti' : 'sites'} · ${totals.sitesMonitored} ${language === 'it' ? 'monitorati' : 'monitored'} · ${totals.sitesOnline} online`}
               </p>
+              <div className="flex items-center gap-1.5 mb-3 shrink-0 flex-wrap">
+                {(['all', 'online', 'offline', 'stale', 'not_installed'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setDirFilter(f)}
+                    className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                      dirFilter === f
+                        ? 'border-foreground/40 bg-foreground/10 text-foreground font-semibold'
+                        : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'
+                    }`}
+                  >
+                    {DIR_STATE_META[f].label[language === 'it' ? 'it' : 'en']}
+                  </button>
+                ))}
+              </div>
               <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                 <div className="space-y-1">
-                  {storeDirectory.map((site, i) => (
-                    <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-foreground/5 transition-colors">
-                      <Circle className={`w-3 h-3 fill-current shrink-0 ${
-                        site.isOnline ? 'text-emerald-500' : site.hasData ? 'text-yellow-500' : 'text-red-400'
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground truncate">{site.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{site.city} · {site.region}</p>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full border font-medium ${
-                        site.isOnline 
-                          ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
-                          : site.hasData 
-                            ? 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10'
-                            : 'border-red-400/30 text-red-400 bg-red-400/10'
-                      }`}>
-                        {site.isOnline 
-                          ? 'Online' 
-                          : site.hasData 
-                            ? 'Offline' 
-                            : (language === 'it' ? 'N/A' : 'N/A')}
-                      </span>
-                    </div>
-                  ))}
+                  {storeDirectory
+                    .filter(site => dirFilter === 'all' || site.state === dirFilter)
+                    .map((site, i) => {
+                      const meta = DIR_STATE_META[site.state];
+                      return (
+                        <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-foreground/5 transition-colors">
+                          <Circle className={`w-3 h-3 fill-current shrink-0 ${meta.dot}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground truncate">{site.name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {site.city} · {site.region}
+                              {/* Contesto delle aspettative: cosa e' monitorato qui */}
+                              {site.state !== 'not_installed' && (
+                                <span className="ml-1.5 opacity-70">
+                                  {[site.capabilities.energy && '⚡', site.capabilities.air && '☁', site.capabilities.water && '💧'].filter(Boolean).join(' ')}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full border font-medium ${meta.pill}`}>
+                            {meta.label[language === 'it' ? 'it' : 'en']}
+                          </span>
+                        </div>
+                      );
+                    })}
                   {storeDirectory.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       {language === 'it' ? 'Nessun sito disponibile' : 'No sites available'}
@@ -809,7 +892,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           {chartsExpanded && (
             <div className="mt-2 grid grid-cols-4 gap-1.5">
               <div className="text-center p-1.5 rounded-lg bg-foreground/5 border border-foreground/10">
-                <div className="text-base font-bold text-foreground">{hasRealData ? totals.sitesOnline : '—'}</div>
+                <div className="text-base font-bold text-foreground">{hasRealData ? `${totals.sitesOnline} / ${totals.sitesMonitored}` : "—"}</div>
                 <div className="text-[10px] uppercase text-muted-foreground">{t('brand.sites_online')}</div>
               </div>
               <div className={`text-center p-1.5 rounded-lg bg-foreground/5 border border-foreground/10 ${!filterEnergy ? 'opacity-30 grayscale' : ''}`}>
@@ -924,30 +1007,21 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {t('brand.site_directory')} ({storeDirectory.length})</h4>
                 <div className="space-y-1">
-                  {storeDirectory.map((site, i) => (
-                    <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-foreground/5">
-                      <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${
-                        site.isOnline ? 'text-emerald-500' : site.hasData ? 'text-yellow-500' : 'text-red-400'
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-foreground truncate">{site.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{site.city} · {site.region}</p>
+                  {storeDirectory.map((site, i) => {
+                    const meta = DIR_STATE_META[site.state];
+                    return (
+                      <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-foreground/5">
+                        <Circle className={`w-2.5 h-2.5 fill-current shrink-0 ${meta.dot}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-foreground truncate">{site.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{site.city} · {site.region}</p>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${meta.pill}`}>
+                          {meta.label[language === 'it' ? 'it' : 'en']}
+                        </span>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${
-                        site.isOnline 
-                          ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
-                          : site.hasData 
-                            ? 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10'
-                            : 'border-red-400/30 text-red-400 bg-red-400/10'
-                      }`}>
-                        {site.isOnline 
-                          ? 'Online' 
-                          : site.hasData 
-                            ? 'Offline' 
-                            : (language === 'it' ? 'N/A' : 'N/A')}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {storeDirectory.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       {language === 'it' ? 'Nessun sito disponibile' : 'No sites available'}

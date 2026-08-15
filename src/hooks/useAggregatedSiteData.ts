@@ -22,6 +22,9 @@ import { isValidUUID } from '@/lib/utils';
 // Types
 // =============================================================================
 
+/** Stato canonico di un sito (spec §0): giudicato sui soli domini installati. */
+export type SiteState = 'online' | 'offline' | 'stale' | 'not_installed';
+
 export interface SiteRealData {
   siteId: string;
   siteName: string;
@@ -29,6 +32,13 @@ export interface SiteRealData {
   hasEnergyData: boolean;
   hasAirData: boolean;
   hasWaterData: boolean;
+  /** Domini con dispositivi installati: definisce cosa ASPETTARSI dal sito */
+  capabilities: { energy: boolean; air: boolean; water: boolean };
+  state: SiteState;
+  /** true se l'ultima lettura e' piu' vecchia di 2 giorni */
+  isNoData: boolean;
+  /** Variazione % della media giornaliera 30gg vs 90gg (baseline propria); null se incalcolabile */
+  baselineDeltaPct: number | null;
   energy: {
     monthlyKwh: number | null;
     hvacKwh: number | null;
@@ -61,10 +71,14 @@ export interface AggregatedOverlayData {
     avgCo2: number;
     sitesCount: number;
     sitesOnline: number;
+    /** Siti con almeno un dispositivo installato (spec §0: "monitorati") */
+    sitesMonitored: number;
     /** Sites with any data received (ever), regardless of how recent */
     sitesWithData: number;
     alertsCritical: number;
     alertsWarning: number;
+    /** Siti stale (>2 giorni): segnalati come no-data, MAI sommati ai critical */
+    alertsNoData: number;
   };
   isLoading: boolean;
   isError: boolean;
@@ -92,16 +106,22 @@ interface FetchResult {
   alerts: Record<string, { critical: number; warning: number; info: number }>;
   /** site_id → latest timestamp across all telemetry */
   latestTs: Record<string, string>;
+  /** site_id → kWh 90 giorni (stessa selezione device dei 30gg), per baseline */
+  energy90: Record<string, number>;
+  /** site_id → domini con dispositivi installati (le "aspettative") */
+  capabilities: Record<string, { energy: boolean; air: boolean; water: boolean }>;
+  /** site_id → true se ultima lettura piu' vecchia di 2 giorni */
+  noData: Record<string, boolean>;
 }
 
 async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResult> {
   if (!supabase || siteIds.length === 0) {
-    return { monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {} };
+    return { monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {}, energy90: {}, capabilities: {}, noData: {} };
   }
 
   const result: FetchResult = {
     monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {},
-    airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {},
+    airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {}, energy90: {}, capabilities: {}, noData: {},
   };
 
   const now = new Date();
@@ -128,6 +148,30 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
   const lightingDevices = allDevices.filter(d => d.category === 'lighting');
   const plugsDevices = allDevices.filter(d => d.category === 'plugs');
   const aqDevices = allDevices.filter(d => d.device_type === 'air_quality');
+
+  // Capability per sito e per dominio: da cosa e' INSTALLATO derivano le
+  // aspettative (spec Q1a/Q5). Un sito con solo monitor aria non e' "offline
+  // energia": l'energia semplicemente non e' attesa, e il KPI mostra "—".
+  const ENERGY_CATEGORIES = new Set(['general', 'hvac', 'lighting', 'plugs']);
+  const isEnergyDevice = (d: { category: string | null; device_type: string }) =>
+    (d.category != null && ENERGY_CATEGORIES.has(d.category)) || d.device_type === 'energy_monitor';
+  const energyDevices = allDevices.filter(isEnergyDevice);
+  allDevices.forEach(d => {
+    if (!result.capabilities[d.site_id]) {
+      result.capabilities[d.site_id] = { energy: false, air: false, water: false };
+    }
+    const cap = result.capabilities[d.site_id];
+    if (isEnergyDevice(d)) cap.energy = true;
+    if (d.device_type === 'air_quality') cap.air = true;
+    if (d.device_type === 'water_meter') cap.water = true;
+  });
+
+  // Siti che possiedono almeno un contatore 'general': per loro vale SOLO il
+  // general (evita il doppio conteggio general + sottocarichi). Per gli altri
+  // si sommano i sottocarichi / device energia non categorizzati (spec Q1a:
+  // il general, quando c'e', ha sempre la precedenza).
+  const sitesWithGeneral = new Set(generalDevices.map(d => d.site_id));
+  const fallbackEnergyDevices = energyDevices.filter(d => !sitesWithGeneral.has(d.site_id));
 
   // Helper: sum energy.active_energy from energy_daily for a set of devices
   async function sumEnergyForDevices(devices: typeof allDevices, days: string): Promise<Record<string, number>> {
@@ -159,16 +203,22 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
   }
 
   // ---------------------------------------------------------------------------
-  // 2) ENERGY: Sum kWh by category (30 days)
+  // 2) ENERGY: kWh 30gg (general con precedenza, fallback sottocarichi) e
+  //    90gg per la baseline della Health Matrix (spec Q4: 30gg vs 90gg).
   // ---------------------------------------------------------------------------
+  const ninetyDaysAgoStr = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   try {
-    const [general, hvac, lighting, plugs] = await Promise.all([
+    const [general, fallback, general90, fallback90, hvac, lighting, plugs] = await Promise.all([
       sumEnergyForDevices(generalDevices, thirtyDaysAgoStr),
+      sumEnergyForDevices(fallbackEnergyDevices, thirtyDaysAgoStr),
+      sumEnergyForDevices(generalDevices, ninetyDaysAgoStr),
+      sumEnergyForDevices(fallbackEnergyDevices, ninetyDaysAgoStr),
       sumEnergyForDevices(hvacDevices, thirtyDaysAgoStr),
       sumEnergyForDevices(lightingDevices, thirtyDaysAgoStr),
       sumEnergyForDevices(plugsDevices, thirtyDaysAgoStr),
     ]);
-    Object.assign(result.monthlyEnergy, general);
+    Object.assign(result.monthlyEnergy, fallback, general); // general sovrascrive
+    Object.assign(result.energy90, fallback90, general90);
     Object.assign(result.hvacEnergy, hvac);
     Object.assign(result.lightingEnergy, lighting);
     Object.assign(result.plugsEnergy, plugs);
@@ -276,33 +326,34 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
   }
 
   // ---------------------------------------------------------------------------
-  // 5) ALERTS: count from events (status='active') + staleness alerts
+  // 5) ALERTS da site_alerts (status='active') — stessa fonte della vista sito
+  //    e della campanella (spec Q1b). La vecchia fonte era `events`, che in
+  //    produzione ha ZERO righe: il KPI mostrava solo lo stale camuffato.
   // ---------------------------------------------------------------------------
   try {
-    const { data: eventsRows } = await supabase
-      .from('events')
-      .select('site_id, severity')
-      .in('site_id', siteIds)
-      .eq('status', 'active');
-
-    eventsRows?.forEach((row: any) => {
-      if (!row.site_id) return;
-      if (!result.alerts[row.site_id]) result.alerts[row.site_id] = { critical: 0, warning: 0, info: 0 };
-      const sev = row.severity?.toLowerCase() || 'info';
-      if (sev === 'critical' || sev === 'error') result.alerts[row.site_id].critical++;
-      else if (sev === 'warning' || sev === 'warn') result.alerts[row.site_id].warning++;
-      else result.alerts[row.site_id].info++;
-    });
+    for (let i = 0; i < siteIds.length; i += batchSize) {
+      const batch = siteIds.slice(i, i + batchSize);
+      const { data: alertRows } = await supabase
+        .from('site_alerts')
+        .select('site_id, severity')
+        .in('site_id', batch)
+        .eq('status', 'active');
+      alertRows?.forEach((row: any) => {
+        if (!row.site_id) return;
+        if (!result.alerts[row.site_id]) result.alerts[row.site_id] = { critical: 0, warning: 0, info: 0 };
+        const sev = row.severity?.toLowerCase() || 'info';
+        if (sev === 'critical' || sev === 'error') result.alerts[row.site_id].critical++;
+        else if (sev === 'warning' || sev === 'warn') result.alerts[row.site_id].warning++;
+        else result.alerts[row.site_id].info++;
+      });
+    }
   } catch (e) { /* ignore */ }
 
-  // Add staleness-based critical alerts: sites with data older than 2 days
+  // Stale (>2 giorni senza letture): segnalato a parte come "no-data",
+  // MAI sommato ai critical (spec Q1b).
   const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
   Object.entries(result.latestTs).forEach(([siteId, ts]) => {
-    const lastTs = new Date(ts);
-    if (lastTs < twoDaysAgo) {
-      if (!result.alerts[siteId]) result.alerts[siteId] = { critical: 0, warning: 0, info: 0 };
-      result.alerts[siteId].critical++;
-    }
+    if (new Date(ts) < twoDaysAgo) result.noData[siteId] = true;
   });
 
   console.log('[useAggregatedSiteData] Fetched:', {
@@ -384,8 +435,32 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
       // fisso di 450 L, che rendeva "monitorato" ogni sito del gruppo.
       const hasWaterData = false;
 
-      // Include site if it has ANY real data, any telemetry ever, or is online
-      if (!hasEnergyData && !hasAirData && !isOnline && !hasLatestTs) return;
+      // Capability = cosa e' installato (le "aspettative", spec Q5).
+      const capabilities = aggregatedData?.capabilities[siteId]
+        ?? (profile
+          ? { energy: profile.modules.energy, air: profile.modules.air, water: profile.modules.water }
+          : { energy: false, air: false, water: false });
+      const isMonitored = capabilities.energy || capabilities.air || capabilities.water;
+      const isNoData = aggregatedData?.noData[siteId] ?? false;
+
+      // Stato canonico (spec §0): giudicato SOLO sui domini installati.
+      const state: SiteState = !isMonitored
+        ? 'not_installed'
+        : isOnline
+          ? 'online'
+          : isNoData || !hasLatestTs
+            ? 'stale'
+            : 'offline';
+
+      // Baseline energia per la Health Matrix (spec Q4): media giornaliera
+      // 30gg confrontata con la media 90gg. Null se una delle due manca.
+      const kwh90 = aggregatedData?.energy90[siteId];
+      const baselineDeltaPct = (monthlyKwh != null && monthlyKwh > 0 && kwh90 != null && kwh90 > 0)
+        ? Math.round((((monthlyKwh / 30) - (kwh90 / 90)) / (kwh90 / 90)) * 100)
+        : null;
+
+      // Popolazione degli aggregati = siti monitorati (piu' vetrina/storico).
+      if (!isMonitored && !hasEnergyData && !hasAirData && !isOnline && !hasLatestTs) return;
 
       sites.push({
         siteId,
@@ -394,6 +469,10 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
         hasEnergyData,
         hasAirData,
         hasWaterData,
+        capabilities,
+        state,
+        isNoData,
+        baselineDeltaPct,
         energy: { monthlyKwh, hvacKwh, lightingKwh, plugsKwh },
         air: airData ?? { co2: null, temperature: null, humidity: null, voc: null },
         water: { consumption: null },
@@ -405,12 +484,14 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
     const sitesWithAir = sites.filter(s => s.hasAirData);
     const sitesWithWater = sites.filter(s => s.hasWaterData);
     const sitesOnline = sites.filter(s => s.isOnline);
+    const sitesMonitored = sites.filter(s => s.state !== 'not_installed');
 
     const totalMonthlyKwh = sitesWithEnergy.reduce((sum, s) => sum + (s.energy.monthlyKwh || 0), 0);
     const totalCo2 = sitesWithAir.reduce((sum, s) => sum + (s.air.co2 || 0), 0);
     const avgCo2 = sitesWithAir.length > 0 ? Math.round(totalCo2 / sitesWithAir.length) : 0;
     const alertsCritical = sites.reduce((sum, s) => sum + s.alerts.critical, 0);
     const alertsWarning = sites.reduce((sum, s) => sum + s.alerts.warning, 0);
+    const alertsNoData = sites.filter(s => s.isNoData).length;
 
     return {
       sites,
@@ -422,9 +503,11 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
         avgCo2,
         sitesCount: sites.length,
         sitesOnline: sitesOnline.length,
+        sitesMonitored: sitesMonitored.length,
         sitesWithData: sites.length,
         alertsCritical,
         alertsWarning,
+        alertsNoData,
       },
       isLoading,
       isError,

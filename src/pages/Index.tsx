@@ -12,6 +12,7 @@ import PostLoginOnboarding from "@/components/onboarding/PostLoginOnboarding";
 import { Project, MonitoringType } from "@/lib/data";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
+import { useAllProjects } from "@/hooks/useRealTimeData";
 import { DashboardLoadingSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import type { ProjectSection } from "@/components/dashboard/SiteMarker";
 
@@ -40,6 +41,7 @@ const Index = () => {
   // User scope detection for role-based routing
   const { clientRole, holdingId, brandId, siteId, allowedRegions, isLoading: scopeLoading } = useUserScope();
   const { sites, brands, holdings } = useAdminData();
+  const { projects: allProjectsList } = useAllProjects();
 
   // --- NUOVA FUNZIONE: GeoIP Detection ---
   useEffect(() => {
@@ -177,6 +179,16 @@ const Index = () => {
     setSelectedProject(project);
   };
 
+  // Spec Q3/Q4: click su una riga di leaderboard / health matrix nella
+  // panoramica brand-holding apre direttamente la vista del sito.
+  const openSiteFromOverlay = (targetSiteId: string) => {
+    const project = allProjectsList.find(p => p.siteId === targetSiteId);
+    if (project) {
+      setInitialSection("overview");
+      setSelectedProject(project);
+    }
+  };
+
   // ── Back nativo per la vista sito ──
   // Il sito è puro stato React: senza una entry di history il tasto back
   // Android (lib/native.ts fa history.back()) e lo swipe-back iOS
@@ -290,12 +302,13 @@ const Index = () => {
       )}
 
       {/* Desktop: Brand/Holding Overlay */}
-      <BrandOverlay 
+      <BrandOverlay
         selectedBrand={selectedBrand}
         selectedHolding={selectedHolding}
         visible={showBrandOverlay && true}
         currentRegion={currentRegion}
         activeFilters={activeFilters}
+        onOpenSite={openSiteFromOverlay}
       />
       
       {/* Desktop: Region Overlay */}
