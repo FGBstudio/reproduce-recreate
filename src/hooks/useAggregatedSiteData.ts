@@ -126,7 +126,12 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
 
   const now = new Date();
   const thirtyDaysAgoStr = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Finestre di freschezza PER DOMINIO (regola approvata il 15/08/2026):
+  // aria trasmette in continuo -> 60 minuti; i contatori energia caricano a
+  // lotti ogni 3 ore -> 3h30, col margine che assorbe il jitter del gateway
+  // (a 3h esatte un sito sano lampeggerebbe offline a ogni ciclo).
   const sixtyMinutesAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const threeHalfHoursAgo = new Date(now.getTime() - 3.5 * 60 * 60 * 1000);
 
   // ---------------------------------------------------------------------------
   // 1) Fetch devices for these sites (all categories)
@@ -320,8 +325,10 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
         supabase.from('energy_latest').select('site_id, ts').in('site_id', batch),
         supabase.from('telemetry_latest').select('site_id, ts').in('site_id', batch),
       ]);
-      // Track max ts per site and online status
-      const processRows = (rows: any[] | null) => {
+      // Track max ts per site e stato online. Il sito e' online se ALMENO UN
+      // dominio installato e' fresco, ciascuno con la propria finestra:
+      // energy_latest -> 3h30 (caricamenti a lotti), telemetry_latest -> 60 min.
+      const processRows = (rows: any[] | null, freshnessCutoff: Date) => {
         rows?.forEach((r: any) => {
           if (!r.site_id || !r.ts) return;
           const ts = new Date(r.ts);
@@ -330,14 +337,13 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
           if (!existing || ts > new Date(existing)) {
             result.latestTs[r.site_id] = r.ts;
           }
-          // Check online (60 min)
-          if (ts >= sixtyMinutesAgo) {
+          if (ts >= freshnessCutoff) {
             result.onlineStatus[r.site_id] = true;
           }
         });
       };
-      processRows(el);
-      processRows(tl);
+      processRows(el, threeHalfHoursAgo);
+      processRows(tl, sixtyMinutesAgo);
     }
   } catch (e) {
     console.warn('[useAggregatedSiteData] online/staleness query failed:', e);
