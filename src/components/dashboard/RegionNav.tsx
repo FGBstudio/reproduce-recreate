@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { hapticLight } from "@/lib/native";
 import { Zap, Wind, Droplets, Building2, Tag, BarChart2 } from "lucide-react";
 import { MonitoringType } from "@/lib/data";
-import { useAllHoldings, useAllBrands } from "@/hooks/useRealTimeData";
+import { useAllHoldings, useAllBrands, useAllProjects } from "@/hooks/useRealTimeData";
 import { useUserScope } from "@/hooks/useUserScope";
 import {
   Select,
@@ -57,6 +57,7 @@ const RegionNav = ({
 }: RegionNavProps) => {
   const { holdings } = useAllHoldings();
   const { brands } = useAllBrands();
+  const { projects } = useAllProjects();
   const { clientRole } = useUserScope();
 
   // Pubblica l'altezza reale della barra come CSS var: con flex-wrap le righe
@@ -90,10 +91,43 @@ const RegionNav = ({
     );
   }, [allowedRegions]);
 
+  // Groups e Clients filtrati sulla regione corrente: nelle tendine compaiono
+  // solo le entita' con almeno un sito nella regione. GLOBAL mostra tutto.
+  const { brandIdsInRegion, holdingIdsInRegion } = useMemo(() => {
+    if (currentRegion === "GLOBAL") {
+      return { brandIdsInRegion: null as Set<string> | null, holdingIdsInRegion: null as Set<string> | null };
+    }
+    const brandIds = new Set(
+      projects.filter((p) => p.region === currentRegion).map((p) => p.brandId)
+    );
+    const holdingIds = new Set(
+      brands.filter((b) => brandIds.has(b.id)).map((b) => b.holdingId)
+    );
+    return { brandIdsInRegion: brandIds, holdingIdsInRegion: holdingIds };
+  }, [currentRegion, projects, brands]);
+
+  const availableHoldings = useMemo(() => {
+    if (!holdingIdsInRegion) return holdings;
+    return holdings.filter((h) => holdingIdsInRegion.has(h.id));
+  }, [holdings, holdingIdsInRegion]);
+
   const availableBrands = useMemo(() => {
-    if (!selectedHolding) return brands;
-    return brands.filter((b) => b.holdingId === selectedHolding);
-  }, [selectedHolding, brands]);
+    let list = brandIdsInRegion ? brands.filter((b) => brandIdsInRegion.has(b.id)) : brands;
+    if (selectedHolding) list = list.filter((b) => b.holdingId === selectedHolding);
+    return list;
+  }, [selectedHolding, brands, brandIdsInRegion]);
+
+  // Cambiando regione, una selezione che non vi esiste piu' si azzera da sola:
+  // altrimenti la tendina mostrerebbe un valore assente dalla lista e la mappa
+  // resterebbe filtrata su un'entita' invisibile.
+  useEffect(() => {
+    if (selectedHolding && holdingIdsInRegion && !holdingIdsInRegion.has(selectedHolding)) {
+      onHoldingChange?.(null);
+      onBrandChange?.(null);
+    } else if (selectedBrand && brandIdsInRegion && !brandIdsInRegion.has(selectedBrand)) {
+      onBrandChange?.(null);
+    }
+  }, [selectedHolding, selectedBrand, holdingIdsInRegion, brandIdsInRegion, onHoldingChange, onBrandChange]);
 
   return (
     <nav
@@ -190,7 +224,7 @@ const RegionNav = ({
                   </SelectTrigger>
                   <SelectContent className="glass-panel border-foreground/10">
                     <SelectItem value="all">All Groups</SelectItem>
-                    {holdings.map((h) => (
+                    {availableHoldings.map((h) => (
                       <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
                     ))}
                   </SelectContent>
