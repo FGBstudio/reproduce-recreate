@@ -5247,18 +5247,28 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
                 {/* Slide 2: Air Quality Heatmap */}
                 <div className="w-full flex-shrink-0 px-4 md:px-16 overflow-y-auto pb-4">
-                  {/* max-w-full + overflow-x-auto: con 8 metriche i bottoni
-                      superano i 375px e senza scroll venivano clippati */}
-                  <div className="mb-4 flex items-center gap-2 md:gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit max-w-full overflow-x-auto">
-                    {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].filter(m => supportsMetric(m)).map(m => (
-                      <button 
-                        key={m}
-                        onClick={() => setActiveAirHeatmapMetric(m)}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-foreground shadow-md' : 'hover:bg-gray-100 text-muted-foreground'}`}
-                      >
-                        {m === 'iaq.co2' ? 'CO₂' : m === 'iaq.voc' ? 'TVOC' : m === 'iaq.pm25' ? 'PM2.5' : m === 'iaq.pm10' ? 'PM10' : m === 'iaq.co' ? 'CO' : m === 'iaq.o3' ? 'O₃' : m === 'env.temperature' ? 'TEMP' : 'HUM'}
-                      </button>
-                    ))}
+                  {/* Selettore monitor anche qui: nei siti multi-monitor la
+                      heatmap media i device selezionati; con la selezione
+                      completa mostra la media di tutti (per metrica). */}
+                  <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+                    {/* max-w-full + overflow-x-auto: con 8 metriche i bottoni
+                        superano i 375px e senza scroll venivano clippati */}
+                    <div className="flex items-center gap-2 md:gap-4 bg-foreground/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 w-fit max-w-full overflow-x-auto">
+                      {['iaq.co2', 'iaq.voc', 'iaq.pm25', 'iaq.pm10', 'iaq.co', 'iaq.o3', 'env.temperature', 'env.humidity'].filter(m => supportsMetric(m)).map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setActiveAirHeatmapMetric(m)}
+                          className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${activeAirHeatmapMetric === m ? 'bg-teal-600 text-foreground shadow-md' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                        >
+                          {m === 'iaq.co2' ? 'CO₂' : m === 'iaq.voc' ? 'TVOC' : m === 'iaq.pm25' ? 'PM2.5' : m === 'iaq.pm10' ? 'PM10' : m === 'iaq.co' ? 'CO' : m === 'iaq.o3' ? 'O₃' : m === 'env.temperature' ? 'TEMP' : 'HUM'}
+                        </button>
+                      ))}
+                    </div>
+                    <AirDeviceSelector
+                      devices={airDevices}
+                      selectedIds={selectedAirDeviceIds}
+                      onChange={setSelectedAirDeviceIds}
+                    />
                   </div>
                   <AirHeatmap 
                     heatmapGrid={airHeatmapGrid}

@@ -473,6 +473,30 @@ function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
  * - >30 days: telemetry_daily → daily averages
  * * Includes fallback to raw + client-side aggregation if aggregate tables are empty
  */
+/**
+ * Scarica TUTTE le pagine di una query PostgREST.
+ * PostgREST tronca ogni risposta al proprio max-rows: qualsiasi query di serie
+ * storiche senza .range() perde la coda del periodo in silenzio (piu' device
+ * = piu' righe = taglio piu' precoce). Pagina da 10k, tetto di sicurezza 300k.
+ */
+async function fetchAllPages(
+  buildPage: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>
+): Promise<{ data: any[]; error: any }> {
+  const PAGE = 10000;
+  const MAX_ROWS = 300000;
+  const all: any[] = [];
+  for (let from = 0; from < MAX_ROWS; from += PAGE) {
+    const { data, error } = await buildPage(from, from + PAGE - 1);
+    if (error) return { data: all, error };
+    if (data && data.length > 0) all.push(...data);
+    if (!data || data.length < PAGE) break;
+  }
+  if (all.length >= MAX_ROWS) {
+    console.warn(`[fetchAllPages] raggiunto il tetto di ${MAX_ROWS} righe: risultato potenzialmente parziale`);
+  }
+  return { data: all, error: null };
+}
+
 export async function fetchTimeseriesApi(params: {
   device_ids: string[];
   metrics: string[];
@@ -563,39 +587,46 @@ export async function fetchTimeseriesApi(params: {
   let data: any[] | null = null;
   let error: any = null;
 
-  // Execute query based on route
+  // Execute query based on route — SEMPRE paginato: senza .range() PostgREST
+  // applica il proprio tetto di righe e tronca in silenzio la coda del
+  // periodo. Caso reale: sito con 10 monitor aria, il mese richiede ~146k
+  // righe raw, il vecchio .limit(50000) tagliava tutto dopo il 7/08 mentre
+  // ogni singolo monitor (sotto il tetto) arrivava a oggi.
   if (route.table === 'hourly') {
-    const resp = await supabase
+    const resp = await fetchAllPages((from, to) => supabase
       .from('telemetry_hourly')
       .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true });
+      .order('ts_hour', { ascending: true })
+      .range(from, to));
     data = resp.data as any;
     error = resp.error;
   } else if (route.table === 'daily') {
-    const resp = await supabase
+    const resp = await fetchAllPages((from, to) => supabase
       .from('telemetry_daily')
       .select('ts_day, device_id, metric, value_avg, value_min, value_max, sample_count')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true });
+      .order('ts_day', { ascending: true })
+      .range(from, to));
     data = resp.data as any;
     error = resp.error;
   } else {
     // Raw telemetry
-    const resp = await supabase
+    const resp = await fetchAllPages((from, to) => supabase
       .from('telemetry')
       .select('ts, device_id, metric, value')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .order('ts', { ascending: true });
+      .order('ts', { ascending: true })
+      .range(from, to));
     data = resp.data as any;
     error = resp.error;
   }
@@ -608,17 +639,17 @@ export async function fetchTimeseriesApi(params: {
   // FALLBACK: If aggregate tables return 0 rows, fall back to raw + client-side aggregation
   const hasNoRows = !data || data.length === 0;
   if (hasNoRows && route.table !== 'raw') {
-    console.log(`[Timeseries] ${route.source} returned 0 rows, falling back to raw + client-side aggregation`);
-    
-    const rawResp = await supabase
+    console.warn(`[Timeseries] ${route.source} returned 0 rows for devices [${params.device_ids.join(',')}] — falling back to raw + client-side aggregation`);
+
+    const rawResp = await fetchAllPages((from, to) => supabase
       .from('telemetry')
       .select('ts, device_id, metric, value')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .limit(50000)
-      .order('ts', { ascending: true });
+      .order('ts', { ascending: true })
+      .range(from, to));
 
     if (rawResp.error) {
       console.error('Direct DB Timeseries raw fallback error:', rawResp.error);
@@ -834,43 +865,38 @@ export async function fetchEnergyTimeseriesApi(params: {
     );
   };
 
+  // Paginazione ovunque: i vecchi .limit(10000) troncavano in silenzio la
+  // coda del periodo sui siti con molti contatori (stessa classe di bug della
+  // heatmap aria: fetchAllPages, vedi sopra).
   if (route.table === 'hourly') {
-    let query = supabase
+    const resp = await fetchAllPages((from, to) => buildQuery(supabase
       .from('energy_hourly')
       .select('ts_hour, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true })
-      .limit(10000);
-
-    query = buildQuery(query);
-    const resp = await query;
+      .order('ts_hour', { ascending: true }))
+      .range(from, to));
     data = resp.data as any;
     error = resp.error;
   } else if (route.table === 'daily') {
-    let query = supabase
+    const resp = await fetchAllPages((from, to) => buildQuery(supabase
       .from('energy_daily')
       .select('ts_day, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true })
-      .limit(10000);
-
-    query = buildQuery(query);
-    const resp = await query;
+      .order('ts_day', { ascending: true }))
+      .range(from, to));
     data = resp.data as any;
     error = resp.error;
   } else {
     // Raw energy telemetry
-    let query = supabase
+    const resp = await fetchAllPages((from, to) => buildQuery(supabase
       .from('energy_telemetry')
       .select('ts, device_id, metric, value')
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .order('ts', { ascending: true });
-
-    query = buildQuery(query);
-    const resp = await query;
+      .order('ts', { ascending: true }))
+      .range(from, to));
     data = resp.data as any;
     error = resp.error;
   }
@@ -893,16 +919,13 @@ export async function fetchEnergyTimeseriesApi(params: {
   if (hasNoRows && route.table !== 'raw') {
     console.log(`[Energy] ${route.source} returned 0 rows, trying raw energy_telemetry`);
 
-    let rawQuery = supabase
+    const rawResp = await fetchAllPages((from, to) => buildQuery(supabase
       .from('energy_telemetry')
       .select('ts, device_id, metric, value')
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .limit(50000)
-      .order('ts', { ascending: true });
-
-    rawQuery = buildQuery(rawQuery);
-    const rawResp = await rawQuery;
+      .order('ts', { ascending: true }))
+      .range(from, to));
 
     if (rawResp.error || !rawResp.data || rawResp.data.length === 0) {
       // Final fallback: try generic telemetry tables
