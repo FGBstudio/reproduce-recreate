@@ -434,3 +434,34 @@ html, body {
 .fgb-mat [class*="drop-shadow"] {
   filter: none;
 }
+
+/* ── Vista Certificazioni: tooltip di scadenza sulle celle ────────────────
+   La cella con data-exp mostra al passaggio "Expires MM/YYYY". CSS puro:
+   niente listener, funziona su ogni cella della tabella. */
+.cert-cell[data-exp]:hover::after {
+  content: 'Expires ' attr(data-exp);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsl(200 100% 6%);
+  color: #fff;
+  font-size: 10px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 50;
+  border: 1px solid hsl(0 0% 100% / 0.12);
+  pointer-events: none;
+}
+.cert-cell[data-exp]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: hsl(200 100% 6%);
+  z-index: 50;
+  pointer-events: none;
+}

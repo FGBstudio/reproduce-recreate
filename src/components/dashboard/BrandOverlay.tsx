@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
 import { useAggregatedSiteData, type SiteState } from "@/hooks/useAggregatedSiteData";
 import { CO2_THRESHOLDS } from "@/lib/airQuality";
+import { CERTIFICATIONS_OVERVIEW } from "@/lib/features";
+import CertificationsOverview from "./CertificationsOverview";
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   Cell, ReferenceLine, BarChart, Bar, Legend
@@ -61,6 +63,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   const [dirFilter, setDirFilter] = useState<SiteState | 'all'>('all');
   const [showAllEnergyRank, setShowAllEnergyRank] = useState(false);
   const [showAllAirRank, setShowAllAirRank] = useState(false);
+  // Switch Monitoring | Certifications (flag CERTIFICATIONS_OVERVIEW):
+  // cambia SOLO il pannello destro; mappa, barra regioni e pannello cliente
+  // restano identici. Flag spento -> nessuno switch, app com'era.
+  const [overlayView, setOverlayView] = useState<'monitoring' | 'certifications'>('monitoring');
+  const certView = CERTIFICATIONS_OVERVIEW && overlayView === 'certifications';
 
   const { brands } = useAllBrands();
   const { holdings } = useAllHoldings();
@@ -317,6 +324,25 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 {brand ? t('brand.brand_overview') : t('brand.holding_overview')}
               </p>
             </div>
+            {CERTIFICATIONS_OVERVIEW && (
+              <div className="flex bg-foreground/5 border border-foreground/10 rounded-full p-0.5" role="tablist" aria-label="Overlay view">
+                {(['monitoring', 'certifications'] as const).map(v => (
+                  <button
+                    key={v}
+                    role="tab"
+                    aria-selected={overlayView === v}
+                    onClick={() => setOverlayView(v)}
+                    className={`px-3.5 py-1.5 rounded-full text-[10px] tracking-wide uppercase transition-all ${
+                      overlayView === v
+                        ? 'bg-fgb-secondary text-white font-semibold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {v === 'monitoring' ? 'Monitoring' : 'Certifications'}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               onClick={() => {
                 const ids = new Set(filteredProjects.map(p => p.siteId).filter(Boolean));
@@ -549,9 +575,21 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       </div>
 
       {/* ============================================================ */}
+      {/* Certifications Panel — sostituisce i chart quando lo switch  */}
+      {/* e' su Certifications (flag CERTIFICATIONS_OVERVIEW)          */}
+      {/* ============================================================ */}
+      {certView && isDesktopVisible && (
+        <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
+          <div className="pointer-events-auto h-[calc(100vh-14rem)]">
+            <CertificationsOverview projects={filteredProjects} onOpenSite={onOpenSite} />
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
       {/* Charts Panel — positioned below, centered */}
       {/* ============================================================ */}
-      {showAnyChart && isDesktopVisible && (
+      {!certView && showAnyChart && isDesktopVisible && (
         <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
           <div className="pointer-events-auto grid h-[calc(100vh-14rem)] grid-cols-2 grid-rows-2 gap-3 overflow-hidden">
 
