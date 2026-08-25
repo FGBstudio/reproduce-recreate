@@ -104,12 +104,14 @@ const SEG = {
   offline: 'text-rose-200 bg-rose-500/45',
 };
 
-// Parti sticky: STESSO colore dell'app (il glass FGB, nessun colore nuovo)
-// ma quasi opaco, cosi' le righe che scorrono sotto non traspaiono mai.
+// Parti sticky: VERO glass, nessun colore pieno (navy bocciato). Il blur
+// spinto + la leggera riduzione di luminosita' rendono illeggibile cio' che
+// scorre sotto senza dipingere un blocco: quello che passa si vede solo
+// come bagliore sfocato, come nelle barre glass del resto dell'app.
 const GLASS_STICKY: React.CSSProperties = {
-  background: 'hsl(200 100% 11% / 0.97)',
-  backdropFilter: 'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
+  background: 'rgba(255, 255, 255, 0.05)',
+  backdropFilter: 'blur(26px) saturate(140%) brightness(0.72)',
+  WebkitBackdropFilter: 'blur(26px) saturate(140%) brightness(0.72)',
 };
 
 interface Props {
