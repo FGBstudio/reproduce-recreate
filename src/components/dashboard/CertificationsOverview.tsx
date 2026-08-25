@@ -19,7 +19,7 @@ import {
   schemeModel,
   SiteCertCell,
   SectionKey,
-  SECTION_LABEL,
+  DomainLive,
 } from '@/hooks/useCertificationsOverview';
 
 /** Loghi ufficiali da /public dove esistono; Energy e Air usano le stesse
@@ -57,7 +57,8 @@ const SchemeIcon = ({ scheme }: { scheme: string }) => {
 const cellCls = (c: SiteCertCell | null, scheme: string): string => {
   if (!c) return 'bg-foreground/[0.04] text-muted-foreground';
   if (c.expiringSoon) return 'bg-rose-500/15 text-rose-300';
-  if (c.live === 'offline') return 'bg-foreground/[0.07] text-muted-foreground';
+  if (c.live === 'offline') return 'bg-rose-500/12 text-rose-300/90';
+  if (c.live === 'never') return 'bg-fgb-accent/20 text-fgb-accent';
   if (c.live === 'online') return 'bg-fgb-light/25 text-fgb-secondary';
   if (c.state === 'achieved') return 'bg-fgb-light/25 text-fgb-secondary';
   if (c.state === 'in_progress') return 'bg-fgb-accent/20 text-fgb-accent';
@@ -67,12 +68,12 @@ const cellCls = (c: SiteCertCell | null, scheme: string): string => {
 const cellLabel = (scheme: string, c: SiteCertCell | null): { top: string; sub: string | null } => {
   if (!c) return { top: '—', sub: null };
   const isMon = schemeModel(scheme) === 'monitoring';
-  if (isMon && c.live) {
-    return { top: c.live === 'online' ? 'Online' : 'Offline', sub: c.issuedYear ? String(c.issuedYear) : null };
-  }
-  if (isMon && c.state === 'in_progress') {
-    // "installation pending": il quadrato giallo con l'informazione richiesta
-    return { top: 'Installing', sub: 'installation pending' };
+  if (isMon) {
+    if (c.live === 'online') return { top: 'Online', sub: c.issuedYear ? String(c.issuedYear) : null };
+    if (c.live === 'offline') return { top: 'Offline', sub: c.issuedYear ? String(c.issuedYear) : null };
+    if (c.live === 'never') return { top: 'Installing', sub: 'installation pending' };
+    // nessun device del dominio -> da installare
+    return { top: c.state === 'potential' ? 'Potential' : 'Pipeline', sub: 'to install' };
   }
   if (c.state === 'potential') return { top: 'Potential', sub: null };
   if (c.state === 'pipeline') return { top: 'Pipeline', sub: null };
@@ -101,20 +102,22 @@ const SEG = {
   offline: 'text-rose-200 bg-rose-500/45',
 };
 
+// Velo NEUTRO per le parti sticky: niente navy pieno (bocciato), solo
+// scurimento leggero + blur che si fonde col pannello glass.
 const GLASS_STICKY: React.CSSProperties = {
-  background: 'hsl(var(--fgb-glass))',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
+  background: 'rgba(8, 12, 14, 0.82)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
 };
 
 interface Props {
   projects: Project[];
-  siteOnline?: Map<string, boolean>;
+  domainLive?: Map<string, { energy: DomainLive; air: DomainLive }>;
   onOpenSite?: (siteId: string) => void;
 }
 
-const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => {
-  const { kpis, schemes, sections, tableSchemes, isLoading, hasData } = useCertificationsOverview(projects, siteOnline);
+const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => {
+  const { kpis, schemes, sections, tableSchemes, isLoading, hasData } = useCertificationsOverview(projects, domainLive);
   const [activeScheme, setActiveScheme] = useState<string | null>(null);
   const [schemeFilter, setSchemeFilter] = useState<string | null>(null);
   const [currentSection, setCurrentSection] = useState<SectionKey | null>(null);
@@ -134,7 +137,7 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
   const totalRows = visibleSections.reduce((n, s) => n + s.rows.length, 0);
 
   // Scroll-spy: la sotto-riga mostra la sezione che stai attraversando.
-  const HEADER_OFFSET = 76; // intestazione + sotto-riga sticky
+  const HEADER_OFFSET = 64; // altezza del blocco sticky (header + chips)
   const onScroll = () => {
     const cont = scrollRef.current;
     if (!cont) return;
@@ -157,6 +160,8 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
     ? Math.max(...scheme.levels.map(l => l.achieved + l.inProgress + l.pipeline + l.potential), 1)
     : 1;
   const BAR_SCALE = 55;
+  // Colonne flessibili: occupano tutta la larghezza; sotto il minimo parte lo scroll.
+  const COLS = `minmax(180px, 1.6fr) repeat(${tableSchemes.length}, minmax(100px, 1fr))`;
 
   if (!isLoading && !hasData) {
     return (
@@ -304,27 +309,28 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
         </div>
 
         <div ref={scrollRef} onScroll={onScroll} className="flex-1 min-h-0 overflow-auto custom-scrollbar relative">
-          <div style={{ minWidth: `${190 + tableSchemes.length * 118}px` }}>
-            {/* intestazione colonne — sticky in alto */}
-            <div className="sticky top-0 z-30 grid gap-2 text-[10px] uppercase tracking-widest text-muted-foreground pb-1.5 pt-1"
-              style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)`, ...GLASS_STICKY }}>
-              <span className="sticky left-0 z-40 pl-2" style={GLASS_STICKY}>Site</span>
-              {tableSchemes.map(s => <span key={s} className="text-center">{s.replace('_', ' ')}</span>)}
-            </div>
-            {/* sotto-riga sezioni — sticky sotto l'intestazione, scroll-spy + salto */}
-            <div className="sticky z-30 flex items-center gap-1.5 pb-2 pt-1 overflow-x-auto"
-              style={{ top: 26, ...GLASS_STICKY }}>
-              <span className="sticky left-0 z-40 pl-2 shrink-0" style={GLASS_STICKY} />
-              {visibleSections.map(s => (
-                <button key={s.key} onClick={() => jumpTo(s.key)}
-                  className={`text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${
-                    (currentSection ?? visibleSections[0]?.key) === s.key
-                      ? 'border-fgb-light/50 bg-fgb-light/20 text-foreground font-semibold'
-                      : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'
-                  }`}>
-                  {s.label} <span className="opacity-70">{s.rows.length}</span>
-                </button>
-              ))}
+          <div style={{ minWidth: `${180 + tableSchemes.length * 104}px` }}>
+            {/* Blocco sticky UNICO: intestazione colonne + sotto-riga sezioni.
+                Un solo elemento sticky elimina le sovrapposizioni e le
+                scritte che trasparivano durante lo scroll. */}
+            <div className="sticky top-0 z-30" style={GLASS_STICKY}>
+              <div className="grid gap-2 text-[10px] uppercase tracking-widest text-muted-foreground pb-1.5 pt-1"
+                style={{ gridTemplateColumns: COLS }}>
+                <span className="sticky left-0 z-40 pl-2" style={GLASS_STICKY}>Site</span>
+                {tableSchemes.map(s => <span key={s} className="text-center">{s.replace('_', ' ')}</span>)}
+              </div>
+              <div className="flex items-center gap-1.5 pb-2 pt-0.5 overflow-x-auto pl-2">
+                {visibleSections.map(s => (
+                  <button key={s.key} onClick={() => jumpTo(s.key)}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${
+                      (currentSection ?? visibleSections[0]?.key) === s.key
+                        ? 'border-fgb-light/50 bg-fgb-light/20 text-foreground font-semibold'
+                        : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'
+                    }`}>
+                    {s.label} <span className="opacity-70">{s.rows.length}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -337,7 +343,7 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
                     {s.rows.map(row => (
                       <div key={row.siteId} onClick={() => onOpenSite?.(row.siteId)}
                         className={`grid gap-2 items-center bg-foreground/[0.04] rounded-xl py-2 hover:bg-foreground/[0.08] transition-colors ${onOpenSite ? 'cursor-pointer' : ''}`}
-                        style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)` }}>
+                        style={{ gridTemplateColumns: COLS }}>
                         <div className="sticky left-0 z-20 min-w-0 rounded-l-xl pl-2 py-0.5" style={GLASS_STICKY}>
                           <p className="text-sm text-foreground truncate">{row.siteName}</p>
                           <p className="text-[11px] text-muted-foreground">{row.region}</p>

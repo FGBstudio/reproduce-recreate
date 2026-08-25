@@ -108,10 +108,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     hasRealData,
   } = useAggregatedSiteData(filteredProjects);
 
-  // Stato live per gli schemi "monitoring" (Energy/Air) della vista
-  // certificazioni: online = definizione unica dell'app (freschezza per dominio).
-  const certSiteOnline = useMemo(
-    () => new Map(allSitesData.map(s => [s.siteId, s.isOnline] as const)),
+  // Stato live PER DOMINIO per gli schemi "monitoring" della vista
+  // certificazioni: Online/Offline dalla freschezza del dominio, 'never' =
+  // device censiti che non hanno mai trasmesso (=> Installing).
+  const certDomainLive = useMemo(
+    () => new Map(allSitesData.map(s => [s.siteId, { energy: s.energyLive, air: s.airLive }] as const)),
     [allSitesData]
   );
 
@@ -588,7 +589,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {certView && isDesktopVisible && (
         <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
           <div className="pointer-events-auto h-[calc(100vh-14rem)]">
-            <CertificationsOverview projects={filteredProjects} siteOnline={certSiteOnline} onOpenSite={onOpenSite} />
+            <CertificationsOverview projects={filteredProjects} domainLive={certDomainLive} onOpenSite={onOpenSite} />
           </div>
         </div>
       )}

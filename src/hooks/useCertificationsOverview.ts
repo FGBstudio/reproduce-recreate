@@ -94,7 +94,7 @@ export interface SiteCertCell {
   isOm: boolean;
   expiringSoon: boolean;
   /** solo schemi monitoring: stato live del sito */
-  live?: 'online' | 'offline';
+  live?: 'online' | 'offline' | 'never';
 }
 
 export interface SiteCertRow {
@@ -246,10 +246,13 @@ function sectionSortValue(section: SectionKey, dom: CertRow | null): number {
   }
 }
 
+export type DomainLive = 'online' | 'offline' | 'never' | null;
+
 export function useCertificationsOverview(
   filteredProjects: Project[],
-  /** siteId -> online live (per gli schemi monitoring) */
-  siteOnline?: Map<string, boolean>
+  /** siteId -> stato live per dominio (dai DEVICE, non dallo status del
+   *  progetto): 'never' = censiti ma mai una lettura; null = nessun device */
+  domainLive?: Map<string, { energy: DomainLive; air: DomainLive }>
 ): CertificationsOverviewData {
   const siteIds = useMemo(
     () => filteredProjects.map(p => p.siteId).filter((id): id is string => !!id && isValidUUID(id)),
@@ -266,7 +269,13 @@ export function useCertificationsOverview(
   return useMemo(() => {
     const rows = certs || [];
     const now = Date.now();
-    const isLive = (siteId: string) => siteOnline?.get(siteId) === true;
+    // Stato live per gli schemi monitoring: decidono i DEVICE del dominio.
+    // Energy/Energy_Audit leggono il dominio energia, Air il dominio aria.
+    const liveFor = (siteId: string, scheme: string): DomainLive => {
+      const d = domainLive?.get(siteId);
+      if (!d) return null;
+      return scheme === 'Air' ? d.air : d.energy;
+    };
 
     // ── KPI: ogni riga conseguita e non scaduta conta 1 ──
     const achieved = rows.filter(r => r.state === 'achieved');
@@ -289,15 +298,20 @@ export function useCertificationsOverview(
       const base: SchemeSummary = { scheme, model, total: list.length, levels: [] };
 
       if (model === 'monitoring') {
-        // Online/Offline solo per gli attivi; gli in corso sono "Installing"
-        // (installazione in corso, non un guasto).
-        const activeOnes = list.filter(r => r.state === 'achieved');
-        base.monitoring = {
-          online: activeOnes.filter(r => isLive(r.siteId)).length,
-          offline: activeOnes.filter(r => !isLive(r.siteId)).length,
-          installing: list.filter(r => r.state === 'in_progress').length,
-          pipeline: list.filter(r => r.state === 'pipeline' || r.state === 'potential').length,
-        };
+        // Per Energy/Air lo status del progetto (perlopiu' da_configurare)
+        // NON dice chi e' acceso: decidono i DEVICE del dominio.
+        //   device che trasmettono  -> Online/Offline (freschezza per dominio)
+        //   device mai visti        -> Installing (installation pending)
+        //   nessun device           -> Pipeline (da installare)
+        let online = 0, offline = 0, installing = 0, pipeline = 0;
+        list.forEach(r => {
+          const live = liveFor(r.siteId, scheme);
+          if (live === 'online') online++;
+          else if (live === 'offline') offline++;
+          else if (live === 'never') installing++;
+          else pipeline++;
+        });
+        base.monitoring = { online, offline, installing, pipeline };
       } else if (model === 'binary') {
         base.binary = {
           achieved: list.filter(r => r.state === 'achieved').length,
@@ -322,7 +336,11 @@ export function useCertificationsOverview(
         });
       }
       return base;
-    }).sort((a, b) => b.total - a.total);
+    }).sort((a, b) => {
+      // prima le certificazioni edificio (LEED, WELL...), poi i monitoraggi
+      const mon = (s: SchemeSummary) => (s.model === 'monitoring' ? 1 : 0);
+      return mon(a) - mon(b) || b.total - a.total;
+    });
 
     // ── tabella: colonne = catalogo completo (Site fissa, resto scorre) ──
     const extras = Array.from(byScheme.keys()).filter(s => !SCHEME_CATALOG.includes(s)).sort();
@@ -353,9 +371,9 @@ export function useCertificationsOverview(
           expiryDate: best.expiryDate,
           isOm: best.isOm,
           expiringSoon: best.expiringSoon,
-          // live solo per i monitoraggi ATTIVI: gli in corso sono "Installing"
-          live: schemeModel(scheme) === 'monitoring' && best.state === 'achieved'
-            ? (isLive(siteId) ? 'online' : 'offline')
+          // monitoring: la cella riflette i DEVICE del dominio
+          live: schemeModel(scheme) === 'monitoring'
+            ? (liveFor(siteId, scheme) ?? undefined)
             : undefined,
         } : null;
       });
@@ -379,5 +397,5 @@ export function useCertificationsOverview(
     })).filter(s => s.rows.length > 0);
 
     return { kpis, schemes, sections, tableSchemes, isLoading, hasData: rows.length > 0 };
-  }, [certs, filteredProjects, isLoading, siteOnline]);
+  }, [certs, filteredProjects, isLoading, domainLive]);
 }

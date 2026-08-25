@@ -39,6 +39,11 @@ export interface SiteRealData {
   isNoData: boolean;
   /** Variazione % della media giornaliera 30gg vs 90gg (baseline propria); null se incalcolabile */
   baselineDeltaPct: number | null;
+  /** Stato live per dominio (vista certificazioni):
+   *  'online' | 'offline' | 'never' (device censiti ma mai una lettura) |
+   *  null (nessun device del dominio) */
+  energyLive: 'online' | 'offline' | 'never' | null;
+  airLive: 'online' | 'offline' | 'never' | null;
   energy: {
     monthlyKwh: number | null;
     hvacKwh: number | null;
@@ -112,16 +117,22 @@ interface FetchResult {
   capabilities: Record<string, { energy: boolean; air: boolean; water: boolean }>;
   /** site_id → true se ultima lettura piu' vecchia di 2 giorni */
   noData: Record<string, boolean>;
+  /** freschezza PER DOMINIO (per la vista certificazioni: Online/Offline/mai) */
+  energyOnline: Record<string, boolean>;
+  energySeen: Record<string, boolean>;
+  airOnline: Record<string, boolean>;
+  airSeen: Record<string, boolean>;
 }
 
 async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResult> {
   if (!supabase || siteIds.length === 0) {
-    return { monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {}, energy90: {}, capabilities: {}, noData: {} };
+    return { monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {}, airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {}, energy90: {}, capabilities: {}, noData: {}, energyOnline: {}, energySeen: {}, airOnline: {}, airSeen: {} };
   }
 
   const result: FetchResult = {
     monthlyEnergy: {}, hvacEnergy: {}, lightingEnergy: {}, plugsEnergy: {},
     airAvg: {}, onlineStatus: {}, alerts: {}, latestTs: {}, energy90: {}, capabilities: {}, noData: {},
+    energyOnline: {}, energySeen: {}, airOnline: {}, airSeen: {},
   };
 
   const now = new Date();
@@ -328,10 +339,18 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
       // Track max ts per site e stato online. Il sito e' online se ALMENO UN
       // dominio installato e' fresco, ciascuno con la propria finestra:
       // energy_latest -> 3h30 (caricamenti a lotti), telemetry_latest -> 60 min.
-      const processRows = (rows: any[] | null, freshnessCutoff: Date) => {
+      // In piu' si registra la freschezza PER DOMINIO (seen/online), che serve
+      // alla vista certificazioni per Online/Offline/Installing.
+      const processRows = (
+        rows: any[] | null,
+        freshnessCutoff: Date,
+        seenMap: Record<string, boolean>,
+        onlineMap: Record<string, boolean>,
+      ) => {
         rows?.forEach((r: any) => {
           if (!r.site_id || !r.ts) return;
           const ts = new Date(r.ts);
+          seenMap[r.site_id] = true;
           // Update latestTs
           const existing = result.latestTs[r.site_id];
           if (!existing || ts > new Date(existing)) {
@@ -339,11 +358,12 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
           }
           if (ts >= freshnessCutoff) {
             result.onlineStatus[r.site_id] = true;
+            onlineMap[r.site_id] = true;
           }
         });
       };
-      processRows(el, threeHalfHoursAgo);
-      processRows(tl, sixtyMinutesAgo);
+      processRows(el, threeHalfHoursAgo, result.energySeen, result.energyOnline);
+      processRows(tl, sixtyMinutesAgo, result.airSeen, result.airOnline);
     }
   } catch (e) {
     console.warn('[useAggregatedSiteData] online/staleness query failed:', e);
@@ -476,6 +496,20 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
             ? 'stale'
             : 'offline';
 
+      // Stato live per dominio: alimenta Online/Offline/Installing della
+      // vista certificazioni. 'never' = device censiti che non hanno mai
+      // trasmesso una lettura (installazione in corso).
+      const energyLive = capabilities.energy
+        ? (aggregatedData?.energyOnline[siteId] ? 'online' as const
+          : aggregatedData?.energySeen[siteId] ? 'offline' as const
+          : 'never' as const)
+        : null;
+      const airLive = capabilities.air
+        ? (aggregatedData?.airOnline[siteId] ? 'online' as const
+          : aggregatedData?.airSeen[siteId] ? 'offline' as const
+          : 'never' as const)
+        : null;
+
       // Baseline energia per la Health Matrix (spec Q4): media giornaliera
       // 30gg confrontata con la media 90gg. Null se una delle due manca.
       const kwh90 = aggregatedData?.energy90[siteId];
@@ -497,6 +531,8 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
         state,
         isNoData,
         baselineDeltaPct,
+        energyLive,
+        airLive,
         energy: { monthlyKwh, hvacKwh, lightingKwh, plugsKwh },
         air: airData ?? { co2: null, temperature: null, humidity: null, voc: null },
         water: { consumption: null },
