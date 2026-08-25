@@ -69,12 +69,13 @@ const cellLabel = (scheme: string, c: SiteCertCell | null): { top: string; sub: 
   const isMon = schemeModel(scheme) === 'monitoring';
   if (isMon) {
     // Device presenti -> stato reale (anche mai visti = installati ma spenti:
-    // Offline, caso Fendi Bicester). Installing SOLO quando il progetto e'
-    // partito ma i device non ci sono ancora.
+    // Offline, caso Fendi Bicester). Pipeline = progetto partito, device in
+    // arrivo (per il proprietario installing e pipeline coincidono);
+    // Potential = quotation/potential senza device.
     if (c.live === 'online') return { top: 'Online', sub: c.issuedYear ? String(c.issuedYear) : null };
     if (c.live === 'offline' || c.live === 'never') return { top: 'Offline', sub: c.issuedYear ? String(c.issuedYear) : null };
-    if (c.state === 'in_progress' || c.state === 'achieved') return { top: 'Installing', sub: 'installation pending' };
-    return { top: c.state === 'potential' ? 'Potential' : 'Pipeline', sub: 'to install' };
+    if (c.state === 'in_progress' || c.state === 'achieved') return { top: 'Pipeline', sub: 'installation pending' };
+    return { top: 'Potential', sub: 'to install' };
   }
   if (c.state === 'potential') return { top: 'Potential', sub: null };
   if (c.state === 'pipeline') return { top: 'Pipeline', sub: null };
@@ -174,7 +175,7 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
   }
 
   const legend = scheme?.model === 'monitoring'
-    ? [ { cls: SEG.online, label: 'Online' }, { cls: SEG.offline, label: 'Offline' }, { cls: SEG.progress, label: 'Installing' }, { cls: SEG.pipeline, label: 'Pipeline (to install)' } ]
+    ? [ { cls: SEG.online, label: 'Online' }, { cls: SEG.offline, label: 'Offline' }, { cls: SEG.progress, label: 'Pipeline' }, { cls: SEG.potential, label: 'Potential' } ]
     : scheme?.model === 'binary'
       ? [ { cls: SEG.achieved, label: 'Achieved' }, { cls: SEG.progress, label: 'Not achieved' }, { cls: SEG.pipeline, label: 'Pipeline' } ]
       : [ { cls: SEG.achieved, label: 'Achieved' }, { cls: SEG.progress, label: 'In progress' }, { cls: SEG.pipeline, label: 'Pipeline' }, { cls: SEG.potential, label: 'Potential' } ];
@@ -249,11 +250,11 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
                 parts={[
                   { n: scheme.monitoring.online, cls: SEG.online },
                   { n: scheme.monitoring.offline, cls: SEG.offline },
-                  { n: scheme.monitoring.installing, cls: SEG.progress },
-                  { n: scheme.monitoring.pipeline, cls: SEG.pipeline },
+                  { n: scheme.monitoring.pipeline, cls: SEG.progress },
+                  { n: scheme.monitoring.potential, cls: SEG.potential },
                 ]} />
               <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                {scheme.monitoring.online} online · {scheme.monitoring.offline} offline · {scheme.monitoring.installing} installing · {scheme.monitoring.pipeline} pipeline
+                {scheme.monitoring.online} online · {scheme.monitoring.offline} offline · {scheme.monitoring.pipeline} pipeline · {scheme.monitoring.potential} potential
               </span>
             </div>
           </div>

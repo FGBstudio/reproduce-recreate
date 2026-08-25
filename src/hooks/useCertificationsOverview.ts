@@ -81,7 +81,7 @@ export interface SchemeSummary {
   /** modello rated */
   levels: SchemeLevelBreakdown[];
   /** modello monitoring */
-  monitoring?: { online: number; offline: number; installing: number; pipeline: number };
+  monitoring?: { online: number; offline: number; pipeline: number; potential: number };
   /** modello binary */
   binary?: { achieved: number; notAchieved: number; pipeline: number };
 }
@@ -309,17 +309,19 @@ export function useCertificationsOverview(
         //   device presenti -> Online/Offline per freschezza (anche se non
         //     hanno mai trasmesso: sono installati, quindi offline — caso
         //     Fendi Bicester, deciso dal proprietario)
-        //   progetto partito ma NESSUN device -> Installing (pending)
-        //   progetto in pipeline/potential senza device -> Pipeline
-        let online = 0, offline = 0, installing = 0, pipeline = 0;
+        //   progetto partito ma NESSUN device -> Pipeline (installazione
+        //     in arrivo: per il proprietario installing e pipeline sono
+        //     la stessa cosa)
+        //   quotation/potential senza device -> Potential
+        let online = 0, offline = 0, pipeline = 0, potential = 0;
         list.forEach(r => {
           const live = liveFor(r.siteId, scheme);
           if (live === 'online') online++;
           else if (live === 'offline' || live === 'never') offline++;
-          else if (r.state === 'in_progress' || r.state === 'achieved') installing++;
-          else pipeline++;
+          else if (r.state === 'in_progress' || r.state === 'achieved') pipeline++;
+          else potential++;
         });
-        base.monitoring = { online, offline, installing, pipeline };
+        base.monitoring = { online, offline, pipeline, potential };
       } else if (model === 'binary') {
         base.binary = {
           achieved: list.filter(r => r.state === 'achieved').length,
