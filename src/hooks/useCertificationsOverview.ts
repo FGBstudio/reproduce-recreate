@@ -227,22 +227,28 @@ function sectionOf(dom: CertRow | null, list: CertRow[]): SectionKey {
   return 'potential';
 }
 
-/** Chiave di ordinamento dentro la sezione (spec approvata):
- *  active: conseguimento, recenti in alto · in_progress: partenza progetto
- *  (created_at), recenti in alto · expiring: scadenza piu' vicina in alto ·
- *  potential: come inseriti · energy/air: installazione
- *  (actual_handover_date, fallback created_at), recenti in alto. */
-function sectionSortValue(section: SectionKey, dom: CertRow | null): number {
-  const t = (d: string | null) => (d ? new Date(d).getTime() : 0);
+/** Chiave di ordinamento dentro la sezione — ordine CRONOLOGICO (dal piu'
+ *  vecchio) come da indicazione del proprietario:
+ *  active: data di ottenimento · in_progress: partenza progetto (created_at)
+ *  · expiring: scadenza piu' vicina in alto · potential: come inseriti ·
+ *  energy/air: data di installazione (actual_handover_date, fallback
+ *  created_at); i siti NON ancora installati (pipeline) vanno in coda. */
+function sectionSortValue(section: SectionKey, dom: CertRow | null, live: 'online' | 'offline' | 'never' | null): number {
+  const t = (d: string | null) => (d ? new Date(d).getTime() : Number.MAX_SAFE_INTEGER / 2);
   if (!dom) return 0;
   switch (section) {
-    case 'active': return -t(dom.issuedDate ?? dom.createdAt);
-    case 'in_progress': return -t(dom.createdAt);
+    case 'active': return t(dom.issuedDate ?? dom.createdAt);
+    case 'in_progress': return t(dom.createdAt);
     case 'pipeline': return t(dom.createdAt);
     case 'expiring': return t(dom.expiryDate);
     case 'potential': return t(dom.createdAt);
     case 'energy':
-    case 'air': return -t(dom.handoverDate ?? dom.createdAt);
+    case 'air': {
+      // installati (device presenti) prima, per data di installazione;
+      // da installare in coda, per ordine di inserimento
+      const installed = live === 'online' || live === 'offline' || live === 'never';
+      return (installed ? 0 : Number.MAX_SAFE_INTEGER) + t(dom.handoverDate ?? dom.createdAt);
+    }
   }
 }
 
@@ -300,15 +306,17 @@ export function useCertificationsOverview(
       if (model === 'monitoring') {
         // Per Energy/Air lo status del progetto (perlopiu' da_configurare)
         // NON dice chi e' acceso: decidono i DEVICE del dominio.
-        //   device che trasmettono  -> Online/Offline (freschezza per dominio)
-        //   device mai visti        -> Installing (installation pending)
-        //   nessun device           -> Pipeline (da installare)
+        //   device presenti -> Online/Offline per freschezza (anche se non
+        //     hanno mai trasmesso: sono installati, quindi offline — caso
+        //     Fendi Bicester, deciso dal proprietario)
+        //   progetto partito ma NESSUN device -> Installing (pending)
+        //   progetto in pipeline/potential senza device -> Pipeline
         let online = 0, offline = 0, installing = 0, pipeline = 0;
         list.forEach(r => {
           const live = liveFor(r.siteId, scheme);
           if (live === 'online') online++;
-          else if (live === 'offline') offline++;
-          else if (live === 'never') installing++;
+          else if (live === 'offline' || live === 'never') offline++;
+          else if (r.state === 'in_progress' || r.state === 'achieved') installing++;
           else pipeline++;
         });
         base.monitoring = { online, offline, installing, pipeline };
@@ -364,24 +372,41 @@ export function useCertificationsOverview(
             stateRank[a.state] - stateRank[b.state] ||
             levelRank(scheme, a.certLevel) - levelRank(scheme, b.certLevel)
           )[0];
-        cells[scheme] = best ? {
-          state: best.state,
-          certLevel: best.certLevel,
-          issuedYear: best.issuedYear,
-          expiryDate: best.expiryDate,
-          isOm: best.isOm,
-          expiringSoon: best.expiringSoon,
-          // monitoring: la cella riflette i DEVICE del dominio
-          live: schemeModel(scheme) === 'monitoring'
-            ? (liveFor(siteId, scheme) ?? undefined)
-            : undefined,
-        } : null;
+        const domLive = (scheme === 'Energy' || scheme === 'Air') ? liveFor(siteId, scheme) : null;
+        if (best) {
+          cells[scheme] = {
+            state: best.state,
+            certLevel: best.certLevel,
+            issuedYear: best.issuedYear,
+            expiryDate: best.expiryDate,
+            isOm: best.isOm,
+            expiringSoon: best.expiringSoon,
+            // monitoring: la cella riflette i DEVICE del dominio
+            live: schemeModel(scheme) === 'monitoring' ? (domLive ?? undefined) : undefined,
+          };
+        } else if (domLive) {
+          // Device del dominio presenti anche SENZA progetto in gestionale
+          // (caso Fendi Bicester: meter censiti, nessuna riga Energy): la
+          // colonna mostra comunque lo stato reale. Non entra nei KPI, che
+          // contano le righe di certifications.
+          cells[scheme] = {
+            state: 'in_progress',
+            certLevel: null, issuedYear: null, expiryDate: null,
+            isOm: false, expiringSoon: false,
+            live: domLive,
+          };
+        } else {
+          cells[scheme] = null;
+        }
       });
       const dom = dominantCert(list);
       const section = sectionOf(dom, list);
+      const sectionLive = section === 'energy' ? liveFor(siteId, 'Energy')
+        : section === 'air' ? liveFor(siteId, 'Air')
+        : null;
       return {
         row: { siteId, siteName: project?.name || siteId, region: project?.region || '—', cells, section },
-        sortValue: sectionSortValue(section, dom),
+        sortValue: sectionSortValue(section, dom, sectionLive),
       };
     });
 

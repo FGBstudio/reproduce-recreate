@@ -57,8 +57,7 @@ const SchemeIcon = ({ scheme }: { scheme: string }) => {
 const cellCls = (c: SiteCertCell | null, scheme: string): string => {
   if (!c) return 'bg-foreground/[0.04] text-muted-foreground';
   if (c.expiringSoon) return 'bg-rose-500/15 text-rose-300';
-  if (c.live === 'offline') return 'bg-rose-500/12 text-rose-300/90';
-  if (c.live === 'never') return 'bg-fgb-accent/20 text-fgb-accent';
+  if (c.live === 'offline' || c.live === 'never') return 'bg-rose-500/12 text-rose-300/90';
   if (c.live === 'online') return 'bg-fgb-light/25 text-fgb-secondary';
   if (c.state === 'achieved') return 'bg-fgb-light/25 text-fgb-secondary';
   if (c.state === 'in_progress') return 'bg-fgb-accent/20 text-fgb-accent';
@@ -69,10 +68,12 @@ const cellLabel = (scheme: string, c: SiteCertCell | null): { top: string; sub: 
   if (!c) return { top: '—', sub: null };
   const isMon = schemeModel(scheme) === 'monitoring';
   if (isMon) {
+    // Device presenti -> stato reale (anche mai visti = installati ma spenti:
+    // Offline, caso Fendi Bicester). Installing SOLO quando il progetto e'
+    // partito ma i device non ci sono ancora.
     if (c.live === 'online') return { top: 'Online', sub: c.issuedYear ? String(c.issuedYear) : null };
-    if (c.live === 'offline') return { top: 'Offline', sub: c.issuedYear ? String(c.issuedYear) : null };
-    if (c.live === 'never') return { top: 'Installing', sub: 'installation pending' };
-    // nessun device del dominio -> da installare
+    if (c.live === 'offline' || c.live === 'never') return { top: 'Offline', sub: c.issuedYear ? String(c.issuedYear) : null };
+    if (c.state === 'in_progress' || c.state === 'achieved') return { top: 'Installing', sub: 'installation pending' };
     return { top: c.state === 'potential' ? 'Potential' : 'Pipeline', sub: 'to install' };
   }
   if (c.state === 'potential') return { top: 'Potential', sub: null };
@@ -102,10 +103,10 @@ const SEG = {
   offline: 'text-rose-200 bg-rose-500/45',
 };
 
-// Velo NEUTRO per le parti sticky: niente navy pieno (bocciato), solo
-// scurimento leggero + blur che si fonde col pannello glass.
+// Parti sticky: STESSO colore dell'app (il glass FGB, nessun colore nuovo)
+// ma quasi opaco, cosi' le righe che scorrono sotto non traspaiono mai.
 const GLASS_STICKY: React.CSSProperties = {
-  background: 'rgba(8, 12, 14, 0.82)',
+  background: 'hsl(200 100% 11% / 0.97)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
 };
