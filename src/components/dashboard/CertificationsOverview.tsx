@@ -7,7 +7,7 @@
  * scorrimento orizzontale sul catalogo completo FGB.
  */
 import { useState } from 'react';
-import { Award, Circle } from 'lucide-react';
+import { Award, Circle, Zap, Wind } from 'lucide-react';
 import { Project } from '@/lib/data';
 import {
   useCertificationsOverview,
@@ -15,18 +15,37 @@ import {
   SiteCertCell,
 } from '@/hooks/useCertificationsOverview';
 
+/** Loghi ufficiali da /public dove esistono; Energy e Air usano le stesse
+ *  icone lucide del resto del sito; per gli schemi senza logo resta il badge. */
+const SCHEME_LOGO: Record<string, string> = {
+  LEED: '/leed_logo.webp',
+  WELL: '/well_logo.webp',
+  BREEAM: '/breeam_logo.webp',
+  ESG: '/Logo_ESG.png',
+};
 const SCHEME_BADGE: Record<string, { short: string; cls: string }> = {
-  LEED: { short: 'LEED', cls: 'bg-emerald-900/70 text-emerald-200' },
-  WELL: { short: 'WELL', cls: 'bg-sky-900/70 text-sky-200' },
-  BREEAM: { short: 'BRE', cls: 'bg-lime-900/70 text-lime-200' },
-  Energy: { short: 'EN', cls: 'bg-amber-900/70 text-amber-200' },
-  Air: { short: 'AIR', cls: 'bg-cyan-900/70 text-cyan-200' },
   TAXONOMY: { short: 'TAX', cls: 'bg-indigo-900/70 text-indigo-200' },
   CSRD: { short: 'CSRD', cls: 'bg-violet-900/70 text-violet-200' },
-  ESG: { short: 'ESG', cls: 'bg-teal-900/70 text-teal-200' },
   Energy_Audit: { short: 'AUD', cls: 'bg-orange-900/70 text-orange-200' },
 };
-const badgeFor = (s: string) => SCHEME_BADGE[s] || { short: s.slice(0, 4).toUpperCase(), cls: 'bg-foreground/10 text-foreground' };
+
+const SchemeIcon = ({ scheme }: { scheme: string }) => {
+  if (SCHEME_LOGO[scheme]) {
+    return (
+      <span className="w-9 h-9 rounded-lg bg-white/95 grid place-items-center p-1 shrink-0">
+        <img src={SCHEME_LOGO[scheme]} alt={scheme} className="max-w-full max-h-full object-contain" />
+      </span>
+    );
+  }
+  if (scheme === 'Energy') {
+    return <span className="w-9 h-9 rounded-lg bg-amber-900/60 grid place-items-center shrink-0"><Zap className="w-4.5 h-4.5 text-amber-200" style={{ width: 18, height: 18 }} /></span>;
+  }
+  if (scheme === 'Air') {
+    return <span className="w-9 h-9 rounded-lg bg-cyan-900/60 grid place-items-center shrink-0"><Wind style={{ width: 18, height: 18 }} className="text-cyan-200" /></span>;
+  }
+  const b = SCHEME_BADGE[scheme] || { short: scheme.slice(0, 4).toUpperCase(), cls: 'bg-foreground/10 text-foreground' };
+  return <span className={`w-9 h-9 rounded-lg grid place-items-center text-[10px] font-bold shrink-0 ${b.cls}`}>{b.short}</span>;
+};
 
 const cellCls = (c: SiteCertCell | null): string => {
   if (!c) return 'bg-foreground/[0.04] text-muted-foreground';
@@ -126,14 +145,13 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
         <h4 className="text-base font-semibold text-foreground uppercase tracking-wider mb-3">Achievements by level</h4>
         <div className="flex gap-2 flex-wrap mb-4">
           {schemes.map(s => {
-            const b = badgeFor(s.scheme);
             const on = scheme?.scheme === s.scheme;
             return (
               <button key={s.scheme} onClick={() => setActiveScheme(s.scheme)}
                 className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border transition-all ${on ? 'bg-fgb-light/20 border-fgb-light/40' : 'bg-foreground/5 border-foreground/10 hover:bg-foreground/10'}`}>
-                <span className={`w-9 h-9 rounded-lg grid place-items-center text-[10px] font-bold ${b.cls}`}>{b.short}</span>
+                <SchemeIcon scheme={s.scheme} />
                 <span className="text-left">
-                  <span className="block text-sm text-foreground">{s.scheme}</span>
+                  <span className="block text-sm text-foreground">{s.scheme.replace('_', ' ')}</span>
                   <span className="block text-[11px] text-muted-foreground">{s.total} projects</span>
                 </span>
               </button>
@@ -215,14 +233,14 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
         <p className="text-xs text-muted-foreground mb-3">
           Level and year achieved · hover a cell for the expiry date · scroll right for the full catalogue
         </p>
-        {/* Colonna Site fissa (sticky), schemi a scorrimento orizzontale.
-            La cella sticky ha fondo SOLIDO: su glass trasparente si vedrebbe
-            il contenuto scorrerle sotto. */}
+        {/* Colonna Site e riga di intestazione entrambe sticky (orizzontale e
+            verticale). Fondo in glass sfumato + blur, coerente col pannello:
+            il velo copre cio' che scorre sotto senza il blocco blu pieno. */}
         <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
           <div style={{ minWidth: `${190 + tableSchemes.length * 118}px` }}>
-            <div className="grid gap-2 text-[10px] uppercase tracking-widest text-muted-foreground pb-2"
-              style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)` }}>
-              <span className="sticky left-0 z-10 pl-2" style={{ background: 'hsl(200 65% 8% / 0.96)' }}>Site</span>
+            <div className="sticky top-0 z-30 grid gap-2 text-[10px] uppercase tracking-widest text-muted-foreground pb-2 pt-1"
+              style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)`, background: 'hsl(var(--fgb-glass))', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
+              <span className="sticky left-0 z-40 pl-2" style={{ background: 'hsl(var(--fgb-glass))', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>Site</span>
               {tableSchemes.map(s => <span key={s} className="text-center">{s.replace('_', ' ')}</span>)}
             </div>
             <div className="space-y-1.5">
@@ -230,7 +248,7 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
                 <div key={row.siteId} onClick={() => onOpenSite?.(row.siteId)}
                   className={`grid gap-2 items-center bg-foreground/[0.04] rounded-xl py-2 hover:bg-foreground/[0.08] transition-colors ${onOpenSite ? 'cursor-pointer' : ''}`}
                   style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)` }}>
-                  <div className="sticky left-0 z-10 min-w-0 rounded-l-xl pl-2 py-0.5" style={{ background: 'hsl(200 65% 8% / 0.96)' }}>
+                  <div className="sticky left-0 z-20 min-w-0 rounded-l-xl pl-2 py-0.5" style={{ background: 'hsl(var(--fgb-glass))', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
                     <p className="text-sm text-foreground truncate">{row.siteName}</p>
                     <p className="text-[11px] text-muted-foreground">{row.region}</p>
                   </div>
