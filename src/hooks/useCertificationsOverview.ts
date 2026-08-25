@@ -45,10 +45,26 @@ export interface CertRow {
   state: CertState;
   certLevel: string | null;
   issuedYear: number | null;
+  issuedDate: string | null;
   expiryDate: string | null;
+  createdAt: string | null;
+  handoverDate: string | null;
   isOm: boolean;
   expiringSoon: boolean;
 }
+
+/** Sezioni della directory (ordine di visualizzazione). */
+export type SectionKey = 'active' | 'in_progress' | 'pipeline' | 'expiring' | 'potential' | 'energy' | 'air';
+export const SECTION_ORDER: SectionKey[] = ['active', 'in_progress', 'pipeline', 'expiring', 'potential', 'energy', 'air'];
+export const SECTION_LABEL: Record<SectionKey, string> = {
+  active: 'Active certificates',
+  in_progress: 'In progress',
+  pipeline: 'Pipeline',
+  expiring: 'Expiring < 6 months',
+  potential: 'Potential',
+  energy: 'Energy',
+  air: 'Air',
+};
 
 export interface SchemeLevelBreakdown {
   level: string;
@@ -65,7 +81,7 @@ export interface SchemeSummary {
   /** modello rated */
   levels: SchemeLevelBreakdown[];
   /** modello monitoring */
-  monitoring?: { online: number; offline: number; pipeline: number };
+  monitoring?: { online: number; offline: number; installing: number; pipeline: number };
   /** modello binary */
   binary?: { achieved: number; notAchieved: number; pipeline: number };
 }
@@ -86,12 +102,21 @@ export interface SiteCertRow {
   siteName: string;
   region: string;
   cells: Record<string, SiteCertCell | null>;
+  /** sezione di appartenenza (una sola: certificato dominante) */
+  section: SectionKey;
+}
+
+export interface DirectorySection {
+  key: SectionKey;
+  label: string;
+  rows: SiteCertRow[];
 }
 
 export interface CertificationsOverviewData {
   kpis: { active: number; inProgress: number; expiringSoon: number; potential: number };
   schemes: SchemeSummary[];
-  siteRows: SiteCertRow[];
+  /** Directory raggruppata per sezione, ordinata secondo la specifica */
+  sections: DirectorySection[];
   /** colonne tabella: catalogo completo FGB, il sito resta fisso */
   tableSchemes: string[];
   isLoading: boolean;
@@ -139,6 +164,7 @@ function levelRank(scheme: string, level: string | null): number {
 interface DbCertRow {
   site_id: string; cert_type: string | null; status: string | null; cert_level: string | null;
   level: string | null; issued_date: string | null; expiry_date: string | null; project_subtype: string | null;
+  created_at: string | null; actual_handover_date: string | null;
 }
 
 async function fetchCerts(siteIds: string[]): Promise<CertRow[]> {
@@ -148,7 +174,7 @@ async function fetchCerts(siteIds: string[]): Promise<CertRow[]> {
   for (let i = 0; i < siteIds.length; i += batch) {
     const { data, error } = await supabase
       .from('certifications')
-      .select('site_id, cert_type, status, cert_level, level, issued_date, expiry_date, project_subtype')
+      .select('site_id, cert_type, status, cert_level, level, issued_date, expiry_date, project_subtype, created_at, actual_handover_date')
       .in('site_id', siteIds.slice(i, i + batch));
     if (!error && data) rows.push(...(data as DbCertRow[]));
   }
@@ -163,11 +189,61 @@ async function fetchCerts(siteIds: string[]): Promise<CertRow[]> {
       state,
       certLevel: r.cert_level || null,
       issuedYear: r.issued_date ? new Date(r.issued_date).getFullYear() : null,
+      issuedDate: r.issued_date || null,
       expiryDate: r.expiry_date || null,
+      createdAt: r.created_at || null,
+      handoverDate: r.actual_handover_date || null,
       isOm: r.level === 'O+M' || r.project_subtype === 'Existing Buildings',
       expiringSoon: state === 'achieved' && !!expiry && expiry.getTime() - now < SIX_MONTHS_MS && expiry.getTime() > now,
     }];
   });
+}
+
+/** Certificato dominante del sito: comanda LEED, poi WELL, poi gli altri
+ *  schemi edificio in ordine alfabetico; i monitoraggi (Energy/Air) contano
+ *  solo se il sito non ha alcuno schema edificio. */
+function dominantCert(list: CertRow[]): CertRow | null {
+  const building = list.filter(r => schemeModel(r.certType) !== 'monitoring');
+  const pool = building.length > 0 ? building : list;
+  const pri = (r: CertRow) =>
+    r.certType === 'LEED' ? 0 : r.certType === 'WELL' ? 1 : 2;
+  const stateRank: Record<CertState, number> = { achieved: 0, in_progress: 1, pipeline: 2, potential: 3 };
+  return [...pool].sort((a, b) =>
+    pri(a) - pri(b) ||
+    a.certType.localeCompare(b.certType) ||
+    stateRank[a.state] - stateRank[b.state]
+  )[0] ?? null;
+}
+
+/** Sezione del sito, dal certificato dominante (spec approvata). */
+function sectionOf(dom: CertRow | null, list: CertRow[]): SectionKey {
+  if (!dom) return 'potential';
+  if (schemeModel(dom.certType) === 'monitoring') {
+    return list.some(r => r.certType === 'Energy') ? 'energy' : 'air';
+  }
+  if (dom.state === 'achieved') return dom.expiringSoon ? 'expiring' : 'active';
+  if (dom.state === 'in_progress') return 'in_progress';
+  if (dom.state === 'pipeline') return 'pipeline';
+  return 'potential';
+}
+
+/** Chiave di ordinamento dentro la sezione (spec approvata):
+ *  active: conseguimento, recenti in alto · in_progress: partenza progetto
+ *  (created_at), recenti in alto · expiring: scadenza piu' vicina in alto ·
+ *  potential: come inseriti · energy/air: installazione
+ *  (actual_handover_date, fallback created_at), recenti in alto. */
+function sectionSortValue(section: SectionKey, dom: CertRow | null): number {
+  const t = (d: string | null) => (d ? new Date(d).getTime() : 0);
+  if (!dom) return 0;
+  switch (section) {
+    case 'active': return -t(dom.issuedDate ?? dom.createdAt);
+    case 'in_progress': return -t(dom.createdAt);
+    case 'pipeline': return t(dom.createdAt);
+    case 'expiring': return t(dom.expiryDate);
+    case 'potential': return t(dom.createdAt);
+    case 'energy':
+    case 'air': return -t(dom.handoverDate ?? dom.createdAt);
+  }
 }
 
 export function useCertificationsOverview(
@@ -213,10 +289,13 @@ export function useCertificationsOverview(
       const base: SchemeSummary = { scheme, model, total: list.length, levels: [] };
 
       if (model === 'monitoring') {
-        const installed = list.filter(r => r.state === 'achieved' || r.state === 'in_progress');
+        // Online/Offline solo per gli attivi; gli in corso sono "Installing"
+        // (installazione in corso, non un guasto).
+        const activeOnes = list.filter(r => r.state === 'achieved');
         base.monitoring = {
-          online: installed.filter(r => isLive(r.siteId)).length,
-          offline: installed.filter(r => !isLive(r.siteId)).length,
+          online: activeOnes.filter(r => isLive(r.siteId)).length,
+          offline: activeOnes.filter(r => !isLive(r.siteId)).length,
+          installing: list.filter(r => r.state === 'in_progress').length,
           pipeline: list.filter(r => r.state === 'pipeline' || r.state === 'potential').length,
         };
       } else if (model === 'binary') {
@@ -257,7 +336,7 @@ export function useCertificationsOverview(
     });
 
     const stateRank: Record<CertState, number> = { achieved: 0, in_progress: 1, pipeline: 2, potential: 3 };
-    const siteRows: SiteCertRow[] = Array.from(bySite.entries()).map(([siteId, list]) => {
+    const withSort: Array<{ row: SiteCertRow; sortValue: number }> = Array.from(bySite.entries()).map(([siteId, list]) => {
       const project = nameById.get(siteId);
       const cells: Record<string, SiteCertCell | null> = {};
       tableSchemes.forEach(scheme => {
@@ -274,21 +353,31 @@ export function useCertificationsOverview(
           expiryDate: best.expiryDate,
           isOm: best.isOm,
           expiringSoon: best.expiringSoon,
-          live: schemeModel(scheme) === 'monitoring' && (best.state === 'achieved' || best.state === 'in_progress')
+          // live solo per i monitoraggi ATTIVI: gli in corso sono "Installing"
+          live: schemeModel(scheme) === 'monitoring' && best.state === 'achieved'
             ? (isLive(siteId) ? 'online' : 'offline')
             : undefined,
         } : null;
       });
-      return { siteId, siteName: project?.name || siteId, region: project?.region || '—', cells };
-    }).sort((a, b) => {
-      const score = (r: SiteCertRow) =>
-        tableSchemes.reduce((s, k) => {
-          const c = r.cells[k];
-          return s + (c ? 4 - stateRank[c.state] : 0);
-        }, 0);
-      return score(b) - score(a) || a.siteName.localeCompare(b.siteName);
+      const dom = dominantCert(list);
+      const section = sectionOf(dom, list);
+      return {
+        row: { siteId, siteName: project?.name || siteId, region: project?.region || '—', cells, section },
+        sortValue: sectionSortValue(section, dom),
+      };
     });
 
-    return { kpis, schemes, siteRows, tableSchemes, isLoading, hasData: rows.length > 0 };
+    // Raggruppamento per sezione, nell'ordine della specifica; dentro ogni
+    // sezione l'ordinamento cronologico approvato (a parita', alfabetico).
+    const sections: DirectorySection[] = SECTION_ORDER.map(key => ({
+      key,
+      label: SECTION_LABEL[key],
+      rows: withSort
+        .filter(x => x.row.section === key)
+        .sort((a, b) => a.sortValue - b.sortValue || a.row.siteName.localeCompare(b.row.siteName))
+        .map(x => x.row),
+    })).filter(s => s.rows.length > 0);
+
+    return { kpis, schemes, sections, tableSchemes, isLoading, hasData: rows.length > 0 };
   }, [certs, filteredProjects, isLoading, siteOnline]);
 }

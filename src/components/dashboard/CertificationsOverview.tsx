@@ -1,18 +1,25 @@
 /**
  * Vista "Certifications" di portafoglio — pannello destro di BrandOverlay
  * quando lo switch e' su Certifications (flag CERTIFICATIONS_OVERVIEW).
- * Tre modelli di stato per schema: rated (LEED/WELL/BREEAM per rating),
- * monitoring (Energy/Air: Online/Offline/Pipeline), binary (TAXONOMY ecc.:
- * Achieved/Not achieved/Pipeline). Tabella: colonna Site fissa, schemi a
- * scorrimento orizzontale sul catalogo completo FGB.
+ *
+ * Directory raggruppata in sezioni (spec approvata): Active -> In progress ->
+ * Pipeline -> Expiring -> Potential -> Energy -> Air. Ogni sito compare UNA
+ * volta (certificato dominante: LEED, poi WELL, poi alfabetico; monitoraggi
+ * solo se il sito non ha schemi edificio) ma la sua riga mostra SEMPRE tutte
+ * le celle. La sotto-riga sticky indica la sezione corrente (scroll-spy) ed
+ * e' una barra di salto. Il filtro per schema trova un sito ovunque sia la
+ * sua sezione (es. "Energy" mostra anche il suo LEED acceso): niente
+ * duplicati, la vista resta esportabile come follow-up mensile.
  */
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Award, Circle, Zap, Wind } from 'lucide-react';
 import { Project } from '@/lib/data';
 import {
   useCertificationsOverview,
   schemeModel,
   SiteCertCell,
+  SectionKey,
+  SECTION_LABEL,
 } from '@/hooks/useCertificationsOverview';
 
 /** Loghi ufficiali da /public dove esistono; Energy e Air usano le stesse
@@ -38,7 +45,7 @@ const SchemeIcon = ({ scheme }: { scheme: string }) => {
     );
   }
   if (scheme === 'Energy') {
-    return <span className="w-9 h-9 rounded-lg bg-amber-900/60 grid place-items-center shrink-0"><Zap className="w-4.5 h-4.5 text-amber-200" style={{ width: 18, height: 18 }} /></span>;
+    return <span className="w-9 h-9 rounded-lg bg-amber-900/60 grid place-items-center shrink-0"><Zap style={{ width: 18, height: 18 }} className="text-amber-200" /></span>;
   }
   if (scheme === 'Air') {
     return <span className="w-9 h-9 rounded-lg bg-cyan-900/60 grid place-items-center shrink-0"><Wind style={{ width: 18, height: 18 }} className="text-cyan-200" /></span>;
@@ -47,7 +54,7 @@ const SchemeIcon = ({ scheme }: { scheme: string }) => {
   return <span className={`w-9 h-9 rounded-lg grid place-items-center text-[10px] font-bold shrink-0 ${b.cls}`}>{b.short}</span>;
 };
 
-const cellCls = (c: SiteCertCell | null): string => {
+const cellCls = (c: SiteCertCell | null, scheme: string): string => {
   if (!c) return 'bg-foreground/[0.04] text-muted-foreground';
   if (c.expiringSoon) return 'bg-rose-500/15 text-rose-300';
   if (c.live === 'offline') return 'bg-foreground/[0.07] text-muted-foreground';
@@ -59,8 +66,13 @@ const cellCls = (c: SiteCertCell | null): string => {
 
 const cellLabel = (scheme: string, c: SiteCertCell | null): { top: string; sub: string | null } => {
   if (!c) return { top: '—', sub: null };
-  if (schemeModel(scheme) === 'monitoring' && c.live) {
+  const isMon = schemeModel(scheme) === 'monitoring';
+  if (isMon && c.live) {
     return { top: c.live === 'online' ? 'Online' : 'Offline', sub: c.issuedYear ? String(c.issuedYear) : null };
+  }
+  if (isMon && c.state === 'in_progress') {
+    // "installation pending": il quadrato giallo con l'informazione richiesta
+    return { top: 'Installing', sub: 'installation pending' };
   }
   if (c.state === 'potential') return { top: 'Potential', sub: null };
   if (c.state === 'pipeline') return { top: 'Pipeline', sub: null };
@@ -72,7 +84,6 @@ const cellLabel = (scheme: string, c: SiteCertCell | null): { top: string; sub: 
   };
 };
 
-/** Segmenti della barra per un gruppo di conteggi etichettati. */
 const Bar = ({ parts, widthPct }: { parts: Array<{ n: number; cls: string }>; widthPct: number }) => (
   <div className="h-5 rounded-md overflow-hidden flex bg-foreground/5" style={{ width: `${widthPct}%`, minWidth: 36 }}>
     {parts.filter(p => p.n > 0).map((p, i) => (
@@ -90,6 +101,12 @@ const SEG = {
   offline: 'text-rose-200 bg-rose-500/45',
 };
 
+const GLASS_STICKY: React.CSSProperties = {
+  background: 'hsl(var(--fgb-glass))',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+};
+
 interface Props {
   projects: Project[];
   siteOnline?: Map<string, boolean>;
@@ -97,14 +114,48 @@ interface Props {
 }
 
 const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => {
-  const { kpis, schemes, siteRows, tableSchemes, isLoading, hasData } = useCertificationsOverview(projects, siteOnline);
+  const { kpis, schemes, sections, tableSchemes, isLoading, hasData } = useCertificationsOverview(projects, siteOnline);
   const [activeScheme, setActiveScheme] = useState<string | null>(null);
+  const [schemeFilter, setSchemeFilter] = useState<string | null>(null);
+  const [currentSection, setCurrentSection] = useState<SectionKey | null>(null);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Partial<Record<SectionKey, HTMLDivElement | null>>>({});
+
+  // Filtro per schema: un sito resta nella SUA sezione ma compare solo se ha
+  // quel certificato (con tutta la riga accesa) — niente duplicati.
+  const visibleSections = useMemo(() => {
+    if (!schemeFilter) return sections;
+    return sections
+      .map(s => ({ ...s, rows: s.rows.filter(r => r.cells[schemeFilter]) }))
+      .filter(s => s.rows.length > 0);
+  }, [sections, schemeFilter]);
+
+  const totalRows = visibleSections.reduce((n, s) => n + s.rows.length, 0);
+
+  // Scroll-spy: la sotto-riga mostra la sezione che stai attraversando.
+  const HEADER_OFFSET = 76; // intestazione + sotto-riga sticky
+  const onScroll = () => {
+    const cont = scrollRef.current;
+    if (!cont) return;
+    let current: SectionKey | null = visibleSections[0]?.key ?? null;
+    for (const s of visibleSections) {
+      const el = sectionRefs.current[s.key];
+      if (el && el.offsetTop - cont.scrollTop <= HEADER_OFFSET + 8) current = s.key;
+    }
+    setCurrentSection(current);
+  };
+
+  const jumpTo = (key: SectionKey) => {
+    const cont = scrollRef.current;
+    const el = sectionRefs.current[key];
+    if (cont && el) cont.scrollTo({ top: el.offsetTop - HEADER_OFFSET, behavior: 'smooth' });
+  };
 
   const scheme = schemes.find(s => s.scheme === (activeScheme ?? schemes[0]?.scheme)) ?? schemes[0];
   const maxRatedTotal = scheme?.model === 'rated'
     ? Math.max(...scheme.levels.map(l => l.achieved + l.inProgress + l.pipeline + l.potential), 1)
     : 1;
-  // Barre piu' compatte: metta' dello spazio, il resto respira per i testi.
   const BAR_SCALE = 55;
 
   if (!isLoading && !hasData) {
@@ -117,7 +168,7 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
   }
 
   const legend = scheme?.model === 'monitoring'
-    ? [ { cls: SEG.online, label: 'Online' }, { cls: SEG.offline, label: 'Offline' }, { cls: SEG.pipeline, label: 'Pipeline (to install)' } ]
+    ? [ { cls: SEG.online, label: 'Online' }, { cls: SEG.offline, label: 'Offline' }, { cls: SEG.progress, label: 'Installing' }, { cls: SEG.pipeline, label: 'Pipeline (to install)' } ]
     : scheme?.model === 'binary'
       ? [ { cls: SEG.achieved, label: 'Achieved' }, { cls: SEG.progress, label: 'Not achieved' }, { cls: SEG.pipeline, label: 'Pipeline' } ]
       : [ { cls: SEG.achieved, label: 'Achieved' }, { cls: SEG.progress, label: 'In progress' }, { cls: SEG.pipeline, label: 'Pipeline' }, { cls: SEG.potential, label: 'Potential' } ];
@@ -192,10 +243,11 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
                 parts={[
                   { n: scheme.monitoring.online, cls: SEG.online },
                   { n: scheme.monitoring.offline, cls: SEG.offline },
+                  { n: scheme.monitoring.installing, cls: SEG.progress },
                   { n: scheme.monitoring.pipeline, cls: SEG.pipeline },
                 ]} />
               <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                {scheme.monitoring.online} online · {scheme.monitoring.offline} offline · {scheme.monitoring.pipeline} pipeline
+                {scheme.monitoring.online} online · {scheme.monitoring.offline} offline · {scheme.monitoring.installing} installing · {scheme.monitoring.pipeline} pipeline
               </span>
             </div>
           </div>
@@ -229,47 +281,91 @@ const CertificationsOverview = ({ projects, siteOnline, onOpenSite }: Props) => 
 
       {/* ── Site directory · certifications ─────────────────── */}
       <div className="glass-panel rounded-2xl p-5 flex-1 min-h-0 flex flex-col">
-        <h4 className="text-base font-semibold text-foreground uppercase tracking-wider">Site directory · certifications</h4>
-        <p className="text-xs text-muted-foreground mb-3">
-          Level and year achieved · hover a cell for the expiry date · scroll right for the full catalogue
-        </p>
-        {/* Colonna Site e riga di intestazione entrambe sticky (orizzontale e
-            verticale). Fondo in glass sfumato + blur, coerente col pannello:
-            il velo copre cio' che scorre sotto senza il blocco blu pieno. */}
-        <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h4 className="text-base font-semibold text-foreground uppercase tracking-wider">Site directory · certifications</h4>
+            <p className="text-xs text-muted-foreground mb-2">
+              Level and year achieved · hover a cell for the expiry date · scroll right for the full catalogue
+            </p>
+          </div>
+          {/* Filtro per schema: trova un sito qualunque sia la sua sezione */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button onClick={() => setSchemeFilter(null)}
+              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${!schemeFilter ? 'border-foreground/40 bg-foreground/10 text-foreground font-semibold' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'}`}>
+              All
+            </button>
+            {schemes.map(s => (
+              <button key={s.scheme} onClick={() => setSchemeFilter(schemeFilter === s.scheme ? null : s.scheme)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${schemeFilter === s.scheme ? 'border-fgb-light/50 bg-fgb-light/15 text-fgb-light font-semibold' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'}`}>
+                {s.scheme.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div ref={scrollRef} onScroll={onScroll} className="flex-1 min-h-0 overflow-auto custom-scrollbar relative">
           <div style={{ minWidth: `${190 + tableSchemes.length * 118}px` }}>
-            <div className="sticky top-0 z-30 grid gap-2 text-[10px] uppercase tracking-widest text-muted-foreground pb-2 pt-1"
-              style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)`, background: 'hsl(var(--fgb-glass))', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
-              <span className="sticky left-0 z-40 pl-2" style={{ background: 'hsl(var(--fgb-glass))', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>Site</span>
+            {/* intestazione colonne — sticky in alto */}
+            <div className="sticky top-0 z-30 grid gap-2 text-[10px] uppercase tracking-widest text-muted-foreground pb-1.5 pt-1"
+              style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)`, ...GLASS_STICKY }}>
+              <span className="sticky left-0 z-40 pl-2" style={GLASS_STICKY}>Site</span>
               {tableSchemes.map(s => <span key={s} className="text-center">{s.replace('_', ' ')}</span>)}
             </div>
+            {/* sotto-riga sezioni — sticky sotto l'intestazione, scroll-spy + salto */}
+            <div className="sticky z-30 flex items-center gap-1.5 pb-2 pt-1 overflow-x-auto"
+              style={{ top: 26, ...GLASS_STICKY }}>
+              <span className="sticky left-0 z-40 pl-2 shrink-0" style={GLASS_STICKY} />
+              {visibleSections.map(s => (
+                <button key={s.key} onClick={() => jumpTo(s.key)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${
+                    (currentSection ?? visibleSections[0]?.key) === s.key
+                      ? 'border-fgb-light/50 bg-fgb-light/20 text-foreground font-semibold'
+                      : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'
+                  }`}>
+                  {s.label} <span className="opacity-70">{s.rows.length}</span>
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-1.5">
-              {siteRows.map(row => (
-                <div key={row.siteId} onClick={() => onOpenSite?.(row.siteId)}
-                  className={`grid gap-2 items-center bg-foreground/[0.04] rounded-xl py-2 hover:bg-foreground/[0.08] transition-colors ${onOpenSite ? 'cursor-pointer' : ''}`}
-                  style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)` }}>
-                  <div className="sticky left-0 z-20 min-w-0 rounded-l-xl pl-2 py-0.5" style={{ background: 'hsl(var(--fgb-glass))', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
-                    <p className="text-sm text-foreground truncate">{row.siteName}</p>
-                    <p className="text-[11px] text-muted-foreground">{row.region}</p>
+              {visibleSections.map(s => (
+                <div key={s.key} ref={el => { sectionRefs.current[s.key] = el; }}>
+                  <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80 pl-2 pt-2 pb-1">
+                    {s.label} · {s.rows.length}
                   </div>
-                  {tableSchemes.map(s => {
-                    const c = row.cells[s];
-                    const label = cellLabel(s, c);
-                    return (
-                      <div key={s}
-                        className={`cert-cell relative rounded-lg px-2 py-1.5 text-center ${cellCls(c)}`}
-                        data-exp={c?.expiryDate ? new Date(c.expiryDate).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }) : undefined}>
-                        <div className="text-[13px] font-semibold leading-tight">{label.top}</div>
-                        {label.sub && <div className="text-[10.5px] opacity-75 leading-tight">{label.sub}</div>}
+                  <div className="space-y-1.5">
+                    {s.rows.map(row => (
+                      <div key={row.siteId} onClick={() => onOpenSite?.(row.siteId)}
+                        className={`grid gap-2 items-center bg-foreground/[0.04] rounded-xl py-2 hover:bg-foreground/[0.08] transition-colors ${onOpenSite ? 'cursor-pointer' : ''}`}
+                        style={{ gridTemplateColumns: `190px repeat(${tableSchemes.length}, 110px)` }}>
+                        <div className="sticky left-0 z-20 min-w-0 rounded-l-xl pl-2 py-0.5" style={GLASS_STICKY}>
+                          <p className="text-sm text-foreground truncate">{row.siteName}</p>
+                          <p className="text-[11px] text-muted-foreground">{row.region}</p>
+                        </div>
+                        {tableSchemes.map(sch => {
+                          const c = row.cells[sch];
+                          const label = cellLabel(sch, c);
+                          return (
+                            <div key={sch}
+                              className={`cert-cell relative rounded-lg px-2 py-1.5 text-center ${cellCls(c, sch)}`}
+                              data-exp={c?.expiryDate ? new Date(c.expiryDate).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }) : undefined}>
+                              <div className="text-[13px] font-semibold leading-tight">{label.top}</div>
+                              {label.sub && <div className="text-[10.5px] opacity-75 leading-tight">{label.sub}</div>}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
               ))}
-              {isLoading && siteRows.length === 0 && (
+              {isLoading && totalRows === 0 && (
                 <div className="flex items-center justify-center py-8 text-muted-foreground text-sm gap-2">
                   <Circle className="w-3 h-3 animate-pulse" /> Loading certifications…
                 </div>
+              )}
+              {!isLoading && totalRows === 0 && schemeFilter && (
+                <p className="text-sm text-muted-foreground text-center py-6">No sites with {schemeFilter} in this portfolio.</p>
               )}
             </div>
           </div>
