@@ -261,7 +261,7 @@ const translations: Record<string, Record<Language, string>> = {
   'pd.actual_vs_average': { en: 'Actual vs Average', it: 'Effettivo vs Media', fr: 'Réel vs Moyenne', es: 'Real vs Promedio', zh: '实际 vs 平均' },
   'pd.power_consumption': { en: 'Power Consumption', it: 'Consumo Potenza', fr: 'Consommation de puissance', es: 'Consumo de potencia', zh: '功率消耗' },
   'pd.realtime_kw': { en: 'Real-time (kW)', it: 'Tempo reale (kW)', fr: 'Temps réel (kW)', es: 'Tiempo real (kW)', zh: '实时 (kW)' },
-  'pd.devices_consumption': { en: 'Devices Consumption', it: 'Consumi per Dispositivo', fr: 'Consommation par appareil', es: 'Consumo por dispositivo', zh: '设备消耗' },
+  'pd.devices_consumption': { en: 'System Consumption', it: 'Consumi per Sistema', fr: 'Consommation par système', es: 'Consumo por sistema', zh: '系统能耗' },
   'pd.breakdown_by': { en: 'Breakdown by', it: 'Suddivisione per', fr: 'Répartition par', es: 'Desglose por', zh: '按分类' },
   'pd.category': { en: 'Category', it: 'Categoria', fr: 'Catégorie', es: 'Categoría', zh: '类别' },
   'pd.device': { en: 'Device', it: 'Dispositivo', fr: 'Appareil', es: 'Dispositivo', zh: '设备' },

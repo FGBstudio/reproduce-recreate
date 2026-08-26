@@ -4886,8 +4886,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     <div ref={deviceConsRef} className="lg:col-span-full bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg min-h-[350px] flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-base md:text-lg font-bold text-gray-800">Devices Consumption</h3>
-                          <p className="text-xs text-muted-foreground">Breakdown by {energyViewMode === 'category' ? 'Category' : 'Device'} (kWh)</p>
+                          <h3 className="text-base md:text-lg font-bold text-gray-800">System Consumption</h3>
+                          <p className="text-xs text-muted-foreground">Breakdown by {energyViewMode === 'category' ? 'System' : 'Device'} (kWh)</p>
                         </div>
                         <ExportButtons 
                           chartRef={deviceConsRef} 
@@ -6800,7 +6800,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       <ChartFullscreenModal
         isOpen={fullscreenChart === 'deviceCons'}
         onClose={() => setFullscreenChart(null)}
-        title="Devices Consumption"
+        title="System Consumption"
       >
         <ZoomableChart width="100%" height={500}>
           <BarChart data={deviceConsumptionData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
