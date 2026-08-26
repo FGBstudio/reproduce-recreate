@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency, CurrencyCode, getCurrencySymbol, convertAmount } from "@/lib/currency";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { AREA_BASIS_OPTIONS } from "@/lib/areaBasis";
 import { useSiteEnergyPriceHistory } from "@/hooks/useSiteEnergyPriceHistory";
 
 const i18n = {
@@ -321,25 +322,33 @@ export function ProjectSettingsDialog({
   const { rates, ratesLoaded } = useCurrency();
   const { history: priceHistory } = useSiteEnergyPriceHistory(siteId);
 
-  // Site area (sites.area_m2)
-  const { data: siteArea, isLoading: isAreaLoading } = useQuery({
+  // Site area (sites.area_m2 + tipologia in sites.area_basis)
+  const { data: siteAreaRow, isLoading: isAreaLoading } = useQuery({
     queryKey: ['site-area', siteId],
     queryFn: async () => {
       if (!siteId) return null;
-      const { data, error } = await supabase
+      // cast: area_basis e' stata aggiunta al DB il 26/08 e i tipi generati
+      // da Lovable non la conoscono ancora (file auto-generato, non si tocca)
+      const { data, error } = (await supabase
         .from('sites')
-        .select('area_m2')
+        .select('area_m2, area_basis')
         .eq('id', siteId)
-        .maybeSingle();
+        .maybeSingle()) as { data: { area_m2: number | null; area_basis: string | null } | null; error: unknown };
       if (error) throw error;
-      return (data?.area_m2 ?? null) as number | null;
+      return {
+        area: data?.area_m2 ?? null,
+        basis: data?.area_basis ?? null,
+      };
     },
     enabled: !!siteId,
   });
+  const siteArea = siteAreaRow?.area ?? null;
   const [areaM2, setAreaM2] = useState<number | null>(null);
+  const [areaBasis, setAreaBasis] = useState<string>('');
   useEffect(() => {
-    setAreaM2(siteArea ?? null);
-  }, [siteArea]);
+    setAreaM2(siteAreaRow?.area ?? null);
+    setAreaBasis(siteAreaRow?.basis ?? '');
+  }, [siteAreaRow]);
 
   // Site currency (sites.currency)
   const { data: siteCurrency, isLoading: isCurrencyLoading } = useQuery({
@@ -435,10 +444,11 @@ export function ProjectSettingsDialog({
   const onSubmit = async (data: ThresholdsForm) => {
     try {
       await updateThresholds(data);
-      if (siteId && areaM2 !== (siteArea ?? null)) {
+      const basisChanged = (areaBasis || null) !== (siteAreaRow?.basis ?? null);
+      if (siteId && (areaM2 !== (siteArea ?? null) || basisChanged)) {
         const { error: areaErr } = await supabase
           .from('sites')
-          .update({ area_m2: areaM2 })
+          .update({ area_m2: areaM2, area_basis: areaBasis || null } as any)
           .eq('id', siteId);
         if (areaErr) throw areaErr;
         queryClient.invalidateQueries({ queryKey: ['site-area', siteId] });
@@ -576,7 +586,25 @@ export function ProjectSettingsDialog({
                       setAreaM2(n !== null && !isNaN(n) ? n : null);
                     }}
                   />
-                  <p className="text-xs text-muted-foreground">{t.areaHint}</p>
+                  {/* Tipologia di superficie: dice ESATTAMENTE quale m2 inserire
+                      e viene dichiarata nei grafici kWh/m2 (tooltip "i"). */}
+                  <select
+                    id="site_area_basis"
+                    value={areaBasis}
+                    disabled={isAreaLoading}
+                    onChange={(e) => setAreaBasis(e.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Area type — not specified</option>
+                    {AREA_BASIS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label} — {o.hint}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {t.areaHint} Intensity metrics (kWh/m²) divide by this exact figure: pick the area type so everyone reads the same number.
+                  </p>
                 </div>
 
                 <div className="space-y-2">

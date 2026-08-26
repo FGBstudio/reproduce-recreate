@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment, Children } from "react";
 import { hapticLight } from "@/lib/native";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt, Info } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
@@ -43,6 +43,8 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { co2Level } from "@/lib/airQuality";
 import { SITE_MATERIAL_SKIN } from "@/lib/siteTheme";
 import SitePatternBackground from "./SitePatternBackground";
+import { useSiteArea } from "@/hooks/useSiteArea";
+import { areaBasisLabel } from "@/lib/areaBasis";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
@@ -489,6 +491,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Certifications configured in admin panel for this project
   const projectCertificationsReal = useProjectCertifications(project);
   const demoProfile = useMemo(() => getDemoProfile(project), [project]);
+
+  // Superficie del sito + tipologia (per le "i" sui grafici kWh/m2):
+  // dichiara su QUALE area si sta dividendo, impostata in Project Settings.
+  const { data: siteAreaInfo } = useSiteArea(project?.siteId);
+  const areaBasisNote = useMemo(() => {
+    const basis = areaBasisLabel(siteAreaInfo?.basis);
+    return basis
+      ? `Divided by the site area set in Project Settings — ${basis}`
+      : 'Divided by the site area set in Project Settings — area type not specified yet';
+  }, [siteAreaInfo?.basis]);
   const projectCertifications = useMemo(() => {
     if (demoProfile?.certifications?.length) {
       const merged = new Set<string>([...projectCertificationsReal, ...demoProfile.certifications]);
@@ -4324,8 +4336,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-2 md:gap-4">
                       <div className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg text-center">
-                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{t('pd.energy_density')}</p>
-                        <p className="text-xl md:text-3xl font-bold text-slate-900">{densityValue}</p>
+                        <p className="text-[11px] md:text-sm text-muted-foreground mb-0.5 md:mb-1 flex items-center justify-center gap-1">
+                          {t('pd.energy_density')}
+                          <span title={areaBasisNote} className="inline-flex cursor-help"><Info className="w-3 h-3 text-muted-foreground/60 shrink-0" /></span>
+                        </p>
+                        <p className="text-xl md:text-3xl font-bold text-slate-900" title={areaBasisNote}>{densityValue}</p>
                         <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">kWh/m²</p>
                         {/* Nota: Il trend "vs anno precedente" richiederebbe una query separata, per ora lo nascondiamo o lasciamo statico */}
                         <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-muted-foreground font-medium">{t('pd.in_selected_period')}</div>
@@ -4628,7 +4643,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-base md:text-lg font-bold text-gray-800">Actual vs Average</h3>
-                          <p className="text-xs text-muted-foreground">Energy Density (kWh/m²)</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">Energy Density (kWh/m²)<span title={areaBasisNote} className="inline-flex cursor-help"><Info className="w-3 h-3 text-muted-foreground/60 shrink-0" /></span></p>
                         </div>
                         
                         <div className="flex items-center gap-3">
