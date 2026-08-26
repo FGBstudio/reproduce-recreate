@@ -184,10 +184,10 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
   const insightText = useMemo(() => {
     if (!stats) return "Not enough data for weather analysis.";
     const absR = stats.correlation;
-    if (absR > 0.8) return "Critical Weather Coupling: Site consumption is extremely sensitive to heat and humidity.";
-    if (absR > 0.6) return "High Weather Sensitivity: HVAC loads are a primary driver of energy peaks.";
-    if (absR > 0.3) return "Moderate Weather Sensitivity: Environmental factors impact performance significantly.";
-    return "Low Weather Sensitivity: Building loads appear resilient to external weather variations.";
+    if (absR > 0.8) return "Consumption follows the weather very closely: heating and cooling are driving the energy bill.";
+    if (absR > 0.6) return "Consumption rises and falls with the weather: HVAC is a primary driver of energy peaks.";
+    if (absR > 0.3) return "The weather explains part of the consumption; the rest comes from other loads.";
+    return "Consumption is largely independent of the weather: lighting and equipment drive the load.";
   }, [stats]);
 
   if (loadingData || loadingInsight) {
@@ -220,16 +220,17 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
            </div>
            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50/50 border border-emerald-100 rounded-full ml-2 relative group/info">
               <Activity className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-[11px] font-bold text-emerald-700">Combined Correlation (R): {displayCorrelation}</span>
+              <span className="text-[11px] font-bold text-emerald-700">Weather impact: {displayCorrelation}</span>
               <div className="ml-1 cursor-help">
                 <Info className="w-3 h-3 text-emerald-400 hover:text-emerald-600 transition-colors" />
               </div>
-              <div className="absolute left-0 top-8 w-64 p-3 bg-slate-900 text-foreground text-[10px] rounded-xl shadow-2xl opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none border border-slate-700">
-                <p className="font-bold mb-1 border-b border-slate-700 pb-1 text-emerald-400 uppercase tracking-wider">WEATHER SENSITIVITY LOGIC</p>
-                <p className="leading-relaxed opacity-90 text-[9px]">
-                  Site performance is modeled using Multiple Linear Regression: 
-                  <span className="block font-mono mt-1 text-emerald-400">Energy = β₀ + β₁·T + β₂·H</span>
-                  The R-score represents the percentage of energy fluctuations **explained by** the combined impact of heat and humidity.
+              <div className="absolute left-0 top-8 w-72 p-3.5 bg-white/95 backdrop-blur-md text-slate-700 text-[11px] rounded-xl shadow-2xl opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none border border-slate-200">
+                <p className="font-bold mb-1.5 pb-1.5 border-b border-slate-100 text-emerald-700 uppercase tracking-wider text-[10px]">How to read this score</p>
+                <p className="leading-relaxed">
+                  We compare the site's energy use with the outdoor temperature and humidity recorded at the same time.
+                  The percentage tells how much of the consumption follows the weather:
+                  close to <span className="font-semibold text-slate-900">100%</span>, the building tracks the weather closely — heating and cooling dominate;
+                  close to <span className="font-semibold text-slate-900">0%</span>, consumption is driven by other loads such as lighting and equipment.
                 </p>
               </div>
            </div>
@@ -257,7 +258,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
         </div>
       </div>
 
-      <div className="flex-1 min-h-[300px] w-full bg-foreground/30 rounded-2xl border border-gray-100/50 p-2">
+      <div className="flex-1 min-h-[300px] w-full bg-white rounded-2xl border border-gray-100/50 p-2">
         <ResponsiveContainer width="100%" height="100%">
           {viewMode === 'timeseries' ? (
             <ComposedChart data={chartData} margin={{ top: 10, right: 60, bottom: 20, left: 10 }}>
@@ -306,9 +307,9 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', backgroundColor: 'rgba(255,255,255,0.95)' }}
                 labelFormatter={(val) => format(parseISO(val), 'PPP p')}
               />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              
-              <Area 
+              <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+
+              <Area
                 yAxisId="left"
                 type="monotone" 
                 dataKey="energy" 
@@ -322,7 +323,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
               <Line yAxisId="percent" type="monotone" dataKey="humidity" name="Humidity (%)" stroke="#0ea5e9" strokeWidth={2} strokeDasharray="3 3" dot={false} />
             </ComposedChart>
           ) : (
-            <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+            <ScatterChart margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis 
                 type="number" 
@@ -348,7 +349,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="bg-foreground/95 backdrop-blur-md p-3 border border-gray-100 shadow-xl rounded-xl">
+                      <div className="bg-white/95 backdrop-blur-md p-3 border border-gray-100 shadow-xl rounded-xl">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2 tracking-wider">Meteorological Data</p>
                         <div className="space-y-1.5">
                           <div className="flex justify-between gap-8">
@@ -370,8 +371,8 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                   return null;
                 }}
               />
-              <Scatter 
-                name="Weather Observations" 
+              <Scatter
+                name="Observations (darker dot = more humid)"
                 data={validPoints.map(p => ({ 
                   x: p.temp, 
                   y: p.energy, 
@@ -391,15 +392,15 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
               </Scatter>
               {stats?.regressionLine && (
                 <Scatter
-                  name="Thermal Sensitivity Profile"
+                  name="Energy vs temperature trend"
                   data={stats.regressionLine}
-                  fill="#ef4444"
-                  line={{ stroke: '#ef4444', strokeWidth: 4 }}
+                  fill="#d97706"
+                  line={{ stroke: '#d97706', strokeWidth: 3 }}
                   shape={() => null}
                   legendType="line"
                 />
               )}
-              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: 11 }} />
             </ScatterChart>
           )}
         </ResponsiveContainer>
@@ -410,7 +411,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
            <Zap className="w-5 h-5 text-emerald-500" />
         </div>
         <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-600/60">Thermal Sensitivity Insight</p>
+          <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-600/60">Weather Insight</p>
           <p className="text-sm font-semibold text-gray-700 italic">"{insightText}"</p>
         </div>
         {!hasRealData && (
