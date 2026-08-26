@@ -58,6 +58,8 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'e.g. 1000',
     euiBenchmark: 'EUI Benchmark (kWh/m²)',
     euiPlaceholder: 'e.g. 150',
+    euiTooltip: 'Energy Use Intensity target: the expected annual consumption per m² for this building type. Entered by the FGB administrator, based on the applicable regulatory benchmark or the portfolio target.',
+    euiHint: 'Set by the FGB administrator — reference line for the site\'s actual kWh/m²',
     areaM2: 'Site Area (m²)',
     areaPlaceholder: 'e.g. 1200',
     areaHint: 'Total surface, used for EUI and density KPIs',
@@ -100,6 +102,8 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'es. 1000',
     euiBenchmark: 'Benchmark EUI (kWh/m²)',
     euiPlaceholder: 'es. 150',
+    euiTooltip: 'Obiettivo di intensità energetica: il consumo annuo atteso per m² per questa tipologia di edificio. Lo definisce l\'amministratore FGB in base al benchmark normativo applicabile o all\'obiettivo di portafoglio.',
+    euiHint: 'Definito dall\'amministratore FGB — riferimento per i kWh/m² reali del sito',
     areaM2: 'Superficie Sito (m²)',
     areaPlaceholder: 'es. 1200',
     areaHint: 'Superficie totale, usata per EUI e KPI di densità',
@@ -142,6 +146,8 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'ex. 1000',
     euiBenchmark: 'Benchmark EUI (kWh/m²)',
     euiPlaceholder: 'ex. 150',
+    euiTooltip: 'Cible d\'intensité énergétique : la consommation annuelle attendue par m² pour ce type de bâtiment. Définie par l\'administrateur FGB selon le référentiel réglementaire applicable ou l\'objectif de portefeuille.',
+    euiHint: 'Définie par l\'administrateur FGB — référence pour les kWh/m² réels du site',
     areaM2: 'Surface du Site (m²)',
     areaPlaceholder: 'ex. 1200',
     areaHint: 'Surface totale, utilisée pour EUI et KPI de densité',
@@ -184,6 +190,8 @@ const i18n = {
     dailyBudgetWaterPlaceholder: 'ej. 1000',
     euiBenchmark: 'Referencia EUI (kWh/m²)',
     euiPlaceholder: 'ej. 150',
+    euiTooltip: 'Objetivo de intensidad energética: el consumo anual esperado por m² para este tipo de edificio. Lo define el administrador FGB según el benchmark normativo aplicable o el objetivo de cartera.',
+    euiHint: 'Definido por el administrador FGB — referencia para los kWh/m² reales del sitio',
     areaM2: 'Superficie del Sitio (m²)',
     areaPlaceholder: 'ej. 1200',
     areaHint: 'Superficie total, usada para EUI y KPI de densidad',
@@ -226,6 +234,8 @@ const i18n = {
     dailyBudgetWaterPlaceholder: '例如 1000',
     euiBenchmark: 'EUI 基准 (kWh/m²)',
     euiPlaceholder: '例如 150',
+    euiTooltip: '能耗强度目标：该类型建筑每平方米的预期年消耗量。由 FGB 管理员根据适用的法规基准或组合目标设定。',
+    euiHint: '由 FGB 管理员设定——站点实际 kWh/m² 的参考值',
     areaM2: '场地面积 (m²)',
     areaPlaceholder: '例如 1200',
     areaHint: '总面积，用于 EUI 和密度 KPI',
@@ -655,9 +665,23 @@ export function ProjectSettingsDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="energy_target_eui_kwh_m2">
-                    {t.euiBenchmark}
-                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="energy_target_eui_kwh_m2">
+                      {t.euiBenchmark}
+                    </Label>
+                    {/* "Chi mette questo numero?" — tooltip richiesto dal
+                        proprietario: cosa rappresenta e chi lo inserisce. */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="w-4 h-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>{t.euiTooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <Input
                     id="energy_target_eui_kwh_m2"
                     type="number"
@@ -665,6 +689,7 @@ export function ProjectSettingsDialog({
                     placeholder={t.euiPlaceholder}
                     {...form.register('energy_target_eui_kwh_m2', { setValueAs: parseNumber })}
                   />
+                  <p className="text-xs text-muted-foreground">{t.euiHint}</p>
                 </div>
 
                 <div className="space-y-2">
