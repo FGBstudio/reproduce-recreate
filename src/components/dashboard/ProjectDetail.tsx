@@ -4689,11 +4689,43 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               // FIX: Usa Number(val) per sicurezza
                               tickFormatter={(val) => Number(val).toFixed(2)}
                             />
-                            <Tooltip 
-                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                              // FIX: Usa Number(value) per sicurezza
-                              formatter={(value: any) => [Number(value).toFixed(3) + ' kWh/m²', '']}
-                              labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.5rem' }}
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload || payload.length === 0) return null;
+                                const DESCRIPTIONS: Record<string, string> = {
+                                  actual: 'Measured consumption of this site, divided by the site area',
+                                  average: 'Reference trend of comparable stores',
+                                  range: 'Typical band around the peer average',
+                                  benchmark: 'Target level for this building type',
+                                };
+                                return (
+                                  <div className="bg-white/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-gray-100 max-w-[280px]">
+                                    <p className="text-xs font-semibold text-gray-700 mb-2">{label}</p>
+                                    <div className="space-y-1.5">
+                                      {payload.map((entry: any) => {
+                                        const key = String(entry.dataKey);
+                                        const valueText = Array.isArray(entry.value)
+                                          ? `${Number(entry.value[0]).toFixed(3)} – ${Number(entry.value[1]).toFixed(3)} kWh/m²`
+                                          : `${Number(entry.value).toFixed(3)} kWh/m²`;
+                                        return (
+                                          <div key={key}>
+                                            <div className="flex items-center justify-between gap-6">
+                                              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-800">
+                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.stroke || '#94a3b8' }} />
+                                                {entry.name}
+                                              </span>
+                                              <span className="text-[11px] font-bold text-gray-900 tabular-nums whitespace-nowrap">{valueText}</span>
+                                            </div>
+                                            {DESCRIPTIONS[key] && (
+                                              <p className="text-[10px] text-muted-foreground pl-3.5 leading-snug">{DESCRIPTIONS[key]}</p>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              }}
                             />
                             <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
 
