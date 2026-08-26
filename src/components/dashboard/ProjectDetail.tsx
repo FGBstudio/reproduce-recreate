@@ -44,6 +44,7 @@ import { co2Level } from "@/lib/airQuality";
 import { SITE_MATERIAL_SKIN } from "@/lib/siteTheme";
 import SitePatternBackground from "./SitePatternBackground";
 import { useSiteArea } from "@/hooks/useSiteArea";
+import { usePeerEnergyDensity, useSiteEuiTarget } from "@/hooks/usePeerEnergyDensity";
 import { areaBasisLabel } from "@/lib/areaBasis";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
@@ -2843,11 +2844,21 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   // --- 7. WIDGET: ACTUAL VS AVERAGE (Grafico Linee Comparativo) ---
 
+  // Peer REALI (aggregati anonimi dei siti con stessa typology, via RPC) ed
+  // EUI target inserito dall'admin: sostituiscono la vecchia simulazione
+  // (actual * 0.9 + rumore) che mostrava ai clienti confronti inventati.
+  const { data: peerDensity } = usePeerEnergyDensity(project?.siteId, timePeriod, dateRange);
+  const { data: euiTargetAnnual } = useSiteEuiTarget(project?.siteId);
+
   const actualVsAverageData = useMemo(() => {
     const rawData = energyTimeseriesResp?.data || [];
     const area = Number(project?.area_m2 || 0);
     const effectiveArea = area > 0 ? area : (project?.area_m2 || 850);
     if (rawData.length === 0 && energyConsumptionData && energyConsumptionData.length > 0) {
+      // Ramo DEMO (siti showcase FGB, dove il finto e' ammesso): peer e
+      // benchmark derivati dall'actual. Le chiavi ora combaciano con le
+      // serie del grafico (prima peerAverage/peerMin non renderizzavano e il
+      // banner usciva "NaN% undefined" per il summary senza diffPct/status).
       const chartData = energyConsumptionData.map(d => {
         const totalKw = (d.HVAC || 0) + (d.Lighting || 0) + (d.Plugs || 0);
         const kwh = totalKw * bucketHours;
@@ -2860,16 +2871,25 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           ts: d.ts,
           tsLabel: d.label,
           actual: Number(actualDensity.toFixed(3)),
-          peerAverage,
-          peerMin,
-          peerMax,
+          average: peerAverage,
+          range: [peerMin, peerMax],
           benchmark,
         };
       });
-      return { data: chartData, summary: { currentAvg: 0.24, peerAvg: 0.22 } };
+      const totA = chartData.reduce((acc, cur) => acc + cur.actual, 0);
+      const totP = chartData.reduce((acc, cur) => acc + cur.average, 0);
+      const diffPct = totP > 0 ? ((totA / totP) - 1) * 100 : 0;
+      const status: 'above' | 'below' | 'line' = diffPct > 0.5 ? 'above' : diffPct < -0.5 ? 'below' : 'line';
+      return {
+        data: chartData,
+        summary: { diffPct, status, totalActual: totA, totalAverage: totP },
+        hasPeer: true,
+        peerCount: 0,
+        hasBenchmark: true,
+      };
     }
-    
-    if (rawData.length === 0) return { data: [], summary: null };
+
+    if (rawData.length === 0) return { data: [], summary: null, hasPeer: false, peerCount: 0, hasBenchmark: false };
 
     // 1. Raggruppa i dati in base al bucket temporale corrente
     // (Anno -> Mesi, Mese -> Giorni, Giorno -> Ore)
@@ -2927,51 +2947,50 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         .sort((a, b) => a.ts.localeCompare(b.ts))
         .map(item => {
             const actualDensity = item.kwhActual / area;
-            
-            // --- SIMULAZIONE DATI PEER & BENCHMARK ---
-            // In produzione, questi verrebbero da un'API separata o DB
-            
-            // Average: Simuliamo che sia un po' più basso dell'actual (es. 90%) con un po' di rumore
-            const simAverage = actualDensity * (0.9 + (Math.random() * 0.2 - 0.1));
-            
-            // Range (Min/Max): Banda attorno all'average
-            const simMin = simAverage * 0.8;
-            const simMax = simAverage * 1.2;
 
-            // Benchmark: Linea target fissa (es. 15% in meno dell'attuale medio)
-            // Se anno/mese, varia leggermente. Se giorno, segue curva oraria tipica.
-            const simBenchmark = actualDensity * 0.85; 
+            // Peer REALI dal RPC get_peer_energy_density (aggregati anonimi
+            // dei siti con stessa typology). Chiavi bucket: 'YYYY-MM' per
+            // anno, 'HH' per oggi (profilo orario locale dei peer),
+            // 'YYYY-MM-DD' altrimenti. Bucket senza almeno 3 peer: assente.
+            const peerKey = isToday ? item.ts.slice(-2) : item.ts;
+            const peer = peerDensity?.byBucket.get(peerKey);
+
+            // Benchmark: EUI target annuo inserito nei settings, scalato
+            // sulla larghezza del bucket. Nessun target salvato = nessuna linea.
+            const benchmark = euiTargetAnnual != null
+                ? (isYear ? euiTargetAnnual / 12 : isToday ? euiTargetAnnual / 8760 : euiTargetAnnual / 365)
+                : undefined;
 
             return {
                 ...item,
                 actual: actualDensity,
-                average: simAverage,
-                min: simMin,
-                max: simMax,
+                average: peer?.avg,
                 // Per l'area range chart (Recharts usa range area [min, max])
-                range: [simMin, simMax], 
-                benchmark: simBenchmark
+                range: peer ? [peer.min, peer.max] : undefined,
+                benchmark
             };
         });
 
-    // 3. Calcola Sommario per Banner
-    const totalActual = chartData.reduce((acc, cur) => acc + cur.actual, 0);
-    const totalAverage = chartData.reduce((acc, cur) => acc + cur.average, 0);
-    
-    let diffPct = 0;
-    let status: 'above' | 'below' | 'line' = 'line';
-    
-    if (totalAverage > 0) {
-        diffPct = ((totalActual / totalAverage) - 1) * 100;
-        if (diffPct > 0.5) status = 'above';
-        else if (diffPct < -0.5) status = 'below';
+    // 3. Sommario per il banner: solo sui bucket con una media peer reale
+    const paired = chartData.filter(c => typeof c.average === 'number');
+    const totalActual = paired.reduce((acc, cur) => acc + cur.actual, 0);
+    const totalAverage = paired.reduce((acc, cur) => acc + (cur.average as number), 0);
+
+    let summary: { diffPct: number; status: 'above' | 'below' | 'line'; totalActual: number; totalAverage: number } | null = null;
+    if (paired.length > 0 && totalAverage > 0) {
+        const diffPct = ((totalActual / totalAverage) - 1) * 100;
+        const status: 'above' | 'below' | 'line' = diffPct > 0.5 ? 'above' : diffPct < -0.5 ? 'below' : 'line';
+        summary = { diffPct, status, totalActual, totalAverage };
     }
 
-    return { 
-        data: chartData, 
-        summary: { diffPct, status, totalActual, totalAverage } 
+    return {
+        data: chartData,
+        summary,
+        hasPeer: paired.length > 0,
+        peerCount: peerDensity?.peerCount ?? 0,
+        hasBenchmark: euiTargetAnnual != null
     };
-  }, [energyTimeseriesResp, project, timePeriod, deviceMap, siteTimezone]);
+  }, [energyTimeseriesResp, project, timePeriod, deviceMap, siteTimezone, peerDensity, euiTargetAnnual]);
 
   // --- 8. WIDGET: POWER CONSUMPTION (Real-time Donut kW) ---
   // Uses shared hook energyPowerBreakdown (from useEnergyPowerByCategory)
@@ -4694,9 +4713,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 if (!active || !payload || payload.length === 0) return null;
                                 const DESCRIPTIONS: Record<string, string> = {
                                   actual: 'Measured consumption of this site, divided by the site area',
-                                  average: 'Reference trend of comparable stores',
-                                  range: 'Typical band around the peer average',
-                                  benchmark: 'Target level for this building type',
+                                  average: 'Measured average of comparable stores (same use type)',
+                                  range: 'Min and max across the comparable stores',
+                                  benchmark: 'Annual EUI target from Project Settings, scaled to this period',
                                 };
                                 return (
                                   <div className="bg-white/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-gray-100 max-w-[280px]">
@@ -4729,37 +4748,43 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             />
                             <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '12px' }}/>
 
-                            {/* BAND: Peer Range (Area) */}
-                            <Area 
-                              type="monotone" 
-                              dataKey="range" 
-                              fill="#A6A6A6" 
-                              stroke="none" 
-                              fillOpacity={0.2} 
-                              name="Peer Range" 
-                              legendType="rect"
-                            />
+                            {/* BAND: Peer Range (Area) — solo con peer reali disponibili */}
+                            {actualVsAverageData.hasPeer && (
+                              <Area
+                                type="monotone"
+                                dataKey="range"
+                                fill="#A6A6A6"
+                                stroke="none"
+                                fillOpacity={0.2}
+                                name="Peer Range"
+                                legendType="rect"
+                              />
+                            )}
 
                             {/* LINE: Peer Average */}
-                            <Line 
-                              type="monotone" 
-                              dataKey="average" 
-                              stroke="#3A3A3A" 
-                              strokeWidth={1.5} 
-                              dot={false} 
-                              name="Peer Average"
-                            />
+                            {actualVsAverageData.hasPeer && (
+                              <Line
+                                type="monotone"
+                                dataKey="average"
+                                stroke="#3A3A3A"
+                                strokeWidth={1.5}
+                                dot={false}
+                                name={actualVsAverageData.peerCount > 0 ? `Peer Average (${actualVsAverageData.peerCount} stores)` : 'Peer Average'}
+                              />
+                            )}
 
-                            {/* LINE: Benchmark (Dotted) */}
-                            <Line 
-                              type="monotone" 
-                              dataKey="benchmark" 
-                              stroke="#7E0A2F" 
-                              strokeWidth={2} 
-                              strokeDasharray="4 4" 
-                              dot={false} 
-                              name="Benchmark"
-                            />
+                            {/* LINE: Benchmark (Dotted) — solo se l'EUI target e' stato salvato nei settings */}
+                            {actualVsAverageData.hasBenchmark && (
+                              <Line
+                                type="monotone"
+                                dataKey="benchmark"
+                                stroke="#7E0A2F"
+                                strokeWidth={2}
+                                strokeDasharray="4 4"
+                                dot={false}
+                                name="Benchmark (EUI target)"
+                              />
+                            )}
 
                             {/* LINE: Actual (Main) */}
                             <Line 
