@@ -295,6 +295,14 @@ interface ProjectDetailProps {
   initialDashboard?: DashboardType;
 }
 
+// Fattore di emissione CO2e unico per tutti i siti: rete elettrica media
+// (UK BEIS/DEFRA 2020, 0.233 kgCO2e/kWh). Un solo numero per confrontare i
+// siti tra loro; fattori per paese sono un raffinamento futuro. Se cambia,
+// aggiornare anche il testo esplicativo qui sotto.
+const CO2_EMISSION_FACTOR = 0.233; // kgCO2e/kWh
+const CO2_FACTOR_NOTE =
+  'Emissions are estimated from metered electricity: kWh × 0.233 kgCO₂e per kWh — a grid-average emission factor (UK BEIS/DEFRA 2020). The same factor is applied to every site so they stay comparable; country-specific factors are a planned refinement.';
+
 const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>(initialDashboard ?? "overview");
@@ -3317,10 +3325,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // C. Elaborazione Pivot (Il cuore del widget)
   const carbonChartData = useMemo(() => {
       const rawData = carbonResp?.data || [];
-      const EF = 0.233; // kgCO2e/kWh (Fattore emissione standard)
-      
+      const EF = CO2_EMISSION_FACTOR;
+
       const pivotMap = new Map<string, any>();
       const seriesSet = new Set<string>();
+      // Prima occorrenza temporale di ogni serie: serve per ordinare le
+      // barre cronologicamente (l'ordine alfabetico dava Jul, Jun, Mar, May)
+      const seriesFirstTs = new Map<string, number>();
 
       // Helper: Definizione settimana del mese (W1..W5 standard)
       const getMonthWeek = (d: Date) => {
@@ -3368,6 +3379,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           const entry = pivotMap.get(bucketKey);
           entry[seriesKey] = (entry[seriesKey] || 0) + co2;
           seriesSet.add(seriesKey);
+          const t = date.getTime();
+          if (!seriesFirstTs.has(seriesKey) || t < seriesFirstTs.get(seriesKey)!) {
+              seriesFirstTs.set(seriesKey, t);
+          }
       });
 
       // Ordinamento Buckets (Custom Sort per ogni vista)
@@ -3387,8 +3402,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       }
 
       // Preparazione Serie per Recharts
-      // Selezioniamo le ultime N serie per non affollare il grafico
-      const sortedSeries = Array.from(seriesSet).sort(); 
+      // Ordine CRONOLOGICO (per data di prima occorrenza, cosi' funziona
+      // anche a cavallo d'anno), poi le ultime N per non affollare il grafico
+      const sortedSeries = Array.from(seriesSet)
+          .sort((a, b) => (seriesFirstTs.get(a) ?? 0) - (seriesFirstTs.get(b) ?? 0));
       // Logica colori dinamica
       const seriesConfigs = sortedSeries.slice(-4).map((key, idx) => ({
           key,
@@ -3524,7 +3541,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         precalculatedTotals: {
           totalEnergyKwh: totalBreakdownKwh,
           totalCostEur: estimatedCostData?.totalCost || 0,
-          totalCo2Kg: totalBreakdownKwh * 0.233,
+          totalCo2Kg: totalBreakdownKwh * CO2_EMISSION_FACTOR,
         },
         data: {
           energy: {
@@ -4987,13 +5004,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             {timePeriod === 'month' && 'Weekly Breakdown (Month vs Month)'}
                             {timePeriod === 'week' && 'Daily Profile (Week vs Week)'}
                             {timePeriod === 'today' && 'Hourly Emissions'}
-                            {' '}- kgCO₂e
+                            {' '}- <span title={CO2_FACTOR_NOTE} className="cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">kgCO₂e</span>
                           </p>
                         </div>
-                        
+
                         <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-mono bg-gray-100 text-muted-foreground px-2 py-1 rounded border border-gray-200">
-                                EF: 0.233 kg/kWh
+                            <span title={CO2_FACTOR_NOTE} className="cursor-help inline-flex items-center gap-1 text-[11px] font-mono bg-gray-100 text-muted-foreground px-2 py-1 rounded border border-gray-200">
+                                EF: {CO2_EMISSION_FACTOR} kg/kWh
+                                <Info className="w-3 h-3 text-muted-foreground/60 shrink-0" />
                             </span>
                             <ExportButtons 
                               chartRef={carbonRef} 
