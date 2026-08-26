@@ -216,7 +216,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
            </div>
            <div>
              <h3 className="text-lg font-bold text-gray-900 leading-tight">Energy Weather Analytics</h3>
-             <p className="text-xs text-muted-foreground font-medium">Power consumption vs. outdoor intensity</p>
+             <p className="text-xs text-muted-foreground font-medium">Energy consumption vs. outdoor conditions</p>
            </div>
            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50/50 border border-emerald-100 rounded-full ml-2 relative group/info">
               <Activity className="w-3.5 h-3.5 text-emerald-600" />
