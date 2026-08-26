@@ -4561,12 +4561,19 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[11px] font-bold text-muted-foreground">
                                 {heatmapGrid.isYearView ? "DD" : "HH"}
                             </div>
-                            {/* Labels Colonne */}
-                            {heatmapGrid.cols.map(col => (
-                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[11px] font-semibold text-muted-foreground pb-1">
-                                    {col.label}
+                            {/* Labels Colonne — font ridotto e diradate come
+                                nella heatmap aria: con 30+ colonne le date
+                                "MM/GG" si accavallavano. Il passo tiene al
+                                massimo ~12 etichette, sempre leggibili anche
+                                su schermi stretti. */}
+                            {(() => {
+                              const labelStep = Math.max(1, Math.ceil(heatmapGrid.cols.length / 12));
+                              return heatmapGrid.cols.map((col, i) => (
+                                <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-medium text-muted-foreground pb-1.5 whitespace-nowrap">
+                                    {i % labelStep === 0 ? col.label : ''}
                                 </div>
-                            ))}
+                              ));
+                            })()}
                           </div>
 
                           {/* Body Griglia (Righe Y-Axis) */}

@@ -354,7 +354,7 @@ export const AirHeatmap = ({
         <div className="min-w-max">
           <div className="flex">
             <div className="w-12 flex-shrink-0 flex items-end justify-center pb-2 text-[10px] font-bold text-slate-600">
-                {heatmapGrid.isYearView ? 'GG' : 'HH'}
+                {heatmapGrid.isYearView ? 'DD' : 'HH'}
             </div>
             {heatmapGrid.cols.map((col: any, i: number) => (
                 <div key={col.key} className="flex-1 min-w-[24px] text-center text-[10px] font-semibold text-slate-600 pb-1 whitespace-nowrap">
