@@ -75,6 +75,13 @@ export const useProjectModuleConfig = (project: Project | null) => {
     // lista admin era in caricamento o in errore. I domini con dispositivi
     // reali vengono comunque riaccesi dall'inferenza sui device in
     // ProjectDetail (resolvedModuleConfig): la verita' converge sui dati.
+    //
+    // REGOLA DEL PROPRIETARIO (26/08/2026) — invito vs offline:
+    //   - INVITO all'attivazione solo quando il monitoraggio NON e' previsto
+    //     (flag spento E nessun device del dominio censito);
+    //   - un monitor previsto che smette di trasmettere e' OFFLINE dentro la
+    //     card attiva (stale/no-data), MAI l'invito. L'inferenza infatti
+    //     guarda l'esistenza dei device censiti, non la loro freschezza.
     return {
       energy: { ...defaultProjectModules.energy },
       air: { ...defaultProjectModules.air },
