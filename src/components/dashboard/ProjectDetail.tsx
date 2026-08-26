@@ -4451,7 +4451,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     {/* Energy Periods Pivot Table */}
                     <div ref={periodRef} className="bg-foreground/95 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg h-full flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base md:text-lg font-bold text-gray-800">Energy Periods</h3>
+                        <h3 className="text-base md:text-lg font-bold text-gray-800">Energy Consumption by Periods</h3>
                         
                         <div className="flex items-center gap-2">
                           {/* Selettore Anno Indipendente */}
@@ -4475,8 +4475,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                           <thead className="text-xs text-muted-foreground uppercase bg-gray-50/90 sticky top-0 z-10">
                             <tr>
                               <th scope="col" className="px-3 py-3 rounded-l-lg">Period</th>
-                              <th scope="col" className="px-3 py-3 text-center">kWh</th>
-                              <th scope="col" className="px-3 py-3 text-right rounded-r-lg">Price</th>
+                              <th scope="col" className="px-3 py-3 text-center">Energy (kWh)</th>
+                              <th scope="col" className="px-3 py-3 text-right rounded-r-lg">Cost ({getCurrencySymbol(displayCurrency)})</th>
                             </tr>
                           </thead>
                           <tbody>
