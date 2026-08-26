@@ -69,12 +69,17 @@ export const useProjectModuleConfig = (project: Project | null) => {
       return adminProject.modules;
     }
 
-    // Default: all modules enabled for backward compatibility
+    // Nessuna configurazione trovata: TUTTO SPENTO, mai "tutto acceso".
+    // Il vecchio default all-enabled faceva comparire aria e acqua attive
+    // (con card vuote o inventate) su siti solo-energia ogni volta che la
+    // lista admin era in caricamento o in errore. I domini con dispositivi
+    // reali vengono comunque riaccesi dall'inferenza sui device in
+    // ProjectDetail (resolvedModuleConfig): la verita' converge sui dati.
     return {
-      energy: { ...defaultProjectModules.energy, enabled: true },
-      air: { ...defaultProjectModules.air, enabled: true },
-      water: { ...defaultProjectModules.water, enabled: true },
-      certification: { ...defaultProjectModules.certification, enabled: true },
+      energy: { ...defaultProjectModules.energy },
+      air: { ...defaultProjectModules.air },
+      water: { ...defaultProjectModules.water },
+      certification: { ...defaultProjectModules.certification },
     };
   }, [project, adminProjects]);
 };

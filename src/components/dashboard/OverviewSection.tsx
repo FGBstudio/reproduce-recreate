@@ -543,7 +543,7 @@ const EnergyCard = ({ status, enabled, onClick, powerData, averageData, threshol
                 </span>
               </div>
             ) : (
-              <div className="text-xs font-medium text-slate-600 mb-1">Analisi media in corso...</div>
+              <div className="text-xs font-medium text-slate-600 mb-1">Computing period average...</div>
             )}
 
             {threshold && (
@@ -682,7 +682,7 @@ const AirCard = ({ status, enabled, onClick, liveData, averageMetrics, periodLab
                 </span>
               </div>
             ) : (
-              <div className="text-xs font-medium text-slate-600 mb-2">Analisi media in corso...</div>
+              <div className="text-xs font-medium text-slate-600 mb-2">Computing period average...</div>
             )}
 
             {/* Etichette bande AQI */}

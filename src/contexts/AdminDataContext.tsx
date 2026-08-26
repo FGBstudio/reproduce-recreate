@@ -260,11 +260,10 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error('Error fetching admin data:', error);
-      // Fallback to mock data on error
-      setHoldings(mockHoldings);
-      setBrands(mockBrands);
-      setSites(mockSites);
-      setProjects(mockProjects);
+      // NIENTE ripiego sui mock quando Supabase e' configurato: i mock
+      // (Gucci/LV) facevano fallire il matching dei moduli e ogni sito
+      // finiva nel default "tutto attivo" con card inventate. In errore
+      // le liste restano vuote: meglio un'interfaccia scarna che una falsa.
     } finally {
       setLoading(false);
     }
