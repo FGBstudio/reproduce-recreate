@@ -264,85 +264,95 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
             <ComposedChart data={chartData} margin={{ top: 10, right: 60, bottom: 20, left: 10 }}>
               <defs>
                 <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#129E97" stopOpacity={0.12}/>
+                  <stop offset="95%" stopColor="#129E97" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="ts" 
+              <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="#f1f5f9" />
+              <XAxis
+                dataKey="ts"
                 tickFormatter={(str) => {
                   const date = parseISO(str);
                   return timePeriod === 'today' ? format(date, 'HH:mm') : format(date, 'dd/MM HH:mm');
                 }}
-                stroke="#94a3b8"
+                axisLine={false}
+                tickLine={false}
                 fontSize={10}
-                tick={{ fill: '#94a3b8' }}
+                tick={{ fill: '#9ca3af' }}
+                dy={6}
                 interval="preserveStartEnd"
                 minTickGap={24}
               />
-              <YAxis 
-                yAxisId="left" 
-                tick={{ fontSize: 10, fill: '#64748b' }}
-                label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontSize: 10 } }}
-                stroke="#e2e8f0"
+              <YAxis
+                yAxisId="left"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: '#9ca3af' }}
+                label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: 10 } }}
               />
-              <YAxis 
-                yAxisId="temp" 
-                orientation="right" 
-                tick={{ fontSize: 10, fill: '#f59e0b' }}
-                label={{ value: '°C', angle: 90, position: 'insideRight', style: { fill: '#f59e0b', fontSize: 10 } }}
-                stroke="#e2e8f0"
+              <YAxis
+                yAxisId="temp"
+                orientation="right"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: '#f59e0b', opacity: 0.8 }}
+                label={{ value: '°C', angle: 90, position: 'insideRight', style: { fill: '#f59e0b', fontSize: 10, opacity: 0.8 } }}
               />
-              <YAxis 
-                yAxisId="percent" 
-                orientation="right" 
+              <YAxis
+                yAxisId="percent"
+                orientation="right"
                 dx={35}
-                tick={{ fontSize: 10, fill: '#0ea5e9' }}
-                label={{ value: '%', angle: 90, position: 'insideRight', style: { fill: '#0ea5e9', fontSize: 10 } }}
-                stroke="#e2e8f0"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: '#0ea5e9', opacity: 0.7 }}
+                label={{ value: '%', angle: 90, position: 'insideRight', style: { fill: '#0ea5e9', fontSize: 10, opacity: 0.7 } }}
               />
               
               <Tooltip 
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', backgroundColor: 'rgba(255,255,255,0.95)' }}
                 labelFormatter={(val) => format(parseISO(val), 'PPP p')}
               />
-              <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+              <Legend verticalAlign="bottom" height={24} iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
 
               <Area
                 yAxisId="left"
-                type="monotone" 
-                dataKey="energy" 
-                name="Energy (kWh)" 
-                stroke="#10b981" 
-                strokeWidth={3}
+                type="monotone"
+                dataKey="energy"
+                name="Energy (kWh)"
+                stroke="#129E97"
+                strokeWidth={2}
                 fill="url(#colorEnergy)"
                 dot={false}
+                activeDot={{ r: 4, strokeWidth: 0 }}
               />
-              <Line yAxisId="temp" type="monotone" dataKey="temp" name="Temp (°C)" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
-              <Line yAxisId="percent" type="monotone" dataKey="humidity" name="Humidity (%)" stroke="#0ea5e9" strokeWidth={2} strokeDasharray="3 3" dot={false} />
+              <Line yAxisId="temp" type="monotone" dataKey="temp" name="Temp (°C)" stroke="#f59e0b" strokeOpacity={0.85} strokeWidth={1.5} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+              <Line yAxisId="percent" type="monotone" dataKey="humidity" name="Humidity (%)" stroke="#0ea5e9" strokeOpacity={0.65} strokeWidth={1.25} strokeDasharray="4 4" dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
             </ComposedChart>
           ) : (
             <ScatterChart margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis 
-                type="number" 
-                dataKey="x" 
-                name="Temperature" 
-                unit="°C" 
-                stroke="#94a3b8" 
-                fontSize={10} 
+              <CartesianGrid strokeDasharray="2 4" stroke="#f1f5f9" />
+              <XAxis
+                type="number"
+                dataKey="x"
+                name="Temperature"
+                unit="°C"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#9ca3af' }}
+                fontSize={10}
                 domain={['auto', 'auto']}
               />
-              <YAxis 
-                type="number" 
-                dataKey="y" 
-                name="Energy" 
-                unit="kWh" 
-                stroke="#94a3b8" 
-                fontSize={10} 
+              <YAxis
+                type="number"
+                dataKey="y"
+                name="Energy"
+                unit="kWh"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#9ca3af' }}
+                fontSize={10}
               />
-              <ZAxis type="number" dataKey="z" range={[25, 25]} />
+              <ZAxis type="number" dataKey="z" range={[16, 16]} />
               <Tooltip 
                 cursor={{ strokeDasharray: '3 3' }} 
                 content={({ active, payload }) => {
@@ -383,10 +393,10 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                 fill="#14b8a6"
               >
                 {validPoints.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={getHumidityColor(entry.humidity)} 
-                    fillOpacity={0.6} 
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={getHumidityColor(entry.humidity)}
+                    fillOpacity={0.5}
                   />
                 ))}
               </Scatter>
@@ -395,12 +405,12 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
                   name="Energy vs temperature trend"
                   data={stats.regressionLine}
                   fill="#d97706"
-                  line={{ stroke: '#d97706', strokeWidth: 3 }}
+                  line={{ stroke: '#d97706', strokeWidth: 1.5, strokeDasharray: '6 4', strokeOpacity: 0.85 }}
                   shape={() => null}
                   legendType="line"
                 />
               )}
-              <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+              <Legend verticalAlign="bottom" height={24} iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
             </ScatterChart>
           )}
         </ResponsiveContainer>
