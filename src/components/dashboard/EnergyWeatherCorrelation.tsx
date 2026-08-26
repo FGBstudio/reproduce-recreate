@@ -261,7 +261,7 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
       <div className="flex-1 min-h-[300px] w-full bg-white rounded-2xl border border-gray-100/50 p-2">
         <ResponsiveContainer width="100%" height="100%">
           {viewMode === 'timeseries' ? (
-            <ComposedChart data={chartData} margin={{ top: 10, right: 60, bottom: 20, left: 10 }}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#129E97" stopOpacity={0.12}/>
@@ -285,27 +285,32 @@ const EnergyWeatherCorrelation = ({ siteId, timePeriod, dateRange }: Correlation
               />
               <YAxis
                 yAxisId="left"
+                width={40}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 10, fill: '#9ca3af' }}
                 label={{ value: 'kWh', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: 10 } }}
               />
+              {/* Assi destri affiancati con larghezza propria e unita' nei
+                  tick (30°, 75%): niente piu' dx hack che sovrapponeva i
+                  tick ne' etichette ruotate staccate dal grafico */}
               <YAxis
                 yAxisId="temp"
                 orientation="right"
+                width={34}
                 axisLine={false}
                 tickLine={false}
+                tickFormatter={(v) => `${v}°`}
                 tick={{ fontSize: 10, fill: '#f59e0b', opacity: 0.8 }}
-                label={{ value: '°C', angle: 90, position: 'insideRight', style: { fill: '#f59e0b', fontSize: 10, opacity: 0.8 } }}
               />
               <YAxis
                 yAxisId="percent"
                 orientation="right"
-                dx={35}
+                width={36}
                 axisLine={false}
                 tickLine={false}
+                tickFormatter={(v) => `${v}%`}
                 tick={{ fontSize: 10, fill: '#0ea5e9', opacity: 0.7 }}
-                label={{ value: '%', angle: 90, position: 'insideRight', style: { fill: '#0ea5e9', fontSize: 10, opacity: 0.7 } }}
               />
               
               <Tooltip 
