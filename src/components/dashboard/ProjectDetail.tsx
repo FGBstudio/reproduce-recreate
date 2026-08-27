@@ -3759,7 +3759,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             onClick={() => openWrapped({
               kind: 'site',
               siteId: project.siteId!,
-              siteName: project.name,
+              siteName: project.displayName || project.name,
               areaM2: project.area_m2 ?? null,
             })}
             className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 bg-foreground/10 hover:bg-foreground/20 backdrop-blur-md rounded-full text-xs font-medium text-foreground transition-all cursor-pointer border border-foreground/10"
@@ -3832,7 +3832,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               onClick={() => openWrapped({
                 kind: 'site',
                 siteId: project.siteId!,
-                siteName: project.name,
+                siteName: project.displayName || project.name,
                 areaM2: project.area_m2 ?? null,
               })}
               className="absolute z-30 w-11 h-11 rounded-full bg-white/15 backdrop-blur-xl border border-white/30 flex items-center justify-center active:scale-95 transition-transform"
@@ -4033,7 +4033,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             </div>
           </div>
           
-          <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-foreground tracking-wide truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">{project.name}</h1>
+          <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-foreground tracking-wide truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">{project.displayName || project.name}</h1>
           <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-foreground/90 font-medium flex-wrap drop-shadow-[0_1px_4px_rgba(0,0,0,0.3)]">
             <span className="truncate max-w-[150px] md:max-w-none">{project.address}</span>
             <span className="text-foreground/40 hidden sm:inline">|</span>

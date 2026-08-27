@@ -59,7 +59,23 @@ export interface Brand {
 
 export interface Project {
   id: number;
+  /**
+   * Il nome del sito come sta in anagrafica.
+   *
+   * NON e' quello da mostrare: per l'etichetta a schermo c'e' `displayName`.
+   * Questo campo serve ad abbinare il sito alla sua configurazione dei moduli
+   * (`useProjectModuleConfig`) e alle sue certificazioni, che fanno il match
+   * sul nome. Cambiarlo farebbe ricadere ogni sito nei default.
+   */
   name: string;
+  /**
+   * Quello che si legge a schermo: "PRADA HOUSTON Galleria".
+   * Composto da client, citta' e nome in `siteDisplayName`.
+   */
+  displayName?: string;
+  /** Il brand a cui il sito appartiene, gia' risolto in nome. */
+  client?: string;
+  city?: string;
   region: string;
   lat: number;
   lng: number;

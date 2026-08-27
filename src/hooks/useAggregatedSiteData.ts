@@ -27,6 +27,7 @@ export type SiteState = 'online' | 'offline' | 'stale' | 'not_installed';
 
 export interface SiteRealData {
   siteId: string;
+  /** L'etichetta da mostrare — "PRADA HOUSTON Galleria" — non il nome grezzo. */
   siteName: string;
   isOnline: boolean;
   hasEnergyData: boolean;
@@ -522,7 +523,7 @@ export function useAggregatedSiteData(filteredProjects: Project[]): AggregatedOv
 
       sites.push({
         siteId,
-        siteName: project.name,
+        siteName: project.displayName || project.name,
         isOnline,
         hasEnergyData,
         hasAirData,

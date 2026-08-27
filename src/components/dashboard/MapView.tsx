@@ -60,9 +60,12 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
       // Brand filter
       const brandMatch = !selectedBrand || p.brandId === selectedBrand;
       
-      // Search filter - match project name or address
-      const searchMatch = !query || 
-        p.name.toLowerCase().includes(query) || 
+      // Search filter — si cerca su cio' che si vede (client, citta' e nome
+      // composti) oltre che sul nome in anagrafica, cosi' digitare "PRADA" o
+      // "HOUSTON" trova il sito anche quando il suo nome non li contiene.
+      const searchMatch = !query ||
+        (p.displayName || "").toLowerCase().includes(query) ||
+        p.name.toLowerCase().includes(query) ||
         p.address.toLowerCase().includes(query);
       
       return regionMatch && monitoringMatch && holdingMatch && brandMatch && searchMatch && allowedRegionMatch;

@@ -15,6 +15,7 @@ import {
   ApiHolding,
 } from '@/lib/api';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { siteDisplayName } from '@/lib/siteDisplayName';
 import {
   Project,
   Brand,
@@ -79,7 +80,11 @@ function mapDbMonitoringTypeToFrontend(dbType: string): MonitoringType | null {
  * Convert API site to frontend Project type
  * Sites from DB are given negative IDs to distinguish from mock projects
  */
-function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): Project {
+function transformSite(
+  apiSite: ApiSite,
+  latestData?: Record<string, number>,
+  brandNameById?: Map<string, string>,
+): Project {
   // Calculate ProjectData from latest telemetry or use defaults
   const data: ProjectData = {
     // Se il breakdown non arriva dalla telemetria resta null: questi sono
@@ -107,9 +112,18 @@ function transformSite(apiSite: ApiSite, latestData?: Record<string, number>): P
   // Generate a unique numeric ID from UUID for legacy compatibility (32-bit hex hash to prevent collisions)
   const numericId = parseInt(apiSite.id.replace(/-/g, '').substring(0, 8), 16);
 
+  // Il client e' il brand del sito. Quando la lista dei brand non e' ancora
+  // arrivata l'etichetta si compone senza: meglio "HOUSTON Galleria" per un
+  // istante che il nome grezzo che poi salta.
+  const client = (apiSite.brand_id ? brandNameById?.get(apiSite.brand_id) : undefined) || undefined;
+  const city = apiSite.city || undefined;
+
   return {
     id: -numericId, // Negative ID for real data
     name: apiSite.name,
+    displayName: siteDisplayName(apiSite.name, client, city),
+    client,
+    city,
     region,
     lat: apiSite.lat ?? 0,
     lng: apiSite.lng ?? 0,
@@ -276,6 +290,11 @@ export function useAllProjects() {
   );
 
   return useMemo(() => {
+    // Il nome del brand serve a comporre l'etichetta del sito: in `sites` c'e'
+    // solo brand_id.
+    const brandNameById = new Map<string, string>();
+    (realBrands || []).forEach(b => brandNameById.set(b.id, b.name));
+
     // Build a lookup of latest values by device
     const latestByDevice: Record<string, Record<string, number>> = {};
     if (latestData?.data) {
@@ -305,7 +324,7 @@ export function useAllProjects() {
           // But since transformSite is for a single "Project", we need the site's aggregate.
         });
       }
-      return transformSite(site);
+      return transformSite(site, undefined, brandNameById);
     }) || [];
 
     // Combine real sites with mock projects.
@@ -323,7 +342,18 @@ export function useAllProjects() {
       .map(p => {
         const brandName = mockBrandNameById.get(p.brandId);
         const realBrandId = brandName ? realBrandIdByName.get(brandName) : undefined;
-        return realBrandId ? { ...p, brandId: realBrandId } : p;
+        const remapped = realBrandId ? { ...p, brandId: realBrandId } : { ...p };
+        // Anche i siti vetrina passano dalla stessa regola, altrimenti in
+        // mezzo agli altri si riconoscerebbero dall'etichetta piu' corta. Il
+        // loro client e' il brand mock, la citta' la prima parte di `address`.
+        const client = realBrandId
+          ? (realBrands || []).find(b => b.id === realBrandId)?.name
+          : mockBrands.find(b => b.id === p.brandId)?.name;
+        const city = (p.address || "").split(",")[0]?.trim() || undefined;
+        remapped.client = client || undefined;
+        remapped.city = city;
+        remapped.displayName = siteDisplayName(p.name, client, city);
+        return remapped;
       });
     const combined = canSeeMockShowcase(realBrands)
       ? [...transformed, ...remappedMockProjects]

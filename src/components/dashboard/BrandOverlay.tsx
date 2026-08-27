@@ -217,7 +217,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       const state: SiteState = siteData?.state ?? 'not_installed';
       return {
         siteId: targetSiteId,
-        name: p.name,
+        name: p.displayName || p.name,
         city: p.address?.split(',').pop()?.trim() || '—',
         region: p.region || '—',
         state,

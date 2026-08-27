@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
 import { useWrapped } from "@/components/wrapped/WrappedContext";
+import { siteDisplayName } from "@/lib/siteDisplayName";
 import { Sparkles } from "lucide-react";
 
 interface HeaderProps {
@@ -39,19 +40,27 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
   const { brands, sites, holdings } = useAdminData();
   const { open: openWrapped } = useWrapped();
 
+  /**
+   * L'etichetta di un sito dell'anagrafica admin, con la stessa regola della
+   * mappa: qui i siti arrivano da `useAdminData` e non dai Project, quindi il
+   * nome del brand va ripescato dall'id.
+   */
+  const labelOfSite = (s: { name: string; brandId: string; city?: string }) =>
+    siteDisplayName(s.name, brands.find(b => b.id === s.brandId)?.name, s.city);
+
   // Determine the wrapped scope based on the user's role
   const launchWrapped = () => {
     if (clientRole === 'STORE_USER' && siteId) {
       const s = sites.find(x => x.id === siteId);
       if (s) {
-        openWrapped({ kind: 'site', siteId: s.id, siteName: s.name, areaM2: s.area_m2 ?? s.areaSqm ?? null });
+        openWrapped({ kind: 'site', siteId: s.id, siteName: labelOfSite(s), areaM2: s.area_m2 ?? s.areaSqm ?? null });
         return;
       }
     }
     if (clientRole === 'ADMIN_BRAND' && brandId) {
       const b = brands.find(x => x.id === brandId);
       const brandSites = sites.filter(s => s.brandId === brandId).map(s => ({
-        id: s.id, name: s.name, region: s.region, brandName: b?.name ?? null,
+        id: s.id, name: labelOfSite(s), region: s.region, brandName: b?.name ?? null,
         areaM2: s.area_m2 ?? s.areaSqm ?? null,
       }));
       if (brandSites.length) {
@@ -63,7 +72,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
       const h = holdings.find(x => x.id === holdingId);
       const allowedBrandIds = new Set(brands.filter(b => b.holdingId === holdingId).map(b => b.id));
       const hSites = sites.filter(s => allowedBrandIds.has(s.brandId)).map(s => ({
-        id: s.id, name: s.name, region: s.region,
+        id: s.id, name: labelOfSite(s), region: s.region,
         brandName: brands.find(b => b.id === s.brandId)?.name ?? null,
         areaM2: s.area_m2 ?? s.areaSqm ?? null,
       }));
@@ -74,7 +83,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
     }
     // FGB Admin / User → global
     const all = sites.map(s => ({
-      id: s.id, name: s.name, region: s.region,
+      id: s.id, name: labelOfSite(s), region: s.region,
       brandName: brands.find(b => b.id === s.brandId)?.name ?? null,
       areaM2: s.area_m2 ?? s.areaSqm ?? null,
     }));
@@ -120,8 +129,12 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
     return scopedProjects
-      .filter(p => 
-        p.name.toLowerCase().includes(query) || 
+      // Si cerca anche sull'etichetta composta: chi digita "PRADA" o "HOUSTON"
+      // si aspetta di trovare il sito che vede scritto cosi', non solo quelli
+      // che hanno quelle parole nel nome di anagrafica.
+      .filter(p =>
+        (p.displayName || "").toLowerCase().includes(query) ||
+        p.name.toLowerCase().includes(query) ||
         p.address.toLowerCase().includes(query)
       )
       .slice(0, 8); // Limit to 8 results
@@ -254,7 +267,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
                           >
                             <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-foreground truncate">{project.name}</p>
+                              <p className="text-sm font-medium text-foreground truncate">{project.displayName || project.name}</p>
                               <p className="text-xs text-muted-foreground truncate">{project.address}</p>
                             </div>
                           </button>
@@ -333,7 +346,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
                           >
                             <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-foreground truncate">{project.name}</p>
+                              <p className="text-sm font-medium text-foreground truncate">{project.displayName || project.name}</p>
                               <p className="text-xs text-muted-foreground truncate">{project.address}</p>
                             </div>
                           </button>

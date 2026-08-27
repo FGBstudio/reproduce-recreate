@@ -898,7 +898,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
 
   const verdict = useFingerprintVerdict({
     siteId: project.siteId,
-    siteName: project.name,
+    siteName: project.displayName || project.name,
     overall: overallStatus.score,
     modules: {
       energy: { enabled: moduleConfig.energy.enabled, score: energyStatus.score },
@@ -939,7 +939,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
 
     return (
       <OverviewMobileView
-        siteName={project.name}
+        siteName={project.displayName || project.name}
         city={project.address}
         outdoorTemp={outdoorTempC ?? project.data?.temp}
         periodLabel={periodLabel}

@@ -79,7 +79,9 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
       if (bySid) return bySid;
     }
     if (name) {
-      return regionProjects.find(p => p.name === name);
+      // Le liste ora portano l'etichetta composta, ma qualche chiamante puo'
+      // ancora passare il nome di anagrafica: si accettano entrambi.
+      return regionProjects.find(p => p.displayName === name || p.name === name);
     }
     return undefined;
   };
@@ -112,7 +114,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
       if (siteData) {
         status = siteData.isOnline ? 'online' : 'offline';
       }
-      return { name: p.name, status, project: p };
+      return { name: p.displayName || p.name, status, project: p };
     });
     // Sort: online first, then offline, then not installed
     const order = { online: 0, offline: 1, not_installed: 2 };

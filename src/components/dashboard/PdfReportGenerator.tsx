@@ -461,7 +461,7 @@ export const generatePdfReport = async ({
   doc.text(t.cover.title, centerX, 85, { align: 'center' });
   doc.setFontSize(16);
   doc.setFont("FuturaLT", "normal");
-  doc.text(project.name, centerX, 95, { align: 'center' });
+  doc.text(project.displayName || project.name, centerX, 95, { align: 'center' });
   doc.setFontSize(11);
   doc.text(`${t.cover.period}: ${periodLabel}`, centerX, 102, { align: 'center' });
 
@@ -791,7 +791,7 @@ export const generatePdfReport = async ({
     doc.setTextColor(...COLORS.secondary);
     doc.setFont("FuturaLT", "normal");
     doc.text(
-      `${t.footer.page} ${i} ${t.footer.of} ${totalPages} | ${project.name} | ${periodLabel}`,
+      `${t.footer.page} ${i} ${t.footer.of} ${totalPages} | ${project.displayName || project.name} | ${periodLabel}`,
       pageWidth / 2,
       pageHeight - 10,
       { align: "center" },
@@ -799,7 +799,7 @@ export const generatePdfReport = async ({
   }
 
   onProgress?.(t.progress.savingPdf);
-  const filename = `Report_${project.name.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
+  const filename = `Report_${(project.displayName || project.name).replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
   // Su app nativa: share sheet di sistema (WhatsApp, Mail, AirDrop...) invece
   // del download del blob, che su mobile è goffo e spesso "sparisce".
   const { Capacitor } = await import("@capacitor/core");
@@ -938,7 +938,7 @@ async function generateAiDiagnosis(
 
     const { data: result, error } = await supabase.functions.invoke('energy-diagnosis', {
       body: {
-        projectName: project.name,
+        projectName: project.displayName || project.name,
         period: periodLabel,
         language,
         modules: {

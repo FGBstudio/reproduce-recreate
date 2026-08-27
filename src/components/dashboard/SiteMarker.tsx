@@ -643,7 +643,7 @@ export const SiteMarker = ({
                   }}
                 >
                   <MapNameCard
-                    name={project.name}
+                    name={project.displayName || project.name}
                     rotationDeg={0}
                     backgroundImage={project.img || undefined}
                     brandLogo={brandLogo}
@@ -716,7 +716,7 @@ export const SiteMarker = ({
       <button
         onPointerDown={(e) => { e.stopPropagation(); onMarkerClick(project); }}
         onClick={(e) => { e.stopPropagation(); onMarkerClick(project); }}
-        title={project.name}
+        title={project.displayName || project.name}
         style={{
           width:      36,
           height:     36,
@@ -729,7 +729,7 @@ export const SiteMarker = ({
       >
         <img
           src={markerPinIcon}
-          alt={project.name}
+          alt={project.displayName || project.name}
           style={{
             width:      "100%",
             height:     "100%",
