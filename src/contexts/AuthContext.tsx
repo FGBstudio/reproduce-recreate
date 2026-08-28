@@ -134,7 +134,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setIsLoading(false);
-    
+
+    if (!error) {
+      // Ogni login reale ripresenta la pagina intermedia (PostLoginOnboarding)
+      // prima della mappa. Senza questo, su desktop il browser ripristina la
+      // sessionStorage della tab e il flag "fatto" sopravviveva tra un login
+      // e l'altro: la pagina compariva su mobile (PWA = sessione nuova a ogni
+      // lancio) e quasi mai su PC. Il refresh a meta' sessione resta escluso.
+      sessionStorage.removeItem('fgb_onboarding_done');
+    }
+
     return { error: error ? new Error(error.message) : null };
   }, []);
 
