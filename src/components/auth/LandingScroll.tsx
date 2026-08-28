@@ -57,7 +57,11 @@ const ALT_NEAR = 0.28; /* fine tuffo su Monte-Carlo */
    R/((1+a)*tan25) come frazione del mezzo lato canvas. */
 const globeFrac = (alt: number) => 1 / ((1 + alt) * Math.tan((25 * Math.PI) / 180));
 
-const CANVAS = 1000; /* lato fisso del canvas WebGL: si scala col wrapper */
+/* Lato del canvas WebGL: pari alla POSA PIU' GRANDE (hero, diametro 1.75H),
+   cosi' il wrapper scala solo VERSO IL BASSO e il globo resta nitido.
+   Il vecchio canvas fisso a 1000px upscalato a ~2000 era la causa prima
+   della sfocatura. */
+const canvasSideFor = (H: number) => Math.ceil((1.75 * H) / globeFrac(ALT_FAR));
 
 const CERT_LOGOS = [
   { name: "BREEAM", src: "/breeam_logo.webp" },
@@ -100,34 +104,53 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const monTitle = useRef<HTMLDivElement>(null);
   const certsSec = useRef<HTMLElement>(null);
   const waysSec = useRef<HTMLElement>(null);
+  const cloudsMesh = useRef<THREE.Mesh | null>(null);
+  const cloudsAnim = useRef<number | null>(null);
+  /* lato del canvas: fissato alla posa hero della viewport di montaggio */
+  const sideRef = useRef(canvasSideFor(typeof window !== "undefined" ? window.innerHeight : 900));
 
-  /* Pin 3D bianco (testa sferica + punta conica), orientato lungo la normale
-     alla superficie: essendo un oggetto nella scena viene occluso dal globo
-     quando la sede passa sul lato nascosto. Il globo di three-globe ha
-     raggio 100: le misure sono in quelle unita'. */
+  /* Materiale del globo: texture NASA topo/bathy + rilievo (bump) + maschera
+     dell'acqua come specular map (oceani che riflettono, terre opache).
+     Le texture arrivano in async e si agganciano al materiale gia' montato;
+     l'anisotropia al massimo consentito e' cio' che tiene nitide le zone
+     oblique della sfera (era la seconda causa della sfocatura). */
+  const globeMaterial = useMemo(
+    () =>
+      new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        shininess: 16,
+        specular: new THREE.Color(0x33474f),
+        bumpScale: 0.8,
+      }),
+    [],
+  );
+
+  /* Pin 3D: sagoma classica da mappa, snella e lucida, punta ESATTAMENTE
+     sul lat/lng (base del cono a y=0). Geometrie a 32 segmenti: niente
+     spigoli visibili nemmeno in avvicinamento. Il globo ha raggio 100. */
   const pinObject = useMemo(() => {
     return (d: any) => {
-      const mat = new THREE.MeshLambertMaterial({ color: 0xf2f3f1 });
+      const mat = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        emissive: 0x9fb4b4,
+        emissiveIntensity: 0.22,
+        shininess: 55,
+        specular: new THREE.Color(0x7a9a9a),
+      });
       const g = new THREE.Group();
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4.2, 16), mat);
-      cone.rotation.x = Math.PI; /* punta verso il basso, sul suolo */
-      cone.position.y = 2.1;
-      const head = new THREE.Mesh(new THREE.SphereGeometry(1.9, 16, 12), mat);
-      head.position.y = 4.6;
-      const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.8, 10, 8),
-        new THREE.MeshBasicMaterial({ color: 0x12323a }),
-      );
-      dot.position.y = 4.6;
-      g.add(cone, head, dot);
-      const s = d.main ? 1.6 : 1.0;
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.52, 2.6, 32), mat);
+      tip.rotation.x = Math.PI; /* punta in giu', appoggiata al suolo */
+      tip.position.y = 1.3;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 24), mat);
+      head.position.y = 3.05;
+      g.add(tip, head);
+      const s = d.main ? 1.55 : 1.0;
       g.scale.set(s, s, s);
       /* orienta +Y lungo la normale del punto lat/lng */
       const coords = globeRef.current?.getCoords?.(d.lat, d.lng, 0);
       if (coords) {
         const n = new THREE.Vector3(coords.x, coords.y, coords.z).normalize();
         g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
-        /* il puntino scuro della testa guarda "in fuori" gia' per simmetria */
       }
       return g;
     };
@@ -184,7 +207,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       const tx = cx - S / 2;
       const ty = cy - S / 2;
       const wrap = globeWrap.current!;
-      wrap.style.transform = `translate3d(${tx}px,${ty}px,0) scale(${S / CANVAS})`;
+      wrap.style.transform = `translate3d(${tx}px,${ty}px,0) scale(${S / sideRef.current})`;
 
       stickA.current!.style.backgroundColor =
         shrink < 1 ? cssMix("#0a1c20", "#0d2530", shrink) : "#0d2530";
@@ -258,7 +281,21 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     window.addEventListener("resize", onScroll);
     frame();
 
-    /* Il globo disabilita i controlli orbitali: comanda solo lo scroll */
+    /* Texture del globo, in async sul materiale gia' montato, con
+       anisotropia al massimo consentito dalla GPU */
+    const loader = new THREE.TextureLoader();
+    const applyTex = (key: "map" | "bumpMap" | "specularMap", url: string, srgb = false) =>
+      loader.load(url, (tex) => {
+        if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = globeRef.current?.renderer?.()?.capabilities.getMaxAnisotropy?.() ?? 8;
+        (globeMaterial as any)[key] = tex;
+        globeMaterial.needsUpdate = true;
+      });
+    applyTex("map", "/landing/earth-day.jpg", true);
+    applyTex("bumpMap", "/landing/earth-topology.png");
+    applyTex("specularMap", "/landing/earth-water.png");
+
+    /* Fallback nel caso onGlobeReady fosse gia' passato */
     const t0 = setTimeout(() => {
       const controls = globeRef.current?.controls?.();
       if (controls) {
@@ -266,7 +303,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         controls.enableZoom = false;
       }
       frame();
-    }, 100);
+    }, 150);
 
     /* Debug DEV: ?lp=NNN scrolla il container (per screenshot automatici) */
     let t1: ReturnType<typeof setTimeout> | undefined;
@@ -287,9 +324,51 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       if (raf) cancelAnimationFrame(raf);
       clearTimeout(t0);
       if (t1) clearTimeout(t1);
+      if (cloudsAnim.current) cancelAnimationFrame(cloudsAnim.current);
       io.disconnect();
     };
-  }, []);
+  }, [globeMaterial]);
+
+  /* Alla prima renderizzazione del globo: qualita' del renderer, controlli
+     orbitali spenti, strato nuvole che ruota piano (da' vita al pianeta) */
+  const onGlobeReady = () => {
+    const g = globeRef.current;
+    if (!g) return;
+    const renderer = g.renderer?.();
+    if (renderer) {
+      /* dpr pieno fino a un budget di ~3300px di lato reale */
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Math.max(1, 3300 / sideRef.current)));
+      const maxA = renderer.capabilities.getMaxAnisotropy();
+      [globeMaterial.map, globeMaterial.bumpMap, globeMaterial.specularMap].forEach((t) => {
+        if (t) {
+          t.anisotropy = maxA;
+          t.needsUpdate = true;
+        }
+      });
+    }
+    const controls = g.controls?.();
+    if (controls) {
+      controls.enabled = false;
+      controls.enableZoom = false;
+    }
+    if (!cloudsMesh.current) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(100 * 1.008, 72, 72),
+        new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.48, depthWrite: false }),
+      );
+      new THREE.TextureLoader().load("/landing/clouds.webp", (t) => {
+        (mesh.material as THREE.MeshPhongMaterial).map = t;
+        (mesh.material as THREE.MeshPhongMaterial).needsUpdate = true;
+      });
+      g.scene().add(mesh);
+      cloudsMesh.current = mesh;
+      const spin = () => {
+        mesh.rotation.y += 0.00022;
+        cloudsAnim.current = requestAnimationFrame(spin);
+      };
+      spin();
+    }
+  };
 
   const scrollToRef = (ref: React.RefObject<HTMLElement>) => {
     const sc = scroller.current;
@@ -361,18 +440,20 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
               position: "absolute",
               left: 0,
               top: 0,
-              width: CANVAS,
-              height: CANVAS,
+              width: sideRef.current,
+              height: sideRef.current,
               transformOrigin: "0 0",
               willChange: "transform",
             }}
           >
             <Globe
               ref={globeRef}
-              width={CANVAS}
-              height={CANVAS}
+              width={sideRef.current}
+              height={sideRef.current}
               backgroundColor="rgba(0,0,0,0)"
-              globeImageUrl="/landing/earth-texture.jpg"
+              globeMaterial={globeMaterial}
+              onGlobeReady={onGlobeReady}
+              rendererConfig={{ antialias: true, alpha: true }}
               showAtmosphere
               atmosphereColor="#7ad8d2"
               atmosphereAltitude={0.14}
