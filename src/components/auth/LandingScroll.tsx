@@ -57,11 +57,20 @@ const ALT_NEAR = 0.28; /* fine tuffo su Monte-Carlo */
    R/((1+a)*tan25) come frazione del mezzo lato canvas. */
 const globeFrac = (alt: number) => 1 / ((1 + alt) * Math.tan((25 * Math.PI) / 180));
 
-/* Lato del canvas WebGL: pari alla POSA PIU' GRANDE (hero, diametro 1.75H),
-   cosi' il wrapper scala solo VERSO IL BASSO e il globo resta nitido.
-   Il vecchio canvas fisso a 1000px upscalato a ~2000 era la causa prima
-   della sfocatura. */
-const canvasSideFor = (H: number) => Math.ceil((1.75 * H) / globeFrac(ALT_FAR));
+/* Lato del canvas WebGL: il compromesso nitidezza/fluidita'. Idealmente
+   pari alla posa hero (diametro 1.75H ~ 2050px), ma il costo di fill rate
+   cresce col quadrato: si tetta a 1600 (upscale hero ~1.3x, impercettibile
+   sull'arco in movimento) e si recupera nitidezza col pixel ratio adattivo
+   qui sotto. Nella posa numeri (globo ~900px) il canvas risulta anzi
+   sovracampionato: crisp proprio dove l'utente si ferma a guardare. */
+const canvasSideFor = (H: number) => Math.min(1600, Math.ceil((1.75 * H) / globeFrac(ALT_FAR)));
+
+/* Pixel ratio adattivo: pieno da fermo (entro un budget di ~2200px reali),
+   ridotto DURANTE lo scroll — in movimento la risoluzione persa non si
+   vede, ma i pixel da riempire calano di ~3 volte. */
+const PR_SCROLLING = 0.8;
+const idlePixelRatio = (side: number) =>
+  Math.min(window.devicePixelRatio || 1, 2200 / side, 1.6);
 
 const CERT_LOGOS = [
   { name: "BREEAM", src: "/breeam_logo.webp" },
@@ -108,6 +117,8 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const cloudsAnim = useRef<number | null>(null);
   /* lato del canvas: fissato alla posa hero della viewport di montaggio */
   const sideRef = useRef(canvasSideFor(typeof window !== "undefined" ? window.innerHeight : 900));
+  const lastPr = useRef(0);
+  const globePaused = useRef(false);
 
   /* Materiale del globo: texture NASA topo/bathy + rilievo (bump) + maschera
      dell'acqua come specular map (oceani che riflettono, terre opache).
@@ -268,13 +279,41 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       monTitle.current!.style.transform = `translateY(${lerp(20, 0, mt)}px)`;
     };
 
+    const setPixelRatio = (v: number) => {
+      const r = globeRef.current?.renderer?.();
+      if (r && Math.abs(lastPr.current - v) > 0.01) {
+        r.setPixelRatio(v);
+        lastPr.current = v;
+      }
+    };
+
+    /* Pausa totale del render loop del globo quando e' coperto dal flood o
+       si e' oltre lo stage A: li' ridisegnarlo e' solo batteria bruciata. */
+    const setGlobePaused = (want: boolean) => {
+      const g = globeRef.current;
+      if (!g || globePaused.current === want) return;
+      globePaused.current = want;
+      if (want) g.pauseAnimation?.();
+      else g.resumeAnimation?.();
+    };
+
     const frame = () => {
       raf = null;
       layoutStageA();
       layoutStageB();
+      const secA = stageA.current!;
+      const H = sc.clientHeight;
+      const past = sc.scrollTop > secA.offsetTop + secA.offsetHeight - H - 8;
+      setGlobePaused(past);
     };
+
+    let idleT: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(frame);
+      /* risoluzione ridotta finche' si scrolla, piena 180ms dopo l'ultimo evento */
+      if (!globePaused.current) setPixelRatio(PR_SCROLLING);
+      clearTimeout(idleT);
+      idleT = setTimeout(() => setPixelRatio(idlePixelRatio(sideRef.current)), 180);
     };
 
     sc.addEventListener("scroll", onScroll, { passive: true });
@@ -287,7 +326,9 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     const applyTex = (key: "map" | "bumpMap" | "specularMap", url: string, srgb = false) =>
       loader.load(url, (tex) => {
         if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = globeRef.current?.renderer?.()?.capabilities.getMaxAnisotropy?.() ?? 8;
+        /* anisotropia 8: sopra non si vede quasi, sotto si sfoca; e' il
+           punto di equilibrio anche per GPU integrate */
+        tex.anisotropy = Math.min(8, globeRef.current?.renderer?.()?.capabilities.getMaxAnisotropy?.() ?? 8);
         (globeMaterial as any)[key] = tex;
         globeMaterial.needsUpdate = true;
       });
@@ -324,6 +365,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       if (raf) cancelAnimationFrame(raf);
       clearTimeout(t0);
       if (t1) clearTimeout(t1);
+      clearTimeout(idleT);
       if (cloudsAnim.current) cancelAnimationFrame(cloudsAnim.current);
       io.disconnect();
     };
@@ -336,9 +378,9 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     if (!g) return;
     const renderer = g.renderer?.();
     if (renderer) {
-      /* dpr pieno fino a un budget di ~3300px di lato reale */
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Math.max(1, 3300 / sideRef.current)));
-      const maxA = renderer.capabilities.getMaxAnisotropy();
+      renderer.setPixelRatio(idlePixelRatio(sideRef.current));
+      lastPr.current = idlePixelRatio(sideRef.current);
+      const maxA = Math.min(8, renderer.capabilities.getMaxAnisotropy());
       [globeMaterial.map, globeMaterial.bumpMap, globeMaterial.specularMap].forEach((t) => {
         if (t) {
           t.anisotropy = maxA;
@@ -353,7 +395,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     }
     if (!cloudsMesh.current) {
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(100 * 1.008, 72, 72),
+        new THREE.SphereGeometry(100 * 1.008, 48, 48),
         new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.48, depthWrite: false }),
       );
       new THREE.TextureLoader().load("/landing/clouds.webp", (t) => {
@@ -363,7 +405,8 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       g.scene().add(mesh);
       cloudsMesh.current = mesh;
       const spin = () => {
-        mesh.rotation.y += 0.00022;
+        /* niente lavoro quando il globo e' in pausa (coperto/fuori vista) */
+        if (!globePaused.current) mesh.rotation.y += 0.00022;
         cloudsAnim.current = requestAnimationFrame(spin);
       };
       spin();
@@ -453,7 +496,9 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
               backgroundColor="rgba(0,0,0,0)"
               globeMaterial={globeMaterial}
               onGlobeReady={onGlobeReady}
-              rendererConfig={{ antialias: true, alpha: true }}
+              /* niente MSAA: il costo di fill rate e' la voce piu' cara e i
+                 bordi li tiene puliti il sovracampionamento da fermo */
+              rendererConfig={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
               showAtmosphere
               atmosphereColor="#7ad8d2"
               atmosphereAltitude={0.14}
