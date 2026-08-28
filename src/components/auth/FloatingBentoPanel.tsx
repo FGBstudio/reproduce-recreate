@@ -6,7 +6,9 @@ import IdleOverlay from "./IdleOverlay";
 import CityTicker from "./CityTicker";
 import LoginModal from "./LoginModal";
 import LandingMobile from "./LandingMobile";
+import LandingScroll from "./LandingScroll";
 import { COMPANY_STATS } from "@/lib/companyStats";
+import { LANDING_SCROLL } from "@/lib/features";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 /* ───────── design tokens (FGB Palette) ───────── */
@@ -305,6 +307,18 @@ const FloatingBentoPanel: React.FC = () => {
     return (
       <>
         <LandingMobile onSignIn={openLogin} onCreate={openRequest} blurGlobe={loginOpen} />
+        <LoginModal open={loginOpen} onOpenChange={setLoginOpen} initialMode={loginMode} />
+      </>
+    );
+  }
+
+  /* Nuova landing scroll-telling desktop (reversibile da features.ts):
+     SIGN IN -> modale di login, CREATE ONE / card Free-Custom -> richiesta
+     account, nav ancorata alle sezioni. */
+  if (LANDING_SCROLL) {
+    return (
+      <>
+        <LandingScroll onSignIn={openLogin} onCreate={openRequest} />
         <LoginModal open={loginOpen} onOpenChange={setLoginOpen} initialMode={loginMode} />
       </>
     );
