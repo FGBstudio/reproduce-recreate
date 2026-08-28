@@ -468,7 +468,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             className="absolute top-0 left-0 right-0 z-[5] flex items-center justify-between"
             style={{ padding: "34px clamp(24px,5vw,64px)" }}
           >
-            <img src="/green.webp" alt="FGB" className="h-12 w-auto drop-shadow-lg" />
+            <img src="/white-logo.png" alt="FGB" className="h-20 w-auto drop-shadow-lg" />
             <nav className="flex" style={{ gap: "clamp(20px,4vw,58px)" }}>
               <button onClick={() => scrollToRef(certsSec)} className="text-[#e8ecec] font-semibold text-[clamp(13px,1.2vw,17px)] hover:text-[#7ad8d2] transition-colors">Certifications</button>
               <button onClick={() => scrollToRef(stageB)} className="text-[#e8ecec] font-semibold text-[clamp(13px,1.2vw,17px)] hover:text-[#7ad8d2] transition-colors">Monitoring</button>
