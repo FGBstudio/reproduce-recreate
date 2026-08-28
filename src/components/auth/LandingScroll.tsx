@@ -1,16 +1,19 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
+import Globe from "react-globe.gl";
+import * as THREE from "three";
 
 /**
  * Landing desktop "scroll-telling" (design dal PDF SITO MONITORAGGIO 2026):
  *
- *  1. Hero: mondo grande in basso a destra, "Precisely measured / Globally
- *     connected", cielo stellato.
- *  2. Primo scroll: la Terra si rimpicciolisce e si sposta a destra intera;
- *     il titolo svanisce, entrano i numeri (60 / 6.000 / 300) contando.
- *  3. Secondo scroll: zoom dentro il marker di Monte-Carlo; il suo bianco
- *     invade la pagina e si atterra sulle certificazioni.
- *  4. Monitoring: sfondo verde, ARIA scende dall'alto, ENERGIA sale dal
- *     basso, ACQUA scende dall'alto.
+ *  1. Hero: globo 3D reale (texture blue marble locale) grande in basso a
+ *     destra, visuale sugli USA, marker sulle sedi FGB.
+ *  2. Primo scroll: la Terra si rimpicciolisce e si mostra intera a destra
+ *     RUOTANDO verso la Cina; il titolo svanisce, entrano i numeri contando.
+ *  3. Secondo scroll: il globo continua a ruotare fino a Monte-Carlo e ci si
+ *     tuffa dentro; il bianco del marker invade la pagina e si atterra sulle
+ *     certificazioni.
+ *  4. Monitoring: sfondo verde, ARIA dall'alto, ENERGIA dal basso, ACQUA
+ *     dall'alto.
  *  5. Free/Custom: card in bianco e nero che si colorano al passaggio.
  *
  * Tutto e' guidato dalla posizione di scroll (reversibile su e giu').
@@ -22,20 +25,39 @@ interface Props {
   onCreate: () => void;
 }
 
-/* Posizione (frazioni dell'immagine della Terra) del pin "utente" disegnato
-   nella grafica originale (Sud America): ancora la composizione dell'hero. */
-const PIN_USER = { x: 0.663, y: 0.435 };
-
-/* Marker delle sedi, in frazioni dell'immagine. main = Monte-Carlo:
-   e' il bersaglio dello zoom e l'origine del "flood" bianco. */
-const MARKERS: { x: number; y: number; label: string; main?: boolean }[] = [
-  { x: 0.300, y: 0.262, label: "New York" },
-  { x: 0.218, y: 0.415, label: "Mexico City" },
-  { x: 0.338, y: 0.368, label: "Miami" },
-  { x: 0.404, y: 0.560, label: "Lima" },
-  { x: 0.868, y: 0.270, label: "Monte-Carlo", main: true },
+/* Sedi FGB (lat/lng reali). main = Monte-Carlo: bersaglio dello zoom. */
+const MARKERS: { lat: number; lng: number; label: string; main?: boolean }[] = [
+  { lat: 43.53, lng: 5.45, label: "Aix-en-Provence" },
+  { lat: 52.37, lng: 4.9, label: "Amsterdam" },
+  { lat: 25.2, lng: 55.27, label: "Dubai" },
+  { lat: 10.78, lng: 106.7, label: "Ho Chi Minh" },
+  { lat: 51.51, lng: -0.13, label: "London" },
+  { lat: 34.05, lng: -118.24, label: "Los Angeles" },
+  { lat: 25.76, lng: -80.19, label: "Miami" },
+  { lat: 45.46, lng: 9.19, label: "Milan" },
+  { lat: 40.71, lng: -74.01, label: "New York" },
+  { lat: 48.86, lng: 2.35, label: "Paris" },
+  { lat: 41.9, lng: 12.5, label: "Rome" },
+  { lat: 31.23, lng: 121.47, label: "Shanghai" },
+  { lat: 1.35, lng: 103.82, label: "Singapore" },
+  { lat: 24.15, lng: 120.67, label: "Taichung" },
+  { lat: 35.68, lng: 139.69, label: "Tokyo" },
+  { lat: 43.74, lng: 7.43, label: "Monte-Carlo", main: true },
 ];
-const PIN_ZOOM = { x: 0.868, y: 0.270 };
+
+/* Tappe della rotazione (lng CONTINUA verso ovest: USA -> Pacifico -> Cina
+   -> Medio Oriente -> Europa; -256 equivale a 104 E, -352.57 a 7.43 E). */
+const POV_USA = { lat: 22, lng: -96 };
+const POV_CHINA = { lat: 32, lng: -256 };
+const POV_MC = { lat: 43.74, lng: -352.57 };
+const ALT_FAR = 1.8;   /* altitudine camera hero/numeri */
+const ALT_NEAR = 0.28; /* fine tuffo su Monte-Carlo */
+
+/* Raggio apparente del globo dentro il canvas ad altitudine a (FOV 50):
+   R/((1+a)*tan25) come frazione del mezzo lato canvas. */
+const globeFrac = (alt: number) => 1 / ((1 + alt) * Math.tan((25 * Math.PI) / 180));
+
+const CANVAS = 1000; /* lato fisso del canvas WebGL: si scala col wrapper */
 
 const CERT_LOGOS = [
   { name: "BREEAM", src: "/breeam_logo.webp" },
@@ -59,31 +81,12 @@ function cssMix(a: string, b: string, t: number) {
   return `rgb(${pa.map((v, i) => Math.round(lerp(v, pb[i], t))).join(",")})`;
 }
 
-const MarkerPin: React.FC<{ m: (typeof MARKERS)[number] }> = ({ m }) => (
-  <svg
-    viewBox="0 0 24 32"
-    style={{
-      position: "absolute",
-      left: `${m.x * 100}%`,
-      top: `${m.y * 100}%`,
-      width: m.main ? "6.5%" : "4.2%",
-      transform: "translate(-50%, -92%)",
-      filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.45))",
-    }}
-  >
-    <path
-      d="M12 0C5.4 0 0 5.2 0 11.6 0 20.3 12 32 12 32s12-11.7 12-20.4C24 5.2 18.6 0 12 0z"
-      fill="#f2f3f1"
-    />
-    <circle cx="12" cy="11.4" r="4.6" fill="#12323a" />
-  </svg>
-);
-
 const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const scroller = useRef<HTMLDivElement>(null);
   const stageA = useRef<HTMLElement>(null);
   const stickA = useRef<HTMLDivElement>(null);
-  const earth = useRef<HTMLDivElement>(null);
+  const globeWrap = useRef<HTMLDivElement>(null);
+  const globeRef = useRef<any>(null);
   const headline = useRef<HTMLDivElement>(null);
   const numbers = useRef<HTMLDivElement>(null);
   const header = useRef<HTMLDivElement>(null);
@@ -98,6 +101,38 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const certsSec = useRef<HTMLElement>(null);
   const waysSec = useRef<HTMLElement>(null);
 
+  /* Pin 3D bianco (testa sferica + punta conica), orientato lungo la normale
+     alla superficie: essendo un oggetto nella scena viene occluso dal globo
+     quando la sede passa sul lato nascosto. Il globo di three-globe ha
+     raggio 100: le misure sono in quelle unita'. */
+  const pinObject = useMemo(() => {
+    return (d: any) => {
+      const mat = new THREE.MeshLambertMaterial({ color: 0xf2f3f1 });
+      const g = new THREE.Group();
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4.2, 16), mat);
+      cone.rotation.x = Math.PI; /* punta verso il basso, sul suolo */
+      cone.position.y = 2.1;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(1.9, 16, 12), mat);
+      head.position.y = 4.6;
+      const dot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.8, 10, 8),
+        new THREE.MeshBasicMaterial({ color: 0x12323a }),
+      );
+      dot.position.y = 4.6;
+      g.add(cone, head, dot);
+      const s = d.main ? 1.6 : 1.0;
+      g.scale.set(s, s, s);
+      /* orienta +Y lungo la normale del punto lat/lng */
+      const coords = globeRef.current?.getCoords?.(d.lat, d.lng, 0);
+      if (coords) {
+        const n = new THREE.Vector3(coords.x, coords.y, coords.z).normalize();
+        g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+        /* il puntino scuro della testa guarda "in fuori" gia' per simmetria */
+      }
+      return g;
+    };
+  }, []);
+
   useEffect(() => {
     const sc = scroller.current!;
     let raf: number | null = null;
@@ -109,35 +144,47 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       const total = secA.offsetHeight - H;
       const p = clamp((sc.scrollTop - secA.offsetTop) / total, 0, 1);
 
-      /* Fasi: 0-0.30 rimpicciolimento | 0.30-0.60 numeri | 0.60-1 zoom */
+      /* Fasi: 0-0.30 rimpicciolisce+ruota verso la Cina | 0.30-0.60 numeri |
+         0.60-1 ruota fino a Monte-Carlo e ci si tuffa dentro */
       const shrink = easeIO(clamp(p / 0.3, 0, 1));
       const zoomT = clamp((p - 0.6) / 0.4, 0, 1);
-      const zoom = easeIn(zoomT);
 
-      /* Posa 1 (hero): arco in basso a destra, pin utente visibile */
-      const S1 = 1.35 * H;
-      const tl1 = { x: 0.8 * W - PIN_USER.x * S1, y: 0.16 * H };
-
-      /* Posa 2 (numeri): mondo intero a destra, tutti i marker visibili */
-      const S2 = Math.min(0.78 * H, 0.42 * W);
-      const c2 = { x: 0.71 * W, y: 0.5 * H };
-      const tl2 = { x: c2.x - S2 / 2, y: c2.y - S2 / 2 };
-
-      let S = lerp(S1, S2, shrink);
-      let tx = lerp(tl1.x, tl2.x, shrink);
-      let ty = lerp(tl1.y, tl2.y, shrink);
-
-      /* Zoom su Monte-Carlo: il mondo cresce col marker inchiodato */
-      const pinScreen = { x: tx + PIN_ZOOM.x * S, y: ty + PIN_ZOOM.y * S };
-      if (zoom > 0) {
-        const k = 1 + 10 * zoom;
-        tx = pinScreen.x - PIN_ZOOM.x * S * k;
-        ty = pinScreen.y - PIN_ZOOM.y * S * k;
-        S = S * k;
+      /* --- Camera del globo --- */
+      const g = globeRef.current;
+      if (g) {
+        let lat: number, lng: number, alt: number;
+        if (zoomT <= 0) {
+          lat = lerp(POV_USA.lat, POV_CHINA.lat, shrink);
+          lng = lerp(POV_USA.lng, POV_CHINA.lng, shrink);
+          alt = ALT_FAR;
+        } else {
+          /* la rotazione Cina -> Monte-Carlo si esaurisce al 70% del tuffo,
+             l'avvicinamento continua fino in fondo */
+          const rot = easeIO(clamp(zoomT / 0.7, 0, 1));
+          lat = lerp(POV_CHINA.lat, POV_MC.lat, rot);
+          lng = lerp(POV_CHINA.lng, POV_MC.lng, rot);
+          alt = lerp(ALT_FAR, ALT_NEAR, easeIn(zoomT));
+        }
+        g.pointOfView({ lat, lng, altitude: alt }, 0);
       }
-      const e = earth.current!;
-      e.style.transform = `translate3d(${tx}px,${ty}px,0)`;
-      e.style.width = e.style.height = S + "px";
+
+      /* --- Inquadratura del wrapper (canvas fisso, si trasla e scala) --- */
+      const frac = globeFrac(ALT_FAR); /* frazione occupata dal globo */
+      /* Posa 1 (hero): globo con diametro ~1.75H, centro in basso a destra,
+         arco che parte sotto l'header e cielo scuro sopra */
+      const S1 = (1.75 * H) / frac;
+      const c1 = { x: 0.86 * W, y: 1.14 * H };
+      /* Posa 2 (numeri): globo intero a destra */
+      const S2 = Math.min(0.82 * H, 0.44 * W) / frac;
+      const c2 = { x: 0.71 * W, y: 0.5 * H };
+
+      const S = lerp(S1, S2, shrink);
+      const cx = lerp(c1.x, c2.x, shrink);
+      const cy = lerp(c1.y, c2.y, shrink);
+      const tx = cx - S / 2;
+      const ty = cy - S / 2;
+      const wrap = globeWrap.current!;
+      wrap.style.transform = `translate3d(${tx}px,${ty}px,0) scale(${S / CANVAS})`;
 
       stickA.current!.style.backgroundColor =
         shrink < 1 ? cssMix("#0a1c20", "#0d2530", shrink) : "#0d2530";
@@ -146,7 +193,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       headline.current!.style.opacity = String(1 - hOut);
       headline.current!.style.transform = `translateY(${-34 * hOut}px)`;
 
-      /* Numeri: entrano scaglionati contando, svaniscono allo zoom */
+      /* Numeri: entrano scaglionati contando, svaniscono al tuffo */
       numbers.current!.querySelectorAll<HTMLElement>(".fgbl-num").forEach((el, i) => {
         const t = clamp((shrink - (0.35 + i * 0.12)) / 0.28, 0, 1);
         const gone = clamp(zoomT / 0.25, 0, 1);
@@ -163,12 +210,13 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       header.current!.style.pointerEvents = signin.current!.style.pointerEvents =
         chrome > 0.3 ? "auto" : "none";
 
-      /* Il bianco del marker invade la pagina (completa prima della fine) */
+      /* Il bianco del marker invade la pagina: a fine rotazione Monte-Carlo
+         e' al centro del globo, quindi il flood parte dal centro wrapper */
       const fl = clamp((zoomT - 0.52) / 0.34, 0, 1);
       const maxR = Math.hypot(W, H) / 40; /* il div base e' 80px */
       const f = flood.current!;
-      f.style.left = pinScreen.x + "px";
-      f.style.top = pinScreen.y + "px";
+      f.style.left = cx + "px";
+      f.style.top = cy + "px";
       f.style.transform = `translate(-50%,-50%) scale(${easeIn(fl) * maxR})`;
     };
 
@@ -210,6 +258,23 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     window.addEventListener("resize", onScroll);
     frame();
 
+    /* Il globo disabilita i controlli orbitali: comanda solo lo scroll */
+    const t0 = setTimeout(() => {
+      const controls = globeRef.current?.controls?.();
+      if (controls) {
+        controls.enabled = false;
+        controls.enableZoom = false;
+      }
+      frame();
+    }, 100);
+
+    /* Debug DEV: ?lp=NNN scrolla il container (per screenshot automatici) */
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    if (import.meta.env.DEV) {
+      const m = window.location.href.match(/[?&]lp=(\d+)/);
+      if (m) t1 = setTimeout(() => sc.scrollTo(0, Number(m[1])), 1500);
+    }
+
     const io = new IntersectionObserver(
       (es) => es.forEach((en) => en.isIntersecting && en.target.classList.add("in")),
       { root: sc, threshold: 0.2 },
@@ -220,6 +285,8 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       sc.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
+      clearTimeout(t0);
+      if (t1) clearTimeout(t1);
       io.disconnect();
     };
   }, []);
@@ -229,7 +296,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     if (sc && ref.current) sc.scrollTo({ top: ref.current.offsetTop, behavior: "smooth" });
   };
 
-  /* Stelle: generate una volta, deterministiche abbastanza per una landing */
+  /* Stelle: generate una volta */
   const stars = useRef<string[]>();
   if (!stars.current) {
     stars.current = [0, 1].map((layer) => {
@@ -259,7 +326,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         @media (prefers-reduced-motion: reduce){.fgbl-reveal{transition:none;opacity:1;transform:none}}
       `}</style>
 
-      {/* ============ STAGE A: mondo (hero -> numeri -> zoom Monte-Carlo) ============ */}
+      {/* ============ STAGE A: globo (hero -> numeri -> tuffo su Monte-Carlo) ============ */}
       <section ref={stageA} style={{ height: "470vh", position: "relative" }}>
         <div
           ref={stickA}
@@ -287,17 +354,41 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             </nav>
           </div>
 
-          {/* Terra + marker delle sedi (scalano con lei) */}
-          <div ref={earth} style={{ position: "absolute", left: 0, top: 0, willChange: "transform" }}>
-            <img
-              src="/landing/earth.webp"
-              alt="Earth"
-              className="w-full h-full rounded-full"
-              style={{ boxShadow: "0 0 90px rgba(120,220,235,.28), 0 0 26px rgba(160,235,245,.35)" }}
+          {/* Globo 3D: canvas a lato fisso, il wrapper si trasla e scala */}
+          <div
+            ref={globeWrap}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: CANVAS,
+              height: CANVAS,
+              transformOrigin: "0 0",
+              willChange: "transform",
+            }}
+          >
+            <Globe
+              ref={globeRef}
+              width={CANVAS}
+              height={CANVAS}
+              backgroundColor="rgba(0,0,0,0)"
+              globeImageUrl="/landing/earth-texture.jpg"
+              showAtmosphere
+              atmosphereColor="#7ad8d2"
+              atmosphereAltitude={0.14}
+              objectsData={MARKERS}
+              objectLat={(d: any) => d.lat}
+              objectLng={(d: any) => d.lng}
+              objectAltitude={0}
+              objectThreeObject={pinObject}
+              ringsData={MARKERS.filter((m) => m.main)}
+              ringLat={(d: any) => d.lat}
+              ringLng={(d: any) => d.lng}
+              ringColor={() => (t: number) => `rgba(242,243,241,${0.55 * (1 - t)})`}
+              ringMaxRadius={7}
+              ringPropagationSpeed={2.2}
+              ringRepeatPeriod={1400}
             />
-            {MARKERS.map((m) => (
-              <MarkerPin key={m.label} m={m} />
-            ))}
           </div>
 
           <div
