@@ -72,15 +72,18 @@ const PR_SCROLLING = 0.8;
 const idlePixelRatio = (side: number) =>
   Math.min(window.devicePixelRatio || 1, 2200 / side, 1.6);
 
+/* h = altezza calibrata a occhio per pareggiare il PESO OTTICO: i badge
+   rotondi (LEED, WELL, BREEAM) reggono altezze piene, i wordmark (ESG,
+   fitwel) a pari altezza sembrerebbero il doppio e vanno tenuti bassi. */
 const CERT_LOGOS = [
-  { name: "BREEAM", src: "/breeam_logo.webp" },
-  { name: "ENVISION", src: "/envision.webp" },
-  { name: "ESG", src: "/Logo_ESG.png" },
-  { name: "Fitwel", src: "/fitwel_logo.webp" },
-  { name: "GRESB", src: "/logo_gresb.webp" },
-  { name: "LEED", src: "/leed_logo.webp" },
-  { name: "LIFE LVMH", src: "/life_logo.webp" },
-  { name: "WELL", src: "/well_logo.webp" },
+  { name: "BREEAM", src: "/breeam_logo.webp", h: 96 },
+  { name: "ENVISION", src: "/envision.webp", h: 98 },
+  { name: "ESG", src: "/Logo_ESG.png", h: 58 },
+  { name: "Fitwel", src: "/fitwel_logo.webp", h: 58 },
+  { name: "GRESB", src: "/logo_gresb.webp", h: 72 },
+  { name: "LEED", src: "/leed_logo.webp", h: 100 },
+  { name: "LIFE LVMH", src: "/life_logo.webp", h: 84 },
+  { name: "WELL", src: "/well_logo.webp", h: 100 },
 ];
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -611,9 +614,11 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             <br />
             excellence
           </h2>
-          <div className="grid grid-cols-2 gap-x-10 gap-y-8 items-center" style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 430 }}>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-9" style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 560 }}>
             {CERT_LOGOS.map((l) => (
-              <img key={l.name} src={l.src} alt={l.name} loading="lazy" className="max-h-[64px] w-auto object-contain justify-self-start" />
+              <div key={l.name} className="flex items-center justify-start" style={{ height: 104 }}>
+                <img src={l.src} alt={l.name} loading="lazy" className="w-auto object-contain" style={{ maxHeight: l.h, maxWidth: 230 }} />
+              </div>
             ))}
           </div>
         </div>
