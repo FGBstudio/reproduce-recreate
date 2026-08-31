@@ -786,7 +786,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
 
       {/* Carosello delle sedi FGB: staccato dalle immagini, testi ottanio,
           sfondo trasparente sulla carta */}
-      <div style={{ marginTop: "clamp(30px,5.5vh,60px)", marginBottom: "clamp(10px,2vh,24px)" }}>
+      <div style={{ marginTop: "clamp(18px,3vh,36px)", marginBottom: "clamp(16px,3vh,36px)" }}>
         <CityTicker transparent color="#009193" />
       </div>
 

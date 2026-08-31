@@ -27,7 +27,7 @@ const Row: React.FC<{ color?: string }> = ({ color }) => (
     {CITIES.map((c) => (
       <span
         key={c}
-        className="text-[11px] font-semibold uppercase tracking-[0.35em] whitespace-nowrap"
+        className={`${color ? "text-[14px]" : "text-[11px]"} font-semibold uppercase tracking-[0.35em] whitespace-nowrap`}
         style={{ color: color || SUB }}
       >
         {c}
