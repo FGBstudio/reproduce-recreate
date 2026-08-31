@@ -77,14 +77,14 @@ const idlePixelRatio = (side: number) =>
    lineare: i blocchi densi (ESG, fitwel) vanno scalati giu' (~70%), i
    tratti sottili (GRESB, WELL, LIFE) reggono altezze piene. */
 const CERT_LOGOS = [
-  { name: "BREEAM", src: "/breeam_logo.webp", h: 94 },
-  { name: "ENVISION", src: "/envision.webp", h: 96 },
-  { name: "ESG", src: "/Logo_ESG.png", h: 40 },
-  { name: "Fitwel", src: "/fitwel_logo.webp", h: 46 },
-  { name: "GRESB", src: "/logo_gresb.webp", h: 92 },
-  { name: "LEED", src: "/leed_logo.webp", h: 100 },
-  { name: "LIFE LVMH", src: "/life_logo.webp", h: 90 },
-  { name: "WELL", src: "/well_logo.webp", h: 100 },
+  { name: "BREEAM", src: "/breeam_logo.webp", h: 110 },
+  { name: "ENVISION", src: "/envision.webp", h: 112 },
+  { name: "ESG", src: "/Logo_ESG.png", h: 48 },
+  { name: "Fitwel", src: "/fitwel_logo.webp", h: 56 },
+  { name: "GRESB", src: "/logo_gresb.webp", h: 106 },
+  { name: "LEED", src: "/leed_logo.webp", h: 116 },
+  { name: "LIFE LVMH", src: "/life_logo.webp", h: 104 },
+  { name: "WELL", src: "/well_logo.webp", h: 116 },
 ];
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -128,6 +128,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
      alla camera e la rotazione resta fluida. */
   const camTarget = useRef<Record<string, number> | null>(null);
   const camCur = useRef<Record<string, number> | null>(null);
+  const sbar = useRef<HTMLDivElement>(null);
 
   /* Materiale del globo: texture NASA topo/bathy + rilievo (bump) + maschera
      dell'acqua come specular map (oceani che riflettono, terre opache).
@@ -248,11 +249,15 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         chrome > 0.3 ? "auto" : "none";
 
       /* Il bianco del marker invade la pagina: a fine rotazione Monte-Carlo
-         e' al centro del globo, quindi il flood parte dal centro wrapper */
+         e' al centro del globo, quindi il flood parte dal centro wrapper.
+         Il cerchio nasce GIA' alla dimensione finale e viene scalato 0->1:
+         scalare in su un elemento piccolo lo rasterizzava sgranato. */
       const fl = clamp((zoomT - 0.52) / 0.34, 0, 1);
-      const maxR = Math.hypot(W, H) / 40; /* il div base e' 80px */
+      const D = Math.ceil(2.3 * Math.hypot(W, H));
+      const f = flood.current!;
+      f.style.width = f.style.height = D + "px";
 
-      camTarget.current = { lat, lng, alt, S, tx, ty, fx: cx, fy: cy, fs: easeIn(fl) * maxR };
+      camTarget.current = { lat, lng, alt, S, tx, ty, fx: cx, fy: cy, fs: easeIn(fl) };
     };
 
     /* Loop smorzato: insegue il target a ogni frame (k=0.16 ~ mezza vita di
@@ -329,9 +334,33 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       setGlobePaused(past);
     };
 
+    /* Indicatore di scorrimento custom: si accende durante lo scroll e
+       sbiadisce quasi a zero da fermo. Nessun track, solo il thumb. */
+    let sbarT: ReturnType<typeof setTimeout> | undefined;
+    const updateSbar = () => {
+      const b = sbar.current;
+      if (!b) return;
+      const H = sc.clientHeight;
+      const S = sc.scrollHeight;
+      if (S <= H + 1) {
+        b.style.opacity = "0";
+        return;
+      }
+      const th = Math.max(44, (H / S) * H);
+      const y = 8 + (sc.scrollTop / (S - H)) * (H - th - 16);
+      b.style.height = th + "px";
+      b.style.transform = `translateY(${y}px)`;
+      b.style.opacity = "0.55";
+      clearTimeout(sbarT);
+      sbarT = setTimeout(() => {
+        if (sbar.current) sbar.current.style.opacity = "0.14";
+      }, 900);
+    };
+
     let idleT: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(frame);
+      updateSbar();
       /* risoluzione ridotta finche' si scrolla, piena 180ms dopo l'ultimo evento */
       if (!globePaused.current) setPixelRatio(PR_SCROLLING);
       clearTimeout(idleT);
@@ -341,6 +370,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     sc.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     frame();
+    updateSbar();
 
     /* Texture del globo, in async sul materiale gia' montato, con
        anisotropia al massimo consentito dalla GPU */
@@ -389,6 +419,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       clearTimeout(t0);
       if (t1) clearTimeout(t1);
       clearTimeout(idleT);
+      clearTimeout(sbarT);
       if (cloudsAnim.current) cancelAnimationFrame(cloudsAnim.current);
       io.disconnect();
     };
@@ -457,6 +488,24 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       className="fgbl-scroll fixed inset-0 overflow-y-auto overflow-x-hidden"
       style={{ background: "#f3f4f2", fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif" }}
     >
+      {/* indicatore di scorrimento custom (la nativa e' nascosta) */}
+      <div
+        ref={sbar}
+        aria-hidden
+        style={{
+          position: "fixed",
+          right: 5,
+          top: 0,
+          width: 5,
+          height: 60,
+          borderRadius: 999,
+          background: "#009193",
+          opacity: 0,
+          transition: "opacity .45s ease",
+          zIndex: 70,
+          pointerEvents: "none",
+        }}
+      />
       <style>{`
         .fgbl-reveal{opacity:0;transform:translateY(46px);transition:opacity .9s ease,transform .9s cubic-bezier(.22,.8,.32,1)}
         .fgbl-reveal.in{opacity:1;transform:none}
@@ -464,14 +513,11 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         .fgbl-card:hover{transform:scale(1.05)}
         .fgbl-card img{filter:grayscale(1);transition:filter .55s ease,transform .55s ease}
         .fgbl-card:hover img{filter:grayscale(0);transform:scale(1.03)}
-        /* Scrollbar di brand: sottile, track TRASPARENTE, thumb ottanio.
-           Le proprieta' standard vincono su ::-webkit-scrollbar nei Chrome
-           recenti: vanno dichiarate QUI con i colori giusti, non inline. */
-        .fgbl-scroll{scrollbar-width:thin;scrollbar-color:rgba(0,145,147,.45) transparent}
-        .fgbl-scroll::-webkit-scrollbar{width:5px;background:transparent}
-        .fgbl-scroll::-webkit-scrollbar-track{background:transparent}
-        .fgbl-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.45);border-radius:999px}
-        .fgbl-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.7)}
+        /* La scrollbar nativa sparisce del tutto (il track grigio/bianco di
+           Windows non e' sopprimibile in modo affidabile): al suo posto un
+           indicatore custom disegnato da noi, vedi div fgbl-sbar. */
+        .fgbl-scroll{scrollbar-width:none;-ms-overflow-style:none}
+        .fgbl-scroll::-webkit-scrollbar{display:none}
         @media (prefers-reduced-motion: reduce){.fgbl-reveal{transition:none;opacity:1;transform:none}}
       `}</style>
 
@@ -640,22 +686,23 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             <br />
             excellence
           </h2>
-          <div className="grid grid-cols-2 gap-x-12 gap-y-8" style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 580 }}>
+          <div className="grid grid-cols-2 gap-x-10 gap-y-9" style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 660, justifyItems: "center" }}>
             {CERT_LOGOS.map((l) => (
-              <div key={l.name} className="flex items-center justify-start" style={{ width: 230, height: 104 }}>
-                <img src={l.src} alt={l.name} loading="lazy" className="w-auto object-contain" style={{ maxHeight: l.h, maxWidth: 220 }} />
+              <div key={l.name} className="flex items-center justify-center" style={{ width: 270, height: 124 }}>
+                <img src={l.src} alt={l.name} loading="lazy" className="w-auto object-contain" style={{ maxHeight: l.h, maxWidth: 260 }} />
               </div>
             ))}
           </div>
         </div>
-        <div className="flex justify-end" style={{ gap: "clamp(14px,2vw,28px)" }}>
-          {/* Slot media: per la versione video sostituire <img> con
+        <div className="flex justify-end" style={{ gap: "clamp(14px,2vw,26px)" }}>
+          {/* Slot media (asset forniti dal proprietario, interi e non tagliati):
+              per la versione video sostituire <img> con
               <video autoPlay muted loop playsInline src="..."> */}
-          {["/landing/lynx.webp", "/landing/girl.webp"].map((src, i) => (
+          {["/landing/cert-lynx.webp", "/landing/cert-girl.webp"].map((src, i) => (
             <div
               key={src}
               className="fgbl-reveal overflow-hidden"
-              style={{ borderRadius: 180, flex: "0 1 320px", aspectRatio: "0.47", maxHeight: "78vh", transitionDelay: `${0.15 * (i + 1)}s` }}
+              style={{ borderRadius: 28, flex: "0 1 400px", aspectRatio: "0.472", maxHeight: "82vh", transitionDelay: `${0.15 * (i + 1)}s` }}
             >
               <img src={src} alt="" className="w-full h-full object-cover" />
             </div>

@@ -61,6 +61,7 @@ interface Props {
 
 const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
   const scroller = useRef<HTMLDivElement>(null);
+  const sbar = useRef<HTMLDivElement>(null);
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [platformOpen, setPlatformOpen] = useState(false);
   const { user } = useAuth();
@@ -79,6 +80,30 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
     );
     sc.querySelectorAll(".fgbw-reveal").forEach((el) => io.observe(el));
 
+    /* Indicatore di scorrimento custom: acceso in scroll, sbiadito da fermo */
+    let sbarT: ReturnType<typeof setTimeout> | undefined;
+    const updateSbar = () => {
+      const b = sbar.current;
+      if (!b) return;
+      const H = sc.clientHeight;
+      const S = sc.scrollHeight;
+      if (S <= H + 1) {
+        b.style.opacity = "0";
+        return;
+      }
+      const th = Math.max(44, (H / S) * H);
+      const y = 8 + (sc.scrollTop / (S - H)) * (H - th - 16);
+      b.style.height = th + "px";
+      b.style.transform = `translateY(${y}px)`;
+      b.style.opacity = "0.55";
+      clearTimeout(sbarT);
+      sbarT = setTimeout(() => {
+        if (sbar.current) sbar.current.style.opacity = "0.14";
+      }, 900);
+    };
+    sc.addEventListener("scroll", updateSbar, { passive: true });
+    updateSbar();
+
     /* Debug SOLO DEV: ?wp=NNN scrolla il container (screenshot automatici) */
     let t: ReturnType<typeof setTimeout> | undefined;
     if (import.meta.env.DEV) {
@@ -91,6 +116,8 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
     }
     return () => {
       io.disconnect();
+      sc.removeEventListener("scroll", updateSbar);
+      clearTimeout(sbarT);
       if (t) clearTimeout(t);
     };
   }, []);
@@ -104,6 +131,24 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       className="fgbw-scroll fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden"
       style={{ background: PAPER, fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif", color: INK }}
     >
+      {/* indicatore di scorrimento custom (la nativa e' nascosta) */}
+      <div
+        ref={sbar}
+        aria-hidden
+        style={{
+          position: "fixed",
+          right: 5,
+          top: 0,
+          width: 5,
+          height: 60,
+          borderRadius: 999,
+          background: "#009193",
+          opacity: 0,
+          transition: "opacity .45s ease",
+          zIndex: 80,
+          pointerEvents: "none",
+        }}
+      />
       <style>{`
         .fgbw-reveal{opacity:0;transform:translateY(34px) scale(.99);transition:opacity .85s ease,transform .85s ${EASE}}
         .fgbw-reveal.in{opacity:1;transform:none}
@@ -111,14 +156,11 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         .fgbw-city:hover{color:${TEAL}}
         .fgbw-photo{transition:transform .6s ${EASE}}
         .fgbw-photo:hover{transform:scale(1.03)}
-        /* Scrollbar di brand: sottile, track TRASPARENTE, thumb ottanio.
-           Le proprieta' standard vincono su ::-webkit-scrollbar nei Chrome
-           recenti: vanno dichiarate QUI con i colori giusti, non inline. */
-        .fgbw-scroll{scrollbar-width:thin;scrollbar-color:rgba(0,145,147,.45) transparent}
-        .fgbw-scroll::-webkit-scrollbar{width:5px;background:transparent}
-        .fgbw-scroll::-webkit-scrollbar-track{background:transparent}
-        .fgbw-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.45);border-radius:999px}
-        .fgbw-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.7)}
+        /* La scrollbar nativa sparisce del tutto (il track grigio/bianco di
+           Windows non e' sopprimibile in modo affidabile): al suo posto un
+           indicatore custom disegnato da noi. */
+        .fgbw-scroll{scrollbar-width:none;-ms-overflow-style:none}
+        .fgbw-scroll::-webkit-scrollbar{display:none}
         @media (prefers-reduced-motion: reduce){.fgbw-reveal{transition:none;opacity:1;transform:none}}
       `}</style>
 
