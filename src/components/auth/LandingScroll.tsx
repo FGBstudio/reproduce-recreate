@@ -63,28 +63,28 @@ const globeFrac = (alt: number) => 1 / ((1 + alt) * Math.tan((25 * Math.PI) / 18
    sull'arco in movimento) e si recupera nitidezza col pixel ratio adattivo
    qui sotto. Nella posa numeri (globo ~900px) il canvas risulta anzi
    sovracampionato: crisp proprio dove l'utente si ferma a guardare. */
-const canvasSideFor = (H: number) => Math.min(1600, Math.ceil((1.75 * H) / globeFrac(ALT_FAR)));
+const canvasSideFor = (H: number) => Math.min(1500, Math.ceil((1.75 * H) / globeFrac(ALT_FAR)));
 
-/* Pixel ratio adattivo: pieno da fermo (entro un budget di ~2200px reali),
+/* Pixel ratio adattivo: pieno da fermo (entro un budget di ~2100px reali),
    ridotto DURANTE lo scroll — in movimento la risoluzione persa non si
-   vede, ma i pixel da riempire calano di ~3 volte. */
-const PR_SCROLLING = 0.8;
+   vede, ma i pixel da riempire calano di ~4 volte. */
+const PR_SCROLLING = 0.7;
 const idlePixelRatio = (side: number) =>
-  Math.min(window.devicePixelRatio || 1, 2200 / side, 1.6);
+  Math.min(window.devicePixelRatio || 1, 2100 / side, 1.5);
 
 /* Ogni logo vive in una bounding box identica e invisibile (vedi render);
    h = altezza massima calibrata per pareggiare il PESO VISIVO, non quello
    lineare: i blocchi densi (ESG, fitwel) vanno scalati giu' (~70%), i
    tratti sottili (GRESB, WELL, LIFE) reggono altezze piene. */
 const CERT_LOGOS = [
-  { name: "BREEAM", src: "/breeam_logo.webp", h: 92 },
+  { name: "BREEAM", src: "/breeam_logo.webp", h: 94 },
   { name: "ENVISION", src: "/envision.webp", h: 96 },
-  { name: "ESG", src: "/Logo_ESG.png", h: 44 },
-  { name: "Fitwel", src: "/fitwel_logo.webp", h: 50 },
-  { name: "GRESB", src: "/logo_gresb.webp", h: 82 },
-  { name: "LEED", src: "/leed_logo.webp", h: 98 },
-  { name: "LIFE LVMH", src: "/life_logo.webp", h: 88 },
-  { name: "WELL", src: "/well_logo.webp", h: 98 },
+  { name: "ESG", src: "/Logo_ESG.png", h: 40 },
+  { name: "Fitwel", src: "/fitwel_logo.webp", h: 46 },
+  { name: "GRESB", src: "/logo_gresb.webp", h: 92 },
+  { name: "LEED", src: "/leed_logo.webp", h: 100 },
+  { name: "LIFE LVMH", src: "/life_logo.webp", h: 90 },
+  { name: "WELL", src: "/well_logo.webp", h: 100 },
 ];
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -123,6 +123,11 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const sideRef = useRef(canvasSideFor(typeof window !== "undefined" ? window.innerHeight : 900));
   const lastPr = useRef(0);
   const globePaused = useRef(false);
+  /* Camera smorzata: lo scroll scrive solo il TARGET, un loop continuo lo
+     insegue con inerzia — i gradini della rotella non arrivano mai diretti
+     alla camera e la rotazione resta fluida. */
+  const camTarget = useRef<Record<string, number> | null>(null);
+  const camCur = useRef<Record<string, number> | null>(null);
 
   /* Materiale del globo: texture NASA topo/bathy + rilievo (bump) + maschera
      dell'acqua come specular map (oceani che riflettono, terre opache).
@@ -187,23 +192,19 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       const shrink = easeIO(clamp(p / 0.3, 0, 1));
       const zoomT = clamp((p - 0.6) / 0.4, 0, 1);
 
-      /* --- Camera del globo --- */
-      const g = globeRef.current;
-      if (g) {
-        let lat: number, lng: number, alt: number;
-        if (zoomT <= 0) {
-          lat = lerp(POV_USA.lat, POV_CHINA.lat, shrink);
-          lng = lerp(POV_USA.lng, POV_CHINA.lng, shrink);
-          alt = ALT_FAR;
-        } else {
-          /* la rotazione Cina -> Monte-Carlo si esaurisce al 70% del tuffo,
-             l'avvicinamento continua fino in fondo */
-          const rot = easeIO(clamp(zoomT / 0.7, 0, 1));
-          lat = lerp(POV_CHINA.lat, POV_MC.lat, rot);
-          lng = lerp(POV_CHINA.lng, POV_MC.lng, rot);
-          alt = lerp(ALT_FAR, ALT_NEAR, easeIn(zoomT));
-        }
-        g.pointOfView({ lat, lng, altitude: alt }, 0);
+      /* --- Camera del globo (solo TARGET: il loop smorzato la applica) --- */
+      let lat: number, lng: number, alt: number;
+      if (zoomT <= 0) {
+        lat = lerp(POV_USA.lat, POV_CHINA.lat, shrink);
+        lng = lerp(POV_USA.lng, POV_CHINA.lng, shrink);
+        alt = ALT_FAR;
+      } else {
+        /* la rotazione Cina -> Monte-Carlo si esaurisce al 70% del tuffo,
+           l'avvicinamento continua fino in fondo */
+        const rot = easeIO(clamp(zoomT / 0.7, 0, 1));
+        lat = lerp(POV_CHINA.lat, POV_MC.lat, rot);
+        lng = lerp(POV_CHINA.lng, POV_MC.lng, rot);
+        alt = lerp(ALT_FAR, ALT_NEAR, easeIn(zoomT));
       }
 
       /* --- Inquadratura del wrapper (canvas fisso, si trasla e scala) --- */
@@ -221,8 +222,6 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       const cy = lerp(c1.y, c2.y, shrink);
       const tx = cx - S / 2;
       const ty = cy - S / 2;
-      const wrap = globeWrap.current!;
-      wrap.style.transform = `translate3d(${tx}px,${ty}px,0) scale(${S / sideRef.current})`;
 
       stickA.current!.style.backgroundColor =
         shrink < 1 ? cssMix("#0a1c20", "#0d2530", shrink) : "#0d2530";
@@ -252,11 +251,30 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
          e' al centro del globo, quindi il flood parte dal centro wrapper */
       const fl = clamp((zoomT - 0.52) / 0.34, 0, 1);
       const maxR = Math.hypot(W, H) / 40; /* il div base e' 80px */
-      const f = flood.current!;
-      f.style.left = cx + "px";
-      f.style.top = cy + "px";
-      f.style.transform = `translate(-50%,-50%) scale(${easeIn(fl) * maxR})`;
+
+      camTarget.current = { lat, lng, alt, S, tx, ty, fx: cx, fy: cy, fs: easeIn(fl) * maxR };
     };
+
+    /* Loop smorzato: insegue il target a ogni frame (k=0.16 ~ mezza vita di
+       4 frame) e muove camera, wrapper, flood e nuvole in un colpo solo.
+       In pausa (globo coperto o oltre lo stage) non fa alcun lavoro. */
+    let animRaf: number | null = null;
+    const damp = () => {
+      animRaf = requestAnimationFrame(damp);
+      const t = camTarget.current;
+      if (!t || globePaused.current) return;
+      const c = camCur.current || (camCur.current = { ...t });
+      const k = 0.16;
+      for (const key of Object.keys(t)) c[key] += (t[key] - c[key]) * k;
+      globeRef.current?.pointOfView({ lat: c.lat, lng: c.lng, altitude: c.alt }, 0);
+      globeWrap.current!.style.transform = `translate3d(${c.tx}px,${c.ty}px,0) scale(${c.S / sideRef.current})`;
+      const f = flood.current!;
+      f.style.left = c.fx + "px";
+      f.style.top = c.fy + "px";
+      f.style.transform = `translate(-50%,-50%) scale(${c.fs})`;
+      if (cloudsMesh.current) cloudsMesh.current.rotation.y += 0.00022;
+    };
+    damp();
 
     const layoutStageB = () => {
       const H = sc.clientHeight;
@@ -367,6 +385,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       sc.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
+      if (animRaf) cancelAnimationFrame(animRaf);
       clearTimeout(t0);
       if (t1) clearTimeout(t1);
       clearTimeout(idleT);
@@ -407,13 +426,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         (mesh.material as THREE.MeshPhongMaterial).needsUpdate = true;
       });
       g.scene().add(mesh);
-      cloudsMesh.current = mesh;
-      const spin = () => {
-        /* niente lavoro quando il globo e' in pausa (coperto/fuori vista) */
-        if (!globePaused.current) mesh.rotation.y += 0.00022;
-        cloudsAnim.current = requestAnimationFrame(spin);
-      };
-      spin();
+      cloudsMesh.current = mesh; /* la rotazione avviene nel loop smorzato */
     }
   };
 
@@ -442,12 +455,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     <div
       ref={scroller}
       className="fgbl-scroll fixed inset-0 overflow-y-auto overflow-x-hidden"
-      style={{
-        background: "#f3f4f2",
-        fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif",
-        scrollbarWidth: "thin",
-        scrollbarColor: "rgba(0,145,147,.35) transparent",
-      }}
+      style={{ background: "#f3f4f2", fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif" }}
     >
       <style>{`
         .fgbl-reveal{opacity:0;transform:translateY(46px);transition:opacity .9s ease,transform .9s cubic-bezier(.22,.8,.32,1)}
@@ -456,11 +464,14 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         .fgbl-card:hover{transform:scale(1.05)}
         .fgbl-card img{filter:grayscale(1);transition:filter .55s ease,transform .55s ease}
         .fgbl-card:hover img{filter:grayscale(0);transform:scale(1.03)}
-        /* Scrollbar di brand: sottile, track trasparente, thumb ottanio */
-        .fgbl-scroll::-webkit-scrollbar{width:5px}
+        /* Scrollbar di brand: sottile, track TRASPARENTE, thumb ottanio.
+           Le proprieta' standard vincono su ::-webkit-scrollbar nei Chrome
+           recenti: vanno dichiarate QUI con i colori giusti, non inline. */
+        .fgbl-scroll{scrollbar-width:thin;scrollbar-color:rgba(0,145,147,.45) transparent}
+        .fgbl-scroll::-webkit-scrollbar{width:5px;background:transparent}
         .fgbl-scroll::-webkit-scrollbar-track{background:transparent}
-        .fgbl-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.35);border-radius:999px}
-        .fgbl-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.6)}
+        .fgbl-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.45);border-radius:999px}
+        .fgbl-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.7)}
         @media (prefers-reduced-motion: reduce){.fgbl-reveal{transition:none;opacity:1;transform:none}}
       `}</style>
 
@@ -663,7 +674,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
               alla tangente inferiore, ENERGY parte dalla superiore. */}
           <div
             className="absolute inset-0 grid grid-cols-3"
-            style={{ columnGap: "clamp(28px,4.5vw,64px)", padding: "0 clamp(24px,8vw,150px)" }}
+            style={{ columnGap: "clamp(36px,5.5vw,84px)", padding: "0 clamp(48px,11vw,220px)" }}
           >
             <div ref={bandAir} className="h-full flex flex-col justify-start" style={{ transform: "translateY(-110%)", willChange: "transform" }}>
               <div className="flex flex-col items-center text-center text-white" style={{ background: "#4f9e98", paddingTop: "9vh" }}>
@@ -673,14 +684,14 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
                   CO₂, humidity and particles - where your people actually work.
                 </p>
                 <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh" }}>
-                  <img src="/landing/dandelion.webp" alt="" className="w-full h-full object-cover" />
+                  <img src="/landing/pillar-air.webp" alt="" className="w-full h-full object-cover" />
                 </div>
               </div>
             </div>
             <div ref={bandEnergy} className="h-full flex flex-col justify-end" style={{ transform: "translateY(110%)", willChange: "transform" }}>
               <div className="flex flex-col items-center text-center text-white" style={{ background: "#8fdcd4", paddingBottom: "9vh" }}>
                 <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginBottom: "4.5vh" }}>
-                  <img src="/landing/bulb.webp" alt="" className="w-full h-full object-cover" />
+                  <img src="/landing/pillar-energy.webp" alt="" className="w-full h-full object-cover" />
                 </div>
                 <p style={{ fontSize: "clamp(13px,1.25vw,18px)", lineHeight: 1.55, margin: "0 8% 2.4vh", maxWidth: 300 }}>
                   <b className="block font-semibold">Every kWh, accounted for.</b>
@@ -697,7 +708,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
                   Flow, leaks and waste - spotted live, before they hit the bill.
                 </p>
                 <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh" }}>
-                  <img src="/landing/drop.webp" alt="" className="w-full h-full object-cover" />
+                  <img src="/landing/pillar-water.webp" alt="" className="w-full h-full object-cover" />
                 </div>
               </div>
             </div>

@@ -102,13 +102,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
     <div
       ref={scroller}
       className="fgbw-scroll fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden"
-      style={{
-        background: PAPER,
-        fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif",
-        color: INK,
-        scrollbarWidth: "thin",
-        scrollbarColor: "rgba(0,145,147,.35) transparent",
-      }}
+      style={{ background: PAPER, fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif", color: INK }}
     >
       <style>{`
         .fgbw-reveal{opacity:0;transform:translateY(34px) scale(.99);transition:opacity .85s ease,transform .85s ${EASE}}
@@ -117,11 +111,14 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         .fgbw-city:hover{color:${TEAL}}
         .fgbw-photo{transition:transform .6s ${EASE}}
         .fgbw-photo:hover{transform:scale(1.03)}
-        /* Scrollbar di brand: sottile, track trasparente, thumb ottanio */
-        .fgbw-scroll::-webkit-scrollbar{width:5px}
+        /* Scrollbar di brand: sottile, track TRASPARENTE, thumb ottanio.
+           Le proprieta' standard vincono su ::-webkit-scrollbar nei Chrome
+           recenti: vanno dichiarate QUI con i colori giusti, non inline. */
+        .fgbw-scroll{scrollbar-width:thin;scrollbar-color:rgba(0,145,147,.45) transparent}
+        .fgbw-scroll::-webkit-scrollbar{width:5px;background:transparent}
         .fgbw-scroll::-webkit-scrollbar-track{background:transparent}
-        .fgbw-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.35);border-radius:999px}
-        .fgbw-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.6)}
+        .fgbw-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.45);border-radius:999px}
+        .fgbw-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.7)}
         @media (prefers-reduced-motion: reduce){.fgbw-reveal{transition:none;opacity:1;transform:none}}
       `}</style>
 
@@ -453,9 +450,9 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
           </div>
           <div className="grid gap-6 md:grid-cols-3" style={{ marginTop: 34 }}>
             {[
-              { t: "AIR", b: "Every breath, measured.", d: "CO₂, humidity and particles — where your people actually work.", img: "/landing/dandelion.webp", bg: "#4f9e98" },
-              { t: "ENERGY", b: "Every kWh, accounted for.", d: "Consumption, load and cost — hour by hour, not once a quarter.", img: "/landing/bulb.webp", bg: "#8fdcd4" },
-              { t: "WATER", b: "Every drop, tracked.", d: "Flow, leaks and waste — spotted live, before they hit the bill.", img: "/landing/drop.webp", bg: "#4f9e98" },
+              { t: "AIR", b: "Every breath, measured.", d: "CO₂, humidity and particles — where your people actually work.", img: "/landing/pillar-air.webp", bg: "#4f9e98" },
+              { t: "ENERGY", b: "Every kWh, accounted for.", d: "Consumption, load and cost — hour by hour, not once a quarter.", img: "/landing/pillar-energy.webp", bg: "#8fdcd4" },
+              { t: "WATER", b: "Every drop, tracked.", d: "Flow, leaks and waste — spotted live, before they hit the bill.", img: "/landing/pillar-water.webp", bg: "#4f9e98" },
             ].map((p, i) => (
               <div
                 key={p.t}
