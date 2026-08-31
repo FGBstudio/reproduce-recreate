@@ -236,8 +236,10 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       /* --- Inquadratura del wrapper (canvas fisso, si trasla e scala) --- */
       const frac = globeFrac(ALT_FAR); /* frazione occupata dal globo */
       /* Posa 1 (hero): globo con diametro ~1.75H, centro in basso a destra,
-         arco che parte sotto l'header e cielo scuro sopra */
-      const S1 = (1.75 * H) / frac;
+         arco che parte sotto l'header e cielo scuro sopra. Su viewport
+         strette (tablet) il diametro e' tettato dalla larghezza, o il globo
+         ingoia tutto lo schermo. */
+      const S1 = Math.min(1.75 * H, 1.95 * W) / frac;
       const c1 = { x: 0.86 * W, y: 1.14 * H };
       /* Posa 2 (numeri): globo intero a destra */
       const S2 = Math.min(0.82 * H, 0.44 * W) / frac;
@@ -711,11 +713,10 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
           subito sotto riparte il carosello delle sedi. */}
       <section
         ref={certsSec}
-        className="grid items-center"
+        className="grid items-center grid-cols-1 lg:grid-cols-[minmax(320px,1fr)_minmax(0,1.1fr)]"
         style={{
           background: "#f3f4f2",
           minHeight: "100vh",
-          gridTemplateColumns: "minmax(320px,1fr) minmax(0,1.1fr)",
           gap: "clamp(24px,4vw,72px)",
           padding: "clamp(48px,7vh,90px) clamp(24px,5vw,72px) 0",
         }}
@@ -739,12 +740,18 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
                 key={l.name}
                 tabIndex={0}
                 className="fgbl-certcell flex items-center justify-center outline-none"
-                style={{ width: 270, height: 124 }}
+                style={{ width: "min(270px, 100%)", height: "clamp(88px, 12vw, 124px)" }}
                 onMouseEnter={(e) => setSpot(l, e.currentTarget)}
                 onFocus={(e) => setSpot(l, e.currentTarget)}
                 onBlur={() => setSpot()}
               >
-                <img src={l.src} alt={l.name} loading="lazy" className="w-auto object-contain" style={{ maxHeight: l.h, maxWidth: 260 }} />
+                <img
+                  src={l.src}
+                  alt={l.name}
+                  loading="lazy"
+                  className="w-auto object-contain"
+                  style={{ maxHeight: `min(${l.h}px, 100%)`, maxWidth: "min(260px, 96%)" }}
+                />
               </div>
             ))}
           </div>
@@ -767,7 +774,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             <span ref={spotDesc}> — one data flow feeding every certification.</span>
           </p>
         </div>
-        <div className="flex justify-end" style={{ gap: "clamp(26px,3.2vw,48px)", alignSelf: "end" }}>
+        <div className="flex justify-center lg:justify-end self-center lg:self-end" style={{ gap: "clamp(26px,3.2vw,48px)" }}>
           {/* Due card INDIPENDENTI (asset forniti dal proprietario, ritagliati
               dentro gli angoli originali: il raggio uguale sui 4 angoli lo da'
               solo il border-radius CSS). Per la versione video sostituire
@@ -799,9 +806,11 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
               e' il figlio terminale della banda, senza padding orizzontale
               ne' residuo sotto. AIR e WATER scendono dall'alto e si fermano
               alla tangente inferiore, ENERGY parte dalla superiore. */}
+          {/* maxWidth: sugli ultrawide le bande non crescono all'infinito,
+              il blocco resta centrato a misura editoriale */}
           <div
             className="absolute inset-0 grid grid-cols-3"
-            style={{ columnGap: "clamp(44px,6.5vw,104px)", padding: "0 clamp(64px,13vw,280px)" }}
+            style={{ columnGap: "clamp(44px,6.5vw,104px)", padding: "0 clamp(64px,13vw,280px)", maxWidth: 1560, margin: "0 auto" }}
           >
             <div ref={bandAir} className="h-full flex flex-col justify-start" style={{ transform: "translateY(-110%)", willChange: "transform" }}>
               <div className="flex flex-col items-center text-center text-white" style={{ background: "#4f9e98", paddingTop: "9vh" }}>
