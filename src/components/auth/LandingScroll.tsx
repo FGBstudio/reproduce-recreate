@@ -784,8 +784,11 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         </div>
       </section>
 
-      {/* Carosello delle sedi FGB, recuperato dalla landing precedente */}
-      <CityTicker />
+      {/* Carosello delle sedi FGB: staccato dalle immagini, testi ottanio,
+          sfondo trasparente sulla carta */}
+      <div style={{ marginTop: "clamp(30px,5.5vh,60px)", marginBottom: "clamp(10px,2vh,24px)" }}>
+        <CityTicker transparent color="#009193" />
+      </div>
 
       {/* ============ STAGE B: MONITORING ============ */}
       <section ref={stageB} style={{ height: "280vh", position: "relative" }}>

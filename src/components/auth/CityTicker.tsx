@@ -22,13 +22,13 @@ const CITIES = [
 const ACCENT = "#006367";
 const SUB = "#86868b";
 
-const Row: React.FC = () => (
+const Row: React.FC<{ color?: string }> = ({ color }) => (
   <div className="flex shrink-0 items-center gap-10 pr-10">
     {CITIES.map((c) => (
       <span
         key={c}
         className="text-[11px] font-semibold uppercase tracking-[0.35em] whitespace-nowrap"
-        style={{ color: SUB }}
+        style={{ color: color || SUB }}
       >
         {c}
         <span className="ml-10" style={{ color: ACCENT }}>·</span>
@@ -37,10 +37,12 @@ const Row: React.FC = () => (
   </div>
 );
 
-const CityTicker: React.FC = () => {
+/* transparent: niente sfondo bianco ne' bordi (per contesti su carta);
+   color: colore dei nomi delle citta' (default grigio legacy) */
+const CityTicker: React.FC<{ transparent?: boolean; color?: string }> = ({ transparent, color }) => {
   return (
     <div
-      className="w-full overflow-hidden py-4 border-y border-black/[0.06] bg-white"
+      className={`w-full overflow-hidden py-4 ${transparent ? "" : "border-y border-black/[0.06] bg-white"}`}
       aria-label="Cities where FGB operates"
     >
       <style>{`
@@ -53,8 +55,8 @@ const CityTicker: React.FC = () => {
       `}</style>
       <div className="fgb-marquee-wrap flex w-full">
         <div className="fgb-marquee-track flex w-max">
-          <Row />
-          <Row />
+          <Row color={color} />
+          <Row color={color} />
         </div>
       </div>
     </div>
