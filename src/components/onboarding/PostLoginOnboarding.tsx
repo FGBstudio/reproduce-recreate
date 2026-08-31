@@ -101,8 +101,14 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
   return (
     <div
       ref={scroller}
-      className="fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden"
-      style={{ background: PAPER, fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif", color: INK }}
+      className="fgbw-scroll fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden"
+      style={{
+        background: PAPER,
+        fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif",
+        color: INK,
+        scrollbarWidth: "thin",
+        scrollbarColor: "rgba(0,145,147,.35) transparent",
+      }}
     >
       <style>{`
         .fgbw-reveal{opacity:0;transform:translateY(34px) scale(.99);transition:opacity .85s ease,transform .85s ${EASE}}
@@ -111,6 +117,11 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         .fgbw-city:hover{color:${TEAL}}
         .fgbw-photo{transition:transform .6s ${EASE}}
         .fgbw-photo:hover{transform:scale(1.03)}
+        /* Scrollbar di brand: sottile, track trasparente, thumb ottanio */
+        .fgbw-scroll::-webkit-scrollbar{width:5px}
+        .fgbw-scroll::-webkit-scrollbar-track{background:transparent}
+        .fgbw-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.35);border-radius:999px}
+        .fgbw-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.6)}
         @media (prefers-reduced-motion: reduce){.fgbw-reveal{transition:none;opacity:1;transform:none}}
       `}</style>
 

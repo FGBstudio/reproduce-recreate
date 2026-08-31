@@ -72,18 +72,19 @@ const PR_SCROLLING = 0.8;
 const idlePixelRatio = (side: number) =>
   Math.min(window.devicePixelRatio || 1, 2200 / side, 1.6);
 
-/* h = altezza calibrata a occhio per pareggiare il PESO OTTICO: i badge
-   rotondi (LEED, WELL, BREEAM) reggono altezze piene, i wordmark (ESG,
-   fitwel) a pari altezza sembrerebbero il doppio e vanno tenuti bassi. */
+/* Ogni logo vive in una bounding box identica e invisibile (vedi render);
+   h = altezza massima calibrata per pareggiare il PESO VISIVO, non quello
+   lineare: i blocchi densi (ESG, fitwel) vanno scalati giu' (~70%), i
+   tratti sottili (GRESB, WELL, LIFE) reggono altezze piene. */
 const CERT_LOGOS = [
-  { name: "BREEAM", src: "/breeam_logo.webp", h: 96 },
-  { name: "ENVISION", src: "/envision.webp", h: 98 },
-  { name: "ESG", src: "/Logo_ESG.png", h: 58 },
-  { name: "Fitwel", src: "/fitwel_logo.webp", h: 58 },
-  { name: "GRESB", src: "/logo_gresb.webp", h: 72 },
-  { name: "LEED", src: "/leed_logo.webp", h: 100 },
-  { name: "LIFE LVMH", src: "/life_logo.webp", h: 84 },
-  { name: "WELL", src: "/well_logo.webp", h: 100 },
+  { name: "BREEAM", src: "/breeam_logo.webp", h: 92 },
+  { name: "ENVISION", src: "/envision.webp", h: 96 },
+  { name: "ESG", src: "/Logo_ESG.png", h: 44 },
+  { name: "Fitwel", src: "/fitwel_logo.webp", h: 50 },
+  { name: "GRESB", src: "/logo_gresb.webp", h: 82 },
+  { name: "LEED", src: "/leed_logo.webp", h: 98 },
+  { name: "LIFE LVMH", src: "/life_logo.webp", h: 88 },
+  { name: "WELL", src: "/well_logo.webp", h: 98 },
 ];
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -440,19 +441,33 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
   return (
     <div
       ref={scroller}
-      className="fixed inset-0 overflow-y-auto overflow-x-hidden"
-      style={{ background: "#f3f4f2", fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif" }}
+      className="fgbl-scroll fixed inset-0 overflow-y-auto overflow-x-hidden"
+      style={{
+        background: "#f3f4f2",
+        fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif",
+        scrollbarWidth: "thin",
+        scrollbarColor: "rgba(0,145,147,.35) transparent",
+      }}
     >
       <style>{`
         .fgbl-reveal{opacity:0;transform:translateY(46px);transition:opacity .9s ease,transform .9s cubic-bezier(.22,.8,.32,1)}
         .fgbl-reveal.in{opacity:1;transform:none}
+        .fgbl-card{transition:transform .3s ease-in-out}
+        .fgbl-card:hover{transform:scale(1.05)}
         .fgbl-card img{filter:grayscale(1);transition:filter .55s ease,transform .55s ease}
         .fgbl-card:hover img{filter:grayscale(0);transform:scale(1.03)}
+        /* Scrollbar di brand: sottile, track trasparente, thumb ottanio */
+        .fgbl-scroll::-webkit-scrollbar{width:5px}
+        .fgbl-scroll::-webkit-scrollbar-track{background:transparent}
+        .fgbl-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.35);border-radius:999px}
+        .fgbl-scroll::-webkit-scrollbar-thumb:hover{background:rgba(0,145,147,.6)}
         @media (prefers-reduced-motion: reduce){.fgbl-reveal{transition:none;opacity:1;transform:none}}
       `}</style>
 
       {/* ============ STAGE A: globo (hero -> numeri -> tuffo su Monte-Carlo) ============ */}
-      <section ref={stageA} style={{ height: "470vh", position: "relative" }}>
+      {/* Altezza contenuta: l'intera coreografia del globo si esaurisce in
+          ~140vh di scroll (spec: 120-150vh), niente scroll a vuoto */}
+      <section ref={stageA} style={{ height: "240vh", position: "relative" }}>
         <div
           ref={stickA}
           style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden", background: "#0a1c20" }}
@@ -614,10 +629,10 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             <br />
             excellence
           </h2>
-          <div className="grid grid-cols-2 gap-x-12 gap-y-9" style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 560 }}>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-8" style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 580 }}>
             {CERT_LOGOS.map((l) => (
-              <div key={l.name} className="flex items-center justify-start" style={{ height: 104 }}>
-                <img src={l.src} alt={l.name} loading="lazy" className="w-auto object-contain" style={{ maxHeight: l.h, maxWidth: 230 }} />
+              <div key={l.name} className="flex items-center justify-start" style={{ width: 230, height: 104 }}>
+                <img src={l.src} alt={l.name} loading="lazy" className="w-auto object-contain" style={{ maxHeight: l.h, maxWidth: 220 }} />
               </div>
             ))}
           </div>
@@ -638,47 +653,59 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       </section>
 
       {/* ============ STAGE B: MONITORING ============ */}
-      <section ref={stageB} style={{ height: "380vh", position: "relative" }}>
+      <section ref={stageB} style={{ height: "280vh", position: "relative" }}>
         <div ref={stickB} style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden", background: "#f3f4f2", willChange: "background-color" }}>
+          {/* Come nel mockup del PDF: il cerchio ha ESATTAMENTE la larghezza
+              della fascia (tangente ai bordi laterali, nessuno sbordo) e la
+              banda colorata finisce alla tangente del cerchio — il cerchio
+              e' il figlio terminale della banda, senza padding orizzontale
+              ne' residuo sotto. AIR e WATER scendono dall'alto e si fermano
+              alla tangente inferiore, ENERGY parte dalla superiore. */}
           <div
             className="absolute inset-0 grid grid-cols-3"
-            style={{ columnGap: "clamp(10px,2vw,28px)", padding: "0 clamp(16px,6vw,110px)" }}
+            style={{ columnGap: "clamp(28px,4.5vw,64px)", padding: "0 clamp(24px,8vw,150px)" }}
           >
-            <div ref={bandAir} className="h-full flex flex-col items-center text-center text-white" style={{ background: "#4f9e98", padding: "7vh 5% 6vh", transform: "translateY(-110%)", willChange: "transform" }}>
-              <h3 className="font-semibold" style={{ fontSize: "clamp(22px,2.6vw,38px)", letterSpacing: 2 }}>AIR</h3>
-              <p style={{ fontSize: "clamp(12px,1.1vw,16px)", lineHeight: 1.55, marginTop: "2.2vh", maxWidth: 270 }}>
-                <b className="block font-semibold">Every breath, measured.</b>
-                CO₂, humidity and particles - where your people actually work.
-              </p>
-              <div className="rounded-full overflow-hidden" style={{ width: "clamp(140px,16vw,230px)", aspectRatio: "1", marginTop: "4.5vh" }}>
-                <img src="/landing/dandelion.webp" alt="" className="w-full h-full object-cover" />
+            <div ref={bandAir} className="h-full flex flex-col justify-start" style={{ transform: "translateY(-110%)", willChange: "transform" }}>
+              <div className="flex flex-col items-center text-center text-white" style={{ background: "#4f9e98", paddingTop: "9vh" }}>
+                <h3 className="font-semibold" style={{ fontSize: "clamp(26px,3vw,46px)", letterSpacing: 2 }}>AIR</h3>
+                <p style={{ fontSize: "clamp(13px,1.25vw,18px)", lineHeight: 1.55, margin: "2.4vh 8% 0", maxWidth: 300 }}>
+                  <b className="block font-semibold">Every breath, measured.</b>
+                  CO₂, humidity and particles - where your people actually work.
+                </p>
+                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh" }}>
+                  <img src="/landing/dandelion.webp" alt="" className="w-full h-full object-cover" />
+                </div>
               </div>
             </div>
-            <div ref={bandEnergy} className="h-full flex flex-col items-center justify-end text-center text-white" style={{ background: "#8fdcd4", padding: "7vh 5% 6vh", transform: "translateY(110%)", willChange: "transform" }}>
-              <div className="rounded-full overflow-hidden" style={{ width: "clamp(140px,16vw,230px)", aspectRatio: "1", marginBottom: "4.5vh" }}>
-                <img src="/landing/bulb.webp" alt="" className="w-full h-full object-cover" />
+            <div ref={bandEnergy} className="h-full flex flex-col justify-end" style={{ transform: "translateY(110%)", willChange: "transform" }}>
+              <div className="flex flex-col items-center text-center text-white" style={{ background: "#8fdcd4", paddingBottom: "9vh" }}>
+                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginBottom: "4.5vh" }}>
+                  <img src="/landing/bulb.webp" alt="" className="w-full h-full object-cover" />
+                </div>
+                <p style={{ fontSize: "clamp(13px,1.25vw,18px)", lineHeight: 1.55, margin: "0 8% 2.4vh", maxWidth: 300 }}>
+                  <b className="block font-semibold">Every kWh, accounted for.</b>
+                  Consumption, load and cost - hour by hour, not once a quarter
+                </p>
+                <h3 className="font-semibold" style={{ fontSize: "clamp(26px,3vw,46px)", letterSpacing: 2 }}>ENERGY</h3>
               </div>
-              <p style={{ fontSize: "clamp(12px,1.1vw,16px)", lineHeight: 1.55, marginBottom: "2.2vh", maxWidth: 270 }}>
-                <b className="block font-semibold">Every kWh, accounted for.</b>
-                Consumption, load and cost - hour by hour, not once a quarter
-              </p>
-              <h3 className="font-semibold" style={{ fontSize: "clamp(22px,2.6vw,38px)", letterSpacing: 2 }}>ENERGY</h3>
             </div>
-            <div ref={bandWater} className="h-full flex flex-col items-center text-center text-white" style={{ background: "#4f9e98", padding: "7vh 5% 6vh", transform: "translateY(-110%)", willChange: "transform" }}>
-              <h3 className="font-semibold" style={{ fontSize: "clamp(22px,2.6vw,38px)", letterSpacing: 2 }}>WATER</h3>
-              <p style={{ fontSize: "clamp(12px,1.1vw,16px)", lineHeight: 1.55, marginTop: "2.2vh", maxWidth: 270 }}>
-                <b className="block font-semibold">Every drop, tracked.</b>
-                Flow, leaks and waste - spotted live, before they hit the bill.
-              </p>
-              <div className="rounded-full overflow-hidden" style={{ width: "clamp(140px,16vw,230px)", aspectRatio: "1", marginTop: "4.5vh" }}>
-                <img src="/landing/drop.webp" alt="" className="w-full h-full object-cover" />
+            <div ref={bandWater} className="h-full flex flex-col justify-start" style={{ transform: "translateY(-110%)", willChange: "transform" }}>
+              <div className="flex flex-col items-center text-center text-white" style={{ background: "#4f9e98", paddingTop: "9vh" }}>
+                <h3 className="font-semibold" style={{ fontSize: "clamp(26px,3vw,46px)", letterSpacing: 2 }}>WATER</h3>
+                <p style={{ fontSize: "clamp(13px,1.25vw,18px)", lineHeight: 1.55, margin: "2.4vh 8% 0", maxWidth: 300 }}>
+                  <b className="block font-semibold">Every drop, tracked.</b>
+                  Flow, leaks and waste - spotted live, before they hit the bill.
+                </p>
+                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh" }}>
+                  <img src="/landing/drop.webp" alt="" className="w-full h-full object-cover" />
+                </div>
               </div>
             </div>
           </div>
           <div
             ref={monTitle}
             className="absolute z-[4] text-white font-semibold"
-            style={{ left: "clamp(24px,4.5vw,64px)", bottom: "6vh", fontSize: "clamp(38px,5vw,64px)", opacity: 0, transform: "translateY(20px)", willChange: "opacity,transform" }}
+            style={{ left: "clamp(24px,4.5vw,64px)", bottom: "5vh", fontSize: "clamp(44px,5.8vw,78px)", opacity: 0, transform: "translateY(20px)", willChange: "opacity,transform" }}
           >
             Monitoring
           </div>
