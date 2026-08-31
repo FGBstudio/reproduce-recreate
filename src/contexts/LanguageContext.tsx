@@ -13,7 +13,7 @@ const translations: Record<string, Record<Language, string>> = {
   // Auth page
   'auth.welcome_back': { en: 'Welcome back', it: 'Bentornato', fr: 'Bon retour', es: 'Bienvenido de nuevo', zh: '欢迎回来' },
   'auth.welcome': { en: 'Welcome', it: 'Benvenuto', fr: 'Bienvenue', es: 'Bienvenido', zh: '欢迎' },
-  'auth.login_subtitle': { en: 'Sign in to your FGB Studio account', it: 'Accedi al tuo account FGB Studio', fr: 'Connectez-vous à votre compte FGB Studio', es: 'Inicia sesión en tu cuenta FGB Studio', zh: '登录您的 FGB Studio 账户' },
+  'auth.login_subtitle': { en: 'Sign in to your FGB account', it: 'Accedi al tuo account FGB', fr: 'Connectez-vous à votre compte FGB', es: 'Inicia sesión en tu cuenta FGB', zh: '登录您的 FGB 账户' },
   'auth.email': { en: 'Email', it: 'Email', fr: 'E-mail', es: 'Correo electrónico', zh: '电子邮件' },
   'auth.password': { en: 'Password', it: 'Password', fr: 'Mot de passe', es: 'Contraseña', zh: '密码' },
   'auth.confirm_password': { en: 'Confirm Password', it: 'Conferma Password', fr: 'Confirmer le mot de passe', es: 'Confirmar contraseña', zh: '确认密码' },
