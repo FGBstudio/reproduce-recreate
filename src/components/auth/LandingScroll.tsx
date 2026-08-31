@@ -694,15 +694,16 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             ))}
           </div>
         </div>
-        <div className="flex justify-end" style={{ gap: "clamp(14px,2vw,26px)" }}>
-          {/* Slot media (asset forniti dal proprietario, interi e non tagliati):
-              per la versione video sostituire <img> con
-              <video autoPlay muted loop playsInline src="..."> */}
+        <div className="flex justify-end" style={{ gap: "clamp(26px,3.2vw,48px)" }}>
+          {/* Due card INDIPENDENTI (asset forniti dal proprietario, ritagliati
+              dentro gli angoli originali: il raggio uguale sui 4 angoli lo da'
+              solo il border-radius CSS). Per la versione video sostituire
+              <img> con <video autoPlay muted loop playsInline src="..."> */}
           {["/landing/cert-lynx.webp", "/landing/cert-girl.webp"].map((src, i) => (
             <div
               key={src}
               className="fgbl-reveal overflow-hidden"
-              style={{ borderRadius: 28, flex: "0 1 400px", aspectRatio: "0.472", maxHeight: "82vh", transitionDelay: `${0.15 * (i + 1)}s` }}
+              style={{ borderRadius: 30, flex: "0 1 380px", aspectRatio: "0.425", maxHeight: "82vh", transitionDelay: `${0.15 * (i + 1)}s` }}
             >
               <img src={src} alt="" className="w-full h-full object-cover" />
             </div>
@@ -721,7 +722,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
               alla tangente inferiore, ENERGY parte dalla superiore. */}
           <div
             className="absolute inset-0 grid grid-cols-3"
-            style={{ columnGap: "clamp(36px,5.5vw,84px)", padding: "0 clamp(48px,11vw,220px)" }}
+            style={{ columnGap: "clamp(44px,6.5vw,104px)", padding: "0 clamp(64px,13vw,280px)" }}
           >
             <div ref={bandAir} className="h-full flex flex-col justify-start" style={{ transform: "translateY(-110%)", willChange: "transform" }}>
               <div className="flex flex-col items-center text-center text-white" style={{ background: "#4f9e98", paddingTop: "9vh" }}>
