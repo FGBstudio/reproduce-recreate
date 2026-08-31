@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import Globe from "react-globe.gl";
 import * as THREE from "three";
+import CityTicker from "./CityTicker";
 
 /**
  * Landing desktop "scroll-telling" (design dal PDF SITO MONITORAGGIO 2026):
@@ -77,14 +78,14 @@ const idlePixelRatio = (side: number) =>
    lineare: i blocchi densi (ESG, fitwel) vanno scalati giu' (~70%), i
    tratti sottili (GRESB, WELL, LIFE) reggono altezze piene. */
 const CERT_LOGOS = [
-  { name: "BREEAM", src: "/breeam_logo.webp", h: 110 },
-  { name: "ENVISION", src: "/envision.webp", h: 112 },
-  { name: "ESG", src: "/Logo_ESG.png", h: 48 },
-  { name: "Fitwel", src: "/fitwel_logo.webp", h: 56 },
-  { name: "GRESB", src: "/logo_gresb.webp", h: 106 },
-  { name: "LEED", src: "/leed_logo.webp", h: 116 },
-  { name: "LIFE LVMH", src: "/life_logo.webp", h: 104 },
-  { name: "WELL", src: "/well_logo.webp", h: 116 },
+  { name: "BREEAM", src: "/breeam_logo.webp", h: 110, desc: "Building Research Establishment Environmental Assessment Method" },
+  { name: "ENVISION", src: "/envision.webp", h: 112, desc: "The framework for sustainable, resilient infrastructure" },
+  { name: "ESG", src: "/Logo_ESG.png", h: 48, desc: "Environmental, Social & Governance performance" },
+  { name: "Fitwel", src: "/fitwel_logo.webp", h: 56, desc: "Healthy buildings, certified by evidence" },
+  { name: "GRESB", src: "/logo_gresb.webp", h: 106, desc: "The global ESG benchmark for real assets" },
+  { name: "LEED", src: "/leed_logo.webp", h: 116, desc: "Leadership in Energy & Environmental Design" },
+  { name: "LIFE LVMH", src: "/life_logo.webp", h: 104, desc: "LVMH's environmental excellence program" },
+  { name: "WELL", src: "/well_logo.webp", h: 116, desc: "The standard for health and well-being in buildings" },
 ];
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -129,6 +130,30 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const camTarget = useRef<Record<string, number> | null>(null);
   const camCur = useRef<Record<string, number> | null>(null);
   const sbar = useRef<HTMLDivElement>(null);
+  /* Spotlight certificazioni: aggiornato via DOM diretto (niente state:
+     un re-render su hover coinvolgerebbe anche il globo WebGL) */
+  const certGrid = useRef<HTMLDivElement>(null);
+  const spotWrap = useRef<HTMLParagraphElement>(null);
+  const spotName = useRef<HTMLElement>(null);
+  const spotDesc = useRef<HTMLElement>(null);
+  const spotT = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setSpot = (l?: (typeof CERT_LOGOS)[number], cell?: HTMLElement) => {
+    const grid = certGrid.current;
+    const wrap = spotWrap.current;
+    if (!grid || !wrap) return;
+    grid.querySelectorAll(".on").forEach((el) => el.classList.remove("on"));
+    if (cell) cell.classList.add("on");
+    grid.dataset.active = l ? "1" : "0";
+    wrap.style.opacity = "0";
+    if (spotT.current) clearTimeout(spotT.current);
+    spotT.current = setTimeout(() => {
+      if (!spotName.current || !spotDesc.current || !spotWrap.current) return;
+      spotName.current.textContent = l ? l.name : "Eight frameworks";
+      spotDesc.current.textContent = l ? ` — ${l.desc}` : " — one data flow feeding every certification.";
+      spotWrap.current.style.opacity = "1";
+    }, 170);
+  };
 
   /* Materiale del globo: texture NASA topo/bathy + rilievo (bump) + maschera
      dell'acqua come specular map (oceani che riflettono, terre opache).
@@ -519,6 +544,12 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
         .fgbl-reveal.in{opacity:1;transform:none}
         .fgbl-card{transition:transform .3s ease-in-out}
         .fgbl-card:hover{transform:scale(1.05)}
+        /* Spotlight certificazioni: il logo attivo si illumina e cresce,
+           gli altri si attenuano; la riga sotto cambia con dissolvenza */
+        .fgbl-certcell img{transition:opacity .35s ease,filter .35s ease,transform .35s ease}
+        .fgbl-certgrid[data-active="1"] .fgbl-certcell:not(.on) img{opacity:.3;filter:grayscale(.7)}
+        .fgbl-certcell.on img{transform:scale(1.07)}
+        .fgbl-spotline{transition:opacity .18s ease}
         .fgbl-card img{filter:grayscale(1);transition:filter .55s ease,transform .55s ease}
         .fgbl-card:hover img{filter:grayscale(0);transform:scale(1.03)}
         /* La scrollbar nativa sparisce del tutto (il track grigio/bianco di
@@ -675,6 +706,9 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
       </section>
 
       {/* ============ CERTIFICAZIONI ============ */}
+      {/* Il bordo inferiore della sezione coincide col bordo inferiore delle
+          immagini a destra (padding-bottom 0 + card ancorate in basso);
+          subito sotto riparte il carosello delle sedi. */}
       <section
         ref={certsSec}
         className="grid items-center"
@@ -683,7 +717,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
           minHeight: "100vh",
           gridTemplateColumns: "minmax(320px,1fr) minmax(0,1.1fr)",
           gap: "clamp(24px,4vw,72px)",
-          padding: "clamp(48px,7vh,90px) clamp(24px,5vw,72px)",
+          padding: "clamp(48px,7vh,90px) clamp(24px,5vw,72px) 0",
         }}
       >
         <div className="fgbl-reveal">
@@ -694,15 +728,46 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
             <br />
             excellence
           </h2>
-          <div className="grid grid-cols-2 gap-x-10 gap-y-9" style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 660, justifyItems: "center" }}>
+          <div
+            ref={certGrid}
+            className="fgbl-certgrid grid grid-cols-2 gap-x-10 gap-y-9"
+            style={{ marginTop: "clamp(28px,5vh,54px)", maxWidth: 660, justifyItems: "center" }}
+            onMouseLeave={() => setSpot()}
+          >
             {CERT_LOGOS.map((l) => (
-              <div key={l.name} className="flex items-center justify-center" style={{ width: 270, height: 124 }}>
+              <div
+                key={l.name}
+                tabIndex={0}
+                className="fgbl-certcell flex items-center justify-center outline-none"
+                style={{ width: 270, height: 124 }}
+                onMouseEnter={(e) => setSpot(l, e.currentTarget)}
+                onFocus={(e) => setSpot(l, e.currentTarget)}
+                onBlur={() => setSpot()}
+              >
                 <img src={l.src} alt={l.name} loading="lazy" className="w-auto object-contain" style={{ maxHeight: l.h, maxWidth: 260 }} />
               </div>
             ))}
           </div>
+
+          {/* riga spotlight: si aggiorna con dissolvenza passando sui loghi */}
+          <p
+            ref={spotWrap}
+            className="fgbl-spotline"
+            style={{
+              marginTop: 26,
+              paddingTop: 16,
+              borderTop: "1px solid #dfe3e0",
+              maxWidth: 660,
+              fontSize: "clamp(14px,1.3vw,17px)",
+              color: "#7c8285",
+              minHeight: 52,
+            }}
+          >
+            <b ref={spotName} style={{ color: "#016368", fontWeight: 600 }}>Eight frameworks</b>
+            <span ref={spotDesc}> — one data flow feeding every certification.</span>
+          </p>
         </div>
-        <div className="flex justify-end" style={{ gap: "clamp(26px,3.2vw,48px)" }}>
+        <div className="flex justify-end" style={{ gap: "clamp(26px,3.2vw,48px)", alignSelf: "end" }}>
           {/* Due card INDIPENDENTI (asset forniti dal proprietario, ritagliati
               dentro gli angoli originali: il raggio uguale sui 4 angoli lo da'
               solo il border-radius CSS). Per la versione video sostituire
@@ -718,6 +783,9 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
           ))}
         </div>
       </section>
+
+      {/* Carosello delle sedi FGB, recuperato dalla landing precedente */}
+      <CityTicker />
 
       {/* ============ STAGE B: MONITORING ============ */}
       <section ref={stageB} style={{ height: "280vh", position: "relative" }}>
