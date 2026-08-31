@@ -252,12 +252,20 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
          e' al centro del globo, quindi il flood parte dal centro wrapper.
          Il cerchio nasce GIA' alla dimensione finale e viene scalato 0->1:
          scalare in su un elemento piccolo lo rasterizzava sgranato. */
-      const fl = clamp((zoomT - 0.52) / 0.34, 0, 1);
+      const fl = clamp((zoomT - 0.42) / 0.3, 0, 1);
       const D = Math.ceil(2.3 * Math.hypot(W, H));
       const f = flood.current!;
       f.style.width = f.style.height = D + "px";
 
-      camTarget.current = { lat, lng, alt, S, tx, ty, fx: cx, fy: cy, fs: easeIn(fl) };
+      let fsT = easeIn(fl);
+      if (p >= 0.9) {
+        /* vicino allo sgancio dello sticky la copertura DEVE essere totale:
+           niente inseguimento smorzato, si inchioda a 1 — era lo smorzamento
+           a lasciare il cerchio "a meta'" sul passaggio alla sezione dopo */
+        fsT = 1;
+        if (camCur.current) camCur.current.fs = 1;
+      }
+      camTarget.current = { lat, lng, alt, S, tx, ty, fx: cx, fy: cy, fs: fsT };
     };
 
     /* Loop smorzato: insegue il target a ogni frame (k=0.16 ~ mezza vita di
@@ -731,14 +739,14 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
                   <b className="block font-semibold">Every breath, measured.</b>
                   CO₂, humidity and particles - where your people actually work.
                 </p>
-                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh" }}>
+                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh", marginBottom: "-50%" }}>
                   <img src="/landing/pillar-air.webp" alt="" className="w-full h-full object-cover" />
                 </div>
               </div>
             </div>
             <div ref={bandEnergy} className="h-full flex flex-col justify-end" style={{ transform: "translateY(110%)", willChange: "transform" }}>
               <div className="flex flex-col items-center text-center text-white" style={{ background: "#8fdcd4", paddingBottom: "9vh" }}>
-                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginBottom: "4.5vh" }}>
+                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginBottom: "4.5vh", marginTop: "-50%" }}>
                   <img src="/landing/pillar-energy.webp" alt="" className="w-full h-full object-cover" />
                 </div>
                 <p style={{ fontSize: "clamp(13px,1.25vw,18px)", lineHeight: 1.55, margin: "0 8% 2.4vh", maxWidth: 300 }}>
@@ -755,7 +763,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
                   <b className="block font-semibold">Every drop, tracked.</b>
                   Flow, leaks and waste - spotted live, before they hit the bill.
                 </p>
-                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh" }}>
+                <div className="w-full rounded-full overflow-hidden shrink-0" style={{ aspectRatio: "1", marginTop: "4.5vh", marginBottom: "-50%" }}>
                   <img src="/landing/pillar-water.webp" alt="" className="w-full h-full object-cover" />
                 </div>
               </div>
