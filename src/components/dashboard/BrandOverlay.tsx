@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
 import { useAggregatedSiteData, type SiteState } from "@/hooks/useAggregatedSiteData";
 import { useClientOverviewKpis } from "@/hooks/useClientOverviewKpis";
@@ -11,7 +11,7 @@ import {
   Cell, ReferenceLine, BarChart, Bar, Legend
 } from "recharts";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
-import { ChevronUp, ChevronDown, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind} from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind} from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { useWrapped } from "@/components/wrapped/WrappedContext";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -55,6 +55,52 @@ const LEGACY_CLIENT_KPIS = false;
    non si mescolano piu'); il posto del 4o grafico energia lo prendera'
    consumo vs temperatura esterna (Step 5). Conservato per reversibilita'. */
 const LEGACY_SCATTER = false;
+
+/* Leaderboard combinata, health matrix e directory nell'invasione: spente
+   dalla revisione del proprietario ("aggregano aria ed energia e spariscono
+   dalla dash") — i grafici vivono ora nei card deck di dominio. */
+const LEGACY_COMBINED_CHARTS = false;
+
+/** Mazzo di card sfogliabile (stile Swipeable Card Deck): la card attiva al
+    centro, le altre dietro in trasparenza; click sulle laterali o frecce. */
+function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: ReactNode }[]; index: number; onIndex: (i: number) => void }) {
+  return (
+    <div className="relative h-full w-full flex items-center justify-center overflow-hidden">
+      {cards.map((c, i) => {
+        const off = i - index;
+        const abs = Math.abs(off);
+        return (
+          <div
+            key={c.key}
+            onClick={() => off !== 0 && onIndex(i)}
+            className={`absolute glass-panel rounded-2xl overflow-hidden transition-all duration-500 ease-out ${off === 0 ? '' : 'cursor-pointer'}`}
+            style={{
+              width: '64%',
+              height: '94%',
+              transform: `translateX(${off * 18}%) scale(${Math.max(0.78, 1 - abs * 0.08)})`,
+              zIndex: 20 - abs,
+              opacity: abs > 2 ? 0 : 1 - abs * 0.35,
+              filter: off === 0 ? 'none' : 'blur(1.5px) saturate(.8)',
+              pointerEvents: abs > 2 ? 'none' : undefined,
+            }}
+          >
+            {c.node}
+          </div>
+        );
+      })}
+      {index > 0 && (
+        <button onClick={() => onIndex(index - 1)} className="absolute left-2 z-30 p-2 rounded-full glass-panel hover:bg-foreground/10 transition-colors" aria-label="Previous">
+          <ChevronLeft className="w-5 h-5 text-foreground" />
+        </button>
+      )}
+      {index < cards.length - 1 && (
+        <button onClick={() => onIndex(index + 1)} className="absolute right-2 z-30 p-2 rounded-full glass-panel hover:bg-foreground/10 transition-colors" aria-label="Next">
+          <ChevronRight className="w-5 h-5 text-foreground" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 interface BrandOverlayProps {
   selectedBrand: string | null;
@@ -172,9 +218,19 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     [overviewKpis, certDomainLive, adminSites]
   );
 
-  // ── Spec v2 Step 3: invasione Monitoring a schermo splittato ─────────
-  // null = split ENERGY|AIR; 'energy'/'air' = vista di dominio aperta
+  // ── Spec v2 Step 3: invasione Monitoring — card compatte + card deck ──
+  // null = le due card ENERGY|AIR; 'energy'/'air' = deck di dominio aperto
   const [monDomain, setMonDomain] = useState<'energy' | 'air' | null>(null);
+  const [hoverDomain, setHoverDomain] = useState<'energy' | 'air' | null>(null);
+  const [deckIndex, setDeckIndex] = useState(0);
+
+  /** Immagine "da dietro" per le card (un edificio del perimetro), con
+      fallback sul logo del cliente. */
+  const heroImage = useMemo(() => {
+    const ids = new Set(filteredProjects.map(p => p.siteId).filter(Boolean));
+    const withImg = adminSites.find(a => ids.has(a.id) && a.imageUrl);
+    return withImg?.imageUrl || null;
+  }, [filteredProjects, adminSites]);
 
   /** Intensita' media del parco: kWh totali / m² totali, SOLO sui siti con
       area compilata e consumo nel periodo — il KPI dichiara il denominatore. */
@@ -263,6 +319,75 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     if (airLeaderboard.length < 2) return null;
     return { best: airLeaderboard[airLeaderboard.length - 1], worst: airLeaderboard[0] };
   }, [airLeaderboard]);
+
+  /** Card del deck di dominio (le stesse che l'anteprima mostra in
+      trasparenza). Step 5 aggiungera' trend, anno-su-anno e
+      consumo-vs-temperatura. */
+  const buildDeck = (domain: 'energy' | 'air') => {
+    const isEnergy = domain === 'energy';
+    const kpis = isEnergy
+      ? [
+          { v: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—', l: language === 'it' ? 'Consumo 30 giorni' : 'Consumption 30 days' },
+          { v: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—', l: energyIntensity ? (language === 'it' ? `Intensità · ${energyIntensity.sites} siti con area` : `Intensity · ${energyIntensity.sites} sites with area`) : (language === 'it' ? 'Intensità' : 'Intensity') },
+          { v: energyBestWorst ? energyBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period' },
+          { v: energyBestWorst ? energyBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention' },
+        ]
+      : [
+          { v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—', l: language === 'it' ? 'CO₂ media del parco' : 'Portfolio average CO₂' },
+          { v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—', l: language === 'it' ? 'Siti in aria salubre' : 'Sites in healthy air' },
+          { v: airBestWorst ? airBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period' },
+          { v: airBestWorst ? airBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention' },
+        ];
+    const list = isEnergy ? energyLeaderboard : airLeaderboard;
+    const max = list[0]?.value || 1;
+    return [
+      {
+        key: 'overview',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
+              {isEnergy ? (language === 'it' ? 'Energia · panoramica 30 giorni' : 'Energy · 30-day overview') : (language === 'it' ? 'Aria · panoramica 30 giorni' : 'Air · 30-day overview')}
+            </p>
+            <div className="flex-1 grid grid-cols-2 gap-3 content-center">
+              {kpis.map((k, i) => (
+                <div key={i} className="text-center p-5 rounded-xl bg-foreground/5 border border-foreground/10 min-w-0">
+                  <div className="text-xl font-bold text-foreground truncate" title={k.v}>{k.v}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground mt-1.5">{k.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'ranking',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
+              {language === 'it' ? 'Classifica dei siti' : 'Site ranking'} · {isEnergy ? 'kWh (30d)' : 'CO₂ ppm (30d)'}
+            </p>
+            <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-1.5">
+              {list.map((s, i) => (
+                <button key={s.siteId} onClick={() => onOpenSite?.(s.siteId)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-foreground/5 transition-colors text-left">
+                  <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
+                  <span className="text-xs text-foreground w-40 truncate shrink-0">{s.name}</span>
+                  <div className="flex-1 h-2 rounded-full bg-foreground/5 overflow-hidden">
+                    <div className={`h-full rounded-full ${isEnergy ? 'bg-fgb-secondary' : (s.value > CO2_THRESHOLDS.good ? 'bg-yellow-500' : 'bg-emerald-500')}`} style={{ width: `${Math.max(4, (s.value / max) * 100)}%` }} />
+                  </div>
+                  <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right shrink-0">
+                    {isEnergy ? `${(s.value / 1000).toFixed(1)} MWh` : `${s.value} ppm`}
+                  </span>
+                </button>
+              ))}
+              {list.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">{t('region.no_data_short')}</p>
+              )}
+            </div>
+          </div>
+        ),
+      },
+    ];
+  };
 
   // =====================================================================
   // Chart 3: Health Matrix data
@@ -874,93 +999,82 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             .fgb-invasion-scroll > .glass-panel{height:calc(100vh - 15.5rem);flex-shrink:0}
           `}</style>
           {monDomain !== null ? (
-            /* ══ Vista di dominio (spec v2): 4 KPI + classifica, un tema alla volta ══ */
-            <div className="pointer-events-auto h-[calc(100vh-14rem)]">
-              <div className="glass-panel rounded-2xl p-6 h-full flex flex-col overflow-hidden">
-                <div className="flex items-center gap-3 mb-4">
-                  <button onClick={() => setMonDomain(null)} className="px-3 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    ← {language === 'it' ? 'Indietro' : 'Back'}
-                  </button>
-                  {monDomain === 'energy' ? <Zap className="w-5 h-5 text-amber-500" /> : <Wind className="w-5 h-5 text-blue-400" />}
-                  <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">{monDomain === 'energy' ? 'Energy' : 'Air'} · {displayEntity.name}</h4>
-                </div>
-                {/* 4 KPI del dominio (spec: max 4, aperti su tutto lo spazio) */}
-                <div className="grid grid-cols-4 gap-2.5 mb-5">
-                  {(monDomain === 'energy' ? [
-                    { v: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—', l: language === 'it' ? 'Consumo 30 giorni' : 'Consumption 30 days', small: false },
-                    { v: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—', l: energyIntensity ? (language === 'it' ? `Intensità · ${energyIntensity.sites} siti con area` : `Intensity · ${energyIntensity.sites} sites with area`) : (language === 'it' ? 'Intensità' : 'Intensity'), small: false },
-                    { v: energyBestWorst ? energyBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period', small: true },
-                    { v: energyBestWorst ? energyBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention', small: true },
-                  ] : [
-                    { v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—', l: language === 'it' ? 'CO₂ media del parco' : 'Portfolio average CO₂', small: false },
-                    { v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—', l: language === 'it' ? 'Siti in aria salubre' : 'Sites in healthy air', small: false },
-                    { v: airBestWorst ? airBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period', small: true },
-                    { v: airBestWorst ? airBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention', small: true },
-                  ]).map((k, i) => (
-                    <div key={i} className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 min-w-0">
-                      <div className={`${k.small ? 'text-sm' : 'text-xl'} font-bold text-foreground truncate`} title={String(k.v)}>{k.v}</div>
-                      <div className="text-[10px] uppercase text-muted-foreground mt-1">{k.l}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* Un grafico alla volta: la classifica del dominio */}
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{language === 'it' ? 'Classifica dei siti' : 'Site ranking'} · {monDomain === 'energy' ? 'kWh (30d)' : 'CO₂ ppm (30d)'}</p>
-                <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-1.5">
-                  {(monDomain === 'energy' ? energyLeaderboard : airLeaderboard).map((s, i, list) => {
-                    const max = list[0]?.value || 1;
-                    return (
-                      <button key={s.siteId} onClick={() => onOpenSite?.(s.siteId)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-foreground/5 transition-colors text-left">
-                        <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
-                        <span className="text-xs text-foreground w-44 truncate shrink-0">{s.name}</span>
-                        <div className="flex-1 h-2 rounded-full bg-foreground/5 overflow-hidden">
-                          <div className={`h-full rounded-full ${monDomain === 'energy' ? 'bg-fgb-secondary' : (s.value > CO2_THRESHOLDS.good ? 'bg-yellow-500' : 'bg-emerald-500')}`} style={{ width: `${Math.max(4, (s.value / max) * 100)}%` }} />
-                        </div>
-                        <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right shrink-0">
-                          {monDomain === 'energy' ? `${(s.value / 1000).toFixed(1)} MWh` : `${s.value} ppm`}
-                        </span>
-                      </button>
-                    );
-                  })}
-                  {(monDomain === 'energy' ? energyLeaderboard : airLeaderboard).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-6">{t('region.no_data_short')}</p>
-                  )}
-                </div>
+            /* ══ Vista di dominio: card deck sfogliabile, un grafico alla volta ══ */
+            <div className="pointer-events-auto h-[calc(100vh-14rem)] flex flex-col">
+              <div className="flex items-center gap-3 mb-3">
+                <button onClick={() => { setMonDomain(null); setDeckIndex(0); }} className="px-3 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  ← {language === 'it' ? 'Indietro' : 'Back'}
+                </button>
+                {monDomain === 'energy' ? <Zap className="w-5 h-5 text-amber-500" /> : <Wind className="w-5 h-5 text-sky-400" />}
+                <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">{monDomain === 'energy' ? 'Energy' : 'Air'} · {displayEntity.name}</h4>
+                <span className="ml-auto text-[10px] text-muted-foreground uppercase tracking-widest">{deckIndex + 1} / {buildDeck(monDomain).length}</span>
+              </div>
+              <div className="flex-1 min-h-0">
+                <CardDeck cards={buildDeck(monDomain)} index={deckIndex} onIndex={setDeckIndex} />
               </div>
             </div>
           ) : (
-          <div className="pointer-events-auto h-[calc(100vh-14rem)] overflow-y-auto space-y-3 fgb-invasion-scroll">
-            {/* ══ SPLIT ENERGY | AIR (spec v2: come "Two ways in" della landing) ══ */}
-            <div className="grid grid-cols-2 gap-3" style={{ height: 'calc(100vh - 15.5rem)' }}>
-              <button onClick={() => setMonDomain('energy')} className="glass-panel rounded-2xl p-8 h-full flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-[1.02] hover:border-amber-500/30 group cursor-pointer">
-                <Zap className="w-10 h-10 text-amber-500 mb-4 transition-transform group-hover:scale-110" />
-                <h4 className="text-3xl font-bold text-foreground uppercase tracking-[0.2em]">Energy</h4>
-                <div className="mt-8 space-y-5">
-                  <div>
-                    <div className="text-3xl font-bold text-foreground tabular-nums">{totals.monthlyEnergyKwh > 0 ? (totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 }) : '—'} <span className="text-base font-normal text-muted-foreground">MWh</span></div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{language === 'it' ? 'consumo · ultimi 30 giorni' : 'consumption · last 30 days'}</div>
+          <div className="pointer-events-auto h-[calc(100vh-14rem)] flex flex-col items-center overflow-hidden">
+            {/* ══ Card compatte ENERGY | AIR (dimensioni stile Free/Custom):
+                a riposo glass; al passaggio compare l'immagine "da dietro"
+                (edificio del perimetro o logo cliente) con la tinta di
+                dominio — ambra per l'energia, azzurro per l'aria. ══ */}
+            <div className="flex gap-6 justify-center pt-1">
+              {([
+                {
+                  d: 'energy' as const,
+                  title: 'Energy',
+                  tint: 'linear-gradient(180deg, rgba(245,158,11,.55) 0%, rgba(146,64,14,.78) 100%)',
+                  k1: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—',
+                  l1: language === 'it' ? 'consumo 30 giorni' : 'consumption 30 days',
+                  k2: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—',
+                  l2: language === 'it' ? 'intensità media' : 'avg intensity',
+                },
+                {
+                  d: 'air' as const,
+                  title: 'Air',
+                  tint: 'linear-gradient(180deg, rgba(56,189,248,.5) 0%, rgba(3,105,161,.78) 100%)',
+                  k1: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—',
+                  l1: language === 'it' ? 'CO₂ media del parco' : 'portfolio avg CO₂',
+                  k2: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—',
+                  l2: language === 'it' ? 'siti in aria salubre' : 'sites in healthy air',
+                },
+              ]).map(c => (
+                <button
+                  key={c.d}
+                  onClick={() => { setMonDomain(c.d); setDeckIndex(0); }}
+                  onMouseEnter={() => setHoverDomain(c.d)}
+                  onMouseLeave={() => setHoverDomain(null)}
+                  className="relative w-[300px] h-[290px] rounded-[26px] overflow-hidden glass-panel text-center transition-all duration-300 ease-in-out hover:scale-[1.05] group"
+                >
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    {heroImage ? (
+                      <img src={heroImage} alt="" className="w-full h-full object-cover" />
+                    ) : displayEntity.logo ? (
+                      <div className="w-full h-full flex items-center justify-center bg-foreground/10">
+                        <img src={displayEntity.logo} alt="" className="max-w-[70%] max-h-[50%] object-contain opacity-80" />
+                      </div>
+                    ) : null}
+                    <div className="absolute inset-0" style={{ background: c.tint }} />
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-foreground tabular-nums">{energyIntensity ? energyIntensity.value.toFixed(1) : '—'} <span className="text-sm font-normal text-muted-foreground">kWh/m²</span></div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{energyIntensity ? (language === 'it' ? `intensità media · ${energyIntensity.sites} siti con area` : `avg intensity · ${energyIntensity.sites} sites with area`) : (language === 'it' ? 'intensità media' : 'avg intensity')}</div>
+                  <div className="relative z-10 h-full flex flex-col items-center justify-center p-6">
+                    {c.d === 'energy'
+                      ? <Zap className={`w-8 h-8 mb-3 transition-colors ${hoverDomain === 'energy' ? 'text-white' : 'text-amber-500'}`} />
+                      : <Wind className={`w-8 h-8 mb-3 transition-colors ${hoverDomain === 'air' ? 'text-white' : 'text-sky-400'}`} />}
+                    <h4 className={`text-2xl font-bold uppercase tracking-[0.18em] transition-colors ${hoverDomain === c.d ? 'text-white drop-shadow' : 'text-foreground'}`}>{c.title}</h4>
+                    <div className={`mt-5 text-xl font-bold tabular-nums transition-colors ${hoverDomain === c.d ? 'text-white drop-shadow' : 'text-foreground'}`}>{c.k1}</div>
+                    <div className={`text-[10px] uppercase tracking-wider transition-colors ${hoverDomain === c.d ? 'text-white/85' : 'text-muted-foreground'}`}>{c.l1}</div>
+                    <div className={`mt-3 text-lg font-bold tabular-nums transition-colors ${hoverDomain === c.d ? 'text-white drop-shadow' : 'text-foreground'}`}>{c.k2}</div>
+                    <div className={`text-[10px] uppercase tracking-wider transition-colors ${hoverDomain === c.d ? 'text-white/85' : 'text-muted-foreground'}`}>{c.l2}</div>
                   </div>
-                </div>
-                <span className="mt-8 text-xs text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-widest">{language === 'it' ? 'Apri la vista energia →' : 'Open the energy view →'}</span>
-              </button>
-              <button onClick={() => setMonDomain('air')} className="glass-panel rounded-2xl p-8 h-full flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-[1.02] hover:border-blue-400/30 group cursor-pointer">
-                <Wind className="w-10 h-10 text-blue-400 mb-4 transition-transform group-hover:scale-110" />
-                <h4 className="text-3xl font-bold text-foreground uppercase tracking-[0.2em]">Air</h4>
-                <div className="mt-8 space-y-5">
-                  <div>
-                    <div className="text-3xl font-bold text-foreground tabular-nums">{airHealth ? airHealth.avg : '—'} <span className="text-base font-normal text-muted-foreground">ppm</span>{airHealth && <span className={`text-lg font-semibold ${airHealth.label === 'Attention' ? 'text-yellow-500' : 'text-emerald-500'}`}> · {airHealth.label}</span>}</div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{language === 'it' ? 'CO₂ media del parco' : 'portfolio average CO₂'}</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-foreground tabular-nums">{airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—'}</div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{language === 'it' ? 'siti in aria salubre oggi' : 'sites in healthy air today'}</div>
-                  </div>
-                </div>
-                <span className="mt-8 text-xs text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-widest">{language === 'it' ? 'Apri la vista aria →' : 'Open the air view →'}</span>
-              </button>
+                </button>
+              ))}
+            </div>
+
+            {/* ══ Anteprima in trasparenza: il deck del dominio sotto il
+                cursore appare sotto le card, come vetro smerigliato ══ */}
+            <div className={`flex-1 w-full min-h-0 mt-4 transition-all duration-500 pointer-events-none ${hoverDomain ? 'opacity-40 translate-y-0' : 'opacity-0 translate-y-4'}`} aria-hidden>
+              {hoverDomain && <CardDeck cards={buildDeck(hoverDomain)} index={0} onIndex={() => {}} />}
             </div>
 
             {/* ========== Chart 1: Efficiency vs Comfort Scatter (LEGACY: spento) ========== */}
@@ -1042,7 +1156,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             )}
 
             {/* ========== Chart 2: Horizontal Leaderboards ========== */}
-            {showLeaderboards && (
+            {LEGACY_COMBINED_CHARTS && showLeaderboards && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">
@@ -1135,7 +1249,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             )}
 
             {/* ========== Chart 3: System Health Matrix ========== */}
-            {showHealthMatrix && (
+            {LEGACY_COMBINED_CHARTS && showHealthMatrix && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">
@@ -1205,7 +1319,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </div>
             )}
 
-            {/* ========== Chart 4: Store Directory ========== */}
+            {/* ========== Chart 4: Store Directory (LEGACY: spento) ========== */}
+            {LEGACY_COMBINED_CHARTS && (
             <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-5 h-5 text-muted-foreground" />
@@ -1270,6 +1385,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 </div>
               </div>
             </div>
+            )}
 
           </div>
           )}
