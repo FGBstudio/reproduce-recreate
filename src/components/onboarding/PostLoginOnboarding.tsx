@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronDown, ArrowUpRight, ArrowRight } from "lucide-react";
+import { ChevronDown, ArrowUpRight, ArrowRight, Trophy, Sparkles, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserScope } from "@/hooks/useUserScope";
+import { useAdminData } from "@/contexts/AdminDataContext";
+import { useClientPartnership } from "@/hooks/useClientPartnership";
 
 /**
  * Pagina intermedia post-login ("Welcome"): la via di mezzo.
@@ -40,6 +43,29 @@ const RECORDS: { title: string; detail: string }[] = [
   { title: "First Italian in food & beverage", detail: "WELL Health & Safety Rating — Lavazza Group, Italy" },
 ];
 
+/* News dal mondo FGB: hardcodate per scelta del proprietario (si aggiornano
+   a ogni release; la tabella DB e' l'evoluzione futura). 3 card, non di piu'. */
+const NEWS = [
+  {
+    img: "/landing/profile/laptop.webp",
+    tag: "Platform",
+    title: "FGB Monitoring System is live",
+    line: "Energy and indoor air quality in real time, on every device — launched in 2026.",
+  },
+  {
+    img: "/landing/clair.webp",
+    tag: "Hardware · Air",
+    title: "Clair, indoor air under control",
+    line: "Wellness boost and healthy workplaces, measured where people actually work.",
+  },
+  {
+    img: "/landing/greeny.webp",
+    tag: "Hardware · Energy",
+    title: "Greeny, efficiency at the socket",
+    line: "Find inefficiency and control your portfolio, kilowatt by kilowatt.",
+  },
+];
+
 const IDENTITY_CIRCLES = [
   { src: "/landing/profile/circle-climate.webp", label: "Combating climate change" },
   { src: "/landing/profile/circle-sustain.webp", label: "Promoting sustainability" },
@@ -71,6 +97,23 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
     (user as any)?.user_metadata?.full_name?.split(" ")?.[0] ||
     user?.email?.split("@")?.[0] ||
     "there";
+
+  /* Rapporto «FGB x cliente»: nome del cliente dalla gerarchia dell'utente,
+     numeri dal perimetro (RLS). Per lo staff FGB il perimetro e' il mondo. */
+  const { brandId, holdingId, clientRole } = useUserScope();
+  const { brands, holdings, sites } = useAdminData();
+  const isStaff = clientRole === "ADMIN_FGB" || clientRole === "USER_FGB";
+  const clientName =
+    (brandId && brands.find((b) => b.id === brandId)?.name) ||
+    (holdingId && holdings.find((h) => h.id === holdingId)?.name) ||
+    (isStaff ? "FGB World" : null);
+  const { data: partnership } = useClientPartnership(clientName);
+  const awardSiteName = partnership?.lastAward
+    ? sites.find((s) => s.id === partnership.lastAward!.siteId)?.name || null
+    : null;
+  const awardDate = partnership?.lastAward?.date
+    ? new Date(partnership.lastAward.date).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : null;
 
   useEffect(() => {
     const sc = scroller.current!;
@@ -539,6 +582,96 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
           </div>
         </div>
       </section>
+
+      {/* ══ 5b. NEWS DAL MONDO FGB ══ */}
+      <section className="px-6 py-24" style={{ background: "#ffffff" }}>
+        <div className="max-w-[1080px] mx-auto">
+          <div className="fgbw-reveal">
+            <Eyebrow>News from FGB</Eyebrow>
+            <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(24px,3vw,38px)", marginTop: 14 }}>
+              What's new in our world
+            </h2>
+          </div>
+          <div className="grid gap-7 md:grid-cols-3" style={{ marginTop: 36 }}>
+            {NEWS.map((n, i) => (
+              <article
+                key={n.title}
+                className="fgbw-reveal rounded-3xl overflow-hidden"
+                style={{ background: PAPER, border: "1px solid #e4e7e4", transitionDelay: `${i * 0.1}s` }}
+              >
+                <div className="flex items-center justify-center" style={{ height: 170, background: "#fff" }}>
+                  <img src={n.img} alt="" loading="lazy" style={{ maxHeight: 150, maxWidth: "82%", objectFit: "contain" }} />
+                </div>
+                <div style={{ padding: "18px 22px 24px" }}>
+                  <div className="uppercase font-semibold" style={{ fontSize: 10, letterSpacing: "0.22em", color: TEAL }}>{n.tag}</div>
+                  <div className="font-semibold" style={{ fontSize: 17, marginTop: 6, lineHeight: 1.3 }}>{n.title}</div>
+                  <p style={{ fontSize: 13.5, color: SUB, marginTop: 6, lineHeight: 1.55 }}>{n.line}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 5c. IL RAPPORTO «FGB × CLIENTE» — parla di LORO, numeri reali ══ */}
+      {partnership && partnership.projects > 0 && clientName && (
+        <section className="px-6 py-24" style={{ background: "#0f2a2e", color: "#dfe5e3" }}>
+          <div className="max-w-[1080px] mx-auto">
+            <div className="fgbw-reveal">
+              <Eyebrow light>Our journey together</Eyebrow>
+              <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(26px,3.4vw,44px)", marginTop: 14, color: "#fff" }}>
+                FGB, your partner for <span style={{ color: "#7ad8d2" }}>{partnership.projects} projects</span>
+              </h2>
+              <p style={{ fontSize: 13, color: "#8fa3a0", marginTop: 8, letterSpacing: "0.06em" }}>
+                {clientName.toUpperCase()}
+                {partnership.sinceYear ? ` · together since ${partnership.sinceYear}` : ""}
+                {partnership.achieved > 0 ? ` · ${partnership.achieved} certifications achieved` : ""}
+              </p>
+            </div>
+            {/* striscia orizzontale stile wrapped */}
+            <div
+              className="fgbw-reveal flex"
+              style={{ gap: 16, marginTop: 34, overflowX: "auto", paddingBottom: 8, scrollSnapType: "x proximity" }}
+            >
+              {partnership.lastAward && (
+                <div className="rounded-2xl shrink-0" style={{ background: "#16363a", border: "1px solid #24494d", padding: "20px 24px", minWidth: 260, scrollSnapAlign: "start" }}>
+                  <div className="flex items-center gap-2" style={{ fontSize: 12, color: "#e8c96a" }}>
+                    <Trophy className="w-4 h-4" /> Latest achievement
+                  </div>
+                  <div className="font-semibold" style={{ fontSize: 16, marginTop: 8, color: "#fff" }}>
+                    {partnership.lastAward.certType}
+                    {partnership.lastAward.level ? ` ${partnership.lastAward.level}` : ""}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#9fb4b1", marginTop: 3 }}>
+                    {awardSiteName || "—"}{awardDate ? ` · ${awardDate}` : ""}
+                  </div>
+                </div>
+              )}
+              {partnership.record && (
+                <div className="rounded-2xl shrink-0" style={{ background: "#16363a", border: "1px solid #24494d", padding: "20px 24px", minWidth: 260, scrollSnapAlign: "start" }}>
+                  <div className="flex items-center gap-2" style={{ fontSize: 12, color: "#9fe3e0" }}>
+                    <Sparkles className="w-4 h-4" /> World record
+                  </div>
+                  <div className="font-semibold" style={{ fontSize: 16, marginTop: 8, color: "#fff", maxWidth: 300 }}>
+                    {partnership.record}
+                  </div>
+                </div>
+              )}
+              {partnership.inProgress > 0 && (
+                <div className="rounded-2xl shrink-0" style={{ background: "#16363a", border: "1px solid #24494d", padding: "20px 24px", minWidth: 260, scrollSnapAlign: "start" }}>
+                  <div className="flex items-center gap-2" style={{ fontSize: 12, color: "#9fe3e0" }}>
+                    <TrendingUp className="w-4 h-4" /> In progress
+                  </div>
+                  <div className="font-semibold" style={{ fontSize: 16, marginTop: 8, color: "#fff" }}>
+                    {partnership.inProgress} certification{partnership.inProgress === 1 ? "" : "s"} advancing
+                  </div>
+                  <div style={{ fontSize: 13, color: "#9fb4b1", marginTop: 3 }}>across your portfolio</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ══ 6. JOIN FGB WORLD ══ */}
       <section

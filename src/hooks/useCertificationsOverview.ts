@@ -154,6 +154,9 @@ function classify(status: string | null): CertState | null {
   return null; // canceled
 }
 
+/** Classificazione stato condivisa (usata anche dal rapporto FGB x cliente). */
+export const classifyCertState = classify;
+
 function levelRank(scheme: string, level: string | null): number {
   const order = LEVEL_ORDER[scheme];
   if (!order || !level) return 999;
