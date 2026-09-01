@@ -182,7 +182,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     let kwh = 0, m2 = 0, n = 0;
     for (const s of sitesWithEnergy) {
       const site = adminSites.find(a => a.id === s.siteId);
-      const area = (site as any)?.area_m2 ?? (site as any)?.areaSqm;
+      const area = site?.area_m2 ?? site?.areaSqm;
       const v = s.energy.monthlyKwh ?? 0;
       if (area && area > 0 && v > 0) { kwh += v; m2 += area; n++; }
     }
