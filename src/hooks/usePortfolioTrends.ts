@@ -1,0 +1,209 @@
+/**
+ * Trend di PORTAFOGLIO per i card deck di dominio (spec v2 Step 5).
+ *
+ * Energia: energy_daily del perimetro (24 mesi) con la stessa precedenza
+ * dei contatori usata ovunque — se il sito ha contatori 'general' contano
+ * solo quelli, altrimenti la somma dei sottocarichi. Produce il trend a 12
+ * mesi e il confronto anno-su-anno; la temperatura media mensile arriva
+ * dalla RPC get_portfolio_weather_monthly (solo aggregati).
+ *
+ * Aria: telemetry_daily (iaq.co2, 12 mesi) per il trend; telemetry_hourly
+ * (30 giorni) per composizione delle ore e heatmap ora x giorno.
+ *
+ * Tutto reale: serie vuote dove non ci sono dati, mai numeri inventati.
+ */
+import { useQuery } from '@tanstack/react-query';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { CO2_THRESHOLDS } from '@/lib/airQuality';
+
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const monthKey = (d: string) => d.slice(0, 7); // 'YYYY-MM'
+
+async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  const PAGE = 10000;
+  const out: T[] = [];
+  for (let from = 0; from < 300000; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    out.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return out;
+}
+
+export interface EnergyTrends {
+  monthly12: { month: string; label: string; kwh: number; temp: number | null }[];
+  yoy: { label: string; [year: string]: number | string | null }[];
+  years: string[];
+}
+
+export function usePortfolioEnergyTrend(siteIds: string[], enabled: boolean) {
+  const key = [...siteIds].sort().join(',');
+  return useQuery<EnergyTrends | null>({
+    queryKey: ['portfolio-energy-trend', key],
+    queryFn: async () => {
+      if (!supabase || siteIds.length === 0) return null;
+      const since = new Date();
+      since.setMonth(since.getMonth() - 24);
+      const sinceIso = since.toISOString().slice(0, 10);
+
+      // Categorie device per la precedenza general
+      const devices = await fetchAll<{ id: string; site_id: string; category: string | null }>((a, b) =>
+        supabase!.from('devices').select('id, site_id, category').in('site_id', siteIds).range(a, b),
+      );
+      const generalBySite = new Map<string, Set<string>>();
+      for (const d of devices) {
+        if (d.category === 'general') {
+          if (!generalBySite.has(d.site_id)) generalBySite.set(d.site_id, new Set());
+          generalBySite.get(d.site_id)!.add(d.id);
+        }
+      }
+
+      const rows = await fetchAll<{ site_id: string; device_id: string; ts_day: string; value_sum: number | null }>((a, b) =>
+        supabase!
+          .from('energy_daily')
+          .select('site_id, device_id, ts_day, value_sum')
+          .eq('metric', 'energy.active_energy')
+          .gte('ts_day', sinceIso)
+          .in('site_id', siteIds)
+          .range(a, b),
+      );
+
+      // kWh per mese, con precedenza general per sito
+      const byMonth = new Map<string, number>();
+      for (const r of rows) {
+        const gen = generalBySite.get(r.site_id);
+        if (gen && gen.size > 0 && !gen.has(r.device_id)) continue; // solo general dove esiste
+        const v = Number(r.value_sum || 0);
+        if (v <= 0) continue;
+        const k = monthKey(r.ts_day);
+        byMonth.set(k, (byMonth.get(k) || 0) + v);
+      }
+      if (byMonth.size === 0) return { monthly12: [], yoy: [], years: [] };
+
+      // Temperatura media mensile del perimetro (RPC, solo aggregati)
+      const tempByMonth = new Map<string, number>();
+      try {
+        const { data: wx } = await (supabase!.rpc as CallableFunction)('get_portfolio_weather_monthly', {
+          p_site_ids: siteIds,
+          p_months: 13,
+        });
+        (wx || []).forEach((w: { bucket: string; avg_temp: number }) => tempByMonth.set(w.bucket, Number(w.avg_temp)));
+      } catch { /* meteo assente: la linea semplicemente non appare */ }
+
+      const now = new Date();
+      const monthly12: EnergyTrends['monthly12'] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthly12.push({
+          month: k,
+          label: MONTH_LABELS[d.getMonth()],
+          kwh: Math.round(byMonth.get(k) || 0),
+          temp: tempByMonth.has(k) ? tempByMonth.get(k)! : null,
+        });
+      }
+
+      // Anno su anno: anno corrente vs precedente, mese per mese
+      const currY = String(now.getFullYear());
+      const prevY = String(now.getFullYear() - 1);
+      const yoy: EnergyTrends['yoy'] = MONTH_LABELS.map((label, mi) => {
+        const kCurr = `${currY}-${String(mi + 1).padStart(2, '0')}`;
+        const kPrev = `${prevY}-${String(mi + 1).padStart(2, '0')}`;
+        return {
+          label,
+          [prevY]: byMonth.has(kPrev) ? Math.round(byMonth.get(kPrev)!) : null,
+          [currY]: byMonth.has(kCurr) ? Math.round(byMonth.get(kCurr)!) : null,
+        };
+      });
+      return { monthly12, yoy, years: [prevY, currY] };
+    },
+    enabled: isSupabaseConfigured && enabled && siteIds.length > 0,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export interface AirTrends {
+  monthly12: { month: string; label: string; co2: number | null }[];
+  /** Composizione delle ore (30gg) per sito: % in aria buona/attenzione/critica */
+  composition: { siteId: string; good: number; warn: number; crit: number; hours: number }[];
+  /** Heatmap ora x giorno (30gg): media CO2 aggregata del perimetro */
+  heatmap: (number | null)[][]; // [7 giorni Lun..Dom][24 ore]
+}
+
+export function usePortfolioAirTrend(siteIds: string[], enabled: boolean) {
+  const key = [...siteIds].sort().join(',');
+  return useQuery<AirTrends | null>({
+    queryKey: ['portfolio-air-trend', key],
+    queryFn: async () => {
+      if (!supabase || siteIds.length === 0) return null;
+      const since12m = new Date();
+      since12m.setMonth(since12m.getMonth() - 12);
+      const daily = await fetchAll<{ site_id: string; ts_day: string; value_avg: number | null }>((a, b) =>
+        supabase!
+          .from('telemetry_daily')
+          .select('site_id, ts_day, value_avg')
+          .eq('metric', 'iaq.co2')
+          .gte('ts_day', since12m.toISOString().slice(0, 10))
+          .in('site_id', siteIds)
+          .range(a, b),
+      );
+      const sums = new Map<string, { s: number; n: number }>();
+      for (const r of daily) {
+        const v = Number(r.value_avg || 0);
+        if (v <= 0) continue;
+        const k = monthKey(r.ts_day);
+        const e = sums.get(k) || { s: 0, n: 0 };
+        e.s += v; e.n++;
+        sums.set(k, e);
+      }
+      const now = new Date();
+      const monthly12: AirTrends['monthly12'] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const e = sums.get(k);
+        monthly12.push({ month: k, label: MONTH_LABELS[d.getMonth()], co2: e ? Math.round(e.s / e.n) : null });
+      }
+
+      // Orario, ultimi 30 giorni: composizione ore + heatmap
+      const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+      const hourly = await fetchAll<{ site_id: string; ts_hour: string; value_avg: number | null }>((a, b) =>
+        supabase!
+          .from('telemetry_hourly')
+          .select('site_id, ts_hour, value_avg')
+          .eq('metric', 'iaq.co2')
+          .gte('ts_hour', since30)
+          .in('site_id', siteIds)
+          .range(a, b),
+      );
+      const comp = new Map<string, { good: number; warn: number; crit: number }>();
+      const grid: { s: number; n: number }[][] = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ s: 0, n: 0 })));
+      for (const r of hourly) {
+        const v = Number(r.value_avg || 0);
+        if (v <= 0) continue;
+        const e = comp.get(r.site_id) || { good: 0, warn: 0, crit: 0 };
+        if (v <= CO2_THRESHOLDS.good) e.good++;
+        else if (v <= CO2_THRESHOLDS.moderate) e.warn++;
+        else e.crit++;
+        comp.set(r.site_id, e);
+        const d = new Date(r.ts_hour);
+        const day = (d.getDay() + 6) % 7; // Lun=0 .. Dom=6
+        const cell = grid[day][d.getHours()];
+        cell.s += v; cell.n++;
+      }
+      const composition = [...comp.entries()]
+        .map(([siteId, e]) => {
+          const hours = e.good + e.warn + e.crit;
+          return { siteId, hours, good: e.good / hours, warn: e.warn / hours, crit: e.crit / hours };
+        })
+        .sort((a, b) => b.crit - a.crit || b.warn - a.warn);
+      const heatmap = grid.map(row => row.map(c => (c.n > 0 ? Math.round(c.s / c.n) : null)));
+      return { monthly12, composition, heatmap };
+    },
+    enabled: isSupabaseConfigured && enabled && siteIds.length > 0,
+    staleTime: 10 * 60 * 1000,
+  });
+}

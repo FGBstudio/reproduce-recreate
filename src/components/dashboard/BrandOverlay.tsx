@@ -8,8 +8,10 @@ import { CERTIFICATIONS_OVERVIEW } from "@/lib/features";
 import CertificationsOverview from "./CertificationsOverview";
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
-  Cell, ReferenceLine, BarChart, Bar, Legend
+  Cell, ReferenceLine, BarChart, Bar, Legend,
+  AreaChart, Area, ComposedChart, Line
 } from "recharts";
+import { usePortfolioEnergyTrend, usePortfolioAirTrend } from "@/hooks/usePortfolioTrends";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind} from "lucide-react";
 import { Sparkles } from "lucide-react";
@@ -188,6 +190,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   );
   const { data: overviewKpis } = useClientOverviewKpis(perimeterSiteIds);
 
+  // Trend di portafoglio per i card deck (attivi solo a invasione aperta)
+  const trendsOn = visible && isDesktopVisible && !certView;
+  const { data: energyTrends } = usePortfolioEnergyTrend(perimeterSiteIds, trendsOn);
+  const { data: airTrends } = usePortfolioAirTrend(perimeterSiteIds, trendsOn);
+
   /** Incrocia i punti di monitoraggio (contratti/flag) con i device reali:
       installed = device censiti; pipeline = punto previsto senza device. */
   const buildDomainStats = (pointIds: string[], domain: 'energy' | 'air') => {
@@ -321,33 +328,73 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   }, [airLeaderboard]);
 
   /** Card del deck di dominio (le stesse che l'anteprima mostra in
-      trasparenza). Step 5 aggiungera' trend, anno-su-anno e
-      consumo-vs-temperatura. */
+      trasparenza): panoramica + i 4 grafici di comparazione della spec,
+      nell'ordine di apparizione concordato. Stile FGB: teal #009193,
+      acqua #9fd5d9, ambra solo per la temperatura, rosso solo problemi. */
+  const chartTooltipStyle = {
+    background: 'hsl(var(--popover) / 0.95)',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: 12,
+    fontSize: 12,
+  } as const;
+  const axisTick = { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } as const;
+
   const buildDeck = (domain: 'energy' | 'air') => {
     const isEnergy = domain === 'energy';
+    const it = language === 'it';
     const kpis = isEnergy
       ? [
-          { v: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—', l: language === 'it' ? 'Consumo 30 giorni' : 'Consumption 30 days' },
-          { v: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—', l: energyIntensity ? (language === 'it' ? `Intensità · ${energyIntensity.sites} siti con area` : `Intensity · ${energyIntensity.sites} sites with area`) : (language === 'it' ? 'Intensità' : 'Intensity') },
-          { v: energyBestWorst ? energyBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period' },
-          { v: energyBestWorst ? energyBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention' },
+          { v: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—', l: it ? 'Consumo 30 giorni' : 'Consumption 30 days' },
+          { v: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—', l: energyIntensity ? (it ? `Intensità · ${energyIntensity.sites} siti con area` : `Intensity · ${energyIntensity.sites} sites with area`) : (it ? 'Intensità' : 'Intensity') },
+          { v: energyBestWorst ? energyBestWorst.best.name : '—', l: it ? 'Migliore del periodo' : 'Best of the period' },
+          { v: energyBestWorst ? energyBestWorst.worst.name : '—', l: it ? 'Da attenzionare' : 'Needs attention' },
         ]
       : [
-          { v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—', l: language === 'it' ? 'CO₂ media del parco' : 'Portfolio average CO₂' },
-          { v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—', l: language === 'it' ? 'Siti in aria salubre' : 'Sites in healthy air' },
-          { v: airBestWorst ? airBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period' },
-          { v: airBestWorst ? airBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention' },
+          { v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—', l: it ? 'CO₂ media del parco' : 'Portfolio average CO₂' },
+          { v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—', l: it ? 'Siti in aria salubre' : 'Sites in healthy air' },
+          { v: airBestWorst ? airBestWorst.best.name : '—', l: it ? 'Migliore del periodo' : 'Best of the period' },
+          { v: airBestWorst ? airBestWorst.worst.name : '—', l: it ? 'Da attenzionare' : 'Needs attention' },
         ];
-    const list = isEnergy ? energyLeaderboard : airLeaderboard;
-    const max = list[0]?.value || 1;
-    return [
+
+    /* Classifica: energia in kWh/m² dove le aree esistono (fallback kWh
+       assoluti dichiarato), aria in CO₂ coi colori qualitativi */
+    const intensityList = isEnergy
+      ? sitesWithEnergy
+          .map(s => {
+            const site = adminSites.find(a => a.id === s.siteId);
+            const area = site?.area_m2 ?? site?.areaSqm;
+            const kwh = s.energy.monthlyKwh ?? 0;
+            return area && area > 0 && kwh > 0 ? { siteId: s.siteId, name: s.siteName, value: kwh / area } : null;
+          })
+          .filter((x): x is { siteId: string; name: string; value: number } => !!x)
+          .sort((a, b) => b.value - a.value)
+      : [];
+    const useIntensity = isEnergy && intensityList.length >= 2;
+    const rankList = isEnergy ? (useIntensity ? intensityList : energyLeaderboard) : airLeaderboard;
+    const rankMax = rankList[0]?.value || 1;
+    const rankUnit = isEnergy ? (useIntensity ? 'kWh/m²' : 'MWh') : 'ppm';
+    const fmtRank = (v: number) => (isEnergy ? (useIntensity ? v.toFixed(1) : (v / 1000).toFixed(1)) : String(Math.round(v)));
+
+    const emptyCard = (msg: string) => (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">{msg}</p>
+      </div>
+    );
+    const noData = it ? 'Ancora nessun dato per questo grafico' : 'No data yet for this chart';
+
+    const header = (eyebrow: string, sub: string) => (
+      <div className="mb-3">
+        <p className="text-[10px] font-semibold text-fgb-accent uppercase tracking-[0.22em]">{eyebrow}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{sub}</p>
+      </div>
+    );
+
+    const cards: { key: string; node: ReactNode }[] = [
       {
         key: 'overview',
         node: (
           <div className="h-full flex flex-col p-6">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-              {isEnergy ? (language === 'it' ? 'Energia · panoramica 30 giorni' : 'Energy · 30-day overview') : (language === 'it' ? 'Aria · panoramica 30 giorni' : 'Air · 30-day overview')}
-            </p>
+            {header(isEnergy ? 'Energy · overview' : 'Air · overview', it ? 'Il parco in quattro numeri · 30 giorni' : 'Your portfolio in four numbers · 30 days')}
             <div className="flex-1 grid grid-cols-2 gap-3 content-center">
               {kpis.map((k, i) => (
                 <div key={i} className="text-center p-5 rounded-xl bg-foreground/5 border border-foreground/10 min-w-0">
@@ -363,30 +410,226 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'ranking',
         node: (
           <div className="h-full flex flex-col p-6">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-              {language === 'it' ? 'Classifica dei siti' : 'Site ranking'} · {isEnergy ? 'kWh (30d)' : 'CO₂ ppm (30d)'}
-            </p>
+            {header(it ? 'Classifica dei siti' : 'Site ranking', isEnergy
+              ? (useIntensity ? `kWh/m² · 30d · ${intensityList.length} ${it ? 'siti con area' : 'sites with area'}` : `kWh · 30d (${it ? 'aree non compilate' : 'areas not set'})`)
+              : 'CO₂ ppm · 30d')}
             <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-1.5">
-              {list.map((s, i) => (
+              {rankList.map((s, i) => (
                 <button key={s.siteId} onClick={() => onOpenSite?.(s.siteId)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-foreground/5 transition-colors text-left">
                   <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
                   <span className="text-xs text-foreground w-40 truncate shrink-0">{s.name}</span>
-                  <div className="flex-1 h-2 rounded-full bg-foreground/5 overflow-hidden">
-                    <div className={`h-full rounded-full ${isEnergy ? 'bg-fgb-secondary' : (s.value > CO2_THRESHOLDS.good ? 'bg-yellow-500' : 'bg-emerald-500')}`} style={{ width: `${Math.max(4, (s.value / max) * 100)}%` }} />
+                  <div className="flex-1 h-2.5 rounded-full bg-foreground/5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.max(4, (s.value / rankMax) * 100)}%`,
+                        background: isEnergy
+                          ? 'linear-gradient(90deg, #9fd5d9, #009193)'
+                          : (s.value > CO2_THRESHOLDS.moderate ? '#ef4444' : s.value > CO2_THRESHOLDS.good ? '#eab308' : '#10b981'),
+                      }}
+                    />
                   </div>
-                  <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right shrink-0">
-                    {isEnergy ? `${(s.value / 1000).toFixed(1)} MWh` : `${s.value} ppm`}
-                  </span>
+                  <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right shrink-0">{fmtRank(s.value)} <span className="text-muted-foreground font-normal">{rankUnit}</span></span>
                 </button>
               ))}
-              {list.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">{t('region.no_data_short')}</p>
-              )}
+              {rankList.length === 0 && emptyCard(noData)}
             </div>
           </div>
         ),
       },
     ];
+
+    if (isEnergy) {
+      const trend = energyTrends?.monthly12 ?? [];
+      const hasTrend = trend.some(m => m.kwh > 0);
+      cards.push({
+        key: 'trend',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            {header(it ? 'Trend del parco' : 'Portfolio trend', it ? 'Consumo aggregato · ultimi 12 mesi' : 'Aggregated consumption · last 12 months')}
+            <div className="flex-1 min-h-0">
+              {hasTrend ? (
+                <ZoomableChart width="100%" height="100%">
+                  <AreaChart data={trend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="fgbTrendFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#009193" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#009193" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="hsl(var(--border) / 0.35)" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
+                    <YAxis axisLine={false} tickLine={false} tick={axisTick} width={44} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)} MWh`} />
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${(v / 1000).toFixed(1)} MWh`, it ? 'Consumo' : 'Consumption']} />
+                    <Area type="monotone" dataKey="kwh" stroke="#009193" strokeWidth={2.5} fill="url(#fgbTrendFill)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                  </AreaChart>
+                </ZoomableChart>
+              ) : emptyCard(noData)}
+            </div>
+          </div>
+        ),
+      });
+      const yoy = energyTrends?.yoy ?? [];
+      const years = energyTrends?.years ?? [];
+      const hasYoy = yoy.some(r => years.some(y => (r[y] as number | null) != null));
+      cards.push({
+        key: 'yoy',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            {header(it ? 'Anno su anno' : 'Year over year', it ? 'Consumo mensile a confronto' : 'Monthly consumption compared')}
+            <div className="flex-1 min-h-0">
+              {hasYoy ? (
+                <ZoomableChart width="100%" height="100%">
+                  <BarChart data={yoy} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} barGap={2}>
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="hsl(var(--border) / 0.35)" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
+                    <YAxis axisLine={false} tickLine={false} tick={axisTick} width={44} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)} MWh`} />
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => `${(v / 1000).toFixed(1)} MWh`} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                    {years[0] && <Bar dataKey={years[0]} fill="#9fd5d9" radius={[4, 4, 0, 0]} />}
+                    {years[1] && <Bar dataKey={years[1]} fill="#009193" radius={[4, 4, 0, 0]} />}
+                  </BarChart>
+                </ZoomableChart>
+              ) : emptyCard(noData)}
+            </div>
+          </div>
+        ),
+      });
+      const hasTemp = trend.some(m => m.temp != null);
+      cards.push({
+        key: 'temp',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            {header(it ? 'Consumo e temperatura' : 'Consumption vs temperature', it ? 'kWh del parco e temperatura esterna media · 12 mesi' : 'Portfolio kWh and average outdoor temperature · 12 months')}
+            <div className="flex-1 min-h-0">
+              {hasTrend ? (
+                <ZoomableChart width="100%" height="100%">
+                  <ComposedChart data={trend} margin={{ top: 8, right: 6, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="hsl(var(--border) / 0.35)" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
+                    <YAxis yAxisId="kwh" axisLine={false} tickLine={false} tick={axisTick} width={44} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)} MWh`} />
+                    <YAxis yAxisId="temp" orientation="right" axisLine={false} tickLine={false} width={34} tick={{ ...axisTick, fill: '#f59e0b' }} tickFormatter={(v: number) => `${v}°`} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                    <Bar yAxisId="kwh" dataKey="kwh" name="kWh" fill="#009193" radius={[4, 4, 0, 0]} fillOpacity={0.85} />
+                    {hasTemp && <Line yAxisId="temp" type="monotone" dataKey="temp" name="°C" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2.5, strokeWidth: 0 }} connectNulls />}
+                  </ComposedChart>
+                </ZoomableChart>
+              ) : emptyCard(noData)}
+            </div>
+          </div>
+        ),
+      });
+    } else {
+      const aTrend = airTrends?.monthly12 ?? [];
+      const hasATrend = aTrend.some(m => m.co2 != null);
+      cards.push({
+        key: 'air-trend',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            {header(it ? 'Trend del parco' : 'Portfolio trend', it ? 'CO₂ media · ultimi 12 mesi' : 'Average CO₂ · last 12 months')}
+            <div className="flex-1 min-h-0">
+              {hasATrend ? (
+                <ZoomableChart width="100%" height="100%">
+                  <AreaChart data={aTrend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="fgbAirFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="hsl(var(--border) / 0.35)" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
+                    <YAxis axisLine={false} tickLine={false} tick={axisTick} width={44} tickFormatter={(v: number) => `${v} ppm`} />
+                    <ReferenceLine y={CO2_THRESHOLDS.good} stroke="#eab308" strokeDasharray="4 4" strokeOpacity={0.6} />
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${v} ppm`, 'CO₂']} />
+                    <Area type="monotone" dataKey="co2" stroke="#38bdf8" strokeWidth={2.5} fill="url(#fgbAirFill)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} connectNulls />
+                  </AreaChart>
+                </ZoomableChart>
+              ) : emptyCard(noData)}
+            </div>
+          </div>
+        ),
+      });
+      const comp = airTrends?.composition ?? [];
+      cards.push({
+        key: 'air-hours',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            {header(it ? 'Composizione delle ore' : 'Hour composition', it ? 'Ore in aria buona / attenzione / critica · 30 giorni' : 'Hours in good / warning / critical air · 30 days')}
+            {comp.length > 0 ? (
+              <>
+                <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-2">
+                  {comp.map(c => {
+                    const nm = adminSites.find(a => a.id === c.siteId)?.name || c.siteId;
+                    return (
+                      <div key={c.siteId} className="flex items-center gap-2">
+                        <span className="text-xs text-foreground w-40 truncate shrink-0">{nm}</span>
+                        <div className="flex-1 h-3.5 rounded-full overflow-hidden flex bg-foreground/5">
+                          <div style={{ width: `${c.good * 100}%` }} className="bg-emerald-500/85" />
+                          <div style={{ width: `${c.warn * 100}%` }} className="bg-yellow-500/85" />
+                          <div style={{ width: `${c.crit * 100}%` }} className="bg-red-500/85" />
+                        </div>
+                        <span className="text-[10px] font-semibold text-emerald-500 tabular-nums w-10 text-right shrink-0">{Math.round(c.good * 100)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-4 mt-3 justify-center">
+                  {[
+                    { c: 'bg-emerald-500', l: it ? 'Buona' : 'Good' },
+                    { c: 'bg-yellow-500', l: it ? 'Attenzione' : 'Warning' },
+                    { c: 'bg-red-500', l: it ? 'Critica' : 'Critical' },
+                  ].map(x => (
+                    <span key={x.l} className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className={`w-2 h-2 rounded-full ${x.c}`} />{x.l}</span>
+                  ))}
+                </div>
+              </>
+            ) : emptyCard(noData)}
+          </div>
+        ),
+      });
+      const hm = airTrends?.heatmap ?? [];
+      const hasHm = hm.some(row => row.some(v => v != null));
+      const dayLabels = it ? ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const hmColor = (v: number | null) => {
+        if (v == null) return 'hsl(var(--foreground) / 0.05)';
+        if (v <= CO2_THRESHOLDS.excellent) return '#10b981cc';
+        if (v <= CO2_THRESHOLDS.good) return '#eab308cc';
+        if (v <= CO2_THRESHOLDS.moderate) return '#f97316cc';
+        return '#ef4444cc';
+      };
+      cards.push({
+        key: 'air-heatmap',
+        node: (
+          <div className="h-full flex flex-col p-6">
+            {header(it ? 'Orari critici' : 'Critical hours', it ? 'CO₂ media per ora e giorno · 30 giorni · tutto il parco' : 'Average CO₂ by hour and day · 30 days · whole portfolio')}
+            {hasHm ? (
+              <div className="flex-1 min-h-0 flex flex-col justify-center gap-1">
+                {hm.map((row, di) => (
+                  <div key={di} className="flex items-center gap-1">
+                    <span className="text-[9px] text-muted-foreground w-8 shrink-0">{dayLabels[di]}</span>
+                    <div className="flex-1 grid grid-cols-24 gap-[2px]" style={{ gridTemplateColumns: 'repeat(24, 1fr)' }}>
+                      {row.map((v, hi) => (
+                        <div key={hi} className="h-5 rounded-[3px]" style={{ background: hmColor(v) }} title={v != null ? `${dayLabels[di]} ${hi}:00 · ${v} ppm` : `${dayLabels[di]} ${hi}:00`} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="w-8 shrink-0" />
+                  <div className="flex-1 grid" style={{ gridTemplateColumns: 'repeat(24, 1fr)' }}>
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <span key={h} className="text-[8px] text-muted-foreground text-center">{h % 3 === 0 ? h : ''}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : emptyCard(noData)}
+          </div>
+        ),
+      });
+    }
+    return cards;
   };
 
   // =====================================================================
@@ -1045,7 +1288,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   onClick={() => { setMonDomain(c.d); setDeckIndex(0); }}
                   onMouseEnter={() => setHoverDomain(c.d)}
                   onMouseLeave={() => setHoverDomain(null)}
-                  className="relative w-[300px] h-[290px] rounded-[26px] overflow-hidden glass-panel text-center transition-all duration-300 ease-in-out hover:scale-[1.05] group"
+                  className="relative w-[340px] h-[330px] rounded-[26px] overflow-hidden glass-panel text-center transition-all duration-300 ease-in-out hover:scale-[1.05] group"
                 >
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     {heroImage ? (
@@ -1073,7 +1316,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
             {/* ══ Anteprima in trasparenza: il deck del dominio sotto il
                 cursore appare sotto le card, come vetro smerigliato ══ */}
-            <div className={`flex-1 w-full min-h-0 mt-4 transition-all duration-500 pointer-events-none ${hoverDomain ? 'opacity-40 translate-y-0' : 'opacity-0 translate-y-4'}`} aria-hidden>
+            <div className={`flex-1 w-full min-h-0 mt-4 transition-all duration-500 pointer-events-none ${hoverDomain ? 'opacity-65 translate-y-0' : 'opacity-0 translate-y-4'}`} aria-hidden>
               {hoverDomain && <CardDeck cards={buildDeck(hoverDomain)} index={0} onIndex={() => {}} />}
             </div>
 
