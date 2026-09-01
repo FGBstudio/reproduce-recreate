@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
 import { useAggregatedSiteData, type SiteState } from "@/hooks/useAggregatedSiteData";
+import { useClientOverviewKpis } from "@/hooks/useClientOverviewKpis";
+import { useUserScope } from "@/hooks/useUserScope";
 import { CO2_THRESHOLDS } from "@/lib/airQuality";
 import { CERTIFICATIONS_OVERVIEW } from "@/lib/features";
 import CertificationsOverview from "./CertificationsOverview";
@@ -45,6 +47,10 @@ const DIR_STATE_META: Record<SiteState | 'all', { label: { en: string; it: strin
   },
 };
 
+/* Vecchia griglia KPI (Sites Online / MWh / CO2 / Alerts): spenta dalla
+   spec v2 del 27.08, conservata per reversibilita' immediata. */
+const LEGACY_CLIENT_KPIS = false;
+
 interface BrandOverlayProps {
   selectedBrand: string | null;
   selectedHolding: string | null;
@@ -58,15 +64,19 @@ interface BrandOverlayProps {
 const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentRegion = 'GLOBAL', activeFilters = ['energy', 'air', 'water'], onOpenSite }: BrandOverlayProps) => {
   const { t, language } = useLanguage();
   const [chartsExpanded, setChartsExpanded] = useState(false);
-  const [isDesktopVisible, setIsDesktopVisible] = useState(true);
+  // Spec v2 (27.08): il pannello nasce SINTETICO — l'invasione della mappa
+  // si apre con "See more", il click serve ad aprire (e poi a chiudere).
+  const [isDesktopVisible, setIsDesktopVisible] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [dirFilter, setDirFilter] = useState<SiteState | 'all'>('all');
   const [showAllEnergyRank, setShowAllEnergyRank] = useState(false);
   const [showAllAirRank, setShowAllAirRank] = useState(false);
-  // Switch Monitoring | Certifications (flag CERTIFICATIONS_OVERVIEW):
-  // cambia SOLO il pannello destro; mappa, barra regioni e pannello cliente
-  // restano identici. Flag spento -> nessuno switch, app com'era.
-  const [overlayView, setOverlayView] = useState<'monitoring' | 'certifications'>('monitoring');
+  // Switch Certifications | Monitoring (flag CERTIFICATIONS_OVERVIEW):
+  // Certifications viene PRIMA ed e' il default (spec 27.08: "il cliente
+  // compra prima la certificazione, poi il monitoraggio").
+  const [overlayView, setOverlayView] = useState<'monitoring' | 'certifications'>(
+    CERTIFICATIONS_OVERVIEW ? 'certifications' : 'monitoring'
+  );
   const certView = CERTIFICATIONS_OVERVIEW && overlayView === 'certifications';
 
   const { brands } = useAllBrands();
@@ -74,6 +84,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   const { projects, isLoading: projectsLoading } = useAllProjects();
   const { sites: adminSites } = useAdminData();
   const { open: openWrapped } = useWrapped();
+  const { clientRole } = useUserScope();
+  const isStaff = clientRole === 'ADMIN_FGB' || clientRole === 'USER_FGB';
 
   const brand = useMemo(() => 
     selectedBrand ? brands.find(b => b.id === selectedBrand) : null
@@ -115,6 +127,56 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     () => new Map(allSitesData.map(s => [s.siteId, { energy: s.energyLive, air: s.airLive }] as const)),
     [allSitesData]
   );
+
+  // ===================================================================
+  // Spec v2 (27.08): KPI del pannello per sezione + punti di monitoraggio
+  // ===================================================================
+  const perimeterSiteIds = useMemo(
+    () => filteredProjects.map(p => p.siteId).filter((id): id is string => !!id),
+    [filteredProjects]
+  );
+  const { data: overviewKpis } = useClientOverviewKpis(perimeterSiteIds);
+
+  /** Incrocia i punti di monitoraggio (contratti/flag) con i device reali:
+      installed = device censiti; pipeline = punto previsto senza device. */
+  const buildDomainStats = (pointIds: string[], domain: 'energy' | 'air') => {
+    const nameOf = (id: string) => adminSites.find(s => s.id === id)?.name || id;
+    let online = 0, offline = 0, pipeline = 0;
+    const list: { name: string; state: 'online' | 'offline' | 'pipeline' }[] = [];
+    for (const id of pointIds) {
+      const live = certDomainLive.get(id)?.[domain] ?? null;
+      const state: 'online' | 'offline' | 'pipeline' =
+        live === 'online' ? 'online' : live === 'offline' || live === 'never' ? 'offline' : 'pipeline';
+      if (state === 'online') online++;
+      else if (state === 'offline') offline++;
+      else pipeline++;
+      list.push({ name: nameOf(id), state });
+    }
+    const order = { online: 0, offline: 1, pipeline: 2 } as const;
+    list.sort((a, b) => order[a.state] - order[b.state] || a.name.localeCompare(b.name));
+    return { total: pointIds.length, online, offline, installed: online + offline, pipeline, list };
+  };
+  const energyPoints = useMemo(
+    () => buildDomainStats(overviewKpis?.energyPointSites ?? [], 'energy'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [overviewKpis, certDomainLive, adminSites]
+  );
+  const airPoints = useMemo(
+    () => buildDomainStats(overviewKpis?.airPointSites ?? [], 'air'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [overviewKpis, certDomainLive, adminSites]
+  );
+
+  // Geografia del perimetro: SOLO in visuale global (in region i dati sono
+  // gia' filtrati dal redirect e non tutti hanno accesso al globale)
+  const regionBreakdown = useMemo(() => {
+    if (currentRegion !== 'GLOBAL') return [];
+    const counts = new Map<string, number>();
+    for (const p of filteredProjects) {
+      if (p.region) counts.set(p.region, (counts.get(p.region) || 0) + 1);
+    }
+    return [...counts.entries()].map(([region, n]) => ({ region, n })).sort((a, b) => b.n - a.n);
+  }, [filteredProjects, currentRegion]);
 
   // =====================================================================
   // Chart 1: Scatter Plot data (Energy kWh vs CO₂)
@@ -334,7 +396,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             </div>
             {CERTIFICATIONS_OVERVIEW && (
               <div className="flex bg-foreground/5 border border-foreground/10 rounded-full p-0.5" role="tablist" aria-label="Overlay view">
-                {(['monitoring', 'certifications'] as const).map(v => (
+                {(['certifications', 'monitoring'] as const).map(v => (
                   <button
                     key={v}
                     role="tab"
@@ -370,23 +432,185 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             </button>
           </div>
 
-          {/* Real Data Indicator */}
-          <div className="flex items-center gap-1.5 mb-4">
-            {hasRealData ? (
-              <>
-                <Wifi className="w-3 h-3 text-emerald-500" />
-                <span className="text-[10px] text-emerald-500 uppercase tracking-wider">{t('brand.data_available')}</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-3 h-3 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('brand.no_data')}</span>
-              </>
-            )}
+          {/* Spec v2: al posto di DATA AVAILABLE, il claim di copertura —
+              globale o regionale a seconda della visuale corrente */}
+          <div className="flex items-center justify-center gap-1.5 mb-4">
+            <Sparkles className="w-3 h-3 text-fgb-accent" />
+            <span className="text-[10px] text-fgb-accent uppercase tracking-wider text-center">
+              {filteredProjects.length}{' '}
+              {currentRegion === 'GLOBAL'
+                ? (language === 'it' ? 'siti nel mondo coperti da FGB' : 'sites worldwide covered by FGB')
+                : (language === 'it' ? `siti in ${currentRegion} coperti da FGB` : `sites in ${currentRegion} covered by FGB`)}
+            </span>
           </div>
 
           {/* Stats Grid */}
           <TooltipProvider delayDuration={300}>
+
+          {/* ── Spec v2: KPI per sezione ─────────────────────────────── */}
+          {certView ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Certificazioni ottenute */}
+              <div
+                onClick={() => setIsDesktopVisible(true)}
+                className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 cursor-pointer hover:bg-foreground/10 transition-colors group"
+              >
+                <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  <UITooltip>
+                    <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] text-xs">
+                      {language === 'it'
+                        ? 'Certificazioni di edificio ottenute nel tuo perimetro (i progetti Energy e Air sono conteggiati nella vista Monitoring). Clic per aprire la vista completa.'
+                        : 'Building certifications achieved in your portfolio (Energy and Air projects are counted in the Monitoring view). Click to open the full view.'}
+                    </TooltipContent>
+                  </UITooltip>
+                </div>
+                <div className="text-2xl font-bold text-foreground mt-0.5">{overviewKpis ? overviewKpis.certAchieved : '—'}</div>
+                <div className="text-[11px] uppercase text-muted-foreground mt-1">{language === 'it' ? 'Cert. ottenute' : 'Certs achieved'}</div>
+                {overviewKpis && overviewKpis.certAchievedLevels.length > 0 && (
+                  <div className="text-[10px] text-muted-foreground/70 mt-0.5">
+                    {overviewKpis.certAchievedLevels.map(l => `${l.n} ${l.level}`).join(' · ')}
+                  </div>
+                )}
+              </div>
+              {/* Certificazioni in avanzamento */}
+              <div
+                onClick={() => setIsDesktopVisible(true)}
+                className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 cursor-pointer hover:bg-foreground/10 transition-colors group"
+              >
+                <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  <UITooltip>
+                    <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] text-xs">
+                      {language === 'it'
+                        ? 'Tutte le certificazioni non ancora ottenute: in corso, in pipeline, quotate e potenziali. Clic per aprire la vista completa.'
+                        : 'Every certification not yet achieved: in progress, pipeline, quoted and potential. Click to open the full view.'}
+                    </TooltipContent>
+                  </UITooltip>
+                </div>
+                <div className="text-2xl font-bold text-foreground mt-0.5">{overviewKpis ? overviewKpis.certAdvancing : '—'}</div>
+                <div className="text-[11px] uppercase text-muted-foreground mt-1">{language === 'it' ? 'In avanzamento' : 'In progress'}</div>
+                {overviewKpis && overviewKpis.certAdvancing > 0 && (
+                  <div className="text-[10px] text-muted-foreground/70 mt-0.5">
+                    {overviewKpis.certAdvancingBreakdown.inProgress} {language === 'it' ? 'in corso' : 'active'} · {overviewKpis.certAdvancingBreakdown.pipeline} pipeline · {overviewKpis.certAdvancingBreakdown.potential} potential
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Siti energia (punti di monitoraggio) */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 cursor-pointer hover:bg-foreground/10 transition-colors group">
+                    <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UITooltip>
+                        <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[240px] text-xs">
+                          {language === 'it'
+                            ? 'Siti con un punto di monitoraggio energia: progetti Energy o certificazioni con hardware energia. Clic per l\'elenco dei siti.'
+                            : 'Sites with an energy monitoring point: standalone Energy projects or certifications with energy hardware. Click for the site list.'}
+                        </TooltipContent>
+                      </UITooltip>
+                    </div>
+                    <div className="text-2xl font-bold text-foreground mt-0.5">{overviewKpis ? energyPoints.total : '—'}</div>
+                    <div className="text-[11px] uppercase text-muted-foreground mt-1">{language === 'it' ? 'Siti energia' : 'Energy sites'}</div>
+                    {overviewKpis && energyPoints.total > 0 && (
+                      <div className="text-[10px] text-muted-foreground/70 mt-0.5">
+                        {energyPoints.online} online
+                        {energyPoints.offline > 0 && <span className="text-yellow-500"> · {energyPoints.offline} ⚠ offline</span>}
+                        {energyPoints.pipeline > 0 && ` · ${energyPoints.pipeline} pipeline`}
+                      </div>
+                    )}
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
+                  <div className="px-3 py-2 border-b border-border/30">
+                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Punti energia per sito' : 'Energy points by site'}</p>
+                  </div>
+                  <ScrollArea className="max-h-[220px]">
+                    <div className="p-2 space-y-0.5">
+                      {energyPoints.list.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
+                          <Circle className={`w-2.5 h-2.5 fill-current ${s.state === 'online' ? 'text-emerald-500' : s.state === 'offline' ? 'text-yellow-500' : 'text-foreground/25'}`} />
+                          <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
+                          <span className={`text-[10px] ${s.state === 'online' ? 'text-emerald-500' : s.state === 'offline' ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                            {s.state === 'pipeline' ? 'Pipeline' : s.state === 'online' ? 'Online' : 'Offline'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+              {/* Siti aria (punti di monitoraggio) */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 cursor-pointer hover:bg-foreground/10 transition-colors group">
+                    <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UITooltip>
+                        <TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground/60" /></TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[240px] text-xs">
+                          {language === 'it'
+                            ? 'Siti con un punto di monitoraggio aria: progetti Air o certificazioni con hardware IAQ. Clic per l\'elenco dei siti.'
+                            : 'Sites with an air monitoring point: standalone Air projects or certifications with IAQ hardware. Click for the site list.'}
+                        </TooltipContent>
+                      </UITooltip>
+                    </div>
+                    <div className="text-2xl font-bold text-foreground mt-0.5">{overviewKpis ? airPoints.total : '—'}</div>
+                    <div className="text-[11px] uppercase text-muted-foreground mt-1">{language === 'it' ? 'Siti aria' : 'Air sites'}</div>
+                    {overviewKpis && airPoints.total > 0 && (
+                      <div className="text-[10px] text-muted-foreground/70 mt-0.5">
+                        {airPoints.online} online
+                        {airPoints.offline > 0 && <span className="text-yellow-500"> · {airPoints.offline} ⚠ offline</span>}
+                        {airPoints.pipeline > 0 && ` · ${airPoints.pipeline} pipeline`}
+                      </div>
+                    )}
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" side="right" align="start">
+                  <div className="px-3 py-2 border-b border-border/30">
+                    <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Punti aria per sito' : 'Air points by site'}</p>
+                  </div>
+                  <ScrollArea className="max-h-[220px]">
+                    <div className="p-2 space-y-0.5">
+                      {airPoints.list.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
+                          <Circle className={`w-2.5 h-2.5 fill-current ${s.state === 'online' ? 'text-emerald-500' : s.state === 'offline' ? 'text-yellow-500' : 'text-foreground/25'}`} />
+                          <span className="text-xs text-foreground break-words flex-1">{s.name}</span>
+                          <span className={`text-[10px] ${s.state === 'online' ? 'text-emerald-500' : s.state === 'offline' ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                            {s.state === 'pipeline' ? 'Pipeline' : s.state === 'online' ? 'Online' : 'Offline'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+              {/* Acqua: predisposto — tratteggiato, solo per lo staff FGB */}
+              {isStaff && (
+                <div className="col-span-2 text-center py-2 px-3 rounded-xl border border-dashed border-foreground/15 opacity-60">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {language === 'it' ? 'Siti acqua — predisposto' : 'Water sites — pre-wired'}
+                    {overviewKpis && overviewKpis.waterPointSites.length > 0 ? ` · ${overviewKpis.waterPointSites.length}` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Geografia del perimetro: SOLO in visuale global */}
+          {regionBreakdown.length > 0 && (
+            <div className="mt-2.5 py-2 px-3 rounded-xl bg-foreground/5 border border-foreground/10 text-center">
+              <span className="text-[10px] text-muted-foreground tracking-wide">
+                {regionBreakdown.map((r, i) => (
+                  <span key={r.region}>{i > 0 && ' · '}{r.region} <b className="text-foreground">{r.n}</b></span>
+                ))}
+              </span>
+            </div>
+          )}
+
+          {LEGACY_CLIENT_KPIS && (
           <div className="grid grid-cols-2 gap-2.5">
 
             {/* Sites Online */}
@@ -557,6 +781,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             </Popover>
 
           </div>
+          )}
           </TooltipProvider>
 
           {/* Chart toggle */}
@@ -570,7 +795,8 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" />
-            <span>{isDesktopVisible && showAnyChart ? t('brand.hide_charts') : t('brand.show_charts')}</span>
+            {/* Spec v2: "See more" — caption invitante, il default e' chiuso */}
+            <span>{isDesktopVisible && showAnyChart ? (language === 'it' ? 'Chiudi' : 'See less') : (language === 'it' ? 'Vedi di più' : 'See more')}</span>
             {isDesktopVisible && showAnyChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
