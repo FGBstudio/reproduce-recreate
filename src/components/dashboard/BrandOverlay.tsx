@@ -51,6 +51,11 @@ const DIR_STATE_META: Record<SiteState | 'all', { label: { en: string; it: strin
    spec v2 del 27.08, conservata per reversibilita' immediata. */
 const LEGACY_CLIENT_KPIS = false;
 
+/* Scatter Efficiency vs Comfort: bocciato dalla spec v2 (aria ed energia
+   non si mescolano piu'); il posto del 4o grafico energia lo prendera'
+   consumo vs temperatura esterna (Step 5). Conservato per reversibilita'. */
+const LEGACY_SCATTER = false;
+
 interface BrandOverlayProps {
   selectedBrand: string | null;
   selectedHolding: string | null;
@@ -167,6 +172,34 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     [overviewKpis, certDomainLive, adminSites]
   );
 
+  // ── Spec v2 Step 3: invasione Monitoring a schermo splittato ─────────
+  // null = split ENERGY|AIR; 'energy'/'air' = vista di dominio aperta
+  const [monDomain, setMonDomain] = useState<'energy' | 'air' | null>(null);
+
+  /** Intensita' media del parco: kWh totali / m² totali, SOLO sui siti con
+      area compilata e consumo nel periodo — il KPI dichiara il denominatore. */
+  const energyIntensity = useMemo(() => {
+    let kwh = 0, m2 = 0, n = 0;
+    for (const s of sitesWithEnergy) {
+      const site = adminSites.find(a => a.id === s.siteId);
+      const area = (site as any)?.area_m2 ?? (site as any)?.areaSqm;
+      const v = s.energy.monthlyKwh ?? 0;
+      if (area && area > 0 && v > 0) { kwh += v; m2 += area; n++; }
+    }
+    return m2 > 0 ? { value: kwh / m2, sites: n } : null;
+  }, [sitesWithEnergy, adminSites]);
+
+  /** Salute dell'aria del parco: CO2 media e siti "salubri" (sotto soglia
+      good) tra quelli con dato nel periodo. Proxy CO2, dichiarato. */
+  const airHealth = useMemo(() => {
+    const withCo2 = sitesWithAir.filter(s => (s.air.co2 ?? 0) > 0);
+    if (withCo2.length === 0) return null;
+    const avg = Math.round(withCo2.reduce((a, s) => a + (s.air.co2 || 0), 0) / withCo2.length);
+    const label = avg <= CO2_THRESHOLDS.excellent ? 'Excellent' : avg <= CO2_THRESHOLDS.good ? 'Good' : 'Attention';
+    const healthy = withCo2.filter(s => (s.air.co2 || 0) <= CO2_THRESHOLDS.good).length;
+    return { avg, label, healthy, total: withCo2.length };
+  }, [sitesWithAir]);
+
   // Geografia del perimetro: SOLO in visuale global (in region i dati sono
   // gia' filtrati dal redirect e non tutti hanno accesso al globale)
   const regionBreakdown = useMemo(() => {
@@ -220,6 +253,16 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       .map(s => ({ siteId: s.siteId, name: s.siteName, value: Math.round(s.air.co2 ?? 0) }))
       .sort((a, b) => b.value - a.value);
   }, [sitesWithAir]);
+
+  /** Migliore e peggiore del periodo (spec v2: KPI qualitativo immediato). */
+  const energyBestWorst = useMemo(() => {
+    if (energyLeaderboard.length < 2) return null;
+    return { best: energyLeaderboard[energyLeaderboard.length - 1], worst: energyLeaderboard[0] };
+  }, [energyLeaderboard]);
+  const airBestWorst = useMemo(() => {
+    if (airLeaderboard.length < 2) return null;
+    return { best: airLeaderboard[airLeaderboard.length - 1], worst: airLeaderboard[0] };
+  }, [airLeaderboard]);
 
   // =====================================================================
   // Chart 3: Health Matrix data
@@ -786,18 +829,16 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
           {/* Chart toggle */}
           <button
-            onClick={() => showAnyChart && setIsDesktopVisible(!isDesktopVisible)}
-            disabled={!showAnyChart}
-            className={`relative z-10 flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-lg border border-foreground/10 text-xs font-medium transition-all pointer-events-auto mt-3 ${
-              showAnyChart
-                ? 'bg-foreground/5 hover:bg-foreground/10 text-muted-foreground hover:text-foreground cursor-pointer'
-                : 'bg-foreground/5 text-muted-foreground/40 cursor-not-allowed opacity-50'
-            }`}
+            onClick={() => {
+              if (isDesktopVisible) setMonDomain(null); /* chiudendo si torna allo split */
+              setIsDesktopVisible(!isDesktopVisible);
+            }}
+            className="relative z-10 flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-lg border border-foreground/10 text-xs font-medium transition-all pointer-events-auto mt-3 bg-foreground/5 hover:bg-foreground/10 text-muted-foreground hover:text-foreground cursor-pointer"
           >
             <BarChart3 className="w-3.5 h-3.5" />
             {/* Spec v2: "See more" — caption invitante, il default e' chiuso */}
-            <span>{isDesktopVisible && showAnyChart ? (language === 'it' ? 'Chiudi' : 'See less') : (language === 'it' ? 'Vedi di più' : 'See more')}</span>
-            {isDesktopVisible && showAnyChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>{isDesktopVisible ? (language === 'it' ? 'Chiudi' : 'See less') : (language === 'it' ? 'Vedi di più' : 'See more')}</span>
+            {isDesktopVisible ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
           {!hasRealData && (
@@ -823,12 +864,107 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {/* ============================================================ */}
       {/* Charts Panel — positioned below, centered */}
       {/* ============================================================ */}
-      {!certView && showAnyChart && isDesktopVisible && (
+      {!certView && isDesktopVisible && (
         <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
-          <div className="pointer-events-auto grid h-[calc(100vh-14rem)] grid-cols-2 grid-rows-2 gap-3 overflow-hidden">
+          <style>{`
+            .fgb-invasion-scroll{scrollbar-width:thin;scrollbar-color:rgba(0,145,147,.4) transparent}
+            .fgb-invasion-scroll::-webkit-scrollbar{width:5px}
+            .fgb-invasion-scroll::-webkit-scrollbar-track{background:transparent}
+            .fgb-invasion-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.4);border-radius:999px}
+            .fgb-invasion-scroll > .glass-panel{height:calc(100vh - 15.5rem);flex-shrink:0}
+          `}</style>
+          {monDomain !== null ? (
+            /* ══ Vista di dominio (spec v2): 4 KPI + classifica, un tema alla volta ══ */
+            <div className="pointer-events-auto h-[calc(100vh-14rem)]">
+              <div className="glass-panel rounded-2xl p-6 h-full flex flex-col overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <button onClick={() => setMonDomain(null)} className="px-3 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    ← {language === 'it' ? 'Indietro' : 'Back'}
+                  </button>
+                  {monDomain === 'energy' ? <Zap className="w-5 h-5 text-amber-500" /> : <Wind className="w-5 h-5 text-blue-400" />}
+                  <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">{monDomain === 'energy' ? 'Energy' : 'Air'} · {displayEntity.name}</h4>
+                </div>
+                {/* 4 KPI del dominio (spec: max 4, aperti su tutto lo spazio) */}
+                <div className="grid grid-cols-4 gap-2.5 mb-5">
+                  {(monDomain === 'energy' ? [
+                    { v: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—', l: language === 'it' ? 'Consumo 30 giorni' : 'Consumption 30 days', small: false },
+                    { v: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—', l: energyIntensity ? (language === 'it' ? `Intensità · ${energyIntensity.sites} siti con area` : `Intensity · ${energyIntensity.sites} sites with area`) : (language === 'it' ? 'Intensità' : 'Intensity'), small: false },
+                    { v: energyBestWorst ? energyBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period', small: true },
+                    { v: energyBestWorst ? energyBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention', small: true },
+                  ] : [
+                    { v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—', l: language === 'it' ? 'CO₂ media del parco' : 'Portfolio average CO₂', small: false },
+                    { v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—', l: language === 'it' ? 'Siti in aria salubre' : 'Sites in healthy air', small: false },
+                    { v: airBestWorst ? airBestWorst.best.name : '—', l: language === 'it' ? 'Migliore del periodo' : 'Best of the period', small: true },
+                    { v: airBestWorst ? airBestWorst.worst.name : '—', l: language === 'it' ? 'Da attenzionare' : 'Needs attention', small: true },
+                  ]).map((k, i) => (
+                    <div key={i} className="text-center p-3 rounded-xl bg-foreground/5 border border-foreground/10 min-w-0">
+                      <div className={`${k.small ? 'text-sm' : 'text-xl'} font-bold text-foreground truncate`} title={String(k.v)}>{k.v}</div>
+                      <div className="text-[10px] uppercase text-muted-foreground mt-1">{k.l}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Un grafico alla volta: la classifica del dominio */}
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{language === 'it' ? 'Classifica dei siti' : 'Site ranking'} · {monDomain === 'energy' ? 'kWh (30d)' : 'CO₂ ppm (30d)'}</p>
+                <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-1.5">
+                  {(monDomain === 'energy' ? energyLeaderboard : airLeaderboard).map((s, i, list) => {
+                    const max = list[0]?.value || 1;
+                    return (
+                      <button key={s.siteId} onClick={() => onOpenSite?.(s.siteId)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-foreground/5 transition-colors text-left">
+                        <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
+                        <span className="text-xs text-foreground w-44 truncate shrink-0">{s.name}</span>
+                        <div className="flex-1 h-2 rounded-full bg-foreground/5 overflow-hidden">
+                          <div className={`h-full rounded-full ${monDomain === 'energy' ? 'bg-fgb-secondary' : (s.value > CO2_THRESHOLDS.good ? 'bg-yellow-500' : 'bg-emerald-500')}`} style={{ width: `${Math.max(4, (s.value / max) * 100)}%` }} />
+                        </div>
+                        <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right shrink-0">
+                          {monDomain === 'energy' ? `${(s.value / 1000).toFixed(1)} MWh` : `${s.value} ppm`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {(monDomain === 'energy' ? energyLeaderboard : airLeaderboard).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-6">{t('region.no_data_short')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+          <div className="pointer-events-auto h-[calc(100vh-14rem)] overflow-y-auto space-y-3 fgb-invasion-scroll">
+            {/* ══ SPLIT ENERGY | AIR (spec v2: come "Two ways in" della landing) ══ */}
+            <div className="grid grid-cols-2 gap-3" style={{ height: 'calc(100vh - 15.5rem)' }}>
+              <button onClick={() => setMonDomain('energy')} className="glass-panel rounded-2xl p-8 h-full flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-[1.02] hover:border-amber-500/30 group cursor-pointer">
+                <Zap className="w-10 h-10 text-amber-500 mb-4 transition-transform group-hover:scale-110" />
+                <h4 className="text-3xl font-bold text-foreground uppercase tracking-[0.2em]">Energy</h4>
+                <div className="mt-8 space-y-5">
+                  <div>
+                    <div className="text-3xl font-bold text-foreground tabular-nums">{totals.monthlyEnergyKwh > 0 ? (totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 }) : '—'} <span className="text-base font-normal text-muted-foreground">MWh</span></div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{language === 'it' ? 'consumo · ultimi 30 giorni' : 'consumption · last 30 days'}</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground tabular-nums">{energyIntensity ? energyIntensity.value.toFixed(1) : '—'} <span className="text-sm font-normal text-muted-foreground">kWh/m²</span></div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{energyIntensity ? (language === 'it' ? `intensità media · ${energyIntensity.sites} siti con area` : `avg intensity · ${energyIntensity.sites} sites with area`) : (language === 'it' ? 'intensità media' : 'avg intensity')}</div>
+                  </div>
+                </div>
+                <span className="mt-8 text-xs text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-widest">{language === 'it' ? 'Apri la vista energia →' : 'Open the energy view →'}</span>
+              </button>
+              <button onClick={() => setMonDomain('air')} className="glass-panel rounded-2xl p-8 h-full flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-[1.02] hover:border-blue-400/30 group cursor-pointer">
+                <Wind className="w-10 h-10 text-blue-400 mb-4 transition-transform group-hover:scale-110" />
+                <h4 className="text-3xl font-bold text-foreground uppercase tracking-[0.2em]">Air</h4>
+                <div className="mt-8 space-y-5">
+                  <div>
+                    <div className="text-3xl font-bold text-foreground tabular-nums">{airHealth ? airHealth.avg : '—'} <span className="text-base font-normal text-muted-foreground">ppm</span>{airHealth && <span className={`text-lg font-semibold ${airHealth.label === 'Attention' ? 'text-yellow-500' : 'text-emerald-500'}`}> · {airHealth.label}</span>}</div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{language === 'it' ? 'CO₂ media del parco' : 'portfolio average CO₂'}</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground tabular-nums">{airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—'}</div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{language === 'it' ? 'siti in aria salubre oggi' : 'sites in healthy air today'}</div>
+                  </div>
+                </div>
+                <span className="mt-8 text-xs text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-widest">{language === 'it' ? 'Apri la vista aria →' : 'Open the air view →'}</span>
+              </button>
+            </div>
 
-            {/* ========== Chart 1: Efficiency vs Comfort Scatter ========== */}
-            {showScatter && (
+            {/* ========== Chart 1: Efficiency vs Comfort Scatter (LEGACY: spento) ========== */}
+            {LEGACY_SCATTER && showScatter && (
               <div className="glass-panel rounded-2xl p-5 h-full min-h-0 flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-foreground uppercase tracking-wider">
@@ -1136,6 +1272,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             </div>
 
           </div>
+          )}
         </div>
       )}
 
