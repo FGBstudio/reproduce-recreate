@@ -10,5 +10,7 @@
  */
 const CARTO_API_KEY = 'cb1_2rp3_1_befb0e3aaf2dcd5441473beb';
 
+/* Il parametro corretto e' "key" (verificato sui byte dei tile: con
+   ?api_key il CDN ignora la query e la filigrana resta). */
 export const cartoBasemapUrl = (theme: string) =>
-  `https://{s}.basemaps.cartocdn.com/${theme === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png?api_key=${CARTO_API_KEY}`;
+  `https://{s}.basemaps.cartocdn.com/${theme === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`;
