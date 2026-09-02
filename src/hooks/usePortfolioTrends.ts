@@ -14,7 +14,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { CO2_THRESHOLDS } from '@/lib/airQuality';
+import { CO2_THRESHOLDS, computeAirIndex } from '@/lib/airQuality';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -160,82 +160,182 @@ export function useWeatherMonthly(siteIds: string[], enabled: boolean) {
 }
 
 export interface AirTrends {
-  monthly12: { month: string; label: string; co2: number | null }[];
-  /** Composizione delle ore (30gg) per sito: % in aria buona/attenzione/critica */
+  /** Portfolio IAQ Index (0-100, worst-pollutant, media dei siti) per mese */
+  monthly12: { month: string; label: string; iaq: number | null }[];
+  /** IAQ mensile PER SITO, allineato a monthly12 — per il benchmarking */
+  perSite: Record<string, (number | null)[]>;
+  /** Indice attuale del parco: ultimo mese, con delta vs mese precedente */
+  iaqNow: { score: number; delta: number | null } | null;
+  /** Migliore e peggiore per IAQ dell'ultimo mese */
+  bestWorstIaq: { best: { siteId: string; score: number }; worst: { siteId: string; score: number } } | null;
+  /** CO2 media nelle ORE DI APERTURA (10-19 locali del sito), ultimi 30gg */
+  openingCo2: number | null;
+  /** Quota delle ore di apertura in aria buona (CO2 <= good), 0-1 */
+  openingGoodShare: number | null;
+  /** Composizione delle ore (30gg, tutte le ore) per sito */
   composition: { siteId: string; good: number; warn: number; crit: number; hours: number }[];
-  /** Heatmap ora x giorno (30gg): media CO2 aggregata del perimetro */
-  heatmap: (number | null)[][]; // [7 giorni Lun..Dom][24 ore]
+  /** Heatmap ora x giorno (30gg): IAQ Index aggregato del parco per cella */
+  heatmap: (number | null)[][]; // [7 giorni Lun..Dom][24 ore LOCALI del sito]
 }
 
-export function usePortfolioAirTrend(siteIds: string[], enabled: boolean) {
+/** Tutte le colonne metriche che alimentano l'indice worst-pollutant. */
+const AIR_METRICS = ['iaq.co2', 'co2', 'iaq.voc', 'tvoc', 'voc', 'iaq.pm25', 'pm25', 'iaq.pm10', 'pm10', 'iaq.o3', 'o3', 'iaq.co', 'co'];
+
+/** Ora e giorno LOCALI del sito (Lun=0..Dom=6), con formatter cache per tz. */
+const tzFormatters = new Map<string, Intl.DateTimeFormat>();
+const DAY_IDX: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+function localParts(ts: string, tz: string | undefined): { day: number; hour: number } {
+  const zone = tz || 'UTC';
+  let fmt = tzFormatters.get(zone);
+  if (!fmt) {
+    try {
+      fmt = new Intl.DateTimeFormat('en-US', { timeZone: zone, hour: 'numeric', hour12: false, weekday: 'short' });
+    } catch {
+      fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hour: 'numeric', hour12: false, weekday: 'short' });
+    }
+    tzFormatters.set(zone, fmt);
+  }
+  const parts = fmt.formatToParts(new Date(ts));
+  const wd = parts.find(p => p.type === 'weekday')?.value ?? 'Mon';
+  const hr = Number(parts.find(p => p.type === 'hour')?.value ?? '0') % 24;
+  return { day: DAY_IDX[wd] ?? 0, hour: hr };
+}
+
+const OPEN_FROM = 10; // orario di apertura standard retail, dichiarato in UI
+const OPEN_TO = 19;
+
+export function usePortfolioAirTrend(siteIds: string[], enabled: boolean, tzBySite: Record<string, string>) {
   const key = [...siteIds].sort().join(',');
   return useQuery<AirTrends | null>({
-    queryKey: ['portfolio-air-trend', key],
+    queryKey: ['portfolio-air-trend-v2', key],
     queryFn: async () => {
       if (!supabase || siteIds.length === 0) return null;
+
+      /* ── Mensile 12 mesi, multi-metrica: IAQ index per sito per mese ── */
       const since12m = new Date();
       since12m.setMonth(since12m.getMonth() - 12);
-      const daily = await fetchAll<{ site_id: string; ts_day: string; value_avg: number | null }>((a, b) =>
+      const daily = await fetchAll<{ site_id: string; ts_day: string; metric: string; value_avg: number | null }>((a, b) =>
         supabase!
           .from('telemetry_daily')
-          .select('site_id, ts_day, value_avg')
-          .eq('metric', 'iaq.co2')
+          .select('site_id, ts_day, metric, value_avg')
+          .in('metric', AIR_METRICS)
           .gte('ts_day', since12m.toISOString().slice(0, 10))
           .in('site_id', siteIds)
           .range(a, b),
       );
-      const sums = new Map<string, { s: number; n: number }>();
+      // site -> month -> metric -> {s,n}
+      const acc = new Map<string, Map<string, Map<string, { s: number; n: number }>>>();
       for (const r of daily) {
         const v = Number(r.value_avg || 0);
         if (v <= 0) continue;
-        const k = monthKey(r.ts_day);
-        const e = sums.get(k) || { s: 0, n: 0 };
+        const mk = monthKey(r.ts_day);
+        if (!acc.has(r.site_id)) acc.set(r.site_id, new Map());
+        const bySite = acc.get(r.site_id)!;
+        if (!bySite.has(mk)) bySite.set(mk, new Map());
+        const byMetric = bySite.get(mk)!;
+        const e = byMetric.get(r.metric) || { s: 0, n: 0 };
         e.s += v; e.n++;
-        sums.set(k, e);
-      }
-      const now = new Date();
-      const monthly12: AirTrends['monthly12'] = [];
-      for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const e = sums.get(k);
-        monthly12.push({ month: k, label: MONTH_LABELS[d.getMonth()], co2: e ? Math.round(e.s / e.n) : null });
+        byMetric.set(r.metric, e);
       }
 
-      // Orario, ultimi 30 giorni: composizione ore + heatmap
+      const now = new Date();
+      const months: { month: string; label: string }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({ month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: MONTH_LABELS[d.getMonth()] });
+      }
+      const perSite: AirTrends['perSite'] = {};
+      for (const [sid, bySite] of acc) {
+        perSite[sid] = months.map(({ month }) => {
+          const byMetric = bySite.get(month);
+          if (!byMetric) return null;
+          const metricAvgs: Record<string, number> = {};
+          for (const [m, e] of byMetric) metricAvgs[m] = e.s / e.n;
+          return computeAirIndex(metricAvgs)?.score ?? null;
+        });
+      }
+      const monthly12: AirTrends['monthly12'] = months.map(({ month, label }, i) => {
+        const scores = Object.values(perSite).map(arr => arr[i]).filter((v): v is number => v != null);
+        return { month, label, iaq: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null };
+      });
+
+      const lastIdx = 11;
+      const iaqLast = monthly12[lastIdx]?.iaq ?? null;
+      const iaqPrev = monthly12[lastIdx - 1]?.iaq ?? null;
+      const iaqNow = iaqLast != null ? { score: iaqLast, delta: iaqPrev != null ? iaqLast - iaqPrev : null } : null;
+
+      const siteScoresNow = Object.entries(perSite)
+        .map(([siteId, arr]) => ({ siteId, score: arr[lastIdx] ?? arr[lastIdx - 1] }))
+        .filter((x): x is { siteId: string; score: number } => x.score != null)
+        .sort((a, b) => b.score - a.score);
+      const bestWorstIaq = siteScoresNow.length >= 2
+        ? { best: siteScoresNow[0], worst: siteScoresNow[siteScoresNow.length - 1] }
+        : null;
+
+      /* ── Orario 30 giorni, multi-metrica: heatmap a IAQ (ore locali),
+            CO2 in apertura e composizione delle ore ── */
       const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
-      const hourly = await fetchAll<{ site_id: string; ts_hour: string; value_avg: number | null }>((a, b) =>
+      const hourly = await fetchAll<{ site_id: string; ts_hour: string; metric: string; value_avg: number | null }>((a, b) =>
         supabase!
           .from('telemetry_hourly')
-          .select('site_id, ts_hour, value_avg')
-          .eq('metric', 'iaq.co2')
+          .select('site_id, ts_hour, metric, value_avg')
+          .in('metric', AIR_METRICS)
           .gte('ts_hour', since30)
           .in('site_id', siteIds)
           .range(a, b),
       );
+
       const comp = new Map<string, { good: number; warn: number; crit: number }>();
-      const grid: { s: number; n: number }[][] = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ s: 0, n: 0 })));
+      const grid: Map<string, { s: number; n: number }>[][] = Array.from({ length: 7 }, () =>
+        Array.from({ length: 24 }, () => new Map<string, { s: number; n: number }>()),
+      );
+      let openSum = 0, openN = 0, openGood = 0;
+      const isCo2 = (m: string) => m === 'iaq.co2' || m === 'co2';
       for (const r of hourly) {
         const v = Number(r.value_avg || 0);
         if (v <= 0) continue;
-        const e = comp.get(r.site_id) || { good: 0, warn: 0, crit: 0 };
-        if (v <= CO2_THRESHOLDS.good) e.good++;
-        else if (v <= CO2_THRESHOLDS.moderate) e.warn++;
-        else e.crit++;
-        comp.set(r.site_id, e);
-        const d = new Date(r.ts_hour);
-        const day = (d.getDay() + 6) % 7; // Lun=0 .. Dom=6
-        const cell = grid[day][d.getHours()];
-        cell.s += v; cell.n++;
+        const { day, hour } = localParts(r.ts_hour, tzBySite[r.site_id]);
+        const cell = grid[day][hour];
+        const e = cell.get(r.metric) || { s: 0, n: 0 };
+        e.s += v; e.n++;
+        cell.set(r.metric, e);
+        if (isCo2(r.metric)) {
+          const c = comp.get(r.site_id) || { good: 0, warn: 0, crit: 0 };
+          if (v <= CO2_THRESHOLDS.good) c.good++;
+          else if (v <= CO2_THRESHOLDS.moderate) c.warn++;
+          else c.crit++;
+          comp.set(r.site_id, c);
+          if (hour >= OPEN_FROM && hour < OPEN_TO) {
+            openSum += v; openN++;
+            if (v <= CO2_THRESHOLDS.good) openGood++;
+          }
+        }
       }
+      const heatmap: AirTrends['heatmap'] = grid.map(row =>
+        row.map(cell => {
+          if (cell.size === 0) return null;
+          const metricAvgs: Record<string, number> = {};
+          for (const [m, e] of cell) metricAvgs[m] = e.s / e.n;
+          return computeAirIndex(metricAvgs)?.score ?? null;
+        }),
+      );
       const composition = [...comp.entries()]
         .map(([siteId, e]) => {
           const hours = e.good + e.warn + e.crit;
           return { siteId, hours, good: e.good / hours, warn: e.warn / hours, crit: e.crit / hours };
         })
         .sort((a, b) => b.crit - a.crit || b.warn - a.warn);
-      const heatmap = grid.map(row => row.map(c => (c.n > 0 ? Math.round(c.s / c.n) : null)));
-      return { monthly12, composition, heatmap };
+
+      return {
+        monthly12,
+        perSite,
+        iaqNow,
+        bestWorstIaq,
+        openingCo2: openN > 0 ? Math.round(openSum / openN) : null,
+        openingGoodShare: openN > 0 ? openGood / openN : null,
+        composition,
+        heatmap,
+      };
     },
     enabled: Boolean(isSupabaseConfigured && enabled && siteIds.length > 0),
     staleTime: 10 * 60 * 1000,

@@ -3,7 +3,7 @@ import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTim
 import { useAggregatedSiteData, type SiteState } from "@/hooks/useAggregatedSiteData";
 import { useClientOverviewKpis } from "@/hooks/useClientOverviewKpis";
 import { useUserScope } from "@/hooks/useUserScope";
-import { CO2_THRESHOLDS } from "@/lib/airQuality";
+import { CO2_THRESHOLDS, scoreToLevel, co2Level } from "@/lib/airQuality";
 import { CERTIFICATIONS_OVERVIEW } from "@/lib/features";
 import CertificationsOverview from "./CertificationsOverview";
 import {
@@ -91,7 +91,10 @@ function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: React
                  vars di tema, ereditate da tailwind e dagli assi recharts) */
               ...(off === 0
                 ? ({
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.45))',
+                    /* Patina al 50% che SFUMA verso i bordi esterni del
+                       riquadro (richiesta 02/09): piena al centro, quasi
+                       trasparente sul perimetro */
+                    background: 'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.42) 55%, rgba(255,255,255,0.1) 95%)',
                     boxShadow: '0 26px 70px -22px rgba(0,0,0,0.5)',
                     '--foreground': '200 28% 13%',
                     '--muted-foreground': '200 10% 34%',
@@ -209,7 +212,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   // pretende un booleano vero per enabled.
   const trendsOn = Boolean(visible) && isDesktopVisible && !certView;
   const { data: energyTrends } = usePortfolioEnergyTrend(perimeterSiteIds, trendsOn);
-  const { data: airTrends } = usePortfolioAirTrend(perimeterSiteIds, trendsOn);
+  /* Fusi orari per sito: la heatmap e le "ore di apertura" ragionano in
+     ora LOCALE del negozio, non in quella del browser. */
+  const tzBySite = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const s of adminSites) if (s.timezone) out[s.id] = s.timezone;
+    return out;
+  }, [adminSites]);
+  const { data: airTrends } = usePortfolioAirTrend(perimeterSiteIds, trendsOn, tzBySite);
 
   /** Incrocia i punti di monitoraggio (contratti/flag) con i device reali:
       installed = device censiti; pipeline = punto previsto senza device. */
@@ -257,6 +267,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
   // ── Deck v3 (spec grafici 02/09): selezioni interattive ─────────────
   const [trendSites, setTrendSites] = useState<string[]>([]);
+  const [airTrendSites, setAirTrendSites] = useState<string[]>([]);
   const [cityFocus, setCityFocus] = useState<string | null>(null);
 
   /** Costo stimato del periodo: consumo x prezzo energia del sito (EUR),
@@ -373,10 +384,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     if (energyLeaderboard.length < 2) return null;
     return { best: energyLeaderboard[energyLeaderboard.length - 1], worst: energyLeaderboard[0] };
   }, [energyLeaderboard]);
-  const airBestWorst = useMemo(() => {
-    if (airLeaderboard.length < 2) return null;
-    return { best: airLeaderboard[airLeaderboard.length - 1], worst: airLeaderboard[0] };
-  }, [airLeaderboard]);
+  /* (best/worst aria ora arriva dall'IAQ Index del hook: bestWorstIaq) */
 
   /** Domain deck cards (the same ones the hover preview shows ghosted).
       Spec 02/09: English-only copy; denser overview with micro-copy; the
@@ -433,6 +441,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     const fmtRank = (v: number) => (isEnergy ? (useIntensity ? v.toFixed(1) : (v / 1000).toFixed(1)) : String(Math.round(v)));
 
     /* ── Overview card ─────────────────────────────────────────────── */
+    const levelWord = (lvl: string) => lvl.charAt(0) + lvl.slice(1).toLowerCase();
+    const bwIaq = airTrends?.bestWorstIaq
+      ? {
+          best: { name: siteNameOf(airTrends.bestWorstIaq.best.siteId) },
+          worst: { name: siteNameOf(airTrends.bestWorstIaq.worst.siteId) },
+        }
+      : null;
     const overviewBoxes = isEnergy
       ? [
           {
@@ -464,25 +479,27 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         ]
       : [
           {
-            v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—',
-            l: 'Portfolio air quality',
-            m: 'Average CO₂ across monitored sites, translated into a plain-words rating.',
+            v: airTrends?.iaqNow
+              ? `${airTrends.iaqNow.score} · ${levelWord(scoreToLevel(airTrends.iaqNow.score))}${airTrends.iaqNow.delta != null ? (airTrends.iaqNow.delta >= 0 ? ` · ▲ ${airTrends.iaqNow.delta}` : ` · ▼ ${Math.abs(airTrends.iaqNow.delta)}`) : ''}`
+              : '—',
+            l: 'IAQ Index + trend',
+            m: 'Aggregated worst-pollutant index across monitored sites · delta vs last month.',
           },
           {
-            v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—',
-            l: 'Sites in healthy air',
-            m: 'Stores currently below the comfort threshold — the health of the portfolio at a glance.',
+            v: airTrends?.openingCo2 != null ? `${airTrends.openingCo2} ppm · ${levelWord(co2Level(airTrends.openingCo2))}` : '—',
+            l: 'CO₂ during opening hours',
+            m: 'Average CO₂ while stores are open to the public (10:00–19:00 local), last 30 days.',
           },
           {
-            v: airBestWorst ? null : '—',
-            l: 'Best & worst performers',
-            m: 'Cleanest and most stressed air of the period, side by side.',
-            bw: airBestWorst,
+            v: bwIaq ? null : '—',
+            l: 'Best & worst (IAQ)',
+            m: 'Highest and lowest IAQ Index of the period, side by side.',
+            bw: bwIaq,
           },
           {
-            v: airHealth ? `${Math.round((airHealth.healthy / airHealth.total) * 100)}%` : '—',
-            l: 'Healthy share',
-            m: 'Share of monitored sites in good air right now.',
+            v: airTrends?.openingGoodShare != null ? `${Math.round(airTrends.openingGoodShare * 100)}%` : '—',
+            l: 'Time in optimal conditions',
+            m: 'of opening hours in healthy air, last 30 days.',
           },
         ];
 
@@ -710,17 +727,52 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         ),
       });
     } else {
+      /* ── Air trend: IAQ Index, active benchmarking up to 4 stores ── */
       const aTrend = airTrends?.monthly12 ?? [];
-      const hasATrend = aTrend.some(m => m.co2 != null);
+      const hasATrend = aTrend.some(m => m.iaq != null);
+      const airCandidates = Object.entries(airTrends?.perSite ?? {})
+        .map(([siteId, arr]) => ({ siteId, score: arr[arr.length - 1] ?? arr[arr.length - 2] ?? null }))
+        .filter((x): x is { siteId: string; score: number } => x.score != null)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8);
+      const airTrendData = aTrend.map((m, i) => ({
+        label: m.label,
+        iaq: m.iaq,
+        ...Object.fromEntries(airTrendSites.map(id => [id, airTrends?.perSite[id]?.[i] ?? null])),
+      }));
       cards.push({
         key: 'air-trend',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header('Portfolio trend', 'Average CO₂ · last 12 months')}
+            {header('Portfolio trend', 'IAQ Index · last 12 months — pick up to 4 stores to benchmark them')}
+            {airCandidates.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {airCandidates.map(c => {
+                  const selIdx = airTrendSites.indexOf(c.siteId);
+                  const on = selIdx !== -1;
+                  const color = on ? SERIES_COLORS[(selIdx + 1) % SERIES_COLORS.length] : undefined;
+                  return (
+                    <button
+                      key={c.siteId}
+                      onClick={() =>
+                        setAirTrendSites(prev =>
+                          prev.includes(c.siteId) ? prev.filter(x => x !== c.siteId) : prev.length >= 4 ? prev : [...prev, c.siteId]
+                        )
+                      }
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors ${on ? 'text-foreground' : 'border-foreground/15 text-muted-foreground hover:text-foreground hover:bg-foreground/5'}`}
+                      style={on ? { borderColor: color, background: `${color}1a` } : undefined}
+                    >
+                      {on && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />}
+                      <span className="max-w-[130px] truncate">{siteNameOf(c.siteId)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex-1 min-h-0">
               {hasATrend ? (
                 <ZoomableChart width="100%" height="100%">
-                  <AreaChart data={aTrend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                  <ComposedChart data={airTrendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="fgbAirFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
@@ -729,17 +781,21 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     </defs>
                     <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="hsl(var(--border) / 0.35)" />
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
-                    <YAxis axisLine={false} tickLine={false} tick={axisTick} width={44} tickFormatter={(v: number) => `${v} ppm`} />
-                    <ReferenceLine y={CO2_THRESHOLDS.good} stroke="#eab308" strokeDasharray="4 4" strokeOpacity={0.6} />
-                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${v} ppm`, 'CO₂']} />
-                    <Area type="monotone" dataKey="co2" stroke="#38bdf8" strokeWidth={2.5} fill="url(#fgbAirFill)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} connectNulls />
-                  </AreaChart>
+                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={axisTick} width={36} />
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number, name: string) => [`IAQ ${v}`, name === 'iaq' ? 'Portfolio' : siteNameOf(name)]} />
+                    <Area type="monotone" dataKey="iaq" stroke="#38bdf8" strokeWidth={2.5} fill="url(#fgbAirFill)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} connectNulls />
+                    {airTrendSites.map((id, idx) => (
+                      <Line key={id} type="monotone" dataKey={id} stroke={SERIES_COLORS[(idx + 1) % SERIES_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} connectNulls />
+                    ))}
+                  </ComposedChart>
                 </ZoomableChart>
               ) : emptyCard(noData)}
             </div>
           </div>
         ),
       });
+
+      /* ── Hour composition (confirmed, unchanged) ── */
       const comp = airTrends?.composition ?? [];
       cards.push({
         key: 'air-hours',
@@ -775,40 +831,53 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           </div>
         ),
       });
+
+      /* ── Heatmap restyled: IAQ Index, fills the card, hover pop + tooltip ── */
       const hm = airTrends?.heatmap ?? [];
       const hasHm = hm.some(row => row.some(v => v != null));
       const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const hmColor = (v: number | null) => {
         if (v == null) return 'hsl(var(--foreground) / 0.05)';
-        if (v <= CO2_THRESHOLDS.excellent) return '#10b981cc';
-        if (v <= CO2_THRESHOLDS.good) return '#eab308cc';
-        if (v <= CO2_THRESHOLDS.moderate) return '#f97316cc';
-        return '#ef4444cc';
+        if (v >= 85) return '#10b981d9';
+        if (v >= 70) return '#a3e635d9';
+        if (v >= 50) return '#f59e0bd9';
+        return '#ef4444d9';
       };
       cards.push({
         key: 'air-heatmap',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header('Critical hours', 'Average CO₂ by hour and day · last 30 days · whole portfolio')}
+            {header('Critical hours', 'IAQ Index by hour and day · last 30 days · store local time')}
             {hasHm ? (
-              <div className="flex-1 min-h-0 flex flex-col justify-center gap-1">
+              <div className="flex-1 min-h-0 flex flex-col gap-[3px]">
                 {hm.map((row, di) => (
-                  <div key={di} className="flex items-center gap-1">
-                    <span className="text-[9px] text-muted-foreground w-8 shrink-0">{dayLabels[di]}</span>
-                    <div className="flex-1 grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(24, 1fr)' }}>
-                      {row.map((v, hi) => (
-                        <div key={hi} className="h-5 rounded-[3px]" style={{ background: hmColor(v) }} title={v != null ? `${dayLabels[di]} ${hi}:00 · ${v} ppm` : `${dayLabels[di]} ${hi}:00`} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="w-8 shrink-0" />
-                  <div className="flex-1 grid" style={{ gridTemplateColumns: 'repeat(24, 1fr)' }}>
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <span key={h} className="text-[8px] text-muted-foreground text-center">{h % 3 === 0 ? h : ''}</span>
+                  <div key={di} className="flex-1 min-h-0 flex items-stretch gap-[3px]">
+                    <span className="text-[9px] text-muted-foreground w-8 shrink-0 self-center">{dayLabels[di]}</span>
+                    {row.map((v, hi) => (
+                      <div
+                        key={hi}
+                        className="fgb-hm-cell flex-1 rounded-[3px] cursor-default"
+                        style={{ background: hmColor(v) }}
+                        data-tip={v != null ? `${dayLabels[di]} ${String(hi).padStart(2, '0')}:00 · IAQ ${v}` : `${dayLabels[di]} ${String(hi).padStart(2, '0')}:00 · no data`}
+                      />
                     ))}
                   </div>
+                ))}
+                <div className="flex items-center gap-[3px] shrink-0">
+                  <span className="w-8 shrink-0" />
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <span key={h} className="flex-1 text-[8px] text-muted-foreground text-center">{h % 3 === 0 ? h : ''}</span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-4 justify-center pt-2 shrink-0">
+                  {[
+                    { c: '#10b981', l: 'Excellent' },
+                    { c: '#a3e635', l: 'Good' },
+                    { c: '#f59e0b', l: 'Moderate' },
+                    { c: '#ef4444', l: 'Poor' },
+                  ].map(x => (
+                    <span key={x.l} className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-[3px]" style={{ background: x.c }} />{x.l}</span>
+                  ))}
                 </div>
               </div>
             ) : emptyCard(noData)}
@@ -818,6 +887,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     }
     return cards;
   };
+
 
   // =====================================================================
   // Chart 3: Health Matrix data
@@ -1427,6 +1497,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             .fgb-invasion-scroll::-webkit-scrollbar-track{background:transparent}
             .fgb-invasion-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.4);border-radius:999px}
             .fgb-invasion-scroll > .glass-panel{height:calc(100vh - 15.5rem);flex-shrink:0}
+            .fgb-hm-cell{position:relative;transition:transform .15s ease}
+            .fgb-hm-cell:hover{transform:scale(1.3);z-index:5}
+            .fgb-hm-cell:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;background:hsl(var(--popover)/.97);color:hsl(var(--foreground));border:1px solid hsl(var(--border));padding:4px 8px;border-radius:8px;font-size:10px;font-weight:600;z-index:50;box-shadow:0 8px 20px rgba(0,0,0,.3);pointer-events:none}
           `}</style>
           {monDomain !== null ? (
             /* ══ Vista di dominio: card deck sfogliabile, un grafico alla volta ══ */

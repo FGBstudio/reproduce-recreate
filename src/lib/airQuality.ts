@@ -33,6 +33,14 @@ export function co2ToScore(ppm: number): number {
   return Math.round(Math.max(0, Math.min(100, 100 - ((ppm - 400) / 600) * 100)));
 }
 
+/** Livello qualitativo per uno score IAQ 0-100 (stesse classi di co2Level). */
+export function scoreToLevel(score: number): Co2Level {
+  if (score >= 85) return "EXCELLENT";
+  if (score >= 70) return "GOOD";
+  if (score >= 50) return "MODERATE";
+  return "POOR";
+}
+
 /** Classi colore Tailwind coerenti per livello, uguali in tutta l'app. */
 export const CO2_LEVEL_COLORS: Record<Co2Level, string> = {
   EXCELLENT: "text-emerald-500",
