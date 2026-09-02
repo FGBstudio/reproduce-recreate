@@ -6,6 +6,7 @@ import { regions, Project, MonitoringType } from "@/lib/data";
 import { useAllProjects, useAllBrands } from "@/hooks/useRealTimeData";
 import { MapLoadingSkeleton } from "./DashboardSkeleton";
 import { useTheme } from "@/contexts/ThemeContext";
+import { cartoBasemapUrl } from "@/lib/basemap";
 import { SiteMarker, ProjectSection } from "./SiteMarker";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -92,10 +93,7 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
     });
 
     // Themed CARTO tiles (Dark Matter / Positron based on theme)
-    const initialUrl = theme === 'light'
-      ? "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-      : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    tileLayerRef.current = L.tileLayer(initialUrl, { maxZoom: 19 }).addTo(map.current);
+    tileLayerRef.current = L.tileLayer(cartoBasemapUrl(theme), { maxZoom: 19 }).addTo(map.current);
 
     // Add zoom control — offset from right edge to avoid system gesture zone
     L.control.zoom({ position: "topright" }).addTo(map.current);
@@ -126,10 +124,7 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
   // Swap tile layer when theme changes
   useEffect(() => {
     if (!map.current || !tileLayerRef.current) return;
-    const url = theme === 'light'
-      ? "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-      : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    tileLayerRef.current.setUrl(url);
+    tileLayerRef.current.setUrl(cartoBasemapUrl(theme));
   }, [theme]);
 
   // Fly to region when changed
