@@ -91,7 +91,7 @@ function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: React
                  vars di tema, ereditate da tailwind e dagli assi recharts) */
               ...(off === 0
                 ? ({
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.8))',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.45))',
                     boxShadow: '0 26px 70px -22px rgba(0,0,0,0.5)',
                     '--foreground': '200 28% 13%',
                     '--muted-foreground': '200 10% 34%',
