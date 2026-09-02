@@ -120,7 +120,7 @@ export function usePortfolioEnergyTrend(siteIds: string[], enabled: boolean) {
       });
       return { monthly12, yoy, years: [prevY, currY] };
     },
-    enabled: isSupabaseConfigured && enabled && siteIds.length > 0,
+    enabled: Boolean(isSupabaseConfigured && enabled && siteIds.length > 0),
     staleTime: 10 * 60 * 1000,
   });
 }
@@ -203,7 +203,7 @@ export function usePortfolioAirTrend(siteIds: string[], enabled: boolean) {
       const heatmap = grid.map(row => row.map(c => (c.n > 0 ? Math.round(c.s / c.n) : null)));
       return { monthly12, composition, heatmap };
     },
-    enabled: isSupabaseConfigured && enabled && siteIds.length > 0,
+    enabled: Boolean(isSupabaseConfigured && enabled && siteIds.length > 0),
     staleTime: 10 * 60 * 1000,
   });
 }

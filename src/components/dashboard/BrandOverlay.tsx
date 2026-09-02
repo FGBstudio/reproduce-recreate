@@ -190,8 +190,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   );
   const { data: overviewKpis } = useClientOverviewKpis(perimeterSiteIds);
 
-  // Trend di portafoglio per i card deck (attivi solo a invasione aperta)
-  const trendsOn = visible && isDesktopVisible && !certView;
+  // Trend di portafoglio per i card deck (attivi solo a invasione aperta).
+  // Boolean(): "visible" puo' arrivare null dal chiamante e React Query
+  // pretende un booleano vero per enabled.
+  const trendsOn = Boolean(visible) && isDesktopVisible && !certView;
   const { data: energyTrends } = usePortfolioEnergyTrend(perimeterSiteIds, trendsOn);
   const { data: airTrends } = usePortfolioAirTrend(perimeterSiteIds, trendsOn);
 
