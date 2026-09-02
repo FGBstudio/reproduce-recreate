@@ -181,6 +181,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
         lat: s.lat || 0,
         lng: s.lng || 0,
         areaSqm: s.area_m2 || 0,
+        energy_price_kwh: (s as { energy_price_kwh?: number }).energy_price_kwh ?? undefined,
         imageUrl: s.image_url,
         timezone: s.timezone || 'UTC',
         currency: (s as any).currency || 'EUR',

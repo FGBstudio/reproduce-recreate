@@ -11,7 +11,7 @@ import {
   Cell, ReferenceLine, BarChart, Bar, Legend,
   AreaChart, Area, ComposedChart, Line
 } from "recharts";
-import { usePortfolioEnergyTrend, usePortfolioAirTrend } from "@/hooks/usePortfolioTrends";
+import { usePortfolioEnergyTrend, usePortfolioAirTrend, useWeatherMonthly } from "@/hooks/usePortfolioTrends";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind} from "lucide-react";
 import { Sparkles } from "lucide-react";
@@ -81,9 +81,23 @@ function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: React
               height: '94%',
               transform: `translateX(${off * 18}%) scale(${Math.max(0.78, 1 - abs * 0.08)})`,
               zIndex: 20 - abs,
-              opacity: abs > 2 ? 0 : 1 - abs * 0.35,
-              filter: off === 0 ? 'none' : 'blur(1.5px) saturate(.8)',
+              /* Le card di sfondo restano leggibili in periferia (spec 02/09):
+                 meno trasparenza e meno blur, sempre subordinate al focus */
+              opacity: abs > 2 ? 0 : 1 - abs * 0.2,
+              filter: off === 0 ? 'none' : 'blur(1px) saturate(.85)',
               pointerEvents: abs > 2 ? 'none' : undefined,
+              /* Focus: la card attiva stacca con una patina chiara sul glass
+                 e i testi al suo interno si SCURISCONO (override delle CSS
+                 vars di tema, ereditate da tailwind e dagli assi recharts) */
+              ...(off === 0
+                ? ({
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.8))',
+                    boxShadow: '0 26px 70px -22px rgba(0,0,0,0.5)',
+                    '--foreground': '200 28% 13%',
+                    '--muted-foreground': '200 10% 34%',
+                    '--border': '200 14% 72%',
+                  } as React.CSSProperties)
+                : {}),
             }}
           >
             {c.node}
@@ -241,6 +255,41 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     return withImg?.imageUrl || null;
   }, [filteredProjects, adminSites]);
 
+  // ── Deck v3 (spec grafici 02/09): selezioni interattive ─────────────
+  const [trendSites, setTrendSites] = useState<string[]>([]);
+  const [cityFocus, setCityFocus] = useState<string | null>(null);
+
+  /** Costo stimato del periodo: consumo x prezzo energia del sito (EUR),
+      solo sui siti con prezzo compilato — il KPI dichiara la copertura. */
+  const energyCost = useMemo(() => {
+    let cost = 0, n = 0;
+    for (const s of sitesWithEnergy) {
+      const site = adminSites.find(a => a.id === s.siteId);
+      const price = site?.energy_price_kwh;
+      const kwh = s.energy.monthlyKwh ?? 0;
+      if (price && price > 0 && kwh > 0) { cost += kwh * price; n++; }
+    }
+    return n > 0 ? { value: cost, sites: n } : null;
+  }, [sitesWithEnergy, adminSites]);
+
+  /** Citta' con siti energia: alimentano il confronto "stesso clima". */
+  const energyCities = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const s of sitesWithEnergy) {
+      const city = adminSites.find(a => a.id === s.siteId)?.city?.trim();
+      if (!city) continue;
+      if (!map.has(city)) map.set(city, []);
+      map.get(city)!.push(s.siteId);
+    }
+    return [...map.entries()].map(([city, ids]) => ({ city, ids })).sort((a, b) => b.ids.length - a.ids.length);
+  }, [sitesWithEnergy, adminSites]);
+  const focusCity = cityFocus ?? energyCities[0]?.city ?? null;
+  const citySiteIds = useMemo(
+    () => energyCities.find(c => c.city === focusCity)?.ids ?? [],
+    [energyCities, focusCity]
+  );
+  const { data: cityWeather } = useWeatherMonthly(citySiteIds, trendsOn && monDomain === 'energy');
+
   /** Intensita' media del parco: kWh totali / m² totali, SOLO sui siti con
       area compilata e consumo nel periodo — il KPI dichiara il denominatore. */
   const energyIntensity = useMemo(() => {
@@ -329,10 +378,11 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     return { best: airLeaderboard[airLeaderboard.length - 1], worst: airLeaderboard[0] };
   }, [airLeaderboard]);
 
-  /** Card del deck di dominio (le stesse che l'anteprima mostra in
-      trasparenza): panoramica + i 4 grafici di comparazione della spec,
-      nell'ordine di apparizione concordato. Stile FGB: teal #009193,
-      acqua #9fd5d9, ambra solo per la temperatura, rosso solo problemi. */
+  /** Domain deck cards (the same ones the hover preview shows ghosted).
+      Spec 02/09: English-only copy; denser overview with micro-copy; the
+      portfolio trend becomes an active benchmarking tool (up to 4 stores
+      overlaid); the 4th energy chart compares stores of ONE city against
+      that city's real temperatures — same climate, fair comparison. */
   const chartTooltipStyle = {
     background: 'hsl(var(--popover) / 0.95)',
     border: '1px solid hsl(var(--border))',
@@ -340,26 +390,31 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     fontSize: 12,
   } as const;
   const axisTick = { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } as const;
+  const SERIES_COLORS = ['#009193', '#38bdf8', '#8b5cf6', '#10b981', '#016368'];
+  const siteNameOf = (id: string) => adminSites.find(a => a.id === id)?.name || id;
 
   const buildDeck = (domain: 'energy' | 'air') => {
     const isEnergy = domain === 'energy';
-    const it = language === 'it';
-    const kpis = isEnergy
-      ? [
-          { v: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—', l: it ? 'Consumo 30 giorni' : 'Consumption 30 days' },
-          { v: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—', l: energyIntensity ? (it ? `Intensità · ${energyIntensity.sites} siti con area` : `Intensity · ${energyIntensity.sites} sites with area`) : (it ? 'Intensità' : 'Intensity') },
-          { v: energyBestWorst ? energyBestWorst.best.name : '—', l: it ? 'Migliore del periodo' : 'Best of the period' },
-          { v: energyBestWorst ? energyBestWorst.worst.name : '—', l: it ? 'Da attenzionare' : 'Needs attention' },
-        ]
-      : [
-          { v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—', l: it ? 'CO₂ media del parco' : 'Portfolio average CO₂' },
-          { v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—', l: it ? 'Siti in aria salubre' : 'Sites in healthy air' },
-          { v: airBestWorst ? airBestWorst.best.name : '—', l: it ? 'Migliore del periodo' : 'Best of the period' },
-          { v: airBestWorst ? airBestWorst.worst.name : '—', l: it ? 'Da attenzionare' : 'Needs attention' },
-        ];
 
-    /* Classifica: energia in kWh/m² dove le aree esistono (fallback kWh
-       assoluti dichiarato), aria in CO₂ coi colori qualitativi */
+    const emptyCard = (msg: string) => (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">{msg}</p>
+      </div>
+    );
+    const noData = 'No data yet for this chart';
+
+    const header = (eyebrow: string, sub: string, extra?: ReactNode) => (
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold text-fgb-accent uppercase tracking-[0.22em]">{eyebrow}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{sub}</p>
+        </div>
+        {extra}
+      </div>
+    );
+
+    /* Ranking: energy in kWh/m2 where areas exist (declared fallback to
+       absolute kWh), air in CO2 with qualitative colors */
     const intensityList = isEnergy
       ? sitesWithEnergy
           .map(s => {
@@ -377,31 +432,88 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     const rankUnit = isEnergy ? (useIntensity ? 'kWh/m²' : 'MWh') : 'ppm';
     const fmtRank = (v: number) => (isEnergy ? (useIntensity ? v.toFixed(1) : (v / 1000).toFixed(1)) : String(Math.round(v)));
 
-    const emptyCard = (msg: string) => (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">{msg}</p>
-      </div>
-    );
-    const noData = it ? 'Ancora nessun dato per questo grafico' : 'No data yet for this chart';
-
-    const header = (eyebrow: string, sub: string) => (
-      <div className="mb-3">
-        <p className="text-[10px] font-semibold text-fgb-accent uppercase tracking-[0.22em]">{eyebrow}</p>
-        <p className="text-sm text-muted-foreground mt-0.5">{sub}</p>
-      </div>
-    );
+    /* ── Overview card ─────────────────────────────────────────────── */
+    const overviewBoxes = isEnergy
+      ? [
+          {
+            v: totals.monthlyEnergyKwh > 0 ? `${(totals.monthlyEnergyKwh / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} MWh` : '—',
+            l: 'Period consumption',
+            m: 'Total metered energy across your portfolio over the last 30 days.',
+          },
+          {
+            v: energyIntensity ? `${energyIntensity.value.toFixed(1)} kWh/m²` : '—',
+            l: 'Average intensity',
+            m: energyIntensity
+              ? `Energy per square metre on ${energyIntensity.sites} sites with area data — the fair basis to compare stores of different size.`
+              : 'Add site areas in settings to unlock this comparison metric.',
+          },
+          {
+            v: energyBestWorst ? null : '—',
+            l: 'Best & worst performers',
+            m: 'The two extremes of the period: where to learn from, and where to look first.',
+            bw: energyBestWorst,
+          },
+          {
+            v: energyCost ? `€ ${energyCost.value >= 1000 ? `${(energyCost.value / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })}k` : energyCost.value.toFixed(0)}` : '—',
+            l: 'Estimated cost',
+            m: energyCost
+              ? `Consumption × each site's energy price, on ${energyCost.sites} sites with a price set · estimated figure.`
+              : 'Set energy prices in site settings to unlock the cost estimate.',
+            badge: 'Estimated',
+          },
+        ]
+      : [
+          {
+            v: airHealth ? `${airHealth.avg} ppm · ${airHealth.label}` : '—',
+            l: 'Portfolio air quality',
+            m: 'Average CO₂ across monitored sites, translated into a plain-words rating.',
+          },
+          {
+            v: airHealth ? `${airHealth.healthy} / ${airHealth.total}` : '—',
+            l: 'Sites in healthy air',
+            m: 'Stores currently below the comfort threshold — the health of the portfolio at a glance.',
+          },
+          {
+            v: airBestWorst ? null : '—',
+            l: 'Best & worst performers',
+            m: 'Cleanest and most stressed air of the period, side by side.',
+            bw: airBestWorst,
+          },
+          {
+            v: airHealth ? `${Math.round((airHealth.healthy / airHealth.total) * 100)}%` : '—',
+            l: 'Healthy share',
+            m: 'Share of monitored sites in good air right now.',
+          },
+        ];
 
     const cards: { key: string; node: ReactNode }[] = [
       {
         key: 'overview',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(isEnergy ? 'Energy · overview' : 'Air · overview', it ? 'Il parco in quattro numeri · 30 giorni' : 'Your portfolio in four numbers · 30 days')}
-            <div className="flex-1 grid grid-cols-2 gap-3 content-center">
-              {kpis.map((k, i) => (
-                <div key={i} className="text-center p-5 rounded-xl bg-foreground/5 border border-foreground/10 min-w-0">
-                  <div className="text-xl font-bold text-foreground truncate" title={k.v}>{k.v}</div>
-                  <div className="text-[10px] uppercase text-muted-foreground mt-1.5">{k.l}</div>
+            {header(isEnergy ? 'Energy · overview' : 'Air · overview', 'Your portfolio in four numbers · last 30 days')}
+            <div className="flex-1 min-h-0 grid grid-cols-2 grid-rows-2 gap-4">
+              {overviewBoxes.map((k, i) => (
+                <div key={i} className="relative flex flex-col justify-center px-6 py-4 rounded-2xl bg-foreground/5 border border-foreground/10 min-w-0 text-left">
+                  {'badge' in k && k.badge && (
+                    <span className="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full bg-foreground/10 text-muted-foreground">{k.badge}</span>
+                  )}
+                  {'bw' in k && k.bw ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-baseline gap-2 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 shrink-0 w-11">Best</span>
+                        <span className="text-base font-bold text-foreground truncate">{k.bw.best.name}</span>
+                      </div>
+                      <div className="flex items-baseline gap-2 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-500 shrink-0 w-11">Worst</span>
+                        <span className="text-base font-bold text-foreground truncate">{k.bw.worst.name}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-2xl font-bold text-foreground truncate" title={String(k.v)}>{k.v}</div>
+                  )}
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fgb-accent mt-2">{k.l}</div>
+                  <p className="text-[11px] leading-snug text-muted-foreground mt-1">{k.m}</p>
                 </div>
               ))}
             </div>
@@ -412,9 +524,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'ranking',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(it ? 'Classifica dei siti' : 'Site ranking', isEnergy
-              ? (useIntensity ? `kWh/m² · 30d · ${intensityList.length} ${it ? 'siti con area' : 'sites with area'}` : `kWh · 30d (${it ? 'aree non compilate' : 'areas not set'})`)
-              : 'CO₂ ppm · 30d')}
+            {header('Site ranking', isEnergy
+              ? (useIntensity ? `kWh/m² · 30 days · ${intensityList.length} sites with area data` : 'kWh · 30 days (site areas not set)')
+              : 'CO₂ ppm · 30 days · tap a site to open it')}
             <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-1.5">
               {rankList.map((s, i) => (
                 <button key={s.siteId} onClick={() => onOpenSite?.(s.siteId)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-foreground/5 transition-colors text-left">
@@ -442,35 +554,71 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     ];
 
     if (isEnergy) {
+      /* ── Portfolio trend: active benchmarking, up to 4 stores overlaid ── */
       const trend = energyTrends?.monthly12 ?? [];
       const hasTrend = trend.some(m => m.kwh > 0);
+      const candidates = energyLeaderboard.slice(0, 8);
+      const trendData = trend.map((m, i) => ({
+        label: m.label,
+        kwh: m.kwh,
+        ...Object.fromEntries(trendSites.map(id => [id, energyTrends?.perSite[id]?.[i] ?? null])),
+      }));
       cards.push({
         key: 'trend',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(it ? 'Trend del parco' : 'Portfolio trend', it ? 'Consumo aggregato · ultimi 12 mesi' : 'Aggregated consumption · last 12 months')}
+            {header('Portfolio trend', 'Aggregated consumption · last 12 months — pick up to 4 stores to benchmark them')}
+            {candidates.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {candidates.map(c => {
+                  const selIdx = trendSites.indexOf(c.siteId);
+                  const on = selIdx !== -1;
+                  const color = on ? SERIES_COLORS[(selIdx + 1) % SERIES_COLORS.length] : undefined;
+                  return (
+                    <button
+                      key={c.siteId}
+                      onClick={() =>
+                        setTrendSites(prev =>
+                          prev.includes(c.siteId) ? prev.filter(x => x !== c.siteId) : prev.length >= 4 ? prev : [...prev, c.siteId]
+                        )
+                      }
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors ${on ? 'text-foreground' : 'border-foreground/15 text-muted-foreground hover:text-foreground hover:bg-foreground/5'}`}
+                      style={on ? { borderColor: color, background: `${color}1a` } : undefined}
+                    >
+                      {on && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />}
+                      <span className="max-w-[130px] truncate">{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex-1 min-h-0">
               {hasTrend ? (
                 <ZoomableChart width="100%" height="100%">
-                  <AreaChart data={trend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                  <ComposedChart data={trendData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="fgbTrendFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#009193" stopOpacity={0.35} />
+                        <stop offset="5%" stopColor="#009193" stopOpacity={0.3} />
                         <stop offset="95%" stopColor="#009193" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="hsl(var(--border) / 0.35)" />
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
                     <YAxis axisLine={false} tickLine={false} tick={axisTick} width={44} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)} MWh`} />
-                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${(v / 1000).toFixed(1)} MWh`, it ? 'Consumo' : 'Consumption']} />
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number, name: string) => [`${(Number(v) / 1000).toFixed(1)} MWh`, name === 'kwh' ? 'Portfolio' : siteNameOf(name)]} />
                     <Area type="monotone" dataKey="kwh" stroke="#009193" strokeWidth={2.5} fill="url(#fgbTrendFill)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
-                  </AreaChart>
+                    {trendSites.map((id, idx) => (
+                      <Line key={id} type="monotone" dataKey={id} stroke={SERIES_COLORS[(idx + 1) % SERIES_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} connectNulls />
+                    ))}
+                  </ComposedChart>
                 </ZoomableChart>
               ) : emptyCard(noData)}
             </div>
           </div>
         ),
       });
+
+      /* ── Year over year ── */
       const yoy = energyTrends?.yoy ?? [];
       const years = energyTrends?.years ?? [];
       const hasYoy = yoy.some(r => years.some(y => (r[y] as number | null) != null));
@@ -478,7 +626,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'yoy',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(it ? 'Anno su anno' : 'Year over year', it ? 'Consumo mensile a confronto' : 'Monthly consumption compared')}
+            {header('Year over year', 'Monthly consumption, this year against last — seasonality and progress')}
             <div className="flex-1 min-h-0">
               {hasYoy ? (
                 <ZoomableChart width="100%" height="100%">
@@ -497,27 +645,67 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           </div>
         ),
       });
-      const hasTemp = trend.some(m => m.temp != null);
+
+      /* ── Same city, same climate: stores vs the city's real temperature ── */
+      const citySeries = citySiteIds.slice(0, 5);
+      const cityHasData = citySeries.some(id => (energyTrends?.perSite[id] ?? []).some(v => v != null));
+      const cityData = (energyTrends?.monthly12 ?? []).map((m, i) => ({
+        label: m.label,
+        temp: cityWeather?.[m.month] ?? null,
+        ...Object.fromEntries(citySeries.map(id => [id, energyTrends?.perSite[id]?.[i] ?? null])),
+      }));
+      const hasCityTemp = cityData.some(d => d.temp != null);
       cards.push({
-        key: 'temp',
+        key: 'city',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(it ? 'Consumo e temperatura' : 'Consumption vs temperature', it ? 'kWh del parco e temperatura esterna media · 12 mesi' : 'Portfolio kWh and average outdoor temperature · 12 months')}
+            {header(
+              'Same climate, fair comparison',
+              'Store consumption vs the city’s real outdoor temperature · last 12 months',
+              energyCities.length > 0 ? (
+                <select
+                  value={focusCity ?? ''}
+                  onChange={e => setCityFocus(e.target.value)}
+                  className="shrink-0 bg-foreground/5 border border-foreground/15 text-foreground text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer hover:bg-foreground/10 transition-colors"
+                >
+                  {energyCities.map(c => (
+                    <option key={c.city} value={c.city}>{c.city} ({c.ids.length})</option>
+                  ))}
+                </select>
+              ) : undefined
+            )}
             <div className="flex-1 min-h-0">
-              {hasTrend ? (
+              {cityHasData ? (
                 <ZoomableChart width="100%" height="100%">
-                  <ComposedChart data={trend} margin={{ top: 8, right: 6, left: 0, bottom: 0 }}>
+                  <ComposedChart data={cityData} margin={{ top: 8, right: 6, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="hsl(var(--border) / 0.35)" />
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
                     <YAxis yAxisId="kwh" axisLine={false} tickLine={false} tick={axisTick} width={44} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)} MWh`} />
                     <YAxis yAxisId="temp" orientation="right" axisLine={false} tickLine={false} width={34} tick={{ ...axisTick, fill: '#f59e0b' }} tickFormatter={(v: number) => `${v}°`} />
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                    <Bar yAxisId="kwh" dataKey="kwh" name="kWh" fill="#009193" radius={[4, 4, 0, 0]} fillOpacity={0.85} />
-                    {hasTemp && <Line yAxisId="temp" type="monotone" dataKey="temp" name="°C" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2.5, strokeWidth: 0 }} connectNulls />}
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number, name: string) => (name === 'temp' ? [`${v} °C`, 'City temperature'] : [`${(Number(v) / 1000).toFixed(1)} MWh`, siteNameOf(name)])} />
+                    {citySeries.map((id, idx) => (
+                      <Line key={id} yAxisId="kwh" type="monotone" dataKey={id} stroke={SERIES_COLORS[idx % SERIES_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} connectNulls />
+                    ))}
+                    {hasCityTemp && <Line yAxisId="temp" type="monotone" dataKey="temp" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />}
                   </ComposedChart>
                 </ZoomableChart>
-              ) : emptyCard(noData)}
+              ) : emptyCard(focusCity ? `No consumption data yet for ${focusCity}` : noData)}
             </div>
+            {citySeries.length > 0 && cityHasData && (
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                {citySeries.map((id, idx) => (
+                  <span key={id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: SERIES_COLORS[idx % SERIES_COLORS.length] }} />
+                    <span className="max-w-[140px] truncate">{siteNameOf(id)}</span>
+                  </span>
+                ))}
+                {hasCityTemp && (
+                  <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="w-3 h-0.5 shrink-0" style={{ background: '#f59e0b' }} />City temp
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ),
       });
@@ -528,7 +716,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'air-trend',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(it ? 'Trend del parco' : 'Portfolio trend', it ? 'CO₂ media · ultimi 12 mesi' : 'Average CO₂ · last 12 months')}
+            {header('Portfolio trend', 'Average CO₂ · last 12 months')}
             <div className="flex-1 min-h-0">
               {hasATrend ? (
                 <ZoomableChart width="100%" height="100%">
@@ -557,30 +745,27 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'air-hours',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(it ? 'Composizione delle ore' : 'Hour composition', it ? 'Ore in aria buona / attenzione / critica · 30 giorni' : 'Hours in good / warning / critical air · 30 days')}
+            {header('Hour composition', 'Hours in good / warning / critical air · last 30 days')}
             {comp.length > 0 ? (
               <>
                 <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-2">
-                  {comp.map(c => {
-                    const nm = adminSites.find(a => a.id === c.siteId)?.name || c.siteId;
-                    return (
-                      <div key={c.siteId} className="flex items-center gap-2">
-                        <span className="text-xs text-foreground w-40 truncate shrink-0">{nm}</span>
-                        <div className="flex-1 h-3.5 rounded-full overflow-hidden flex bg-foreground/5">
-                          <div style={{ width: `${c.good * 100}%` }} className="bg-emerald-500/85" />
-                          <div style={{ width: `${c.warn * 100}%` }} className="bg-yellow-500/85" />
-                          <div style={{ width: `${c.crit * 100}%` }} className="bg-red-500/85" />
-                        </div>
-                        <span className="text-[10px] font-semibold text-emerald-500 tabular-nums w-10 text-right shrink-0">{Math.round(c.good * 100)}%</span>
+                  {comp.map(c => (
+                    <div key={c.siteId} className="flex items-center gap-2">
+                      <span className="text-xs text-foreground w-40 truncate shrink-0">{siteNameOf(c.siteId)}</span>
+                      <div className="flex-1 h-3.5 rounded-full overflow-hidden flex bg-foreground/5">
+                        <div style={{ width: `${c.good * 100}%` }} className="bg-emerald-500/85" />
+                        <div style={{ width: `${c.warn * 100}%` }} className="bg-yellow-500/85" />
+                        <div style={{ width: `${c.crit * 100}%` }} className="bg-red-500/85" />
                       </div>
-                    );
-                  })}
+                      <span className="text-[10px] font-semibold text-emerald-500 tabular-nums w-10 text-right shrink-0">{Math.round(c.good * 100)}%</span>
+                    </div>
+                  ))}
                 </div>
                 <div className="flex items-center gap-4 mt-3 justify-center">
                   {[
-                    { c: 'bg-emerald-500', l: it ? 'Buona' : 'Good' },
-                    { c: 'bg-yellow-500', l: it ? 'Attenzione' : 'Warning' },
-                    { c: 'bg-red-500', l: it ? 'Critica' : 'Critical' },
+                    { c: 'bg-emerald-500', l: 'Good' },
+                    { c: 'bg-yellow-500', l: 'Warning' },
+                    { c: 'bg-red-500', l: 'Critical' },
                   ].map(x => (
                     <span key={x.l} className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className={`w-2 h-2 rounded-full ${x.c}`} />{x.l}</span>
                   ))}
@@ -592,7 +777,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       });
       const hm = airTrends?.heatmap ?? [];
       const hasHm = hm.some(row => row.some(v => v != null));
-      const dayLabels = it ? ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const hmColor = (v: number | null) => {
         if (v == null) return 'hsl(var(--foreground) / 0.05)';
         if (v <= CO2_THRESHOLDS.excellent) return '#10b981cc';
@@ -604,13 +789,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'air-heatmap',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header(it ? 'Orari critici' : 'Critical hours', it ? 'CO₂ media per ora e giorno · 30 giorni · tutto il parco' : 'Average CO₂ by hour and day · 30 days · whole portfolio')}
+            {header('Critical hours', 'Average CO₂ by hour and day · last 30 days · whole portfolio')}
             {hasHm ? (
               <div className="flex-1 min-h-0 flex flex-col justify-center gap-1">
                 {hm.map((row, di) => (
                   <div key={di} className="flex items-center gap-1">
                     <span className="text-[9px] text-muted-foreground w-8 shrink-0">{dayLabels[di]}</span>
-                    <div className="flex-1 grid grid-cols-24 gap-[2px]" style={{ gridTemplateColumns: 'repeat(24, 1fr)' }}>
+                    <div className="flex-1 grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(24, 1fr)' }}>
                       {row.map((v, hi) => (
                         <div key={hi} className="h-5 rounded-[3px]" style={{ background: hmColor(v) }} title={v != null ? `${dayLabels[di]} ${hi}:00 · ${v} ppm` : `${dayLabels[di]} ${hi}:00`} />
                       ))}
@@ -1290,7 +1475,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   onClick={() => { setMonDomain(c.d); setDeckIndex(0); }}
                   onMouseEnter={() => setHoverDomain(c.d)}
                   onMouseLeave={() => setHoverDomain(null)}
-                  className="relative w-[340px] h-[330px] rounded-[26px] overflow-hidden glass-panel text-center transition-all duration-300 ease-in-out hover:scale-[1.05] group"
+                  className="relative w-[390px] h-[380px] rounded-[26px] overflow-hidden glass-panel text-center transition-all duration-300 ease-in-out hover:scale-[1.05] group"
                 >
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     {heroImage ? (

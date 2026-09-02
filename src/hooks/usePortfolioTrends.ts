@@ -37,6 +37,9 @@ export interface EnergyTrends {
   monthly12: { month: string; label: string; kwh: number; temp: number | null }[];
   yoy: { label: string; [year: string]: number | string | null }[];
   years: string[];
+  /** kWh mensili PER SITO, allineati ai 12 mesi di monthly12 (null = nessun
+      dato quel mese): alimentano il benchmarking multi-store del trend. */
+  perSite: Record<string, (number | null)[]>;
 }
 
 export function usePortfolioEnergyTrend(siteIds: string[], enabled: boolean) {
@@ -71,8 +74,9 @@ export function usePortfolioEnergyTrend(siteIds: string[], enabled: boolean) {
           .range(a, b),
       );
 
-      // kWh per mese, con precedenza general per sito
+      // kWh per mese (totale e per sito), con precedenza general per sito
       const byMonth = new Map<string, number>();
+      const bySiteMonth = new Map<string, Map<string, number>>();
       for (const r of rows) {
         const gen = generalBySite.get(r.site_id);
         if (gen && gen.size > 0 && !gen.has(r.device_id)) continue; // solo general dove esiste
@@ -80,8 +84,11 @@ export function usePortfolioEnergyTrend(siteIds: string[], enabled: boolean) {
         if (v <= 0) continue;
         const k = monthKey(r.ts_day);
         byMonth.set(k, (byMonth.get(k) || 0) + v);
+        if (!bySiteMonth.has(r.site_id)) bySiteMonth.set(r.site_id, new Map());
+        const sm = bySiteMonth.get(r.site_id)!;
+        sm.set(k, (sm.get(k) || 0) + v);
       }
-      if (byMonth.size === 0) return { monthly12: [], yoy: [], years: [] };
+      if (byMonth.size === 0) return { monthly12: [], yoy: [], years: [], perSite: {} };
 
       // Temperatura media mensile del perimetro (RPC, solo aggregati)
       const tempByMonth = new Map<string, number>();
@@ -118,7 +125,34 @@ export function usePortfolioEnergyTrend(siteIds: string[], enabled: boolean) {
           [currY]: byMonth.has(kCurr) ? Math.round(byMonth.get(kCurr)!) : null,
         };
       });
-      return { monthly12, yoy, years: [prevY, currY] };
+      const perSite: EnergyTrends['perSite'] = {};
+      for (const [sid, sm] of bySiteMonth) {
+        perSite[sid] = monthly12.map(m => (sm.has(m.month) ? Math.round(sm.get(m.month)!) : null));
+      }
+
+      return { monthly12, yoy, years: [prevY, currY], perSite };
+    },
+    enabled: Boolean(isSupabaseConfigured && enabled && siteIds.length > 0),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+/** Temperatura media mensile per un sottoinsieme di siti (es. una citta'):
+    riusa la RPC di soli aggregati. Ritorna mese 'YYYY-MM' -> °C. */
+export function useWeatherMonthly(siteIds: string[], enabled: boolean) {
+  const key = [...siteIds].sort().join(',');
+  return useQuery<Record<string, number>>({
+    queryKey: ['weather-monthly', key],
+    queryFn: async () => {
+      if (!supabase || siteIds.length === 0) return {};
+      const { data, error } = await (supabase.rpc as CallableFunction)('get_portfolio_weather_monthly', {
+        p_site_ids: siteIds,
+        p_months: 13,
+      });
+      if (error) throw error;
+      const out: Record<string, number> = {};
+      (data || []).forEach((w: { bucket: string; avg_temp: number }) => { out[w.bucket] = Number(w.avg_temp); });
+      return out;
     },
     enabled: Boolean(isSupabaseConfigured && enabled && siteIds.length > 0),
     staleTime: 10 * 60 * 1000,
