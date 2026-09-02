@@ -7,6 +7,7 @@ import CityTicker from "./CityTicker";
 import LoginModal from "./LoginModal";
 import LandingMobile from "./LandingMobile";
 import LandingScroll from "./LandingScroll";
+import LandingScrollMobile from "./LandingScrollMobile";
 import { COMPANY_STATS } from "@/lib/companyStats";
 import { LANDING_SCROLL } from "@/lib/features";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -304,9 +305,13 @@ const FloatingBentoPanel: React.FC = () => {
   // Sotto i 768px la landing desktop non regge (sezioni più alte del viewport
   // dentro uno snap obbligatorio): si biforca la presentazione, non la logica.
   if (isMobile) {
+    /* Nuova landing mobile a scene (stesso flag della desktop, reversibile):
+       a flag spento torna la LandingMobile precedente. */
     return (
       <>
-        <LandingMobile onSignIn={openLogin} onCreate={openRequest} blurGlobe={loginOpen} />
+        {LANDING_SCROLL
+          ? <LandingScrollMobile onSignIn={openLogin} onCreate={openRequest} />
+          : <LandingMobile onSignIn={openLogin} onCreate={openRequest} blurGlobe={loginOpen} />}
         <LoginModal open={loginOpen} onOpenChange={setLoginOpen} initialMode={loginMode} />
       </>
     );

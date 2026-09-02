@@ -27,7 +27,7 @@ interface Props {
 }
 
 /* Sedi FGB (lat/lng reali). main = Monte-Carlo: bersaglio dello zoom. */
-const MARKERS: { lat: number; lng: number; label: string; main?: boolean }[] = [
+export const MARKERS: { lat: number; lng: number; label: string; main?: boolean }[] = [
   { lat: 43.53, lng: 5.45, label: "Aix-en-Provence" },
   { lat: 52.37, lng: 4.9, label: "Amsterdam" },
   { lat: 25.2, lng: 55.27, label: "Dubai" },
@@ -77,7 +77,7 @@ const idlePixelRatio = (side: number) =>
    h = altezza massima calibrata per pareggiare il PESO VISIVO, non quello
    lineare: i blocchi densi (ESG, fitwel) vanno scalati giu' (~70%), i
    tratti sottili (GRESB, WELL, LIFE) reggono altezze piene. */
-const CERT_LOGOS = [
+export const CERT_LOGOS = [
   { name: "BREEAM", src: "/breeam_logo.webp", h: 110, desc: "Building Research Establishment Environmental Assessment Method" },
   { name: "ENVISION", src: "/envision.webp", h: 112, desc: "The framework for sustainable, resilient infrastructure" },
   { name: "ESG", src: "/Logo_ESG.png", h: 48, desc: "Environmental, Social & Governance performance" },
