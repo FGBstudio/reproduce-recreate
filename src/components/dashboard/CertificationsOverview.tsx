@@ -89,13 +89,26 @@ const cellLabel = (scheme: string, c: SiteCertCell | null): { top: string; sub: 
   };
 };
 
-const Bar = ({ parts, widthPct }: { parts: Array<{ n: number; cls: string }>; widthPct: number }) => (
-  <div className="h-5 rounded-md overflow-hidden flex bg-foreground/5" style={{ width: `${widthPct}%`, minWidth: 36 }}>
+const Bar = ({ parts, widthPct }: { parts: Array<{ n: number; cls: string; label: string }>; widthPct: number }) => (
+  <div className="h-7 rounded-lg overflow-hidden flex bg-foreground/[0.07] transition-all duration-500 shrink-0"
+    style={{ width: `${widthPct}%`, minWidth: 44 }}>
     {parts.filter(p => p.n > 0).map((p, i) => (
-      <span key={i} className={`grid place-items-center text-[11px] font-semibold ${p.cls}`} style={{ flex: p.n }}>{p.n}</span>
+      <span key={i} title={`${p.n} ${p.label}`}
+        className={`grid place-items-center text-xs font-bold transition-all duration-500 ${p.cls}`}
+        style={{ flex: p.n }}>{p.n}</span>
     ))}
   </div>
 );
+
+/** Chip di lettura accanto alla barra: pallino colore + numero + etichetta.
+ *  Sostituisce il testo unico "3 achieved · 0 in progress · …" poco leggibile. */
+const CountChip = ({ n, dot, label }: { n: number; dot: string; label: string }) =>
+  n > 0 ? (
+    <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground whitespace-nowrap tabular-nums">
+      <i className={`w-2 h-2 rounded-full inline-block ${dot}`} />
+      <b className="text-foreground font-semibold">{n}</b> {label}
+    </span>
+  ) : null;
 
 const SEG = {
   achieved: 'text-white bg-fgb-secondary',
@@ -104,6 +117,15 @@ const SEG = {
   potential: 'text-fgb-light bg-fgb-light/20',
   online: 'text-white bg-fgb-secondary',
   offline: 'text-rose-200 bg-rose-500/45',
+};
+
+const DOT = {
+  achieved: 'bg-fgb-secondary',
+  progress: 'bg-fgb-accent',
+  pipeline: 'bg-foreground/30',
+  potential: 'bg-fgb-light',
+  online: 'bg-fgb-secondary',
+  offline: 'bg-rose-500',
 };
 
 // Parti sticky (intestazione tabella + colonna sito): sfondo SOLIDO.
@@ -258,23 +280,30 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
         </div>
 
         {scheme?.model === 'rated' && (
-          <div className="space-y-2.5">
+          <div className="space-y-1.5">
             {scheme.levels.map(l => {
               const tot = l.achieved + l.inProgress + l.pipeline + l.potential;
               return (
-                <div key={l.level} className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-3">
-                  <span className="text-sm text-foreground">{l.level === 'TBD' ? 'Level TBD' : l.level}</span>
-                  <div className="flex items-center gap-3 min-w-0">
+                <div key={l.level}
+                  className="grid grid-cols-[130px_minmax(0,1fr)] items-center gap-4 rounded-xl px-3 py-2 hover:bg-foreground/[0.05] transition-colors">
+                  <div className="min-w-0">
+                    <span className="block text-sm font-semibold text-foreground truncate">{l.level === 'TBD' ? 'Level TBD' : l.level}</span>
+                    <span className="block text-[11px] text-muted-foreground tabular-nums">{tot} project{tot === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="flex items-center gap-4 min-w-0">
                     <Bar widthPct={(tot / maxRatedTotal) * BAR_SCALE}
                       parts={[
-                        { n: l.achieved, cls: SEG.achieved },
-                        { n: l.inProgress, cls: SEG.progress },
-                        { n: l.pipeline, cls: SEG.pipeline },
-                        { n: l.potential, cls: SEG.potential },
+                        { n: l.achieved, cls: SEG.achieved, label: 'achieved' },
+                        { n: l.inProgress, cls: SEG.progress, label: 'in progress' },
+                        { n: l.pipeline, cls: SEG.pipeline, label: 'pipeline' },
+                        { n: l.potential, cls: SEG.potential, label: 'potential' },
                       ]} />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                      {l.achieved} achieved · {l.inProgress} in progress{l.pipeline > 0 ? ` · ${l.pipeline} pipeline` : ''}{l.potential > 0 ? ` · ${l.potential} potential` : ''}
-                    </span>
+                    <div className="flex items-center gap-3 flex-wrap min-w-0">
+                      <CountChip n={l.achieved} dot={DOT.achieved} label="achieved" />
+                      <CountChip n={l.inProgress} dot={DOT.progress} label="in progress" />
+                      <CountChip n={l.pipeline} dot={DOT.pipeline} label="pipeline" />
+                      <CountChip n={l.potential} dot={DOT.potential} label="potential" />
+                    </div>
                   </div>
                 </div>
               );
@@ -283,41 +312,56 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
         )}
 
         {scheme?.model === 'monitoring' && scheme.monitoring && (
-          <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-3">
-            <span className="text-sm text-foreground">Monitors</span>
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="grid grid-cols-[130px_minmax(0,1fr)] items-center gap-4 rounded-xl px-3 py-2 hover:bg-foreground/[0.05] transition-colors">
+            <div>
+              <span className="block text-sm font-semibold text-foreground">Monitors</span>
+              <span className="block text-[11px] text-muted-foreground tabular-nums">
+                {scheme.monitoring.online + scheme.monitoring.offline + scheme.monitoring.pipeline + scheme.monitoring.potential} sites
+              </span>
+            </div>
+            <div className="flex items-center gap-4 min-w-0">
               <Bar widthPct={BAR_SCALE}
                 parts={[
-                  { n: scheme.monitoring.online, cls: SEG.online },
-                  { n: scheme.monitoring.offline, cls: SEG.offline },
-                  { n: scheme.monitoring.pipeline, cls: SEG.progress },
-                  { n: scheme.monitoring.potential, cls: SEG.potential },
+                  { n: scheme.monitoring.online, cls: SEG.online, label: 'online' },
+                  { n: scheme.monitoring.offline, cls: SEG.offline, label: 'offline' },
+                  { n: scheme.monitoring.pipeline, cls: SEG.progress, label: 'pipeline' },
+                  { n: scheme.monitoring.potential, cls: SEG.potential, label: 'potential' },
                 ]} />
-              <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                {scheme.monitoring.online} online · {scheme.monitoring.offline} offline · {scheme.monitoring.pipeline} pipeline · {scheme.monitoring.potential} potential
-              </span>
+              <div className="flex items-center gap-3 flex-wrap min-w-0">
+                <CountChip n={scheme.monitoring.online} dot={DOT.online} label="online" />
+                <CountChip n={scheme.monitoring.offline} dot={DOT.offline} label="offline" />
+                <CountChip n={scheme.monitoring.pipeline} dot={DOT.progress} label="pipeline" />
+                <CountChip n={scheme.monitoring.potential} dot={DOT.potential} label="potential" />
+              </div>
             </div>
           </div>
         )}
 
         {scheme?.model === 'binary' && scheme.binary && (
-          <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-3">
-            <span className="text-sm text-foreground">Status</span>
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="grid grid-cols-[130px_minmax(0,1fr)] items-center gap-4 rounded-xl px-3 py-2 hover:bg-foreground/[0.05] transition-colors">
+            <div>
+              <span className="block text-sm font-semibold text-foreground">Status</span>
+              <span className="block text-[11px] text-muted-foreground tabular-nums">
+                {scheme.binary.achieved + scheme.binary.notAchieved + scheme.binary.pipeline} projects
+              </span>
+            </div>
+            <div className="flex items-center gap-4 min-w-0">
               <Bar widthPct={BAR_SCALE}
                 parts={[
-                  { n: scheme.binary.achieved, cls: SEG.achieved },
-                  { n: scheme.binary.notAchieved, cls: SEG.progress },
-                  { n: scheme.binary.pipeline, cls: SEG.pipeline },
+                  { n: scheme.binary.achieved, cls: SEG.achieved, label: 'achieved' },
+                  { n: scheme.binary.notAchieved, cls: SEG.progress, label: 'not achieved' },
+                  { n: scheme.binary.pipeline, cls: SEG.pipeline, label: 'pipeline' },
                 ]} />
-              <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                {scheme.binary.achieved} achieved · {scheme.binary.notAchieved} not achieved · {scheme.binary.pipeline} pipeline
-              </span>
+              <div className="flex items-center gap-3 flex-wrap min-w-0">
+                <CountChip n={scheme.binary.achieved} dot={DOT.achieved} label="achieved" />
+                <CountChip n={scheme.binary.notAchieved} dot={DOT.progress} label="not achieved" />
+                <CountChip n={scheme.binary.pipeline} dot={DOT.pipeline} label="pipeline" />
+              </div>
             </div>
           </div>
         )}
 
-        <div className="flex gap-4 mt-4 text-xs text-muted-foreground flex-wrap">
+        <div className="flex gap-4 mt-3 pt-3 border-t border-foreground/[0.07] text-xs text-muted-foreground flex-wrap">
           {legend.map(l => (
             <span key={l.label} className="flex items-center gap-1.5">
               <i className={`w-2.5 h-2.5 rounded-sm inline-block ${l.cls}`} />{l.label}
@@ -353,8 +397,8 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
             {/* Dettaglio: la fascia Achievements sparisce e la tabella si
                 aggancia sotto i 4 KPI; See less ripristina la gerarchia. */}
             <button onClick={() => setDetailMode(v => !v)}
-              className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border border-fgb-light/40 bg-fgb-light/15 text-fgb-light hover:bg-fgb-light/25 transition-colors">
-              {detailMode ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full bg-fgb-secondary text-white hover:brightness-110 shadow-lg shadow-fgb-secondary/40 transition-all">
+              {detailMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
               {detailMode ? 'See less' : 'Go in detail'}
             </button>
           </div>

@@ -91,10 +91,6 @@ function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: React
                  vars di tema, ereditate da tailwind e dagli assi recharts) */
               ...(off === 0
                 ? ({
-                    /* Patina al 50% che SFUMA verso i bordi esterni del
-                       riquadro (richiesta 02/09): piena al centro, quasi
-                       trasparente sul perimetro */
-                    background: 'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.42) 55%, rgba(255,255,255,0.1) 95%)',
                     boxShadow: '0 26px 70px -22px rgba(0,0,0,0.5)',
                     '--foreground': '200 28% 13%',
                     '--muted-foreground': '200 10% 34%',
@@ -103,7 +99,27 @@ function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: React
                 : {}),
             }}
           >
-            {c.node}
+            {off === 0 && (
+              /* Patina UNIFORME (testi e dati sempre leggibili) che sfuma
+                 solo negli ultimi ~28px di ogni lato del rettangolo — la
+                 radiale lasciava bordi scuri e centro a chiazze (rev 02/09).
+                 Se il browser non supporta le mask resta piena: degradazione
+                 sicura, mai illeggibile. */
+              <span
+                aria-hidden
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'rgba(255,255,255,0.52)',
+                  WebkitMaskImage:
+                    'linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent), linear-gradient(to bottom, transparent, black 28px, black calc(100% - 28px), transparent)',
+                  maskImage:
+                    'linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent), linear-gradient(to bottom, transparent, black 28px, black calc(100% - 28px), transparent)',
+                  WebkitMaskComposite: 'source-in',
+                  maskComposite: 'intersect',
+                }}
+              />
+            )}
+            <div className="relative h-full">{c.node}</div>
           </div>
         );
       })}
