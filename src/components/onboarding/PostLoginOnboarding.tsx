@@ -304,7 +304,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         .fgbw-pill b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:${TEAL};color:#fff;font-weight:400}
         .fgbw-strip{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 4px 26px;scrollbar-width:none}
         .fgbw-strip::-webkit-scrollbar{display:none}
-        .fgbw-card{flex:0 0 340px;scroll-snap-align:start;min-height:290px;border-radius:26px;padding:30px 30px 26px;position:relative;overflow:hidden;
+        .fgbw-card{flex:0 0 clamp(320px,23vw,430px);scroll-snap-align:start;min-height:300px;border-radius:26px;padding:30px 30px 26px;position:relative;overflow:hidden;
           background:#fff;border:1px solid rgba(74,75,77,.14);display:flex;flex-direction:column;justify-content:space-between;
           transition:transform .5s ${EASE},box-shadow .5s ${EASE}}
         .fgbw-card:hover{transform:translateY(-4px);box-shadow:0 30px 60px -30px rgba(0,0,0,.25)}
@@ -344,7 +344,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       {/* ══ 2 · FGB × CLIENTE — striscia wrapped (dati reali, fallback espliciti) ══ */}
       {stripCards && (
         <section className="px-6" style={{ paddingTop: 40, paddingBottom: 60 }}>
-          <div className="max-w-[1180px] mx-auto">
+          <div className="max-w-[1560px] mx-auto">
             <div className="fgbw-reveal flex flex-wrap items-end justify-between gap-6">
               <div>
                 <Eyebrow>FGB × {clientName ?? "you"} · {monthNow}</Eyebrow>
@@ -496,7 +496,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       {/* ══ modalità breve: capitoli a richiesta ══ */}
       {short && (
         <section className="px-6" style={{ padding: "60px 24px", borderTop: "1px solid rgba(74,75,77,.14)" }}>
-          <div className="max-w-[1180px] mx-auto">
+          <div className="max-w-[1560px] mx-auto">
             <Eyebrow>About FGB</Eyebrow>
             <div className="flex flex-wrap gap-3" style={{ marginTop: 18 }}>
               {[
@@ -521,7 +521,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       {/* ══ 3 · WHO WE ARE — mosaico + sede→mondo + città + timeline ══ */}
       {sectionVisible("about") && (
         <section className="px-6" style={{ paddingTop: 60, paddingBottom: 100, borderTop: "1px solid rgba(74,75,77,.14)" }}>
-          <div className="max-w-[1180px] mx-auto">
+          <div className="max-w-[1560px] mx-auto">
             <div className="fgbw-reveal">
               <Eyebrow>Who we are</Eyebrow>
               <p style={{ fontSize: "clamp(24px,3vw,38px)", lineHeight: 1.28, marginTop: 18, fontWeight: 300, maxWidth: "30ch" }}>
@@ -642,7 +642,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       {/* ══ 4 · WORLD RECORDS (invariata) ══ */}
       {sectionVisible("records") && (
         <section className="px-6 py-24" style={{ background: "#eeefee" }}>
-          <div className="max-w-[1180px] mx-auto fgbw-reveal">
+          <div className="max-w-[1560px] mx-auto fgbw-reveal">
             <Eyebrow>Setting global standards</Eyebrow>
             <div className="flex flex-wrap items-end gap-x-8 gap-y-4" style={{ marginTop: 26 }}>
               <div className="font-semibold" style={{ fontSize: "clamp(72px,10vw,140px)", color: TEAL, lineHeight: 0.9 }}>11</div>
@@ -676,7 +676,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       {/* ══ 5 · PLATFORM — l'espandibile assorbe hardware e compliance ══ */}
       {sectionVisible("platform") && (
         <section className="px-6 py-24" style={{ background: "#ffffff" }}>
-          <div className="max-w-[1180px] mx-auto">
+          <div className="max-w-[1560px] mx-auto">
             <div className="fgbw-reveal">
               <Eyebrow>FGB Monitoring System — launched 2026</Eyebrow>
               <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(28px,3.6vw,48px)", marginTop: 18, maxWidth: 760 }}>
@@ -758,7 +758,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
 
       {/* ══ 6 · NEWS ══ */}
       <section className="px-6 py-24" style={{ background: PAPER }}>
-        <div className="max-w-[1180px] mx-auto">
+        <div className="max-w-[1560px] mx-auto">
           <div className="fgbw-reveal">
             <Eyebrow>News from FGB</Eyebrow>
             <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(24px,3vw,38px)", marginTop: 14 }}>

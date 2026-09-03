@@ -76,13 +76,50 @@ const IntroGlobe: React.FC<Props> = ({ selectedSlug, onSelect }) => {
   const pts = INTRO_LOCATIONS.map(l => project(l, center.lon, center.lat));
   const sel = pts.find(p => p.loc.slug === selected.slug);
 
+  /* Rotazione manuale col mouse/touch: si trascina la sfera; un drag vero
+     (>5px) sopprime il click sui pin che arriverebbe subito dopo. */
+  const drag = useRef<{ x: number; y: number; lon: number; lat: number } | null>(null);
+  const dragged = useRef(false);
+  const [grabbing, setGrabbing] = useState(false);
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    drag.current = { x: e.clientX, y: e.clientY, lon: centerRef.current.lon, lat: centerRef.current.lat };
+    dragged.current = false;
+    setGrabbing(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!drag.current) return;
+    const dx = e.clientX - drag.current.x;
+    const dy = e.clientY - drag.current.y;
+    if (Math.abs(dx) + Math.abs(dy) > 5) dragged.current = true;
+    setCenter({
+      lon: drag.current.lon - dx * 0.35,
+      lat: Math.max(-LAT_CLAMP, Math.min(LAT_CLAMP, drag.current.lat + dy * 0.35)),
+    });
+  };
+  const onPointerUp = () => {
+    drag.current = null;
+    setGrabbing(false);
+    // il flag resta vero per il click sintetico che segue il pointerup
+    setTimeout(() => { dragged.current = false; }, 0);
+  };
+  const select = (slug: string) => { if (!dragged.current) onSelect(slug); };
+
   const key = (e: React.KeyboardEvent, slug: string) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(slug); }
   };
 
   return (
     <div aria-label={`FGB locations worldwide, selected: ${selected.name}`} role="group">
-      <svg viewBox="0 0 600 420" style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <svg
+        viewBox="0 0 600 420"
+        style={{ width: '100%', height: 'auto', display: 'block', cursor: grabbing ? 'grabbing' : 'grab', touchAction: 'none' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
         <defs>
           <radialGradient id="fgb-globe-g" cx="38%" cy="32%" r="75%">
             <stop offset="0" stopColor="#e6f4f5" />
@@ -116,7 +153,7 @@ const IntroGlobe: React.FC<Props> = ({ selectedSlug, onSelect }) => {
             aria-pressed={false}
             aria-label={p.loc.name}
             style={{ cursor: 'pointer', outline: 'none' }}
-            onClick={() => onSelect(p.loc.slug)}
+            onClick={() => select(p.loc.slug)}
             onKeyDown={e => key(e, p.loc.slug)}
           >
             <title>{p.loc.name}</title>

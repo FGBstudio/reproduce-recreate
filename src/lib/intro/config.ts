@@ -7,8 +7,12 @@
 
 export type IntroMode = 'full' | 'short' | 'skip';
 
-export const INTRO_MODE_KEY = 'fgb_intro_mode';
-export const INTRO_VIEWS_KEY = 'fgb_intro_views';
+/* v2 (03/09): chiavi rinominate per azzerare i contatori bruciati dai test
+   (ogni remount contava una "visita", StrictMode incluso: si finiva in short
+   dopo pochi minuti). Ora una visita = una sessione, vedi bumpIntroViews. */
+export const INTRO_MODE_KEY = 'fgb_intro_mode_v2';
+export const INTRO_VIEWS_KEY = 'fgb_intro_views_v2';
+const SESSION_BUMP_KEY = 'fgb_intro_viewed_session';
 /** Dopo N aperture in modalita' full si passa da soli a short. */
 export const INTRO_SHORT_AFTER = 3;
 
@@ -22,12 +26,17 @@ export function writeIntroMode(mode: IntroMode) {
   try { localStorage.setItem(INTRO_MODE_KEY, mode); } catch { /* storage pieno/negato: pazienza */ }
 }
 
-/** Incrementa il contatore visite e applica l'auto-passaggio a short. */
+/** Incrementa il contatore visite (max UNA per sessione: i remount e i
+ *  rientri dal menu non contano) e applica l'auto-passaggio a short. */
 export function bumpIntroViews(): { views: number; mode: IntroMode } {
   let views = 0;
   try {
-    views = Number(localStorage.getItem(INTRO_VIEWS_KEY) || '0') + 1;
-    localStorage.setItem(INTRO_VIEWS_KEY, String(views));
+    views = Number(localStorage.getItem(INTRO_VIEWS_KEY) || '0');
+    if (sessionStorage.getItem(SESSION_BUMP_KEY) !== '1') {
+      sessionStorage.setItem(SESSION_BUMP_KEY, '1');
+      views += 1;
+      localStorage.setItem(INTRO_VIEWS_KEY, String(views));
+    }
   } catch { /* noop */ }
   let mode = readIntroMode();
   if (mode === 'full' && views >= INTRO_SHORT_AFTER) {
