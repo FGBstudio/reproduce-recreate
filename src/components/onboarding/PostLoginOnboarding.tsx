@@ -247,7 +247,10 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       clearTimeout(sbarT);
       if (t) clearTimeout(t);
     };
-  }, [mode, peeks]);
+    /* stripCards nelle dipendenze: la striscia monta DOPO l'arrivo dei dati
+       (query asincrona) e senza ri-osservare i suoi .fgbw-reveal restavano
+       a opacity 0 per sempre — sezione "sparita" (bug 03/09). */
+  }, [mode, peeks, stripCards]);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const scrollDown = () => scroller.current?.scrollBy({ top: window.innerHeight, behavior: "smooth" });
