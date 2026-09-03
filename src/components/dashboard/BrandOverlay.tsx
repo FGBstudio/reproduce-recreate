@@ -68,9 +68,6 @@ const LEGACY_COMBINED_CHARTS = false;
 function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: ReactNode }[]; index: number; onIndex: (i: number) => void }) {
   return (
     <div className="relative h-full w-full flex items-center justify-center overflow-hidden">
-      {/* Scrim: invece di sbiancare il pannello attivo, si abbassa tutto il
-          resto (mappa e sfondo). Modello glass-panel.html del 03/09. */}
-      <div aria-hidden className="absolute inset-0 fgb-deck-scrim rounded-2xl" />
       {cards.map((c, i) => {
         const off = i - index;
         const abs = Math.abs(off);

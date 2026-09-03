@@ -241,30 +241,25 @@
     background: linear-gradient(180deg, rgba(1, 99, 104, 0.12), rgba(1, 99, 104, 0.03) 60%, hsl(0 0% 100% / 0.88));
     border-color: rgba(1, 99, 104, 0.18);
   }
-  /* Parti sticky della directory: inchiostro NEUTRO (non petrolio) — serve
-     un fondo pieno per non fondersi con le righe che scorrono sotto. */
-  .fgb-cert-sticky { background: rgba(13, 17, 19, 0.94); }
-  .light .fgb-cert-sticky { background: hsl(200 30% 98% / 0.96); }
-  /* velo dell'ancoraggio KPI: inchiostro neutro che sfuma, mai petrolio */
-  .fgb-cert-kpiveil {
-    background: linear-gradient(rgba(8, 11, 13, 0.6) 60%, transparent);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
+  /* Parti sticky della directory: vetro leggerissimo (niente lastre nere —
+     bocciate il 03/09), solo blur per staccare dalle righe in scorrimento. */
+  .fgb-cert-sticky {
+    background: rgba(13, 17, 19, 0.3);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
   }
-  .light .fgb-cert-kpiveil {
-    background: linear-gradient(hsl(200 30% 98% / 0.85) 60%, transparent);
+  .light .fgb-cert-sticky {
+    background: hsl(200 30% 98% / 0.55);
   }
+  /* ancoraggio KPI: nessun velo — il layer scuro dietro la fascia e' stato
+     bocciato; resta solo la posizione sticky. */
+  .fgb-cert-kpiveil { background: transparent; }
 
   /* ── Card deck in sovrimpressione (modello glass-panel.html 03/09) ──
      Il trucco e' invertito: niente riempimento bianco sul pannello, e' il
      resto che scende con uno scrim scuro. Il pannello attivo e' vetro
      "smoke": la luce viene dal bordo (gradiente ::before), grana satinata
      anti-plastica (::after) e riflesso morbido in alto a sinistra. */
-  .fgb-deck-scrim {
-    background: rgba(6, 8, 10, 0.42);
-    -webkit-backdrop-filter: blur(7px) saturate(85%);
-    backdrop-filter: blur(7px) saturate(85%);
-  }
   .fgb-smoke-panel {
     isolation: isolate;
     background: linear-gradient(160deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 45%, rgba(255, 255, 255, 0.05) 100%);
@@ -311,10 +306,8 @@
   /* apertura: un solo movimento, una volta sola */
   @media (prefers-reduced-motion: no-preference) {
     .fgb-smoke-panel { animation: fgb-panel-open 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-    .fgb-deck-scrim { animation: fgb-scrim-fade 0.35s ease-out both; }
   }
   @keyframes fgb-panel-open { from { opacity: 0; } }
-  @keyframes fgb-scrim-fade { from { opacity: 0; } }
 
   /* Variante "frost" per il tema chiaro: pannello lattato, ombra vera */
   .light .fgb-smoke-panel {
