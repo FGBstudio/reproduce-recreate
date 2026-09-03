@@ -77,19 +77,29 @@ const IntroGlobe: React.FC<Props> = ({ selectedSlug, onSelect }) => {
   const sel = pts.find(p => p.loc.slug === selected.slug);
 
   /* Rotazione manuale col mouse/touch: si trascina la sfera; un drag vero
-     (>5px) sopprime il click sui pin che arriverebbe subito dopo. */
+     (>5px) sopprime il click sui pin che arriverebbe subito dopo.
+     NIENTE setPointerCapture: re-indirizzava il pointerup sull'svg e il
+     browser non generava piu' il click sui pin (sedi non selezionabili). */
   const drag = useRef<{ x: number; y: number; lon: number; lat: number } | null>(null);
   const dragged = useRef(false);
   const [grabbing, setGrabbing] = useState(false);
+  const [hover, setHover] = useState<string | null>(null);
+  const endDrag = () => {
+    drag.current = null;
+    setGrabbing(false);
+    // il flag resta vero per il click sintetico che segue il pointerup
+    setTimeout(() => { dragged.current = false; }, 0);
+  };
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     drag.current = { x: e.clientX, y: e.clientY, lon: centerRef.current.lon, lat: centerRef.current.lat };
     dragged.current = false;
     setGrabbing(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!drag.current) return;
+    if (e.buttons === 0) { endDrag(); return; } // pulsante rilasciato fuori dall'svg
     const dx = e.clientX - drag.current.x;
     const dy = e.clientY - drag.current.y;
     if (Math.abs(dx) + Math.abs(dy) > 5) dragged.current = true;
@@ -97,12 +107,6 @@ const IntroGlobe: React.FC<Props> = ({ selectedSlug, onSelect }) => {
       lon: drag.current.lon - dx * 0.35,
       lat: Math.max(-LAT_CLAMP, Math.min(LAT_CLAMP, drag.current.lat + dy * 0.35)),
     });
-  };
-  const onPointerUp = () => {
-    drag.current = null;
-    setGrabbing(false);
-    // il flag resta vero per il click sintetico che segue il pointerup
-    setTimeout(() => { dragged.current = false; }, 0);
   };
   const select = (slug: string) => { if (!dragged.current) onSelect(slug); };
 
@@ -117,8 +121,9 @@ const IntroGlobe: React.FC<Props> = ({ selectedSlug, onSelect }) => {
         style={{ width: '100%', height: 'auto', display: 'block', cursor: grabbing ? 'grabbing' : 'grab', touchAction: 'none' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onPointerLeave={() => { if (drag.current) endDrag(); }}
       >
         <defs>
           <radialGradient id="fgb-globe-g" cx="38%" cy="32%" r="75%">
@@ -155,12 +160,35 @@ const IntroGlobe: React.FC<Props> = ({ selectedSlug, onSelect }) => {
             style={{ cursor: 'pointer', outline: 'none' }}
             onClick={() => select(p.loc.slug)}
             onKeyDown={e => key(e, p.loc.slug)}
+            onPointerEnter={() => setHover(p.loc.slug)}
+            onPointerLeave={() => setHover(h => (h === p.loc.slug ? null : h))}
+            onFocus={() => setHover(p.loc.slug)}
+            onBlur={() => setHover(h => (h === p.loc.slug ? null : h))}
           >
-            <title>{p.loc.name}</title>
             <circle cx={p.x} cy={p.y} r={12} fill="transparent" />
-            <circle cx={p.x} cy={p.y} r={3.2} fill="#fff" fillOpacity=".9" />
+            <circle cx={p.x} cy={p.y} r={hover === p.loc.slug ? 4.5 : 3.2} fill="#fff" fillOpacity=".95" />
           </g>
         ))}
+
+        {/* hover: marker in sovrimpressione con il nome della citta' */}
+        {(() => {
+          const h = hover && hover !== selected.slug ? pts.find(p => p.loc.slug === hover && p.visible) : null;
+          if (!h) return null;
+          const w = h.loc.name.length * 7.4 + 24;
+          const lx = Math.max(20 + w / 2, Math.min(580 - w / 2, h.x));
+          return (
+            <g pointerEvents="none">
+              <path d={`M${h.x} ${h.y - 28}a10 10 0 0 0-10 10c0 7 10 18 10 18s10-11 10-18a10 10 0 0 0-10-10z`} fill="#016368" />
+              <circle cx={h.x} cy={h.y - 18} r={3.6} fill="#fff" />
+              <g>
+                <rect x={lx - w / 2} y={h.y - 56} width={w} height={24} rx={12} fill="#016368" />
+                <text x={lx} y={h.y - 40} textAnchor="middle" fill="#fff" style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: '0.06em' }}>
+                  {h.loc.name}
+                </text>
+              </g>
+            </g>
+          );
+        })()}
 
         {/* sede selezionata: pin bordeaux + anello che pulsa */}
         {sel?.visible && (

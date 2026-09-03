@@ -177,10 +177,16 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
     setMode(prev => (prev === "skip" ? prev : m));
   }, []);
 
+  /* Alla selezione il marquee si ferma (spec §4.2) ma RIPRENDE dopo qualche
+     secondo — fermarlo per sempre sembrava un guasto (riscontro 03/09). */
+  const marqueeTimer = useRef<ReturnType<typeof setTimeout>>();
   const pickLocation = (slug: string) => {
     setSelLoc(slug);
     setMarqueeStopped(true);
+    clearTimeout(marqueeTimer.current);
+    marqueeTimer.current = setTimeout(() => setMarqueeStopped(false), 5000);
   };
+  useEffect(() => () => clearTimeout(marqueeTimer.current), []);
 
   const short = mode === "short";
   const sectionVisible = (key: "about" | "records" | "platform") => !short || peeks.has(key);
@@ -302,7 +308,14 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
           transition:opacity .35s ${EASE},transform .35s ${EASE},background .2s}
         .fgbw-pill:hover{background:#fff}
         .fgbw-pill b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:${TEAL};color:#fff;font-weight:400}
-        .fgbw-strip{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 4px 26px;scrollbar-width:none}
+        /* Striscia a tutta larghezza: esce dalla colonna fino ai bordi del
+           viewport, il primo cubotto resta allineato alla colonna e i limiti
+           laterali sfumano in trasparenza (rev 03/09). */
+        .fgbw-strip{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
+          margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
+          padding:6px calc(50vw - 50%) 26px;
+          -webkit-mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
+          mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
         .fgbw-strip::-webkit-scrollbar{display:none}
         .fgbw-card{flex:0 0 clamp(320px,23vw,430px);scroll-snap-align:start;min-height:300px;border-radius:26px;padding:30px 30px 26px;position:relative;overflow:hidden;
           background:#fff;border:1px solid rgba(74,75,77,.14);display:flex;flex-direction:column;justify-content:space-between;
@@ -580,7 +593,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
                   </p>
                   <div className="flex gap-10" style={{ marginTop: 20 }}>
                     <div>
-                      <b className="block font-semibold" style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1 }}><Count n={20} /></b>
+                      <b className="block font-semibold" style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1 }}><Count n={INTRO_LOCATIONS.length} /></b>
                       <span className="block uppercase" style={{ fontSize: 11, letterSpacing: "0.28em", color: SUB, marginTop: 6 }}>Strategic locations</span>
                     </div>
                     <div>

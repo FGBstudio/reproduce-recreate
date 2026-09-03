@@ -1,7 +1,11 @@
 /**
- * Le 20 sedi strategiche FGB per il globo interattivo dell'intro (§4.2).
- * Config, non DB. Le immagini vivono in public/intro/locations/<slug>/ —
- * se un file manca il collage mostra il placeholder tintato, mai un 404 rotto.
+ * Le sedi strategiche FGB per il globo interattivo dell'intro (§4.2).
+ * Config, non DB. Elenco CANONICO dal proprietario (03/09) — 17 sedi:
+ * Aix-en-Provence, Amsterdam, Dubai, Ho Chi Minh, Loano, London,
+ * Los Angeles, Miami, Milan, Monte-Carlo, New York, Paris, Rome,
+ * Shanghai, Singapore, Taichung, Tokyo.
+ * Le immagini vivono in public/intro/locations/<slug>/ — se un file manca
+ * il collage mostra il placeholder tintato, mai un 404 rotto.
  * Headquarters = Monte-Carlo (scelta del proprietario, 03/09).
  */
 
@@ -23,8 +27,8 @@ const imgs = (slug: string): [string, string, string] => [
 ];
 
 export const INTRO_LOCATIONS: IntroLocation[] = [
+  { slug: 'aix-en-provence', name: 'Aix-en-Provence', lat: 43.53, lng: 5.45, images: imgs('aix-en-provence') },
   { slug: 'amsterdam', name: 'Amsterdam', lat: 52.37, lng: 4.9, images: imgs('amsterdam') },
-  { slug: 'doha', name: 'Doha', lat: 25.29, lng: 51.53, images: imgs('doha') },
   { slug: 'dubai', name: 'Dubai', lat: 25.2, lng: 55.27, hub: true, images: imgs('dubai') },
   { slug: 'ho-chi-minh', name: 'Ho Chi Minh', lat: 10.82, lng: 106.63, images: imgs('ho-chi-minh') },
   { slug: 'loano', name: 'Loano', lat: 44.13, lng: 8.26, images: imgs('loano') },
@@ -38,11 +42,8 @@ export const INTRO_LOCATIONS: IntroLocation[] = [
   { slug: 'rome', name: 'Rome', lat: 41.9, lng: 12.5, images: imgs('rome') },
   { slug: 'shanghai', name: 'Shanghai', lat: 31.23, lng: 121.47, hub: true, images: imgs('shanghai') },
   { slug: 'singapore', name: 'Singapore', lat: 1.35, lng: 103.82, images: imgs('singapore') },
-  { slug: 'st-moritz', name: 'St. Moritz', lat: 46.5, lng: 9.84, images: imgs('st-moritz') },
   { slug: 'taichung', name: 'Taichung', lat: 24.15, lng: 120.67, images: imgs('taichung') },
   { slug: 'tokyo', name: 'Tokyo', lat: 35.68, lng: 139.69, images: imgs('tokyo') },
-  { slug: 'torino', name: 'Torino', lat: 45.07, lng: 7.69, images: imgs('torino') },
-  { slug: 'toronto', name: 'Toronto', lat: 43.65, lng: -79.38, images: imgs('toronto') },
 ];
 
 export const INITIAL_LOCATION_SLUG = 'monte-carlo';
