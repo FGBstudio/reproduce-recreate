@@ -314,6 +314,10 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         .fgbw-strip{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
           margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
           padding:6px calc(50vw - 50%) 26px;
+          /* la prima card parte piu' centrale: a riposo non finisce nella
+             sfumatura del bordo e si legge bene (rev 03/09); scorrendo le
+             card entrano comunque nel fade come previsto */
+          padding-left:calc(50vw - 50% + clamp(36px,8vw,160px));
           -webkit-mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
           mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
         .fgbw-strip::-webkit-scrollbar{display:none}
