@@ -167,6 +167,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
   const { data: strip } = useIntroStrip();
   const siteName = (id: string | null | undefined) => (id && sites.find(s => s.id === id)?.name) || null;
   const clientRecord = recordForClient(clientName);
+  const stripCards = strip && (strip.portfolio || strip.certs || strip.latestAward || strip.energy);
 
   const selected = INTRO_LOCATIONS.find(l => l.slug === selLoc) ?? INTRO_LOCATIONS[0];
   const monthNow = useMemo(() => new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }), []);
@@ -271,8 +272,6 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         ? `${(strip.energy.kwh30 / 1e3).toFixed(1)} MWh metered`
         : `${Math.round(strip.energy.kwh30)} kWh metered`
     : null;
-
-  const stripCards = strip && (strip.portfolio || strip.certs || strip.latestAward || strip.energy);
 
   return (
     <div
