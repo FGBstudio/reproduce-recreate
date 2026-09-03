@@ -68,6 +68,9 @@ const LEGACY_COMBINED_CHARTS = false;
 function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: ReactNode }[]; index: number; onIndex: (i: number) => void }) {
   return (
     <div className="relative h-full w-full flex items-center justify-center overflow-hidden">
+      {/* Scrim: invece di sbiancare il pannello attivo, si abbassa tutto il
+          resto (mappa e sfondo). Modello glass-panel.html del 03/09. */}
+      <div aria-hidden className="absolute inset-0 fgb-deck-scrim rounded-2xl" />
       {cards.map((c, i) => {
         const off = i - index;
         const abs = Math.abs(off);
@@ -75,7 +78,7 @@ function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: React
           <div
             key={c.key}
             onClick={() => off !== 0 && onIndex(i)}
-            className={`absolute glass-panel rounded-2xl overflow-hidden transition-all duration-500 ease-out ${off === 0 ? '' : 'cursor-pointer'}`}
+            className={`absolute rounded-[22px] overflow-hidden transition-all duration-500 ease-out ${off === 0 ? 'fgb-smoke-panel' : 'glass-panel cursor-pointer'}`}
             style={{
               width: '64%',
               height: '94%',
@@ -86,39 +89,9 @@ function CardDeck({ cards, index, onIndex }: { cards: { key: string; node: React
               opacity: abs > 2 ? 0 : 1 - abs * 0.2,
               filter: off === 0 ? 'none' : 'blur(1px) saturate(.85)',
               pointerEvents: abs > 2 ? 'none' : undefined,
-              /* Focus: la card attiva stacca con una patina chiara sul glass
-                 e i testi al suo interno si SCURISCONO (override delle CSS
-                 vars di tema, ereditate da tailwind e dagli assi recharts) */
-              ...(off === 0
-                ? ({
-                    boxShadow: '0 26px 70px -22px rgba(0,0,0,0.5)',
-                    '--foreground': '200 28% 13%',
-                    '--muted-foreground': '200 10% 34%',
-                    '--border': '200 14% 72%',
-                  } as React.CSSProperties)
-                : {}),
             }}
           >
-            {off === 0 && (
-              /* Patina UNIFORME (testi e dati sempre leggibili) che sfuma
-                 solo negli ultimi ~28px di ogni lato del rettangolo — la
-                 radiale lasciava bordi scuri e centro a chiazze (rev 02/09).
-                 Se il browser non supporta le mask resta piena: degradazione
-                 sicura, mai illeggibile. */
-              <span
-                aria-hidden
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: 'rgba(255,255,255,0.52)',
-                  WebkitMaskImage:
-                    'linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent), linear-gradient(to bottom, transparent, black 28px, black calc(100% - 28px), transparent)',
-                  maskImage:
-                    'linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent), linear-gradient(to bottom, transparent, black 28px, black calc(100% - 28px), transparent)',
-                  WebkitMaskComposite: 'source-in',
-                  maskComposite: 'intersect',
-                }}
-              />
-            )}
+            {off === 0 && <span aria-hidden className="fgb-smoke-sheen" />}
             <div className="relative h-full">{c.node}</div>
           </div>
         );
@@ -561,24 +534,29 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               ? (useIntensity ? `kWh/m² · 30 days · ${intensityList.length} sites with area data` : 'kWh · 30 days (site areas not set)')
               : 'CO₂ ppm · 30 days · tap a site to open it')}
             <div className="flex-1 min-h-0 overflow-y-auto fgb-invasion-scroll pr-1 space-y-1.5">
-              {rankList.map((s, i) => (
-                <button key={s.siteId} onClick={() => onOpenSite?.(s.siteId)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-foreground/5 transition-colors text-left">
-                  <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
-                  <span className="text-xs text-foreground w-40 truncate shrink-0">{s.name}</span>
-                  <div className="flex-1 h-2.5 rounded-full bg-foreground/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.max(4, (s.value / rankMax) * 100)}%`,
-                        background: isEnergy
-                          ? 'linear-gradient(90deg, #9fd5d9, #009193)'
-                          : (s.value > CO2_THRESHOLDS.moderate ? '#ef4444' : s.value > CO2_THRESHOLDS.good ? '#eab308' : '#10b981'),
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right shrink-0">{fmtRank(s.value)} <span className="text-muted-foreground font-normal">{rankUnit}</span></span>
-                </button>
-              ))}
+              {rankList.map((s, i) => {
+                const airColor = s.value > CO2_THRESHOLDS.moderate ? '#ef4444' : s.value > CO2_THRESHOLDS.good ? '#eab308' : '#10b981';
+                return (
+                  <button key={s.siteId} onClick={() => onOpenSite?.(s.siteId)} className="w-full flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-foreground/5 transition-colors text-left">
+                    <span className="text-[11px] text-muted-foreground tabular-nums w-5 text-right shrink-0">{i + 1}</span>
+                    <span className="text-xs font-medium text-foreground w-40 truncate shrink-0">{s.name}</span>
+                    <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: 'hsl(var(--foreground) / 0.1)' }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.max(4, (s.value / rankMax) * 100)}%`,
+                          background: isEnergy ? 'linear-gradient(90deg, #016368, #009193)' : airColor,
+                          boxShadow: isEnergy ? '0 0 14px rgba(0,145,147,.45)' : `0 0 12px ${airColor}66`,
+                        }}
+                      />
+                    </div>
+                    <span className="w-20 text-right shrink-0 leading-tight">
+                      <span className="block text-xs font-semibold text-foreground tabular-nums">{fmtRank(s.value)}</span>
+                      <span className="block text-[10px] text-muted-foreground tracking-wide">{rankUnit}</span>
+                    </span>
+                  </button>
+                );
+              })}
               {rankList.length === 0 && emptyCard(noData)}
             </div>
           </div>
