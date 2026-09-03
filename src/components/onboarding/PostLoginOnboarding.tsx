@@ -281,7 +281,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
     >
       {/* ── chrome persistente ── */}
       <div ref={progressRef} aria-hidden style={{ position: "fixed", left: 0, top: 0, height: 2, width: 0, background: TEAL, zIndex: 90 }} />
-      <div aria-hidden style={{ position: "fixed", left: 36, top: 24, zIndex: 85, lineHeight: 1, transition: "color .35s ease", color: onDark ? "#fff" : TEAL, fontWeight: 700, fontSize: 30, letterSpacing: "-0.03em" }}>
+      <div aria-hidden className="fgbw-logo" style={{ transition: "color .35s ease", color: onDark ? "#fff" : TEAL }}>
         FGB
         <span style={{ display: "block", fontSize: 9, letterSpacing: "0.08em", fontWeight: 400, color: onDark ? "#ffffff99" : SUB, marginTop: 2 }}>Future Green Building</span>
       </div>
@@ -338,15 +338,28 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         @keyframes fgbwMarquee{to{transform:translateX(-50%)}}
         .fgbw-newscard{border-radius:24px;overflow:hidden;background:#fff;border:1px solid #e4e7e4;transition:transform .5s ${EASE},box-shadow .5s ${EASE}}
         .fgbw-newscard:hover{transform:translateY(-4px);box-shadow:0 30px 60px -30px rgba(0,0,0,.25)}
+        .fgbw-logo{position:fixed;left:36px;top:24px;z-index:85;line-height:1;font-weight:700;font-size:30px;letter-spacing:-0.03em}
         @media (prefers-reduced-motion: reduce){
           .fgbw-reveal{transition:none;opacity:1;transform:none}
           .fgbw-track{animation:none}
           .fgbw-xfade{animation:none}
         }
+        /* ── mobile (blocco max-width:900px del mockup fgb-intro.html) ──
+           mosaico 2x2 e collage+globo impilati arrivano dalle classi
+           min-[901px]; qui il resto: card della striscia piu' strette,
+           chrome rientrato, sezioni piu' compatte. */
+        @media (max-width:900px){
+          .fgbw-card{flex:0 0 290px;min-height:270px;padding:24px 24px 22px}
+          .fgbw-logo{left:20px;top:18px;font-size:26px}
+          .fgbw-pill{right:14px;top:14px;padding:8px 8px 8px 14px;font-size:11px}
+          .fgbw-scroll section{padding-top:70px !important;padding-bottom:70px !important}
+          .fgbw-scroll section.fgbw-hero{padding-top:0 !important;padding-bottom:0 !important}
+          .fgbw-track{gap:26px}
+        }
       `}</style>
 
       {/* ══ 1 · HERO (invariata; eyebrow personalizzato) ══ */}
-      <section className="min-h-[100dvh] flex flex-col items-center justify-center text-center px-6 relative">
+      <section className="fgbw-hero min-h-[100dvh] flex flex-col items-center justify-center text-center px-6 relative">
         <div className="fgbw-reveal in">
           <Eyebrow>Hello {firstName}{clientName ? ` · ${clientName}` : ""}</Eyebrow>
           <h1 className="font-semibold tracking-tight" style={{ fontSize: "clamp(44px,7.5vw,104px)", color: INK, marginTop: 18, lineHeight: 1.04 }}>
@@ -552,7 +565,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
             </div>
 
             {/* mosaico duotone: foto a colori, tinta in CSS */}
-            <div className="grid gap-3.5 grid-cols-2 md:grid-cols-4" style={{ marginTop: 52 }}>
+            <div className="grid gap-3.5 grid-cols-2 min-[901px]:grid-cols-4" style={{ marginTop: 52 }}>
               {MOSAIC_STATS.map((s, i) => (
                 <div key={s.label} className={`fgbw-reveal relative overflow-hidden`} style={{ aspectRatio: "4/5", borderRadius: 20, background: s.color, color: "#fff", isolation: "isolate", transitionDelay: `${i * 0.08}s` }}>
                   <img
@@ -576,7 +589,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
             </div>
 
             {/* sede selezionata → mondo (collage + globo interattivo) */}
-            <div className="grid gap-12 md:grid-cols-[1fr_1.2fr] items-center" style={{ marginTop: 90 }}>
+            <div className="grid gap-10 min-[901px]:grid-cols-[1fr_1.2fr] min-[901px]:gap-12 items-center" style={{ marginTop: 90 }}>
               <div className="fgbw-reveal relative grid grid-cols-2 gap-3.5 items-end">
                 <div className="grid gap-3.5">
                   <CollagePhoto src={selected.images[0]} city={selected.name} ratio="3/4" />
@@ -717,7 +730,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
               <Disc open={platformOpen} onClick={() => setPlatformOpen(v => !v)}>Discover the platform</Disc>
               <Fold open={platformOpen}>
                 <div style={{ paddingTop: 34, textAlign: "left", display: "grid", gap: 28 }}>
-                  <div className="grid gap-8 md:grid-cols-2 items-start">
+                  <div className="grid gap-8 min-[901px]:grid-cols-2 items-start">
                     <div>
                       <div className="font-semibold" style={{ fontSize: 20, color: INK }}>Create your own report</div>
                       <p style={{ fontSize: 14, color: SUB, marginTop: 6 }}>Actual vs average, device consumption, power breakdown — ready to share.</p>
@@ -731,7 +744,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
                   </div>
 
                   {/* hardware: Clair · Greeny · Water */}
-                  <div className="grid gap-6 md:grid-cols-3">
+                  <div className="grid gap-6 min-[901px]:grid-cols-3">
                     {[
                       { img: "/landing/clair.webp", name: "Clair", claim: "Air — for indoor air quality control", points: ["Wellness boost", "Healthy workplace", "Positive environment"] },
                       { img: "/landing/greeny.webp", name: "Greeny", claim: "Energy — for energy efficiency", points: ["Improve operations", "Find inefficiency", "Control your portfolio"] },
@@ -786,7 +799,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
               What's new in our world
             </h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-3" style={{ marginTop: 36 }}>
+          <div className="grid gap-6 min-[901px]:grid-cols-3" style={{ marginTop: 36 }}>
             {NEWS.map((n, i) => (
               <article key={n.title} className="fgbw-reveal fgbw-newscard" style={{ transitionDelay: `${i * 0.1}s` }}>
                 <div className="flex items-center justify-center" style={{ height: 170, background: "#fff" }}>
@@ -813,7 +826,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
             Join <span style={{ color: "#7ad8d2" }}>FGB World</span>
           </h2>
 
-          <div className="flex flex-wrap justify-center" style={{ gap: 22, marginTop: 54 }}>
+          <div className="flex flex-wrap justify-center max-[900px]:flex-col max-[900px]:items-center" style={{ gap: 22, marginTop: 54 }}>
             <a
               href="https://www.fgb-studio.com" target="_blank" rel="noopener noreferrer"
               className="group flex flex-col items-center justify-center rounded-3xl"
