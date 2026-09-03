@@ -15,6 +15,11 @@ export const INTRO_VIEWS_KEY = 'fgb_intro_views_v2';
 const SESSION_BUMP_KEY = 'fgb_intro_viewed_session';
 /** Dopo N aperture in modalita' full si passa da soli a short. */
 export const INTRO_SHORT_AFTER = 3;
+/** DISATTIVATO dal proprietario (03/09): il passaggio automatico a short
+ *  scattava di continuo durante i test (ogni chiusura/riapertura scheda =
+ *  nuova sessione) e le pill "About FGB" comparivano da sole. L'intro resta
+ *  sempre completa; rimettere a true per riattivare la modalita' breve. */
+export const INTRO_AUTO_SHORT = false;
 
 export function readIntroMode(): IntroMode {
   if (typeof window === 'undefined') return 'full';
@@ -39,8 +44,13 @@ export function bumpIntroViews(): { views: number; mode: IntroMode } {
     }
   } catch { /* noop */ }
   let mode = readIntroMode();
-  if (mode === 'full' && views >= INTRO_SHORT_AFTER) {
+  if (INTRO_AUTO_SHORT && mode === 'full' && views >= INTRO_SHORT_AFTER) {
     mode = 'short';
+    writeIntroMode(mode);
+  }
+  // auto-short spento: chi fosse gia' finito in short torna alla completa
+  if (!INTRO_AUTO_SHORT && mode === 'short') {
+    mode = 'full';
     writeIntroMode(mode);
   }
   return { views, mode };
