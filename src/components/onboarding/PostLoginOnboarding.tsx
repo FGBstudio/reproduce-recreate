@@ -313,13 +313,13 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
         /* Striscia a tutta larghezza: esce dalla colonna fino ai bordi del
            viewport, il primo cubotto resta allineato alla colonna e i limiti
            laterali sfumano in trasparenza (rev 03/09). */
-        .fgbw-strip{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
+        /* snap "proximity", NON mandatory: misurato in headless (03/09),
+           mandatory forza uno scroll iniziale che schiaccia la prima card
+           sul bordo del viewport anche con scroll-padding; con proximity
+           la card a riposo parte allineata alla colonna del titolo */
+        .fgbw-strip{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;
           margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
           padding:6px calc(50vw - 50%) 26px;
-          /* lo snap "mandatory" agganciava la prima card al bordo del
-             viewport ignorando il padding (card tagliata a sinistra, rev
-             03/09): con scroll-padding le card si allineano alla COLONNA
-             del titolo, a riposo e a ogni scatto dello scroll */
           scroll-padding-left:calc(50vw - 50%);
           scroll-padding-right:calc(50vw - 50%);
           -webkit-mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
