@@ -204,6 +204,16 @@ const MobileBurgerMenu = ({
                 <span className="text-sm text-foreground flex-1 text-left">Installa app</span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
+              {/* Rientro nell'intro anche quando la preferenza e' "skip" */}
+              <button
+                onClick={() => { window.dispatchEvent(new Event("fgb:show-intro")); onClose(); }}
+                className="flex items-center gap-3 w-full p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/8"
+                style={{ minHeight: 48 }}
+              >
+                <Globe className="w-4 h-4 text-fgb-accent" />
+                <span className="text-sm text-foreground flex-1 text-left">About FGB</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
         </div>

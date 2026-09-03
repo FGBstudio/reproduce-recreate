@@ -9,6 +9,7 @@ import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
 import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
 import WrappedPlayer from "@/components/wrapped/WrappedPlayer";
 import PostLoginOnboarding from "@/components/onboarding/PostLoginOnboarding";
+import { readIntroMode } from "@/lib/intro/config";
 import { Project, MonitoringType } from "@/lib/data";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -30,6 +31,8 @@ const Index = () => {
   const [isKpiPanelOpen, setIsKpiPanelOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
+    // intro_mode=skip (preferenza utente, SPEC intro §6): dritto alla dashboard
+    if (readIntroMode() === "skip") return false;
     return sessionStorage.getItem("fgb_onboarding_done") !== "1";
   });
 
@@ -37,6 +40,13 @@ const Index = () => {
     sessionStorage.setItem("fgb_onboarding_done", "1");
     setShowOnboarding(false);
   };
+
+  // Rientro nell'intro dal menu utente ("About FGB"), anche in modalita' skip
+  useEffect(() => {
+    const show = () => setShowOnboarding(true);
+    window.addEventListener("fgb:show-intro", show);
+    return () => window.removeEventListener("fgb:show-intro", show);
+  }, []);
 
   // User scope detection for role-based routing
   const { clientRole, holdingId, brandId, siteId, allowedRegions, isLoading: scopeLoading } = useUserScope();
