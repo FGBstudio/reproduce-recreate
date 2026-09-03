@@ -12,7 +12,7 @@
  * duplicati, la vista resta esportabile come follow-up mensile.
  */
 import { useMemo, useRef, useState } from 'react';
-import { Award, Circle, Zap, Wind, Maximize2, Minimize2 } from 'lucide-react';
+import { Award, Circle, Zap, Wind, ArrowUpRight, Minimize2 } from 'lucide-react';
 import { Project } from '@/lib/data';
 import {
   useCertificationsOverview,
@@ -56,14 +56,21 @@ const SchemeIcon = ({ scheme, size = 'sm' }: { scheme: string; size?: 'sm' | 'lg
   return <span className={`${box} grid place-items-center ${size === 'lg' ? 'text-xs' : 'text-[10px]'} font-bold shrink-0 ${b.cls}`}>{b.short}</span>;
 };
 
-const cellCls = (c: SiteCertCell | null, scheme: string): string => {
-  if (!c) return 'bg-foreground/[0.04] text-muted-foreground';
-  if (c.expiringSoon) return 'bg-rose-500/15 text-rose-300';
-  if (c.live === 'offline' || c.live === 'never') return 'bg-rose-500/12 text-rose-300/90';
-  if (c.live === 'online') return 'bg-fgb-light/25 text-fgb-secondary';
-  if (c.state === 'achieved') return 'bg-fgb-light/25 text-fgb-secondary';
-  if (c.state === 'in_progress') return 'bg-fgb-accent/20 text-fgb-accent';
-  return 'bg-foreground/[0.06] text-muted-foreground'; // pipeline / potential
+/** Pill OUTLINE per le celle della directory (niente riempimenti pieni):
+ *  Platinum → aqua, Gold → oro, Expiring/Offline → wine, Pipeline e
+ *  Potential → tratteggiate grigie, altri achieved/online → teal. */
+const cellPillCls = (c: SiteCertCell | null): string | null => {
+  if (!c) return null; // cella vuota: solo "—" dim, nessuna pill
+  if (c.expiringSoon) return 'text-[#e9a6bd] border-fgb-brand-accent/60 bg-fgb-brand-accent/15';
+  if (c.live === 'offline' || c.live === 'never') return 'text-[#e9a6bd] border-fgb-brand-accent/50 bg-fgb-brand-accent/10';
+  if (c.live === 'online') return 'text-fgb-brand-light border-fgb-brand-medium/50 bg-fgb-brand-medium/10';
+  if (c.state === 'achieved') {
+    if (c.certLevel === 'Platinum') return 'text-fgb-brand-light border-fgb-brand-light/35 bg-fgb-brand-light/10';
+    if (c.certLevel === 'Gold') return 'text-fgb-accent border-fgb-accent/35 bg-fgb-accent/10';
+    return 'text-fgb-brand-light border-fgb-brand-medium/50 bg-fgb-brand-medium/10';
+  }
+  if (c.state === 'in_progress') return 'text-fgb-accent border-fgb-accent/35 bg-fgb-accent/10';
+  return 'text-muted-foreground border-foreground/15 border-dashed'; // pipeline / potential
 };
 
 const cellLabel = (scheme: string, c: SiteCertCell | null): { top: string; sub: string | null } => {
@@ -110,39 +117,33 @@ const CountChip = ({ n, dot, label }: { n: number; dot: string; label: string })
     </span>
   ) : null;
 
+/* Segmenti barre e pallini legenda rimappati sui token brand (modello):
+   achieved → teal, in progress → oro, pipeline → bianco .28,
+   potential → aqua, expiring/offline → wine. */
 const SEG = {
-  achieved: 'text-white bg-fgb-secondary',
+  achieved: 'text-[#e8f6f6] bg-fgb-brand-medium',
   progress: 'text-background bg-fgb-accent/90',
-  pipeline: 'text-foreground/80 bg-foreground/20',
-  potential: 'text-fgb-light bg-fgb-light/20',
-  online: 'text-white bg-fgb-secondary',
-  offline: 'text-rose-200 bg-rose-500/45',
+  pipeline: 'text-foreground bg-white/25',
+  potential: 'text-[#0f1113] bg-fgb-brand-light',
+  online: 'text-[#e8f6f6] bg-fgb-brand-medium',
+  offline: 'text-[#e9a6bd] bg-fgb-brand-accent/60',
 };
 
 const DOT = {
-  achieved: 'bg-fgb-secondary',
+  achieved: 'bg-fgb-brand-medium',
   progress: 'bg-fgb-accent',
-  pipeline: 'bg-foreground/30',
-  potential: 'bg-fgb-light',
-  online: 'bg-fgb-secondary',
-  offline: 'bg-rose-500',
+  pipeline: 'bg-white/30',
+  potential: 'bg-fgb-brand-light',
+  online: 'bg-fgb-brand-medium',
+  offline: 'bg-fgb-brand-accent',
+  expiring: 'bg-fgb-brand-accent',
 };
 
-// Parti sticky (intestazione tabella + colonna sito): sfondo SOLIDO.
-// Il glass trasparente qui rendeva illeggibili le celle che scorrevano
-// sotto — testo su testo. Header e prima colonna non devono mai fondersi
-// con i dati: colore pieno dal token di tema, niente blur.
-const SOLID_STICKY: React.CSSProperties = {
-  background: 'hsl(var(--background))',
-};
-
-// Contenitore tabella: glass OPACO (>= 88%) — la mappa sotto resta un
-// accenno, il testo chiaro torna nitido.
-const OPAQUE_GLASS: React.CSSProperties = {
-  background: 'hsl(var(--background) / 0.9)',
-  backdropFilter: 'blur(22px)',
-  WebkitBackdropFilter: 'blur(22px)',
-};
+// Superfici (modello certifications-surfaces.html): una sola superficie
+// glass per tutti i contenitori (classe glass-panel), con il velo brand
+// `glass-panel--brand` su KPI e Site directory. Le parti sticky della
+// tabella usano `fgb-cert-sticky` (inchiostro neutro, non petrolio) —
+// definite in index.css.
 
 interface Props {
   projects: Project[];
@@ -218,36 +219,31 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
   }
 
   const legend = scheme?.model === 'monitoring'
-    ? [ { cls: SEG.online, label: 'Online' }, { cls: SEG.offline, label: 'Offline' }, { cls: SEG.progress, label: 'Pipeline' }, { cls: SEG.potential, label: 'Potential' } ]
+    ? [ { cls: DOT.online, label: 'Online' }, { cls: DOT.offline, label: 'Offline' }, { cls: DOT.progress, label: 'Pipeline' }, { cls: DOT.potential, label: 'Potential' } ]
     : scheme?.model === 'binary'
-      ? [ { cls: SEG.achieved, label: 'Achieved' }, { cls: SEG.progress, label: 'Not achieved' }, { cls: SEG.pipeline, label: 'Pipeline' } ]
-      : [ { cls: SEG.achieved, label: 'Achieved' }, { cls: SEG.progress, label: 'In progress' }, { cls: SEG.pipeline, label: 'Pipeline' }, { cls: SEG.potential, label: 'Potential' } ];
+      ? [ { cls: DOT.achieved, label: 'Achieved' }, { cls: DOT.progress, label: 'Not achieved' }, { cls: DOT.pipeline, label: 'Pipeline' } ]
+      : [ { cls: DOT.achieved, label: 'Achieved' }, { cls: DOT.progress, label: 'In progress' }, { cls: DOT.pipeline, label: 'Pipeline' }, { cls: DOT.potential, label: 'Potential' }, { cls: DOT.expiring, label: 'Expiring' } ];
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0 overflow-y-auto pr-1 custom-scrollbar">
 
       {/* ── KPI — ancorati in alto: restano il punto fermo mentre
              la vista sottostante cambia ──────────────────────── */}
-      <div
-        className="sticky top-0 z-40 shrink-0 -mx-1 px-1 pb-2 -mb-2"
-        style={{
-          background: 'linear-gradient(hsl(var(--background) / 0.92) 72%, transparent)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
-        }}
-      >
+      <div className="sticky top-0 z-40 shrink-0 -mx-1 px-1 pb-2 -mb-2 fgb-cert-kpiveil">
         <div className="grid grid-cols-4 gap-3">
           {[
             { v: kpis.active, k: 'Active certificates', cls: 'text-foreground', alert: false },
             { v: kpis.inProgress, k: 'In progress', cls: 'text-foreground', alert: false },
-            { v: kpis.expiringSoon, k: 'Expiring < 6 months', cls: kpis.expiringSoon > 0 ? 'text-rose-400' : 'text-foreground', alert: kpis.expiringSoon > 0 },
-            { v: kpis.potential, k: 'Potential projects', cls: 'text-fgb-light', alert: false },
+            /* la semantica sta nel numero, non nel box: wine se >0, dim se 0 */
+            { v: kpis.expiringSoon, k: 'Expiring < 6 months', cls: kpis.expiringSoon > 0 ? 'text-[#e9a6bd]' : 'text-muted-foreground', alert: kpis.expiringSoon > 0 },
+            { v: kpis.potential, k: 'Potential projects', cls: kpis.potential > 0 ? 'text-fgb-brand-light' : 'text-muted-foreground', alert: false },
           ].map(x => (
             <div
               key={x.k}
-              className={`glass-panel rounded-2xl px-5 py-6 text-center transition-colors ${x.alert ? 'border-rose-400/50 ring-1 ring-rose-400/30' : ''}`}
+              className="glass-panel glass-panel--brand relative overflow-hidden rounded-2xl px-5 py-6 text-center transition-colors"
             >
-              <div className={`text-5xl font-extrabold tracking-tight tabular-nums leading-none ${x.cls}`}>{isLoading ? '…' : x.v}</div>
+              {x.alert && <span aria-hidden className="absolute left-0 top-0 bottom-0 w-[2px] bg-fgb-brand-accent" />}
+              <div className={`text-5xl font-light tracking-tight tabular-nums leading-none ${x.cls}`}>{isLoading ? '…' : x.v}</div>
               <div className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground/90 mt-3">{x.k}</div>
             </div>
           ))}
@@ -258,7 +254,15 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
              modalita' dettaglio ("Go in detail") ─────────────── */}
       <div className={`shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${detailMode ? 'max-h-0 opacity-0 -mt-3 pointer-events-none' : 'max-h-[640px] opacity-100'}`}>
       <div className="glass-panel rounded-2xl p-5">
-        <h4 className="text-base font-semibold text-foreground uppercase tracking-wider mb-3">Achievements by level</h4>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <h4 className="text-base font-semibold text-foreground uppercase tracking-wider">Achievements by level</h4>
+          {/* Il dettaglio parte da qui: la fascia sparisce e la directory si
+              aggancia sotto i KPI; il ritorno ("See less") vive nella directory. */}
+          <button onClick={() => setDetailMode(true)}
+            className="flex items-center gap-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-fgb-brand-light hover:underline shrink-0">
+            Go in detail <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
         {/* Loghi come "target": grandi, spotlight in hover (il resto sbiadisce)
             — stesso comportamento della sezione certificazioni della landing. */}
         <div className="flex gap-2.5 flex-wrap mb-4" onMouseLeave={() => setHoverScheme(null)}>
@@ -268,7 +272,7 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
             return (
               <button key={s.scheme} onClick={() => setActiveScheme(s.scheme)}
                 onMouseEnter={() => setHoverScheme(s.scheme)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all duration-300 ${on ? 'bg-fgb-light/20 border-fgb-light/40 shadow-lg shadow-fgb-light/5' : 'bg-foreground/5 border-foreground/10'} ${dimmed ? 'opacity-40 scale-[0.98]' : 'opacity-100'}`}>
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all duration-300 ${on ? 'bg-foreground/[0.075] border-fgb-brand-light/30' : 'bg-foreground/[0.045] border-foreground/10'} ${dimmed ? 'opacity-40 scale-[0.98]' : 'opacity-100'}`}>
                 <SchemeIcon scheme={s.scheme} size="lg" />
                 <span className="text-left">
                   <span className="block text-base font-medium text-foreground leading-tight">{s.scheme.replace('_', ' ')}</span>
@@ -372,7 +376,7 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
       </div>
 
       {/* ── Site directory · certifications ─────────────────── */}
-      <div className="glass-panel rounded-2xl p-5 flex-1 min-h-0 flex flex-col" style={OPAQUE_GLASS}>
+      <div className={`glass-panel glass-panel--brand rounded-2xl p-5 flex-1 min-h-0 flex flex-col transition-opacity duration-500 ${detailMode ? 'opacity-100' : 'opacity-[0.55]'}`}>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h4 className="text-base font-semibold text-foreground uppercase tracking-wider">Site directory · certifications</h4>
@@ -381,26 +385,26 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Filtro per schema: trova un sito qualunque sia la sua sezione */}
+            {/* Filtro per schema: l'attivo e' l'UNICO elemento a fondo teal pieno */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={() => setSchemeFilter(null)}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${!schemeFilter ? 'border-foreground/40 bg-foreground/10 text-foreground font-semibold' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'}`}>
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${!schemeFilter ? 'border-fgb-brand-medium bg-fgb-brand-medium text-white font-semibold' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'}`}>
                 All
               </button>
               {schemes.map(s => (
                 <button key={s.scheme} onClick={() => setSchemeFilter(schemeFilter === s.scheme ? null : s.scheme)}
-                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${schemeFilter === s.scheme ? 'border-fgb-light/50 bg-fgb-light/15 text-fgb-light font-semibold' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'}`}>
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${schemeFilter === s.scheme ? 'border-fgb-brand-medium bg-fgb-brand-medium text-white font-semibold' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'}`}>
                   {s.scheme.replace('_', ' ')}
                 </button>
               ))}
             </div>
-            {/* Dettaglio: la fascia Achievements sparisce e la tabella si
-                aggancia sotto i 4 KPI; See less ripristina la gerarchia. */}
-            <button onClick={() => setDetailMode(v => !v)}
-              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full bg-fgb-secondary text-white hover:brightness-110 shadow-lg shadow-fgb-secondary/40 transition-all">
-              {detailMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              {detailMode ? 'See less' : 'Go in detail'}
-            </button>
+            {/* Ritorno alla base: il comando appare qui solo in dettaglio */}
+            {detailMode && (
+              <button onClick={() => setDetailMode(false)}
+                className="flex items-center gap-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-fgb-brand-light hover:underline">
+                <Minimize2 className="w-3.5 h-3.5" /> See less
+              </button>
+            )}
           </div>
         </div>
 
@@ -408,10 +412,10 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
           <div style={{ minWidth: `${180 + activeTableSchemes.length * 104}px` }}>
             {/* Blocco sticky UNICO: intestazione colonne + sotto-riga sezioni.
                 Sfondo pieno: non deve mai fondersi con le righe che scorrono. */}
-            <div className="sticky top-0 z-30" style={SOLID_STICKY}>
+            <div className="sticky top-0 z-30 fgb-cert-sticky">
               <div className="grid gap-2 text-[10px] uppercase tracking-widest text-muted-foreground pb-1.5 pt-1"
                 style={{ gridTemplateColumns: COLS }}>
-                <span className="sticky left-0 z-40 pl-2" style={SOLID_STICKY}>Site</span>
+                <span className="sticky left-0 z-40 pl-2 fgb-cert-sticky">Site</span>
                 {activeTableSchemes.map(s => <span key={s} className="text-center">{s.replace('_', ' ')}</span>)}
               </div>
               <div className="flex items-center gap-1.5 pb-2 pt-0.5 overflow-x-auto pl-2">
@@ -419,7 +423,7 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
                   <button key={s.key} onClick={() => jumpTo(s.key)}
                     className={`text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${
                       (currentSection ?? visibleSections[0]?.key) === s.key
-                        ? 'border-fgb-light/50 bg-fgb-light/20 text-foreground font-semibold'
+                        ? 'border-foreground/20 bg-foreground/[0.075] text-foreground font-semibold'
                         : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'
                     }`}>
                     {s.label} <span className="opacity-70">{s.rows.length}</span>
@@ -439,22 +443,29 @@ const CertificationsOverview = ({ projects, domainLive, onOpenSite }: Props) => 
                       <div key={row.siteId} onClick={() => onOpenSite?.(row.siteId)}
                         className={`group relative grid gap-2 items-center bg-foreground/[0.04] rounded-xl py-2 transition-colors ${onOpenSite ? 'cursor-pointer' : ''}`}
                         style={{ gridTemplateColumns: COLS }}>
-                        {/* Binario di lettura: in hover si accende TUTTA la riga
+                        {/* Binario di lettura: in hover la riga sale a glass-hi
                             (sta sopra la colonna sticky, sotto l'header). */}
-                        <span className="pointer-events-none absolute inset-0 rounded-xl bg-fgb-light/0 group-hover:bg-fgb-light/[0.13] transition-colors z-[25]" />
-                        <div className="sticky left-0 z-20 min-w-0 rounded-l-xl pl-2 py-0.5" style={SOLID_STICKY}>
+                        <span className="pointer-events-none absolute inset-0 rounded-xl bg-foreground/0 group-hover:bg-foreground/[0.07] transition-colors z-[25]" />
+                        <div className="sticky left-0 z-20 min-w-0 rounded-l-xl pl-2 py-0.5 fgb-cert-sticky">
                           <p className="text-sm text-foreground truncate">{row.siteName}</p>
                           <p className="text-[11px] text-muted-foreground">{row.region}</p>
                         </div>
                         {activeTableSchemes.map(sch => {
                           const c = row.cells[sch];
                           const label = cellLabel(sch, c);
+                          const pill = cellPillCls(c);
                           return (
                             <div key={sch}
-                              className={`cert-cell relative rounded-lg px-2 py-1.5 text-center ${cellCls(c, sch)}`}
+                              className="cert-cell relative px-2 py-1 text-center"
                               data-exp={c?.expiryDate ? new Date(c.expiryDate).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }) : undefined}>
-                              <div className="text-[13px] font-semibold leading-tight">{label.top}</div>
-                              {label.sub && <div className="text-[10.5px] opacity-75 leading-tight">{label.sub}</div>}
+                              {pill ? (
+                                <span className={`inline-flex flex-col items-center px-4 py-1 rounded-full border leading-tight ${pill}`}>
+                                  <span className="text-[12.5px] font-semibold">{label.top}</span>
+                                  {label.sub && <span className="text-[10.5px] font-light opacity-80">{label.sub}</span>}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground/50">—</span>
+                              )}
                             </div>
                           );
                         })}

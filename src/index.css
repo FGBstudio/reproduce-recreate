@@ -229,6 +229,32 @@
     @apply backdrop-blur-lg border border-[hsl(0_0%_100%/0.15)] rounded-3xl;
   }
 
+  /* ── Superfici Certifications (modello certifications-surfaces.html) ──
+     Regola unica: una sola superficie per tutti i contenitori; i colori
+     brand vivono solo negli accenti. Questo modificatore aggiunge il velo
+     di teal-deep che sfuma nel vetro (variante "con tinta brand"). */
+  .glass-panel--brand {
+    background: linear-gradient(180deg, rgba(1, 99, 104, 0.2), rgba(1, 99, 104, 0.05) 60%, hsl(var(--fgb-surface)));
+    border-color: rgba(159, 213, 217, 0.12);
+  }
+  .light .glass-panel--brand {
+    background: linear-gradient(180deg, rgba(1, 99, 104, 0.12), rgba(1, 99, 104, 0.03) 60%, hsl(0 0% 100% / 0.88));
+    border-color: rgba(1, 99, 104, 0.18);
+  }
+  /* Parti sticky della directory: inchiostro NEUTRO (non petrolio) — serve
+     un fondo pieno per non fondersi con le righe che scorrono sotto. */
+  .fgb-cert-sticky { background: rgba(13, 17, 19, 0.94); }
+  .light .fgb-cert-sticky { background: hsl(200 30% 98% / 0.96); }
+  /* velo dell'ancoraggio KPI: inchiostro neutro che sfuma, mai petrolio */
+  .fgb-cert-kpiveil {
+    background: linear-gradient(rgba(8, 11, 13, 0.6) 60%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+  .light .fgb-cert-kpiveil {
+    background: linear-gradient(hsl(200 30% 98% / 0.85) 60%, transparent);
+  }
+
   /* ── Card deck in sovrimpressione (modello glass-panel.html 03/09) ──
      Il trucco e' invertito: niente riempimento bianco sul pannello, e' il
      resto che scende con uno scrim scuro. Il pannello attivo e' vetro
