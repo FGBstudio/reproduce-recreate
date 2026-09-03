@@ -349,6 +349,12 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
            chrome rientrato, sezioni piu' compatte. */
         @media (max-width:900px){
           .fgbw-card{flex:0 0 290px;min-height:270px;padding:24px 24px 22px}
+          /* le tre opzioni Monitoring (Clair/Greeny/Water) scorrono in
+             orizzontale invece di impilarsi (rev 03/09) */
+          .fgbw-hw{display:flex;overflow-x:auto;gap:14px;scrollbar-width:none;
+            margin-left:-24px;margin-right:-24px;padding:4px 24px 14px}
+          .fgbw-hw::-webkit-scrollbar{display:none}
+          .fgbw-hw-card{flex:0 0 260px}
           .fgbw-logo{left:20px;top:18px;font-size:26px}
           .fgbw-pill{right:14px;top:14px;padding:8px 8px 8px 14px;font-size:11px}
           .fgbw-scroll section{padding-top:70px !important;padding-bottom:70px !important}
@@ -742,14 +748,15 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
                     </div>
                   </div>
 
-                  {/* hardware: Clair · Greeny · Water */}
-                  <div className="grid gap-6 min-[901px]:grid-cols-3">
+                  {/* hardware: Clair · Greeny · Water — su mobile scorrono
+                      in orizzontale a dito (rev 03/09), su desktop griglia */}
+                  <div className="fgbw-hw grid gap-6 min-[901px]:grid-cols-3">
                     {[
                       { img: "/landing/clair.webp", name: "Clair", claim: "Air — for indoor air quality control", points: ["Wellness boost", "Healthy workplace", "Positive environment"] },
                       { img: "/landing/greeny.webp", name: "Greeny", claim: "Energy — for energy efficiency", points: ["Improve operations", "Find inefficiency", "Control your portfolio"] },
                       { img: "/landing/pillar-water.webp", name: "Water", claim: "Every drop, tracked", points: ["Flow, leaks and waste", "Spotted live", "Before they hit the bill"] },
                     ].map(h => (
-                      <div key={h.name} className="rounded-3xl overflow-hidden" style={{ background: PAPER, border: "1px solid #e4e7e4" }}>
+                      <div key={h.name} className="fgbw-hw-card rounded-3xl overflow-hidden" style={{ background: PAPER, border: "1px solid #e4e7e4" }}>
                         <div className="flex items-center justify-center" style={{ height: 190, background: "#fff" }}>
                           <img src={h.img} alt={h.name} className="fgbw-photo" style={{ maxHeight: 165, maxWidth: "78%", objectFit: "contain" }}
                             onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
@@ -818,8 +825,21 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       </section>
 
       {/* ══ 7 · JOIN FGB WORLD (invariata + preferenza scorciatoia) ══ */}
-      <section ref={ctaRef} className="min-h-[92dvh] flex flex-col items-center justify-center text-center px-6" style={{ background: "#0d2530" }}>
-        <div className="fgbw-reveal">
+      <section ref={ctaRef} className="relative overflow-hidden min-h-[92dvh] flex flex-col items-center justify-center text-center px-6" style={{ background: "#0d2530" }}>
+        {/* pattern di fondo col marchio (rev 03/09): tile leggerissimo che
+            sfuma verso i bordi, il contenuto resta protagonista */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "url(/pwa-512x512.png)",
+            backgroundSize: "140px 140px",
+            opacity: 0.05,
+            WebkitMaskImage: "radial-gradient(80% 80% at 50% 45%, #000 30%, transparent 100%)",
+            maskImage: "radial-gradient(80% 80% at 50% 45%, #000 30%, transparent 100%)",
+          }}
+        />
+        <div className="fgbw-reveal relative">
           <Eyebrow light>The choice is yours</Eyebrow>
           <h2 className="font-semibold tracking-tight text-white" style={{ fontSize: "clamp(36px,5.5vw,72px)", marginTop: 18 }}>
             Join <span style={{ color: "#7ad8d2" }}>FGB World</span>
