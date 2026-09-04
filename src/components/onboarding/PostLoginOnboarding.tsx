@@ -728,7 +728,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
             </div>
 
             <div className="fgbw-reveal" style={{ marginTop: 44, textAlign: "center" }}>
-              <img src="/landing/profile/laptop.webp" alt="FGB Monitoring System — Your Sustainable Space dashboard" loading="lazy" className="inline-block w-full" style={{ maxWidth: 780 }} />
+              <img src="/intro/platform-laptop.webp" alt="FGB Monitoring System — Your Sustainable Space dashboard" loading="lazy" className="inline-block w-full" style={{ maxWidth: 780 }} />
             </div>
 
             <div className="fgbw-reveal" style={{ textAlign: "center", marginTop: 8 }}>
@@ -739,12 +739,12 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
                     <div>
                       <div className="font-semibold" style={{ fontSize: 20, color: INK }}>Create your own report</div>
                       <p style={{ fontSize: 14, color: SUB, marginTop: 6 }}>Actual vs average, device consumption, power breakdown — ready to share.</p>
-                      <img src="/landing/profile/report.webp" alt="Report widgets" loading="lazy" className="w-full" style={{ marginTop: 14 }} />
+                      <img src="/intro/platform-report.webp" alt="Report widgets" loading="lazy" className="w-full" style={{ marginTop: 14 }} />
                     </div>
                     <div>
                       <div className="font-semibold" style={{ fontSize: 20, color: INK }}>Check your metrics</div>
                       <p style={{ fontSize: 14, color: SUB, marginTop: 6 }}>Air quality index and core metrics, on any device.</p>
-                      <img src="/landing/profile/tablet.webp" alt="Metrics on tablet and phone" loading="lazy" className="w-full" style={{ marginTop: 14 }} />
+                      <img src="/intro/platform-devices.webp" alt="Metrics on tablet and phone" loading="lazy" className="w-full" style={{ marginTop: 14 }} />
                     </div>
                   </div>
 
@@ -752,9 +752,9 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
                       in orizzontale a dito (rev 03/09), su desktop griglia */}
                   <div className="fgbw-hw grid gap-6 min-[901px]:grid-cols-3">
                     {[
-                      { img: "/landing/clair.webp", name: "Clair", claim: "Air — for indoor air quality control", points: ["Wellness boost", "Healthy workplace", "Positive environment"] },
-                      { img: "/landing/greeny.webp", name: "Greeny", claim: "Energy — for energy efficiency", points: ["Improve operations", "Find inefficiency", "Control your portfolio"] },
-                      { img: "/landing/pillar-water.webp", name: "Water", claim: "Every drop, tracked", points: ["Flow, leaks and waste", "Spotted live", "Before they hit the bill"] },
+                      { img: "/intro/hw-clair.webp", name: "Clair", claim: "Air — for indoor air quality control", points: ["Wellness boost", "Healthy workplace", "Positive environment"] },
+                      { img: "/intro/hw-greeny.webp", name: "Greeny", claim: "Energy — for energy efficiency", points: ["Improve operations", "Find inefficiency", "Control your portfolio"] },
+                      { img: "/intro/hw-water.webp", name: "Water", claim: "Every drop, tracked", points: ["Flow, leaks and waste", "Spotted live", "Before they hit the bill"] },
                     ].map(h => (
                       <div key={h.name} className="fgbw-hw-card rounded-3xl overflow-hidden" style={{ background: PAPER, border: "1px solid #e4e7e4" }}>
                         <div className="flex items-center justify-center" style={{ height: 190, background: "#fff" }}>
