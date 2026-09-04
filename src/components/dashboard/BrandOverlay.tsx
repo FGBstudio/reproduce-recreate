@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useAllProjects, useAllBrands, useAllHoldings } from "@/hooks/useRealTimeData";
 import { useAggregatedSiteData, type SiteState } from "@/hooks/useAggregatedSiteData";
+import type { Project } from "@/lib/data";
 import { useClientOverviewKpis } from "@/hooks/useClientOverviewKpis";
 import { useUserScope } from "@/hooks/useUserScope";
 import { CO2_THRESHOLDS, scoreToLevel, co2Level } from "@/lib/airQuality";
@@ -269,17 +270,40 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     return n > 0 ? { value: cost, sites: n } : null;
   }, [sitesWithEnergy, adminSites]);
 
+  /**
+   * I progetti del perimetro, indicizzati con la stessa chiave che
+   * useAggregatedSiteData usa per i suoi siti.
+   *
+   * Serve perche' le schede leggevano citta' e nome da `adminSites`, che e' una
+   * lista DIVERSA da quella che alimenta i grafici: arriva da AdminDataContext,
+   * che in caso di errore o di permessi mancanti resta vuota di proposito. Con
+   * quella vuota il confronto "stesso clima" non trovava una sola citta',
+   * `focusCity` restava nullo e la scheda mostrava "No data yet for this chart"
+   * pur avendo i consumi e le temperature al loro posto.
+   *
+   * Questi progetti sono gli stessi da cui i siti sono stati costruiti, quindi
+   * la chiave combacia sempre.
+   */
+  const projectBySiteId = useMemo(() => {
+    const map = new Map<string, Project>();
+    for (const p of filteredProjects) map.set(p.siteId || `s-demo-${p.id}`, p);
+    return map;
+  }, [filteredProjects]);
+
   /** Citta' con siti energia: alimentano il confronto "stesso clima". */
   const energyCities = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const s of sitesWithEnergy) {
-      const city = adminSites.find(a => a.id === s.siteId)?.city?.trim();
+      // Il progetto sa gia' la sua citta'; l'anagrafica admin resta come
+      // riserva per i siti che il perimetro non conosce.
+      const city = (projectBySiteId.get(s.siteId)?.city
+        ?? adminSites.find(a => a.id === s.siteId)?.city ?? '').trim();
       if (!city) continue;
       if (!map.has(city)) map.set(city, []);
       map.get(city)!.push(s.siteId);
     }
     return [...map.entries()].map(([city, ids]) => ({ city, ids })).sort((a, b) => b.ids.length - a.ids.length);
-  }, [sitesWithEnergy, adminSites]);
+  }, [sitesWithEnergy, projectBySiteId, adminSites]);
   const focusCity = cityFocus ?? energyCities[0]?.city ?? null;
   const citySiteIds = useMemo(
     () => energyCities.find(c => c.city === focusCity)?.ids ?? [],
@@ -385,7 +409,13 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   } as const;
   const axisTick = { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } as const;
   const SERIES_COLORS = ['#009193', '#38bdf8', '#8b5cf6', '#10b981', '#016368'];
-  const siteNameOf = (id: string) => adminSites.find(a => a.id === id)?.name || id;
+  // Stessa ragione della citta': prima, quando l'anagrafica admin non era
+  // disponibile, le legende dei grafici mostravano l'uuid del sito. E si usa
+  // l'etichetta composta — "PRADA HOUSTON Galleria" — come ovunque altrove.
+  const siteNameOf = (id: string) => {
+    const p = projectBySiteId.get(id);
+    return p?.displayName || p?.name || adminSites.find(a => a.id === id)?.name || id;
+  };
 
   const buildDeck = (domain: 'energy' | 'air') => {
     const isEnergy = domain === 'energy';
