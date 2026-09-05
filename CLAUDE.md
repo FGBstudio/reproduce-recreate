@@ -117,8 +117,10 @@ conflicts); keep the dependency in that direction.
 - `services/mqtt-ingestion/` — an obsolete, divergent copy kept only pending the owner's go-ahead to
   delete. Never edit it, never use it as reference.
 
-Aggregation runs hourly/daily via `.github/workflows/scheduled-jobs.yml` calling the `scheduled-jobs`
-edge function (pg_cron is the documented alternative).
+Aggregation is scheduled by **pg_cron inside the database** (hourly `run_scheduled_jobs()` at :05,
+daily `run_daily_jobs()` at 01:30, batched purge at :45). `.github/workflows/scheduled-jobs.yml` is
+`workflow_dispatch`-only: a manual catch-up lever, not a clock — its cron was removed in Sep 2026
+because it fired at the same minute as pg_cron and the two collided.
 
 ### Deploy
 

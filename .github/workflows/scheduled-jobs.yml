@@ -1,11 +1,11 @@
 name: Scheduled Aggregation Jobs
 
+# Schedule DISABLED on purpose (2026-09-05): pg_cron inside the database is
+# the single clock now (job 1 hourly at :05, job 2 daily at 01:30, purge at
+# :45). This workflow used to fire at the very same minute and the two
+# collided on the same upserts, failing every scheduled run. Keep it for
+# MANUAL catch-up runs only (workflow_dispatch below).
 on:
-  schedule:
-    # Hourly aggregation at minute 5
-    - cron: '5 * * * *'
-    # Daily aggregation at 01:15 UTC
-    - cron: '15 1 * * *'
   workflow_dispatch:
     inputs:
       job_type:
