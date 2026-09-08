@@ -247,10 +247,14 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
         ref={heroSec}
         className="relative flex flex-col items-center px-6"
         style={{
-          minHeight: "calc(100dvh - var(--sat) - 52px)",
+          /* la hero parte da y=0 (sotto progress e header, entrambi
+             traslucidi) e riempie TUTTO lo schermo: il buio finisce
+             esattamente al fold su qualunque telefono, e sotto il binario
+             della progress non spunta piu' il fondo chiaro (fix 08/09) */
+          minHeight: "100dvh",
           background: "linear-gradient(180deg,#0a1c20 0%,#0d2530 100%)",
-          marginTop: "calc((var(--sat) + 50px) * -1)",
-          paddingTop: "calc(var(--sat) + 62px)",
+          marginTop: "calc((var(--sat) + 52px) * -1)",
+          paddingTop: "calc(var(--sat) + 64px)",
           paddingBottom: 26,
         }}
       >
