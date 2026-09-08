@@ -1,28 +1,25 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import CityTicker from "./CityTicker";
+import MobileAppHeader from "@/components/mobile/MobileAppHeader";
 import { MARKERS, CERT_LOGOS } from "./LandingScroll";
 
 /**
- * Landing MOBILE (<768px): stesso racconto del desktop, grammatica da
- * telefono (spec landing-mobile + accorgimenti del proprietario 01/09):
+ * Landing MOBILE per app wrapped (SPEC mobile-landing-login §2, 08/09):
  *
- *  - header con Certifications | Monitoring | Access;
- *  - logo FGB grande e centrato all'apertura, che si "wrappa" nell'angolo
- *    dell'header appena si scrolla (interpolato, reversibile);
- *  - hero col globo AUTO-ROTANTE (nessuno scroll-jacking: su touch le
- *    scene si animano da sole quando entrano) e i numeri che contano;
- *  - certificazioni a CAROSELLO orizzontale: logo + caption sotto
- *    (niente hover sul touch);
- *  - lince e ragazza affiancate al 50% con GLANCE / BREATH al bordo alto;
- *  - monitoring in tre ATTI ORIZZONTALI, uno per schermata: banda piena
- *    larghezza che finisce a meta' del cerchio, ingressi da sinistra /
- *    destra / sinistra;
- *  - Free/Custom impilate che si colorano da sole quando entrano in vista.
- *
- * Budget batteria: canvas 640 scalato, pixel ratio <=1.25, texture 2048,
- * niente nuvole/bump, render in pausa quando il globo esce dalla vista.
+ *  - scroller unico .app-scroll (nessuna scrollbar) + barra di avanzamento
+ *    2px aqua in alto;
+ *  - header CONDIVISO (MobileAppHeader, variante scura, logo bianco) con
+ *    pill "Sign in": il logo sta SOLO nell'header (via l'animazione wrap);
+ *  - hero in una schermata: titolo, globo 3D esistente (INVARIATO),
+ *    3 numeri, Sign in, hint;
+ *  - certificazioni in swipe orizzontale con dots + riga 11 world records;
+ *    GLANCE/BREATH e riga citta' MANTENUTE (scelta owner 08/09);
+ *  - monitoring in swipe orizzontale (3 card 80% con snap e dots, foto in
+ *    cerchio DENTRO la card) al posto delle tre schermate impilate;
+ *  - footer + CTA sticky "Sign in" che appare superata la hero, sopra la
+ *    barra home (--sab).
  */
 
 interface Props {
@@ -31,19 +28,56 @@ interface Props {
 }
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const CANVAS = 640;
 
+/** Dots di uno swipe: 6px, il corrente 18x6, aggiornati sullo scroll. */
+const useSwipeDots = (count: number) => {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const onScroll = () => {
+      const first = row.firstElementChild as HTMLElement | null;
+      if (!first) return;
+      const w = first.offsetWidth + 12;
+      setIdx(clamp(Math.round(row.scrollLeft / w), 0, count - 1));
+    };
+    row.addEventListener("scroll", onScroll, { passive: true });
+    return () => row.removeEventListener("scroll", onScroll);
+  }, [count]);
+  return { rowRef, idx };
+};
+
+const Dots: React.FC<{ count: number; idx: number; light?: boolean }> = ({ count, idx, light }) => (
+  <div className="flex justify-center" style={{ gap: 6, paddingTop: 16 }}>
+    {Array.from({ length: count }, (_, i) => (
+      <i
+        key={i}
+        style={{
+          width: i === idx ? 18 : 6, height: 6, borderRadius: i === idx ? 3 : 99,
+          background: i === idx ? (light ? "#009193" : "#fff") : (light ? "rgba(74,75,77,.2)" : "rgba(255,255,255,.28)"),
+          transition: "width .2s",
+        }}
+      />
+    ))}
+  </div>
+);
+
 const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const scroller = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLImageElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const heroSec = useRef<HTMLElement>(null);
   const certsSec = useRef<HTMLElement>(null);
   const monSec = useRef<HTMLElement>(null);
-  const waysSec = useRef<HTMLElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const globePaused = useRef(false);
+  const [hdrScrolled, setHdrScrolled] = useState(false);
+  const [ctaShow, setCtaShow] = useState(false);
+
+  const certDots = useSwipeDots(CERT_LOGOS.length);
+  const monDots = useSwipeDots(3);
 
   const globeMaterial = React.useMemo(
     () => new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 12, specular: new THREE.Color(0x2c3e46) }),
@@ -96,28 +130,22 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
   useEffect(() => {
     const sc = scroller.current!;
 
-    /* Logo: grande e centrato -> angolo dell'header, guidato dallo scroll */
-    const LOGO_W = 190;
-    const layoutLogo = () => {
-      const el = logoRef.current;
-      if (!el) return;
-      const p = clamp(sc.scrollTop / 150, 0, 1);
-      const vw = sc.clientWidth;
-      const x = lerp((vw - LOGO_W) / 2, 12, p);
-      const y = lerp(66, 8, p);
-      const s = lerp(1, 0.44, p);
-      el.style.transform = `translate3d(${x}px,${y}px,0) scale(${s})`;
+    const onScroll = () => {
+      const max = sc.scrollHeight - sc.clientHeight;
+      if (barRef.current) barRef.current.style.width = max > 0 ? (sc.scrollTop / max) * 100 + "%" : "0%";
+      setHdrScrolled(sc.scrollTop > 10);
+      const heroH = heroSec.current?.offsetHeight ?? sc.clientHeight;
+      setCtaShow(sc.scrollTop > heroH * 0.7);
     };
-    const onScroll = () => requestAnimationFrame(layoutLogo);
     sc.addEventListener("scroll", onScroll, { passive: true });
-    layoutLogo();
+    onScroll();
 
     /* Scene: si animano da sole quando entrano (mai guidate dal dito) */
     const io = new IntersectionObserver(
       (es) => es.forEach((e) => e.isIntersecting && e.target.classList.add("in")),
       { root: sc, threshold: 0.25 },
     );
-    sc.querySelectorAll(".fgm-reveal, .fgm-act, .fgm-color").forEach((el) => io.observe(el));
+    sc.querySelectorAll(".fgm-reveal, .fgm-color").forEach((el) => io.observe(el));
 
     /* Numeri: contano una volta sola quando il blocco entra in vista */
     const nums = new IntersectionObserver((es) => {
@@ -157,7 +185,7 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
       const m = window.location.href.match(/[?&]lp=(\d+)/);
       if (m)
         dbgT = setTimeout(() => {
-          sc.querySelectorAll(".fgm-reveal, .fgm-act, .fgm-color").forEach((el) => el.classList.add("in"));
+          sc.querySelectorAll(".fgm-reveal, .fgm-color").forEach((el) => el.classList.add("in"));
           sc.scrollTo(0, Number(m[1]));
         }, 1200);
     }
@@ -173,58 +201,63 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
 
   const scrollToRef = (ref: React.RefObject<HTMLElement>) => {
     const sc = scroller.current;
-    if (sc && ref.current) sc.scrollTo({ top: ref.current.offsetTop - 52, behavior: "smooth" });
+    if (sc && ref.current) sc.scrollTo({ top: ref.current.offsetTop - 60, behavior: "smooth" });
   };
 
-  const globeSize = Math.min(typeof window !== "undefined" ? window.innerWidth * 0.86 : 340, 400);
+  const globeSize = Math.min(typeof window !== "undefined" ? window.innerWidth * 0.76 : 300, 320);
 
   return (
     <div
       ref={scroller}
-      className="fixed inset-0 overflow-y-auto overflow-x-hidden"
+      className="app-scroll fixed inset-0"
       style={{ background: "#f3f4f2", fontFamily: "'Poppins','Century Gothic',system-ui,sans-serif" }}
     >
       <style>{`
         .fgm-reveal{opacity:0;transform:translateY(30px);transition:opacity .8s ease,transform .8s cubic-bezier(.22,.8,.32,1)}
         .fgm-reveal.in{opacity:1;transform:none}
-        .fgm-act{opacity:0;transition:opacity .85s ease,transform .85s cubic-bezier(.22,.8,.32,1)}
-        .fgm-act.from-left{transform:translateX(-56px)}
-        .fgm-act.from-right{transform:translateX(56px)}
-        .fgm-act.in{opacity:1;transform:none}
         .fgm-color img{filter:grayscale(1);transition:filter .9s ease}
         .fgm-color.in img{filter:grayscale(0)}
         .fgm-snap{scrollbar-width:none;-ms-overflow-style:none}
         .fgm-snap::-webkit-scrollbar{display:none}
         @media (prefers-reduced-motion: reduce){
-          .fgm-reveal,.fgm-act{transition:none;opacity:1;transform:none}
+          .fgm-reveal{transition:none;opacity:1;transform:none}
           .fgm-color img{filter:none}
+          .fgm-cta{transition:none}
         }
       `}</style>
 
-      {/* ══ Header: nav in alto + spazio per il logo che si wrappa ══ */}
-      <div
-        className="fixed top-0 left-0 right-0 z-40 flex items-center justify-end gap-4 px-4"
-        style={{ height: 52, paddingTop: "env(safe-area-inset-top)", background: "linear-gradient(180deg, rgba(10,28,32,.92), rgba(10,28,32,0))" }}
-      >
-        <button onClick={() => scrollToRef(certsSec)} className="text-[11px] font-semibold text-[#e8ecec]">Certifications</button>
-        <button onClick={() => scrollToRef(monSec)} className="text-[11px] font-semibold text-[#e8ecec]">Monitoring</button>
-        <button onClick={() => scrollToRef(waysSec)} className="text-[11px] font-semibold text-[#e8ecec]">Access</button>
+      {/* barra di avanzamento: sostituisce la scrollbar */}
+      <div style={{ position: "sticky", top: 0, zIndex: 50, height: 2 }}>
+        <div ref={barRef} style={{ height: "100%", width: 0, background: "#9fd5d9" }} />
       </div>
-      {/* logo animato: parte grande al centro, si aggancia nell'angolo */}
-      <img
-        ref={logoRef}
-        src="/white-logo.png"
-        alt="FGB"
-        className="fixed top-0 left-0 z-50 pointer-events-none drop-shadow-lg"
-        style={{ width: 190, transformOrigin: "0 0", willChange: "transform" }}
+
+      {/* ══ Header condiviso (§1.3): logo bianco, pill Sign in ══ */}
+      <MobileAppHeader
+        variant="dark"
+        scrolled={hdrScrolled}
+        links={[
+          { label: "Certifications", onClick: () => scrollToRef(certsSec) },
+          { label: "Monitoring", onClick: () => scrollToRef(monSec) },
+        ]}
+        action={{ label: "Sign in", onClick: onSignIn }}
       />
 
-      {/* ══ HERO: globo auto-rotante + numeri ══ */}
-      <section ref={heroSec} className="relative flex flex-col items-center px-6" style={{ minHeight: "100svh", background: "linear-gradient(180deg,#0a1c20 0%,#0d2530 100%)", paddingTop: 148 }}>
-        <h1 className="text-center text-[#e8ecec] font-medium" style={{ fontSize: "clamp(26px,7.5vw,34px)", lineHeight: 1.2 }}>
+      {/* ══ HERO in una schermata: titolo, globo (invariato), numeri, CTA ══ */}
+      <section
+        ref={heroSec}
+        className="relative flex flex-col items-center px-6"
+        style={{
+          minHeight: "calc(100dvh - var(--sat) - 52px)",
+          background: "linear-gradient(180deg,#0a1c20 0%,#0d2530 100%)",
+          marginTop: "calc((var(--sat) + 50px) * -1)",
+          paddingTop: "calc(var(--sat) + 62px)",
+          paddingBottom: 26,
+        }}
+      >
+        <h1 className="text-center text-[#e8ecec] font-medium" style={{ fontSize: "clamp(24px,6.8vw,32px)", lineHeight: 1.2, marginTop: 4 }}>
           Precisely measured<br />Globally connected
         </h1>
-        <div className="relative mt-6" style={{ width: globeSize, height: globeSize }}>
+        <div className="relative mt-4" style={{ width: globeSize, height: globeSize }}>
           {/* absolute: il canvas 640 scalato non deve contribuire al layout,
               o allarga la pagina e sposta tutto (headline tagliata) */}
           <div style={{ position: "absolute", top: 0, left: 0, width: CANVAS, height: CANVAS, transform: `scale(${globeSize / CANVAS})`, transformOrigin: "0 0" }}>
@@ -247,7 +280,7 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
             />
           </div>
         </div>
-        <div className="fgm-nums flex items-start justify-center gap-7 mt-6 pb-10">
+        <div className="fgm-nums flex items-start justify-center gap-7 mt-5">
           {[
             { t: 60, l: "countries" },
             { t: 6000, l: "buildings", fmt: "dot" },
@@ -261,24 +294,32 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
         </div>
         <button
           onClick={onSignIn}
-          className="mb-10 rounded-full font-semibold"
-          style={{ background: "#eef0ee", color: "#016368", padding: "12px 40px", fontSize: 14, letterSpacing: "1.5px" }}
+          className="rounded-full font-semibold"
+          style={{ marginTop: 24, background: "#eef0ee", color: "#016368", padding: "14px 40px", fontSize: 14, letterSpacing: "1.5px", minHeight: 52, width: "100%", maxWidth: 300 }}
         >
           SIGN IN
         </button>
+        <div className="text-center uppercase" style={{ marginTop: "auto", paddingTop: 18, fontSize: 9, letterSpacing: "0.3em", color: "rgba(244,243,239,.62)" }}>
+          Discover
+          <i className="block mx-auto" style={{ width: 1, height: 20, marginTop: 8, background: "linear-gradient(rgba(244,243,239,.62),transparent)" }} />
+        </div>
       </section>
 
-      {/* ══ CERTIFICAZIONI: carosello orizzontale logo + caption ══ */}
-      <section ref={certsSec} className="px-6 py-14" style={{ background: "#f3f4f2" }}>
-        <div className="fgm-reveal">
+      {/* ══ CERTIFICAZIONI: swipe con dots + 11 world records + GLANCE/BREATH + citta' ══ */}
+      <section ref={certsSec} className="py-14" style={{ background: "#f3f4f2" }}>
+        <div className="fgm-reveal px-6">
           <p className="text-[10px] font-semibold uppercase" style={{ letterSpacing: "0.28em", color: "#016368" }}>Certifications</p>
           <h2 className="font-semibold" style={{ fontSize: 26, lineHeight: 1.2, marginTop: 8, color: "#585d60" }}>
             Your path to <span style={{ color: "#009193" }}>sustainability</span> excellence
           </h2>
         </div>
-        <div className="fgm-reveal fgm-snap flex overflow-x-auto gap-4 mt-7 -mx-6 px-6" style={{ scrollSnapType: "x mandatory" }}>
+        <div
+          ref={certDots.rowRef}
+          className="fgm-reveal fgm-snap flex overflow-x-auto"
+          style={{ gap: 12, scrollSnapType: "x mandatory", padding: "22px 22px 6px", overscrollBehaviorX: "contain" }}
+        >
           {CERT_LOGOS.map((l) => (
-            <div key={l.name} className="shrink-0 flex flex-col items-center text-center rounded-2xl bg-white/70 border border-black/[0.05] px-5 py-6" style={{ width: "64vw", maxWidth: 250, scrollSnapAlign: "center" }}>
+            <div key={l.name} className="flex flex-col items-center text-center rounded-2xl bg-white/70 border border-black/[0.05] px-5 py-6" style={{ flex: "0 0 74%", scrollSnapAlign: "center" }}>
               <div className="flex items-center justify-center" style={{ height: 92 }}>
                 <img src={l.src} alt={l.name} loading="lazy" style={{ maxHeight: Math.round(l.h * 0.8), maxWidth: 170, objectFit: "contain" }} />
               </div>
@@ -287,9 +328,19 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
             </div>
           ))}
         </div>
+        <Dots count={CERT_LOGOS.length} idx={certDots.idx} light />
 
-        {/* lince + ragazza al 50%, GLANCE / BREATH al bordo alto */}
-        <div className="fgm-reveal flex gap-3 mt-8">
+        {/* riga 11 world records (mockup §2) */}
+        <div className="fgm-reveal flex items-center" style={{ gap: 16, padding: "26px 22px 0" }}>
+          <b className="font-semibold" style={{ fontSize: 60, color: "#009193", letterSpacing: "-0.04em", lineHeight: 0.9 }}>11</b>
+          <div style={{ fontSize: 13, lineHeight: 1.35, color: "#7c8285" }}>
+            <strong className="block font-semibold" style={{ fontSize: 16, color: "#3f4649" }}>world records</strong>
+            Firsts and largests that redefined what certified buildings can be.
+          </div>
+        </div>
+
+        {/* lince + ragazza al 50%, GLANCE / BREATH al bordo alto (mantenute) */}
+        <div className="fgm-reveal flex gap-3 mt-8 px-6">
           {[
             { src: "/landing/cert-lynx.webp", word: "GLANCE" },
             { src: "/landing/cert-girl.webp", word: "BREATH" },
@@ -306,46 +357,49 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
           ))}
         </div>
 
-        <div className="mt-8 -mx-6">
+        <div className="mt-8">
           <CityTicker transparent color="#009193" />
         </div>
       </section>
 
-      {/* ══ MONITORING: tre atti orizzontali, uno per schermata ══ */}
-      <section ref={monSec} style={{ background: "#25655f" }}>
-        {[
-          { t: "AIR", b: "Every breath, measured.", d: "CO₂, humidity and particles - where your people actually work.", img: "/landing/pillar-air.webp", bg: "#4f9e98", dir: "from-left", flip: false },
-          { t: "ENERGY", b: "Every kWh, accounted for.", d: "Consumption, load and cost - hour by hour, not once a quarter.", img: "/landing/pillar-energy.webp", bg: "#8fdcd4", dir: "from-right", flip: true },
-          { t: "WATER", b: "Every drop, tracked.", d: "Flow, leaks and waste - spotted live, before they hit the bill.", img: "/landing/pillar-water.webp", bg: "#4f9e98", dir: "from-left", flip: false },
-        ].map((a, i) => (
-          <div key={a.t} className="relative flex flex-col justify-center px-5" style={{ minHeight: "92svh" }}>
-            {i === 0 && (
-              <p className="absolute top-8 left-5 text-[10px] font-semibold uppercase" style={{ letterSpacing: "0.3em", color: "#9fd5d9" }}>Monitoring</p>
-            )}
-            {/* banda orizzontale piena larghezza che finisce a meta' cerchio */}
-            <div className={`fgm-act ${a.dir} relative w-full rounded-xl text-white text-center`} style={{ background: a.bg, padding: a.flip ? "calc(23vw + 20px) 22px 30px" : "30px 22px calc(23vw + 20px)" }}>
-              <h3 className="font-semibold" style={{ fontSize: 30, letterSpacing: 2, order: a.flip ? 2 : 0 }}>{a.t}</h3>
-              <p style={{ fontSize: 14, lineHeight: 1.55, marginTop: 10, maxWidth: 300, marginInline: "auto" }}>
-                <b className="block font-semibold">{a.b}</b>
-                {a.d}
-              </p>
-              <div
-                className="absolute left-1/2 rounded-full overflow-hidden"
-                style={{
-                  width: "46vw", maxWidth: 220, aspectRatio: "1",
-                  transform: "translateX(-50%)",
-                  ...(a.flip ? { top: 0, translate: "0 -50%" } : { bottom: 0, translate: "0 50%" }),
-                }}
-              >
+      {/* ══ MONITORING: swipe orizzontale, 3 card 80% con foto DENTRO ══ */}
+      <section ref={monSec} className="py-13" style={{ background: "#25655f", paddingTop: 52, paddingBottom: 52 }}>
+        <div className="fgm-reveal px-6">
+          <p className="text-[10px] font-semibold uppercase" style={{ letterSpacing: "0.3em", color: "#9fd5d9" }}>Monitoring</p>
+          <h2 className="font-semibold text-white" style={{ fontSize: 28, lineHeight: 1.1, marginTop: 10 }}>
+            Air, energy, water. <em className="not-italic" style={{ color: "#9fd5d9" }}>Live.</em>
+          </h2>
+        </div>
+        <div
+          ref={monDots.rowRef}
+          className="fgm-reveal fgm-snap flex overflow-x-auto"
+          style={{ gap: 12, scrollSnapType: "x mandatory", padding: "22px 22px 6px", overscrollBehaviorX: "contain" }}
+        >
+          {[
+            { t: "AIR", b: "Every breath, measured.", d: "CO₂, humidity and particles - where your people actually work.", img: "/landing/pillar-air.webp", bg: "#2d7472", fg: "#fff" },
+            { t: "ENERGY", b: "Every kWh, accounted for.", d: "Consumption, load and cost - hour by hour, not once a quarter.", img: "/landing/pillar-energy.webp", bg: "#9fd5d9", fg: "#0b2429" },
+            { t: "WATER", b: "Every drop, tracked.", d: "Flow, leaks and waste - spotted live, before they hit the bill.", img: "/landing/pillar-water.webp", bg: "#016368", fg: "#fff" },
+          ].map((a) => (
+            <article
+              key={a.t}
+              className="relative flex flex-col rounded-[22px] overflow-hidden"
+              style={{ flex: "0 0 80%", scrollSnapAlign: "center", minHeight: 330, padding: "26px 22px 22px", background: a.bg, color: a.fg }}
+            >
+              <h3 className="font-semibold uppercase" style={{ fontSize: 26, letterSpacing: "0.2em" }}>{a.t}</h3>
+              <b className="block font-semibold" style={{ marginTop: 12, fontSize: 15 }}>{a.b}</b>
+              <p style={{ fontWeight: 300, fontSize: 14, lineHeight: 1.4, opacity: 0.9, marginTop: 4, maxWidth: "26ch" }}>{a.d}</p>
+              {/* foto in un cerchio DENTRO la card: non esce piu' dal riquadro */}
+              <div className="rounded-full overflow-hidden" style={{ marginTop: "auto", alignSelf: "flex-end", width: 118, height: 118, boxShadow: "0 20px 40px -20px rgba(0,0,0,.6)" }}>
                 <img src={a.img} alt="" loading="lazy" className="w-full h-full object-cover" />
               </div>
-            </div>
-          </div>
-        ))}
+            </article>
+          ))}
+        </div>
+        <Dots count={3} idx={monDots.idx} />
       </section>
 
       {/* ══ FREE / CUSTOM: impilate, si colorano quando entrano in vista ══ */}
-      <section ref={waysSec} className="flex flex-col items-center px-6 py-16" style={{ background: "#f3f4f2" }}>
+      <section className="flex flex-col items-center px-6 py-16" style={{ background: "#f3f4f2" }}>
         <h2 className="fgm-reveal font-bold text-center" style={{ fontSize: 27, color: "#009193" }}>Two ways in. One conversation.</h2>
         <p className="fgm-reveal text-center" style={{ fontSize: 13.5, color: "#7c8285", marginTop: 8 }}>Commercial terms are always defined one-to-one</p>
         <div className="flex flex-col gap-5 mt-8 w-full" style={{ maxWidth: 380 }}>
@@ -366,10 +420,34 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
         >
           CREATE ONE
         </button>
-        <button onClick={onSignIn} className="mt-4 text-[12px] font-semibold uppercase tracking-[0.18em]" style={{ color: "#016368", paddingBottom: "env(safe-area-inset-bottom)" }}>
+      </section>
+
+      {/* ══ FOOTER ══ */}
+      <footer className="text-center" style={{ padding: "36px 24px calc(var(--sab) + 110px)", fontSize: 12, color: "#7c8285", background: "#f3f4f2" }}>
+        <img src="/green.webp" alt="FGB — Future Green Building" style={{ height: 26, width: "auto", margin: "0 auto 10px" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+        Milan · 21 locations worldwide<br />© 2026 FGB
+      </footer>
+
+      {/* ══ CTA sticky: appare superata la hero, sopra la barra home ══ */}
+      <div
+        className="fgm-cta"
+        style={{
+          position: "sticky", bottom: 0, zIndex: 35, marginTop: -90,
+          padding: "14px 24px calc(var(--sab) + 14px)",
+          background: "linear-gradient(transparent, #f3f4f2 40%)",
+          transform: ctaShow ? "none" : "translateY(110%)",
+          transition: "transform .35s cubic-bezier(.2,.8,.2,1)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={onSignIn}
+          className="w-full rounded-full font-semibold text-white"
+          style={{ background: "#009193", minHeight: 54, fontSize: 14, letterSpacing: "0.24em", textTransform: "uppercase" }}
+        >
           Sign in
         </button>
-      </section>
+      </div>
     </div>
   );
 };

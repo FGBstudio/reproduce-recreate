@@ -218,6 +218,28 @@
   }
 }
 
+/* ── Sistema mobile app-wrapped (SPEC mobile-landing-login §1) ──
+   Safe area: --sat/--sab da env(); su Android <15 la WebView non le espone
+   e main.tsx le inietta dal plugin StatusBar sovrascrivendo queste. */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+body {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Contenitore di scroll unico, senza barra visibile (la barra di
+   avanzamento 2px in alto la sostituisce) */
+.app-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+.app-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
 @layer components {
   .glass-panel {
     @apply bg-[hsl(var(--fgb-surface))] backdrop-blur-xl border border-[hsl(var(--border))];

@@ -199,16 +199,20 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
             <Label className={`text-sm ${textMuted}`}>{t("auth.email")}</Label>
             <div className="relative">
               <Mail className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
-              <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className={inputCls} />
+              {/* attributi tastiera per WebView (SPEC mobile §3): niente zoom
+                  al focus, tastiera email, invio = campo successivo */}
+              <Input type="email" inputMode="email" autoComplete="username" autoCapitalize="off" autoCorrect="off" spellCheck={false} enterKeyHint="next" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className={inputCls} />
             </div>
           </div>
           <div className="space-y-2">
             <Label className={`text-sm ${textMuted}`}>{t("auth.password")}</Label>
             <div className="relative">
               <Lock className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
-              <Input type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`${inputCls} pr-11`} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${iconCls}`}>
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              <Input type={showPassword ? "text" : "password"} autoComplete="current-password" enterKeyHint="go" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`${inputCls} pr-14`} />
+              {/* su mobile il toggle e' TESTUALE (spec §3), su desktop resta l'icona */}
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${iconCls}`} aria-label={showPassword ? "Hide password" : "Show password"}>
+                <span className="max-[900px]:hidden">{showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</span>
+                <span className="hidden max-[900px]:inline text-[11px] font-semibold uppercase tracking-wider">{showPassword ? "Hide" : "Show"}</span>
               </button>
             </div>
           </div>

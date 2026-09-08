@@ -46,14 +46,36 @@ if ((isPreviewHost || isInIframe) && "serviceWorker" in navigator) {
       ]);
 
     await StatusBar.setStyle({ style: Style.Dark });
+    /* Status bar OVERLAY/traslucida (SPEC mobile §1.2): il colore di fondo
+       e' continuo con la pagina; il contenuto si tiene sotto con --sat. */
+    await StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
     if (Capacitor.getPlatform() === "android") {
-      await StatusBar.setBackgroundColor({ color: "#002838" });
+      /* Android < 15: env(safe-area-inset-*) resta 0 nella WebView.
+         Misuriamo env() con un probe; se e' vuoto iniettiamo le inset
+         dal plugin (getInfo().height) su --sat/--sab. */
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none";
+      document.body.appendChild(probe);
+      const envTop = probe.getBoundingClientRect().height;
+      probe.remove();
+      if (envTop < 1) {
+        let h = 28; // fallback prudente se il plugin non espone l'altezza
+        try {
+          const info = (await StatusBar.getInfo()) as { height?: number };
+          if (Number.isFinite(info?.height) && info.height! > 0) h = info.height!;
+        } catch { /* noop */ }
+        document.documentElement.style.setProperty("--sat", `${h}px`);
+        document.documentElement.style.setProperty("--sab", "16px");
+      }
     }
     await SplashScreen.hide();
 
-    // Android hardware back button: navigate back if possible, otherwise stay.
+    // Android hardware back button: prima chance ai layer aperti (es. login
+    // sheet, che chiama preventDefault su fgb:back), poi navigazione.
     CapApp.addListener("backButton", ({ canGoBack }) => {
-      if (canGoBack) window.history.back();
+      const ev = new CustomEvent("fgb:back", { cancelable: true });
+      const proceed = window.dispatchEvent(ev); // false se preventDefault()
+      if (proceed && canGoBack) window.history.back();
     });
   } catch {
     /* Capacitor not available — running in a normal browser */

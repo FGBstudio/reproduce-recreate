@@ -5,6 +5,7 @@ import Globe3D from "./Globe3D";
 import IdleOverlay from "./IdleOverlay";
 import CityTicker from "./CityTicker";
 import LoginModal from "./LoginModal";
+import LoginSheet from "./LoginSheet";
 import LandingMobile from "./LandingMobile";
 import LandingScroll from "./LandingScroll";
 import LandingScrollMobile from "./LandingScrollMobile";
@@ -312,7 +313,9 @@ const FloatingBentoPanel: React.FC = () => {
         {LANDING_SCROLL
           ? <LandingScrollMobile onSignIn={openLogin} onCreate={openRequest} />
           : <LandingMobile onSignIn={openLogin} onCreate={openRequest} blurGlobe={loginOpen} />}
-        <LoginModal open={loginOpen} onOpenChange={setLoginOpen} initialMode={loginMode} />
+        {/* Su mobile il login e' un bottom sheet (SPEC mobile §3), non la
+            modale centrata: stessa LoginForm, contenitore da telefono. */}
+        <LoginSheet open={loginOpen} onOpenChange={setLoginOpen} initialMode={loginMode} />
       </>
     );
   }

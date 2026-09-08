@@ -6,6 +6,7 @@ import { useAdminData } from "@/contexts/AdminDataContext";
 import { recordForClient } from "@/hooks/useClientPartnership";
 import { useIntroStrip } from "@/hooks/useIntroStrip";
 import IntroGlobe from "@/components/onboarding/IntroGlobe";
+import MobileAppHeader from "@/components/mobile/MobileAppHeader";
 import { INTRO_LOCATIONS, INITIAL_LOCATION_SLUG } from "@/lib/intro/locations";
 import { MOSAIC_STATS, TIMELINE, bumpIntroViews, readIntroMode, writeIntroMode, IntroMode } from "@/lib/intro/config";
 
@@ -276,25 +277,30 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
   return (
     <div
       ref={scroller}
-      className="fgbw-scroll fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden"
+      className="fgbw-scroll app-scroll fixed inset-0 z-[9999]"
       style={{ background: PAPER, fontFamily: "'Futura','Poppins','Century Gothic',system-ui,sans-serif", color: INK }}
     >
       {/* ── chrome persistente ── */}
       <div ref={progressRef} aria-hidden style={{ position: "fixed", left: 0, top: 0, height: 2, width: 0, background: TEAL, zIndex: 90 }} />
-      <div aria-hidden className="fgbw-logo" style={{ transition: "color .35s ease", color: onDark ? "#fff" : TEAL }}>
+      {/* header condiviso SOLO mobile (SPEC mobile §1.3/§4): logo green.webp
+          sulla home chiara, safe-area --sat, pill Dashboard */}
+      <div className="min-[901px]:hidden sticky top-0 z-[85]">
+        <MobileAppHeader variant="light" scrolled={showPill} action={{ label: "Dashboard →", onClick: onComplete }} />
+      </div>
+      <div aria-hidden className="fgbw-logo max-[900px]:hidden" style={{ transition: "color .35s ease", color: onDark ? "#fff" : TEAL }}>
         FGB
         <span style={{ display: "block", fontSize: 9, letterSpacing: "0.08em", fontWeight: 400, color: onDark ? "#ffffff99" : SUB, marginTop: 2 }}>Future Green Building</span>
       </div>
       <button
         type="button"
         onClick={onComplete}
-        className="fgbw-pill"
+        className="fgbw-pill max-[900px]:hidden"
         style={{ opacity: showPill ? 1 : 0, transform: showPill ? "none" : "translateY(-8px)", pointerEvents: showPill ? "auto" : "none" }}
       >
         Go to the dashboard
         <b>→</b>
       </button>
-      <div ref={sbar} aria-hidden style={{ position: "fixed", right: 5, top: 0, width: 5, height: 60, borderRadius: 999, background: TEAL, opacity: 0, transition: "opacity .45s ease", zIndex: 80, pointerEvents: "none" }} />
+      <div ref={sbar} aria-hidden className="max-[900px]:hidden" style={{ position: "fixed", right: 5, top: 0, width: 5, height: 60, borderRadius: 999, background: TEAL, opacity: 0, transition: "opacity .45s ease", zIndex: 80, pointerEvents: "none" }} />
 
       <style>{`
         .fgbw-reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ${EASE},transform .7s ${EASE}}
@@ -348,7 +354,11 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
            min-[901px]; qui il resto: card della striscia piu' strette,
            chrome rientrato, sezioni piu' compatte. */
         @media (max-width:900px){
-          .fgbw-card{flex:0 0 290px;min-height:270px;padding:24px 24px 22px}
+          /* striscia: card 80% con snap AL CENTRO e padding 22 (SPEC mobile §4
+             — sul mobile il center-snap non ha il difetto del bordo misurato
+             sul desktop, e la card non resta mai tagliata sul bordo) */
+          .fgbw-strip{scroll-snap-type:x mandatory;padding-left:22px;padding-right:22px}
+          .fgbw-card{flex:0 0 80%;min-height:270px;padding:24px 24px 22px;scroll-snap-align:center}
           /* le tre opzioni Monitoring (Clair/Greeny/Water) scorrono in
              orizzontale invece di impilarsi (rev 03/09) */
           .fgbw-hw{display:flex;overflow-x:auto;gap:14px;scrollbar-width:none;
