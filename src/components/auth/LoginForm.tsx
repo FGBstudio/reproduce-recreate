@@ -82,7 +82,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
     if (!email || !password) { setError(t("auth.email_password_required")); return; }
     setIsSubmitting(true);
     try {
-      if (!isSupabaseConfigured) { setError("Supabase non configurato."); return; }
+      if (!isSupabaseConfigured) { setError(t("auth.not_configured")); return; }
       const { error: loginError } = await login(email, password);
       if (loginError) {
         setError(loginError.message.includes("Invalid login credentials")
@@ -109,7 +109,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
     if (!email.trim()) { setError(t("auth.email_required")); return; }
     setIsSubmitting(true);
     try {
-      if (!isSupabaseConfigured) { setError("Supabase non configurato."); return; }
+      if (!isSupabaseConfigured) { setError(t("auth.not_configured")); return; }
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
         redirectTo: `${window.location.origin}${window.location.pathname}`,
       });
@@ -125,16 +125,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null); setSuccessMessage(null);
-    if (newPassword !== confirmPassword) { setError(t("auth.passwords_do_not_match") || "Le password non coincidono."); return; }
-    if (newPassword.length < 6) { setError("La password deve contenere almeno 6 caratteri."); return; }
+    if (newPassword !== confirmPassword) { setError(t("auth.passwords_do_not_match")); return; }
+    if (newPassword.length < 6) { setError(t("auth.password_min_length")); return; }
     setIsSubmitting(true);
     try {
       const { error: updateError } = await updatePassword(newPassword);
       if (updateError) throw updateError;
-      setSuccessMessage("Password aggiornata. Reindirizzamento...");
+      setSuccessMessage(t("auth.password_updated"));
       setTimeout(() => navigate("/", { replace: true }), 1500);
     } catch (err: any) {
-      setError(err.message || "Errore aggiornamento password.");
+      setError(err.message || t("auth.password_update_error"));
     } finally {
       setIsSubmitting(false);
     }
@@ -180,10 +180,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
     <div className={`w-full ${textPrimary}`}>
       <div className="mb-5">
         <h2 className="text-[22px] font-semibold tracking-tight">
-          {mode === "login" ? t("auth.welcome_back") : mode === "update_password" ? "Reimposta Password" : mode === "reset_request" ? t("auth.reset_title") : t("auth.request_access")}
+          {mode === "login" ? t("auth.welcome_back") : mode === "update_password" ? t("auth.new_password_title") : mode === "reset_request" ? t("auth.reset_title") : t("auth.request_access")}
         </h2>
         <p className={`text-[13px] mt-1 ${textMuted}`}>
-          {mode === "login" ? t("auth.login_subtitle") : mode === "update_password" ? "Imposta la tua nuova password." : mode === "reset_request" ? t("auth.reset_subtitle") : t("auth.request_subtitle")}
+          {mode === "login" ? t("auth.login_subtitle") : mode === "update_password" ? t("auth.new_password_subtitle") : mode === "reset_request" ? t("auth.reset_subtitle") : t("auth.request_subtitle")}
         </p>
       </div>
 
@@ -197,7 +197,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
       {mode === "update_password" ? (
         <form onSubmit={handleUpdatePassword} className="space-y-4">
           <div className="space-y-2">
-            <Label className={`text-sm ${textMuted}`}>Nuova Password</Label>
+            <Label className={`text-sm ${textMuted}`}>{t("auth.new_password")}</Label>
             <div className="relative">
               <Lock className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
               <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className={`${inputCls} pr-11`} />
@@ -207,14 +207,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
             </div>
           </div>
           <div className="space-y-2">
-            <Label className={`text-sm ${textMuted}`}>Conferma Password</Label>
+            <Label className={`text-sm ${textMuted}`}>{t("auth.confirm_password")}</Label>
             <div className="relative">
               <Lock className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
               <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className={inputCls} />
             </div>
           </div>
           <Button type="submit" disabled={isSubmitting} className={btnCls} style={btnStyle}>
-            {isSubmitting ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : "Salva nuova password"}
+            {isSubmitting ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : t("auth.save_new_password")}
           </Button>
         </form>
       ) : mode === "login" ? (
