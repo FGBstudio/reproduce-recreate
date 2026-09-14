@@ -400,6 +400,11 @@ const translations: Record<string, Record<Language, string>> = {
   'auth.company_required': { en: 'Company is required', it: "L'azienda è obbligatoria", fr: "L'entreprise est requise", es: 'La empresa es obligatoria', zh: '请填写公司名称' },
   'auth.email_required': { en: 'Business email is required', it: "L'email aziendale è obbligatoria", fr: "L'e-mail professionnel est requis", es: 'El correo corporativo es obligatorio', zh: '请填写企业邮箱' },
   'auth.back_to_login': { en: 'Back to Sign In', it: 'Torna al Login', fr: 'Retour à la connexion', es: 'Volver al inicio de sesión', zh: '返回登录' },
+  'auth.forgot_password': { en: 'Forgot password?', it: 'Password dimenticata?', fr: 'Mot de passe oublié ?', es: '¿Olvidaste tu contraseña?', zh: '忘记密码？' },
+  'auth.reset_title': { en: 'Reset password', it: 'Reimposta password', fr: 'Réinitialiser le mot de passe', es: 'Restablecer contraseña', zh: '重置密码' },
+  'auth.reset_subtitle': { en: "Enter your email and we'll send you a reset link.", it: 'Inserisci la tua email: ti invieremo un link per il reset.', fr: 'Saisissez votre e-mail : nous vous enverrons un lien de réinitialisation.', es: 'Introduce tu correo y te enviaremos un enlace de restablecimiento.', zh: '输入您的邮箱，我们将发送重置链接。' },
+  'auth.send_reset_link': { en: 'Send reset link', it: 'Invia link di reset', fr: 'Envoyer le lien', es: 'Enviar enlace', zh: '发送重置链接' },
+  'auth.reset_sent': { en: 'Check your inbox — if the address is registered, a reset link is on its way.', it: 'Controlla la posta: se l’indirizzo è registrato, il link di reset è in arrivo.', fr: 'Vérifiez votre boîte mail : si l’adresse est enregistrée, le lien arrive.', es: 'Revisa tu correo: si la dirección está registrada, el enlace está en camino.', zh: '请查收邮件——若该地址已注册，重置链接即将送达。' },
 
   // Admin access requests
   'admin.access_requests': { en: 'Access Requests', it: 'Richieste di Accesso', fr: "Demandes d'accès", es: 'Solicitudes de Acceso', zh: '访问请求' },

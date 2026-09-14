@@ -13,7 +13,7 @@ import {
   Building2, Briefcase, MessageSquare,
 } from "lucide-react";
 
-type Mode = "login" | "request" | "update_password";
+type Mode = "login" | "request" | "update_password" | "reset_request";
 type Theme = "light" | "dark";
 
 const ACCENT = "#006367";
@@ -98,6 +98,30 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
     }
   };
 
+  /* Richiesta reset password: usa la macchina gia' in piedi (Supabase Auth
+     + Resend). Il redirect torna alla RADICE dell'app: i token arrivano
+     nell'hash, AuthContext li intercetta (PASSWORD_RECOVERY) e apre il
+     form "nuova password" gia' esistente. L'URL va allow-listato nella
+     dashboard Supabase (Auth -> URL Configuration). */
+  const handleResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null); setSuccessMessage(null);
+    if (!email.trim()) { setError(t("auth.email_required")); return; }
+    setIsSubmitting(true);
+    try {
+      if (!isSupabaseConfigured) { setError("Supabase non configurato."); return; }
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}${window.location.pathname}`,
+      });
+      if (resetError) setError(resetError.message);
+      else setSuccessMessage(t("auth.reset_sent"));
+    } catch (err: any) {
+      setError(err.message || t("auth.auth_error"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null); setSuccessMessage(null);
@@ -156,10 +180,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
     <div className={`w-full ${textPrimary}`}>
       <div className="mb-5">
         <h2 className="text-[22px] font-semibold tracking-tight">
-          {mode === "login" ? t("auth.welcome_back") : mode === "update_password" ? "Reimposta Password" : t("auth.request_access")}
+          {mode === "login" ? t("auth.welcome_back") : mode === "update_password" ? "Reimposta Password" : mode === "reset_request" ? t("auth.reset_title") : t("auth.request_access")}
         </h2>
         <p className={`text-[13px] mt-1 ${textMuted}`}>
-          {mode === "login" ? t("auth.login_subtitle") : mode === "update_password" ? "Imposta la tua nuova password." : t("auth.request_subtitle")}
+          {mode === "login" ? t("auth.login_subtitle") : mode === "update_password" ? "Imposta la tua nuova password." : mode === "reset_request" ? t("auth.reset_subtitle") : t("auth.request_subtitle")}
         </p>
       </div>
 
@@ -216,8 +240,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
               </button>
             </div>
           </div>
+          {/* Forgot password: innesco del reset (rev 14/09) */}
+          <div className="flex justify-end -mt-1">
+            <button type="button" onClick={() => { setMode("reset_request"); setError(null); setSuccessMessage(null); }} className={`text-[13px] font-medium ${isDark ? "text-white/80 hover:text-white" : "hover:underline"}`} style={isDark ? undefined : { color: ACCENT }}>
+              {t("auth.forgot_password")}
+            </button>
+          </div>
           <Button type="submit" disabled={isSubmitting} className={btnCls} style={btnStyle}>
             {isSubmitting ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : (<>{t("auth.login")}<ArrowRight className="w-5 h-5" /></>)}
+          </Button>
+        </form>
+      ) : mode === "reset_request" ? (
+        <form onSubmit={handleResetRequest} className="space-y-4">
+          <div className="space-y-2">
+            <Label className={`text-sm ${textMuted}`}>{t("auth.email")}</Label>
+            <div className="relative">
+              <Mail className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
+              <Input type="email" inputMode="email" autoComplete="username" autoCapitalize="off" autoCorrect="off" spellCheck={false} enterKeyHint="go" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className={inputCls} />
+            </div>
+          </div>
+          <Button type="submit" disabled={isSubmitting} className={btnCls} style={btnStyle}>
+            {isSubmitting ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : (<>{t("auth.send_reset_link")}<ArrowRight className="w-5 h-5" /></>)}
           </Button>
         </form>
       ) : (
@@ -285,7 +328,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
               {t("auth.request_access")}
             </button>
           </p>
-        ) : mode === "request" ? (
+        ) : mode === "request" || mode === "reset_request" ? (
           <button type="button" onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }} className={`inline-flex items-center gap-1.5 text-sm ${textMuted}`}>
             <ArrowLeft className="w-4 h-4" /> {t("auth.back_to_login")}
           </button>

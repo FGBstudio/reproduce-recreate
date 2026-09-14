@@ -91,12 +91,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return;
     }
 
+    /* Hash di Supabase Auth (recovery/errore, es. link scaduto:
+       "#error=access_denied&error_code=otp_expired"): non e' una rotta.
+       Dopo aver lasciato al client il tempo di consumare i token, si
+       riporta l'utente su /auth invece che sulla pagina 404. */
+    if (/^#(access_token|error|.*type=recovery)/.test(window.location.hash)) {
+      setTimeout(() => {
+        if (!window.location.hash.startsWith('#/')) window.location.hash = '#/auth';
+      }, 400);
+    }
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         
         if (event === 'PASSWORD_RECOVERY') {
           setIsPasswordRecovery(true);
+          /* Il link di recovery arriva come "#access_token=...&type=recovery":
+             HashRouter lo leggerebbe come rotta inesistente (pagina 404).
+             I token sono gia' stati consumati dal client: si rimette /auth,
+             dove Auth.tsx apre il form "nuova password". */
+          if (!window.location.hash.startsWith('#/')) window.location.hash = '#/auth';
         }
         setSession(currentSession);
         
