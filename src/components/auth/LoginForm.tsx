@@ -115,8 +115,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
       });
       if (resetError) setError(resetError.message);
       else setSuccessMessage(t("auth.reset_sent"));
-    } catch (err: any) {
-      setError(err.message || t("auth.auth_error"));
+    } catch (err) {
+      setError((err as Error).message || t("auth.auth_error"));
     } finally {
       setIsSubmitting(false);
     }
