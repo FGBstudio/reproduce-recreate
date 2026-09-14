@@ -2,7 +2,10 @@
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Project } from "@/lib/data";
-import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, AlertTriangle, ArrowUpRight, RotateCcw, Fan, Lightbulb, Plug, MoreHorizontal, Info } from "lucide-react";
+import { Zap, Wind, Droplet, Activity, TrendingUp, TrendingDown, AlertTriangle, ArrowUpRight, RotateCcw, Fan, Lightbulb, Plug, MoreHorizontal, Info, Award, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCertifications } from "@/hooks/useCertifications";
+import { classifyCertState } from "@/hooks/useCertificationsOverview";
+import { isValidUUID } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { co2ToScore, computeAirIndex } from "@/lib/airQuality";
 import { Badge } from "@/components/ui/badge";
@@ -221,19 +224,20 @@ function useDelayedTrue(delay = 60): boolean {
 const RING_R = 76;
 const RING_CIRC = 2 * Math.PI * RING_R;
 
-function ScoreRing({ score, level, animatedScore }: { score: number; level: StatusLevel; animatedScore: number }) {
+function ScoreRing({ score, level, animatedScore, dash }: { score: number; level: StatusLevel; animatedScore: number; dash?: boolean }) {
   const tokens = STATUS_TOKENS[level];
   const mounted = useDelayedTrue(60);
-  const offset = mounted ? RING_CIRC * (1 - score / 100) : RING_CIRC;
+  const offset = mounted && !dash ? RING_CIRC * (1 - score / 100) : RING_CIRC;
 
   return (
     <div className="relative flex-shrink-0 w-[140px] h-[140px] md:w-[180px] md:h-[180px]">
       <svg className="w-full h-full" viewBox="0 0 180 180" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
         <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringBg} strokeWidth={12} />
-        <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={12} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />
+        {!dash && <circle cx={90} cy={90} r={RING_R} fill="none" stroke={tokens.ringColor} strokeWidth={12} strokeLinecap="round" strokeDasharray={RING_CIRC} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)" }} />}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className={`text-[44px] md:text-[64px] font-semibold leading-none tracking-tight ${tokens.textColor}`} aria-live="polite">{animatedScore}</span>
+        {/* dash: store senza dispositivi — "0 SCORE" sarebbe fuori luogo */}
+        <span className={`text-[44px] md:text-[64px] font-semibold leading-none tracking-tight ${dash ? "text-slate-300" : tokens.textColor}`} aria-live="polite">{dash ? "—" : animatedScore}</span>
         <span className="text-[11px] md:text-[12px] uppercase tracking-widest text-[#006367]/70 mt-1 md:mt-1.5 font-medium">score</span>
       </div>
     </div>
@@ -314,10 +318,14 @@ function LiveBadge({ isLive, isRealData = true }: { isLive: boolean; isRealData?
   );
 }
 
-function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules, onModuleClick, className = "", isRealData, alertStatus }: any) {
+function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules, onModuleClick, className = "", isRealData, alertStatus, notInstalled, certCount, onAwardClick }: any) {
   const tokens = STATUS_TOKENS[level];
   const animatedScore = useCountUp(score, 1100);
   const handleModClick = useCallback((mod: "energy" | "air" | "water") => () => onModuleClick?.(mod), [onModuleClick]);
+  // Store senza dispositivi ma con certificazione: parole giuste al posto
+  // di "No Data · 0/100" (rev 14/09)
+  const headline = notInstalled ? (certCount > 0 ? "Certified" : "Not monitored") : tokens.word;
+  const headlineColor = notInstalled ? (certCount > 0 ? "text-[#006367]" : "text-slate-500") : tokens.textColor;
 
   return (
     <Card className={`@container relative overflow-hidden bg-white border ${getStatusBorderColor(level)} shadow-sm transition-all hover:shadow-md ${className}`}>
@@ -333,22 +341,39 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
       <div className={`relative flex flex-col @[720px]:flex-row @[720px]:items-center justify-between gap-4 @[860px]:gap-8 px-4 md:px-8 py-4 md:py-8 h-full`}>
         {/* ── LEFT: Ring + status text ── */}
         <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
-          <ScoreRing score={score} level={level} animatedScore={animatedScore} />
+          <ScoreRing score={score} level={level} animatedScore={animatedScore} dash={notInstalled} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-[11px] md:text-[11px] uppercase tracking-widest text-[#006367] font-semibold">{periodLabel}</span>
-              <LiveBadge isLive={isLive} isRealData={isRealData} />
-              <DataSourceBadge isRealData={isRealData} size="sm" />
+              {notInstalled ? (
+                /* niente Offline/Demo: senza installazioni non si e' offline */
+                <Badge className="bg-transparent border border-dashed border-gray-300 text-gray-500 text-[11px] uppercase tracking-wider">Not monitored</Badge>
+              ) : (
+                <>
+                  <LiveBadge isLive={isLive} isRealData={isRealData} />
+                  <DataSourceBadge isRealData={isRealData} size="sm" />
+                </>
+              )}
             </div>
-            <div className={`font-semibold leading-none tracking-tight ${tokens.textColor}`} style={{ fontSize: "clamp(28px, 6cqw, 56px)" }}>
-              {tokens.word}
+            <div className={`font-semibold leading-none tracking-tight ${headlineColor}`} style={{ fontSize: "clamp(28px, 6cqw, 56px)" }}>
+              {headline}
             </div>
-            <div className="text-[14px] md:text-[16px] text-[#006367] mt-1.5 md:mt-2 leading-snug flex items-center gap-1.5 flex-wrap">
-              <span className="font-medium">Overall performance</span>
-              <InfoDot text="Media ponderata dei tre indici del sito: 80% Energia, 15% Acqua, 5% Aria. Un valore alto (≥ 80) significa un edificio efficiente, con aria salubre e nessuna perdita d'acqua." />
-              {peerPercentile != null && (<span className="text-slate-500">· Top <strong className="font-semibold text-[#006367]">{peerPercentile}%</strong> of monitored buildings</span>)}
-            </div>
-            <TrackBar score={score} level={level} />
+            {notInstalled ? (
+              <div className="text-[14px] md:text-[16px] text-[#006367] mt-1.5 md:mt-2 leading-snug">
+                {certCount > 0
+                  ? `This store carries ${certCount} building certification${certCount === 1 ? "" : "s"} — monitoring devices are not installed yet.`
+                  : "No monitoring devices installed yet — the cards below show what each module unlocks."}
+              </div>
+            ) : (
+              <>
+                <div className="text-[14px] md:text-[16px] text-[#006367] mt-1.5 md:mt-2 leading-snug flex items-center gap-1.5 flex-wrap">
+                  <span className="font-medium">Overall performance</span>
+                  <InfoDot text="Media ponderata dei tre indici del sito: 80% Energia, 15% Acqua, 5% Aria. Un valore alto (≥ 80) significa un edificio efficiente, con aria salubre e nessuna perdita d'acqua." />
+                  {peerPercentile != null && (<span className="text-slate-500">· Top <strong className="font-semibold text-[#006367]">{peerPercentile}%</strong> of monitored buildings</span>)}
+                </div>
+                <TrackBar score={score} level={level} />
+              </>
+            )}
           </div>
         </div>
 
@@ -357,6 +382,21 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
 
         {/* ── RIGHT: Module pills + Alerts ── */}
         <div className="flex flex-wrap items-center justify-center @[720px]:justify-end gap-3 @[860px]:gap-6 pb-2 @[720px]:pb-0">
+          {/* Award per primo (rev 14/09): certificazioni edificio ottenute,
+              stessa grafica delle altre pill, click -> sezione certificazioni */}
+          <div className="flex flex-col items-center gap-1.5 md:gap-2 min-w-[72px] @[860px]:min-w-[92px]">
+            <button onClick={onAwardClick} disabled={!onAwardClick} className={`flex flex-col items-center gap-1.5 md:gap-2 group ${onAwardClick ? "cursor-pointer" : "cursor-default"}`}>
+              <div className={`w-[56px] h-[56px] md:w-[72px] md:h-[72px] rounded-[14px] md:rounded-[18px] flex items-center justify-center border transition-all duration-200 ${certCount > 0 ? "bg-[#E4F3F3] text-[#006367] border-[#a0d5d6]/40 group-hover:scale-105" : "bg-gray-50 text-slate-600 border-gray-100"}`}>
+                <Award className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />
+              </div>
+              <span className={`text-[24px] md:text-[30px] font-semibold tabular-nums leading-none ${certCount > 0 ? "text-[#006367]" : "text-slate-600"}`}>{certCount > 0 ? certCount : "—"}</span>
+            </button>
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] md:text-[12px] uppercase tracking-wider text-[#006367]/80 font-medium">Award</span>
+              <InfoDot text="Building certifications achieved for this store (LEED, WELL, BREEAM…). Tap to open the certification section." />
+            </div>
+          </div>
+          <ModSep />
           <ModPill icon={<Zap className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Energy" score={modules.energy.score} enabled={modules.energy.enabled} isLive={modules.energy.isLive} level={level} onClick={modules.energy.enabled ? handleModClick("energy") : undefined} infoText={MOD_INFO.energy} />
           <ModSep />
           <ModPill icon={<Wind className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />} label="Air" score={modules.air.score} enabled={modules.air.enabled} isLive={modules.air.isLive} level={level} onClick={modules.air.enabled ? handleModClick("air") : undefined} infoText={MOD_INFO.air} />
@@ -382,64 +422,113 @@ function ScoreHero({ score, level, isLive, periodLabel, peerPercentile, modules,
 }
 
 // ─────────────────────────────────────────────
-// Building Fingerprint (Radar Chart)
+// Certification home card (al posto del Site Fingerprint, rev 14/09):
+// logo + stato + livello della certificazione dello store; con piu' schemi
+// diventa un mini-deck sfogliabile (attiva davanti, le altre dietro in
+// trasparenza, come i grafici dell'overview Energy). Click -> sezione
+// certificazioni.
 // ─────────────────────────────────────────────
-function BuildingFingerprint({ axes, level }: any) {
-  const size = 160;
-  const center = size / 2;
-  const radius = size / 2 - 25;
+const CERT_CARD_LOGOS: Record<string, string> = {
+  LEED: "/leed_logo.webp",
+  WELL: "/well_logo.webp",
+  BREEAM: "/breeam_logo.webp",
+  ESG: "/Logo_ESG.png",
+};
+const certLogoFor = (type: string): string | null => {
+  const key = Object.keys(CERT_CARD_LOGOS).find(k => type.toUpperCase().includes(k));
+  return key ? CERT_CARD_LOGOS[key] : null;
+};
 
-  const axisKeys = ["score", "energy", "air", "water", "alerts"];
-  const angles = axisKeys.map((_, i) => (Math.PI * 2 * i) / 5 - Math.PI / 2);
+interface HomeCert { certType: string; level: string | null; year: number | null; state: string | null }
 
-  const getPoint = (val: number, angle: number) => {
-    const r = (Math.max(0, Math.min(100, val)) / 100) * radius;
-    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
-  };
+const certStateLine = (c: HomeCert): { text: string; cls: string } => {
+  if (c.state === "achieved") return { text: `Certified${c.level ? ` · ${c.level}` : ""}${c.year ? ` · ${c.year}` : ""}`, cls: "text-[#006367]" };
+  if (c.state === "in_progress") return { text: `In progress${c.level ? ` · target ${c.level}` : ""}`, cls: "text-amber-600" };
+  return { text: c.state === "pipeline" ? "Pipeline" : "Potential", cls: "text-slate-500" };
+};
 
-  const pathData = axisKeys.map((key, i) => getPoint(axes[key].value, angles[i])).join(" L ") + " Z";
+const CertificationHomeCard = ({ certs, onOpen }: { certs: HomeCert[]; onOpen?: () => void }) => {
+  const [idx, setIdx] = useState(0);
+  const n = certs.length;
+  const cur = Math.min(idx, Math.max(0, n - 1));
 
-  const colorTokens = {
-    GOOD: { fill: "#10b981", stroke: "#059669" },
-    OK: { fill: "#3b82f6", stroke: "#2563eb" },
-    WARNING: { fill: "#f59e0b", stroke: "#d97706" },
-    CRITICAL: { fill: "#ef4444", stroke: "#dc2626" },
-  };
-  const theme = colorTokens[level as keyof typeof colorTokens] || colorTokens.GOOD;
+  if (n === 0) {
+    return (
+      <button onClick={onOpen} disabled={!onOpen} className={`flex-1 w-full flex flex-col items-center justify-center gap-3 text-center ${onOpen ? "cursor-pointer group" : "cursor-default"}`}>
+        <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300">
+          <Award className="w-8 h-8" />
+        </div>
+        <div className="text-sm text-slate-500">No certifications on file yet</div>
+        {onOpen && <div className="text-[11px] font-semibold uppercase tracking-wider text-[#006367] inline-flex items-center gap-1 group-hover:underline">Open certifications <ArrowUpRight className="w-3 h-3" /></div>}
+      </button>
+    );
+  }
 
   return (
-    <div className="relative flex items-center justify-center w-full h-full">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
-        {/* Web Background */}
-        {[0.2, 0.4, 0.6, 0.8, 1].map(scale => (
-          <polygon key={scale} points={axisKeys.map((_, i) => getPoint(scale * 100, angles[i])).join(" ")} fill="none" stroke="#f3f4f6" strokeWidth="1" />
-        ))}
-        {/* Axis Lines */}
-        {angles.map((a, i) => (
-          <line key={i} x1={center} y1={center} x2={center + radius * Math.cos(a)} y2={center + radius * Math.sin(a)} stroke="#e5e7eb" strokeWidth="1" />
-        ))}
-        {/* Data Polygon */}
-        <polygon points={pathData} fill={theme.fill} fillOpacity="0.15" stroke={theme.stroke} strokeWidth="2" style={{ transition: "all 1s cubic-bezier(0.16,1,0.3,1)" }} />
-        {/* Data Dots */}
-        {axisKeys.map((key, i) => (
-          <circle key={`dot-${i}`} cx={getPoint(axes[key].value, angles[i]).split(',')[0]} cy={getPoint(axes[key].value, angles[i]).split(',')[1]} r="3" fill={theme.stroke} stroke="#ffffff" strokeWidth="1.5" />
-        ))}
-        {/* Labels */}
-        {axisKeys.map((key, i) => {
-          const textR = radius + 16;
-          const x = center + textR * Math.cos(angles[i]);
-          const y = center + textR * Math.sin(angles[i]);
-          const isDisabled = axes[key].value === 0 && key !== "score" && key !== "alerts";
+    <div className="flex-1 w-full flex flex-col min-h-0">
+      <div className="relative flex-1 min-h-[190px]">
+        {certs.map((c, i) => {
+          const off = i - cur;
+          const abs = Math.abs(off);
+          if (abs > 2) return null;
+          const line = certStateLine(c);
+          const logo = certLogoFor(c.certType);
           return (
-            <text key={key} x={x} y={y} fontSize="9" fill={isDisabled ? "#d1d5db" : "#9ca3af"} textAnchor="middle" dominantBaseline="middle" className="font-semibold uppercase tracking-wider select-none">
-              {axes[key].label}
-            </text>
+            <button
+              key={`${c.certType}-${i}`}
+              onClick={off === 0 ? onOpen : () => setIdx(i)}
+              className="absolute inset-x-0 top-1/2 mx-auto flex flex-col items-center justify-center gap-2 rounded-2xl border bg-white px-5 py-5 transition-all duration-300 group"
+              style={{
+                width: "84%",
+                transform: `translateY(-50%) translateX(${off * 26}px) scale(${1 - abs * 0.08})`,
+                opacity: off === 0 ? 1 : 0.35,
+                zIndex: 10 - abs,
+                borderColor: off === 0 ? "#a0d5d6" : "#f1f5f9",
+                boxShadow: off === 0 ? "0 14px 34px -18px rgba(0,99,103,.35)" : "none",
+                pointerEvents: abs > 1 ? "none" : undefined,
+                cursor: "pointer",
+              }}
+            >
+              {logo ? (
+                <img src={logo} alt={c.certType} className="max-h-[74px] max-w-[150px] object-contain" loading="lazy" />
+              ) : (
+                <div className="w-[64px] h-[64px] rounded-full bg-[#E4F3F3] text-[#006367] flex items-center justify-center text-xs font-bold uppercase tracking-wider">
+                  {c.certType.slice(0, 4)}
+                </div>
+              )}
+              <div className="text-sm font-semibold text-slate-700">{c.certType.replace("_", " ")}</div>
+              <div className={`text-[13px] font-semibold ${line.cls}`}>{line.text}</div>
+              {off === 0 && onOpen && (
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-[#006367]/70 inline-flex items-center gap-1 group-hover:text-[#006367]">
+                  Open certifications <ArrowUpRight className="w-3 h-3" />
+                </div>
+              )}
+            </button>
           );
         })}
-      </svg>
+        {n > 1 && cur > 0 && (
+          <button onClick={() => setIdx(cur - 1)} aria-label="Previous certification" className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-slate-500 hover:text-[#006367]">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+        {n > 1 && cur < n - 1 && (
+          <button onClick={() => setIdx(cur + 1)} aria-label="Next certification" className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-slate-500 hover:text-[#006367]">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      {n > 1 && (
+        <div className="flex justify-center gap-1.5 pt-3">
+          {certs.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)} aria-label={`Certification ${i + 1}`} className="p-0.5">
+              <span className="block rounded-full transition-all" style={{ width: i === cur ? 16 : 6, height: 6, background: i === cur ? "#009193" : "#cbd5d5" }} />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
-}
+};
 
 // ─────────────────────────────────────────────
 // FLIPPABLE EXECUTIVE CARDS (Custom Logic Maintained)
@@ -924,6 +1013,38 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
     fallback: ruleVerdict,
   });
 
+  /* ── Certificazioni dello store (rev 14/09): alimentano la card "casa
+     della certificazione" (al posto del fingerprint), la pill Award nella
+     strip e lo stato "store certificato senza dispositivi". I siti demo
+     hanno id non-UUID: si ripiega sui nomi della prop `certifications`. ── */
+  const certSiteId = project?.siteId && isValidUUID(project.siteId) ? project.siteId : undefined;
+  const { data: certRows } = useCertifications(certSiteId);
+  const buildingCerts = useMemo(() => {
+    const NOT_BUILDING = new Set(["Energy", "Air", "Water"]);
+    const order: Record<string, number> = { achieved: 0, in_progress: 1, pipeline: 2, potential: 3 };
+    const rows = (certRows || [])
+      .map(r => ({
+        certType: r.cert_type,
+        level: r.cert_level,
+        year: r.issued_date ? new Date(r.issued_date).getFullYear() : null,
+        state: classifyCertState(r.status),
+      }))
+      .filter(r => r.state && r.certType && !NOT_BUILDING.has(r.certType))
+      .sort((a, b) => (order[a.state!] ?? 9) - (order[b.state!] ?? 9));
+    if (rows.length === 0 && certifications?.length) {
+      // demo/mock: solo i nomi, mostrati come certificati senza livello
+      return certifications
+        .filter(n => !NOT_BUILDING.has(n))
+        .map(n => ({ certType: n, level: null, year: null, state: "achieved" as const }));
+    }
+    return rows;
+  }, [certRows, certifications]);
+  const certAchievedCount = buildingCerts.filter(c => c.state === "achieved").length;
+  /* Zero installazioni: nessun modulo monitorato. Niente badge Offline/Demo
+     e niente "No Data · 0/100": sono fuori luogo per uno store che ha solo
+     la certificazione (rev 14/09). */
+  const nothingMonitored = !moduleConfig.energy.enabled && !moduleConfig.air.enabled && !moduleConfig.water.enabled;
+
   // ── Vista mobile: sezioni immersive a scorrimento ──
   // Biforca SOLO la presentazione: tutti i valori qui sotto sono gli stessi
   // calcolati sopra per il desktop, così le due viste non possono divergere.
@@ -1011,28 +1132,17 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
             water:  { score: waterStatus.score,  enabled: moduleConfig.water.enabled,  isLive: waterStatus.isLive  },
           }}
           onModuleClick={(mod: string) => onNavigate && onNavigate(mod)}
+          notInstalled={nothingMonitored}
+          certCount={certAchievedCount}
+          onAwardClick={onNavigate ? () => onNavigate("certification") : undefined}
         />
 
-        <Card className="w-full lg:flex-1 lg:basis-[380px] lg:max-w-[420px] p-6 flex flex-col items-center justify-center bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
-          <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-2 w-full text-center">Site Fingerprint</div>
-          <BuildingFingerprint
-            level={overallStatus.level}
-            axes={{
-              score:  { label: "Score",  value: overallStatus.score },
-              energy: { label: "Energy", value: moduleConfig.energy.enabled ? energyStatus.score : 0 },
-              air:    { label: "Air",    value: moduleConfig.air.enabled ? airStatus.score : 0 },
-              water:  { label: "Water",  value: moduleConfig.water.enabled ? waterStatus.score : 0 },
-              alerts: { label: "Alerts", value: alertFingerprintScore },
-            }}
-          />
-          <div className="w-full mt-3 pt-3 border-t border-gray-100 flex flex-col items-center text-center">
-            <div className={`text-sm font-semibold leading-tight ${STATUS_TOKENS[verdict.tone].textColor}`}>
-              {verdict.headline}
-            </div>
-            <div className="text-[11px] text-slate-600 leading-snug mt-1 px-2">
-              {verdict.reason}
-            </div>
-          </div>
+        {/* La "casa" della certificazione dello store (al posto del Site
+            Fingerprint, rev 14/09): logo, stato e livello; con piu' schemi
+            un mini-deck sfogliabile. Click -> sezione certificazioni. */}
+        <Card className="w-full lg:flex-1 lg:basis-[380px] lg:max-w-[420px] p-6 flex flex-col bg-white border border-gray-100 shadow-sm transition-all hover:shadow-md">
+          <div className="text-xs font-bold tracking-widest text-slate-600 uppercase mb-2 w-full text-center">Certification</div>
+          <CertificationHomeCard certs={buildingCerts} onOpen={onNavigate ? () => onNavigate("certification") : undefined} />
         </Card>
       </div>
       
