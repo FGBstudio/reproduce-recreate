@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Award, Loader2, Calendar, Plus, FileUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Award, Loader2, Calendar, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -64,8 +64,6 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingTimeline, setIsGeneratingTimeline] = useState(false);
-  const [isImportingDoc, setIsImportingDoc] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [certId, setCertId] = useState<string | null>(null);
   const [hasTimeline, setHasTimeline] = useState(false);
@@ -265,44 +263,6 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
     }
   };
 
-  /* Import della timeline da DOCUMENTO (Gantt/cronoprogramma, rev 15/09):
-     il file va alla edge function timeline-from-document, che estrae le
-     attivita' e compila SEMPRE le date (esplicite quando scritte, ricavate
-     dal Gantt/dalle durate quando no — poi le ritocca il PM da qui). */
-  const handleImportFile = async (file: File) => {
-    if (!certId || !supabase) return;
-    if (hasTimeline && !window.confirm('Esiste già una timeline: importando dal documento verrà sostituita. Continuare?')) return;
-    setIsImportingDoc(true);
-    try {
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-      const fileBase64 = btoa(binary);
-
-      const { data, error } = await supabase.functions.invoke('timeline-from-document', {
-        body: { certificationId: certId, fileBase64, mimeType: file.type || 'application/pdf', replace: hasTimeline },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const acts = (data?.activities || []) as TimelineMilestone[];
-      if (acts.length === 0) throw new Error('Nessuna attività trovata nel documento');
-      setTimelineMilestones(acts);
-      setHasTimeline(true);
-      queryClient.invalidateQueries({ queryKey: ['leed_timeline'] });
-      if (data?.estimatedCount > 0) {
-        alert(`Timeline importata: ${acts.length} attività. Per ${data.estimatedCount} le date sono state RICAVATE dal documento — controllale e correggi dove serve.`);
-      }
-    } catch (err) {
-      console.error('Error importing timeline from document:', err);
-      alert(`Errore durante l'import dal documento: ${err instanceof Error ? err.message : 'riprova'}`);
-    } finally {
-      setIsImportingDoc(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const updateScorecard = (index: number, field: 'score' | 'maxScore', value: number) => {
     setFormData(prev => {
       const milestones = [...prev.milestones];
@@ -411,28 +371,15 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
 
             {/* SEZIONE TIMELINE DEL PROGETTO (PM EDITOR) */}
             <div className="space-y-4">
-              {/* input nascosto per l'import da documento (Gantt/cronoprogramma) */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); }}
-              />
               <div className="flex items-center justify-between border-b pb-2">
                 <h4 className="text-sm font-semibold text-slate-700">Project Management (Timeline Fasi)</h4>
                 {hasTimeline && (
-                  <div className="flex items-center gap-2">
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={isImportingDoc} variant="outline" size="sm" className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                      {isImportingDoc ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileUp className="w-3 h-3 mr-1" />} Importa da documento
-                    </Button>
-                    <Button onClick={addCustomMilestone} variant="outline" size="sm" className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                      <Plus className="w-3 h-3 mr-1" /> Aggiungi Fase
-                    </Button>
-                  </div>
+                  <Button onClick={addCustomMilestone} variant="outline" size="sm" className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+                    <Plus className="w-3 h-3 mr-1" /> Aggiungi Fase
+                  </Button>
                 )}
               </div>
-
+              
               {!certId ? (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-700">
@@ -442,18 +389,12 @@ export const LEEDCertificationsDialog = ({ siteId, siteName, open, onOpenChange 
               ) : !hasTimeline ? (
                 <div className="p-4 bg-slate-50 rounded-lg flex flex-col gap-3 border border-slate-200">
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Nessuna timeline trovata. Genera i 17 step standard del framework FGB, oppure <strong>carica il documento di progetto</strong> (Gantt, cronoprogramma in PDF o immagine): le attività e le date vengono estratte automaticamente — le date non scritte vengono ricavate dal documento e potrai correggerle qui sotto.
+                    Nessuna timeline trovata. Genera automaticamente i 17 step standard previsti dal framework FGB per il monitoraggio LEED.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={handleGenerateTimeline} disabled={isGeneratingTimeline || isImportingDoc} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground">
-                      {isGeneratingTimeline ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Calendar className="w-4 h-4 mr-2" />}
-                      Genera Template Standard
-                    </Button>
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={isImportingDoc || isGeneratingTimeline} variant="outline" className="flex-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-                      {isImportingDoc ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileUp className="w-4 h-4 mr-2" />}
-                      Importa da documento
-                    </Button>
-                  </div>
+                  <Button onClick={handleGenerateTimeline} disabled={isGeneratingTimeline} className="w-full bg-emerald-600 hover:bg-emerald-700 text-foreground">
+                    {isGeneratingTimeline ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Calendar className="w-4 h-4 mr-2" />}
+                    Genera Template Timeline Standard
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
