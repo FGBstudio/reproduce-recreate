@@ -16,10 +16,14 @@ const Auth = () => {
   }, [isAuthenticated, authLoading, isPasswordRecovery, navigate]);
 
   useEffect(() => {
-    if (isPasswordRecovery) {
+    /* L'apertura parte solo quando il pannello e' montato (authLoading
+       false): se l'evento scatta mentre c'e' ancora lo spinner, nessuno
+       lo ascolta e il form di recovery non si apre (race, rev 15/09).
+       Gli effect dei figli girano prima di questo: il listener c'e' gia'. */
+    if (isPasswordRecovery && !authLoading) {
       window.dispatchEvent(new CustomEvent("fgb:open-login"));
     }
-  }, [isPasswordRecovery]);
+  }, [isPasswordRecovery, authLoading]);
 
   if (authLoading) {
     return (
