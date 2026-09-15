@@ -62,7 +62,10 @@ interface OverviewMobileViewProps {
   };
   waterFlow?: number;
   alerts: { criticalCount: number; warningCount: number; list: Array<{ title: string; ago?: string; severity?: string }> };
-  fingerprintAxes: Record<string, { label: string; value: number }>;
+  /** Store senza dispositivi: hero con parole giuste al posto di 0/100 */
+  notInstalled?: boolean;
+  /** Certificazioni edificio ottenute (pill Award) */
+  certCount?: number;
   verdictHeadline?: string;
   isRealData: boolean;
   onNavigate?: (tab: string) => void;
@@ -92,7 +95,7 @@ const fmtInt = (v?: number) =>
   typeof v === "number" && Number.isFinite(v) ? String(Math.round(v)) : "—";
 
 /** Anello dello score complessivo. */
-const ScoreRing = ({ score }: { score: number }) => {
+const ScoreRing = ({ score, dash }: { score: number; dash?: boolean }) => {
   const r = 68;
   const circ = 2 * Math.PI * r;
   return (
@@ -100,45 +103,11 @@ const ScoreRing = ({ score }: { score: number }) => {
       <circle cx="82" cy="82" r={r} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="10" />
       <circle
         cx="82" cy="82" r={r} fill="none" stroke="#ffffff" strokeWidth="10" strokeLinecap="round"
-        strokeDasharray={circ} strokeDashoffset={circ * (1 - Math.max(0, Math.min(100, score)) / 100)}
+        strokeDasharray={circ} strokeDashoffset={dash ? circ : circ * (1 - Math.max(0, Math.min(100, score)) / 100)}
         transform="rotate(-90 82 82)"
       />
-      <text x="82" y="90" textAnchor="middle" fontSize="44" fontWeight="700" fill="#ffffff">{score}</text>
+      <text x="82" y="90" textAnchor="middle" fontSize="44" fontWeight="700" fill="#ffffff">{dash ? "—" : score}</text>
       <text x="82" y="110" textAnchor="middle" fontSize="10" letterSpacing="4" fill="rgba(255,255,255,.75)">SCORE</text>
-    </svg>
-  );
-};
-
-/** Radar del fingerprint, colori chiari su fondo teal scuro. */
-const FingerprintRadar = ({ axes }: { axes: OverviewMobileViewProps["fingerprintAxes"] }) => {
-  const entries = Object.values(axes);
-  const cx = 105, cy = 84, R = 58;
-  const pt = (i: number, f: number) => {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / entries.length;
-    return [cx + Math.cos(a) * R * f, cy + Math.sin(a) * R * f];
-  };
-  const poly = (f: number) => entries.map((_, i) => pt(i, f).join(",")).join(" ");
-  return (
-    <svg viewBox="0 0 210 158" className="w-[210px] h-[158px]" aria-hidden="true">
-      {[0.33, 0.66, 1].map((f) => (
-        <polygon key={f} points={poly(f)} fill="none" stroke="rgba(255,255,255,.25)" strokeWidth="1" />
-      ))}
-      {entries.map((_, i) => {
-        const [x, y] = pt(i, 1);
-        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(255,255,255,.25)" strokeWidth="1" />;
-      })}
-      <polygon
-        points={entries.map((e, i) => pt(i, Math.max((e.value || 0) / 100, 0.04)).join(",")).join(" ")}
-        fill="rgba(159,213,217,.30)" stroke="#9fd5d9" strokeWidth="1.6"
-      />
-      {entries.map((e, i) => {
-        const [x, y] = pt(i, 1.24);
-        return (
-          <text key={e.label} x={x} y={y} textAnchor="middle" fontSize="7.5" letterSpacing="1.5" fill="rgba(255,255,255,.75)">
-            {e.label.toUpperCase()}
-          </text>
-        );
-      })}
     </svg>
   );
 };
@@ -324,7 +293,7 @@ const ModuleScreen = ({
 
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, periodLabel, overall, energy, air, water, moduleConfig,
-  power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, fingerprintAxes,
+  power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, notInstalled, certCount = 0,
   verdictHeadline, isRealData, onNavigate, certifications,
 }: OverviewMobileViewProps) => {
   const energyRatio = ratioFromLimit(power.total, energyLimitKw);
@@ -384,13 +353,31 @@ export const OverviewMobileView = ({
           </div>
         )}
 
-        <div className="mt-auto mb-1.5"><ScoreRing score={overall.score} /></div>
-        <div className="text-[34px] font-bold leading-none">{VERDICT[overall.level]}</div>
-        <div className="text-[11px] opacity-80 tracking-wide mb-auto">
-          {verdictHeadline || `Overall performance · ${overall.score} / 100`}
+        <div className="mt-auto mb-1.5"><ScoreRing score={overall.score} dash={notInstalled} /></div>
+        {/* Zero installazioni: niente "No data · 0/100", parole giuste per
+            uno store certificato senza dispositivi (rev 15/09, come desktop) */}
+        <div className="text-[34px] font-bold leading-none">
+          {notInstalled ? (certCount > 0 ? "Certified" : "Not monitored") : VERDICT[overall.level]}
+        </div>
+        <div className="text-[11px] opacity-80 tracking-wide mb-auto px-4">
+          {notInstalled
+            ? (certCount > 0
+              ? `${certCount} building certification${certCount === 1 ? "" : "s"} · monitoring not installed yet`
+              : "No monitoring devices installed yet")
+            : (verdictHeadline || `Overall performance · ${overall.score} / 100`)}
         </div>
 
-        <div className="flex gap-7 justify-center pt-1.5">
+        <div className="flex gap-6 justify-center pt-1.5">
+          {/* Award per primo, stessa grafica delle altre pill (rev 15/09) */}
+          <button
+            type="button"
+            onClick={() => onNavigate?.("certification")}
+            className={`text-center transition-transform active:scale-95 ${certCount > 0 ? "" : "opacity-45"}`}
+          >
+            <Award className="w-[21px] h-[21px] mx-auto" />
+            <div className="text-[22px] font-bold leading-tight mt-1">{certCount > 0 ? certCount : "—"}</div>
+            <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">AWARD</div>
+          </button>
           {modules.map((m) => (
             <button
               key={m.key}
@@ -542,15 +529,14 @@ export const OverviewMobileView = ({
         />
       )}
 
-      {/* ── 5 · FINGERPRINT + ALERTS ── */}
+      {/* ── 5 · ALERTS (il radar del fingerprint e' stato tolto: non era
+             utile — rev 15/09, allineato al desktop) ── */}
       <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b]">
-        <h4 className="m-0 text-[9px] font-bold tracking-[0.3em] opacity-75">SITE FINGERPRINT</h4>
-        <FingerprintRadar axes={fingerprintAxes} />
-
-        <h4 className="mt-3.5 mb-0 text-[9px] font-bold tracking-[0.3em] opacity-75">
+        <AlertTriangle className="w-8 h-8 opacity-80 mb-2" aria-hidden="true" />
+        <h4 className="m-0 text-[9px] font-bold tracking-[0.3em] opacity-75">
           ALERTS · {alerts.criticalCount + alerts.warningCount} OPEN
         </h4>
-        <div className="w-full max-w-[270px] mx-auto text-left text-[12.5px]">
+        <div className="w-full max-w-[270px] mx-auto text-left text-[12.5px] mt-4">
           {alerts.list.length === 0 ? (
             <div className="opacity-70 text-center py-4 text-[12px]">No open alerts</div>
           ) : (

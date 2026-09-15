@@ -975,7 +975,6 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   }, [moduleConfig, energyStatus, airStatus, waterStatus]);
 
   // Calcolo score per gli Alert sul Fingerprint (100 = perfetto, degrada con gli allarmi)
-  const alertFingerprintScore = alertStatus.hasAlerts ? Math.max(0, 100 - (alertStatus.criticalCount * 25 + alertStatus.warningCount * 10)) : 100;
 
   const ruleVerdict = useMemo(() => buildFingerprintVerdict({
     overall: overallStatus.score,
@@ -1096,13 +1095,8 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
             severity: a.severity,
           })),
         }}
-        fingerprintAxes={{
-          score: { label: "Score", value: overallStatus.score },
-          energy: { label: "Energy", value: moduleConfig.energy.enabled ? energyStatus.score : 0 },
-          air: { label: "Air", value: moduleConfig.air.enabled ? airStatus.score : 0 },
-          water: { label: "Water", value: moduleConfig.water.enabled ? waterStatus.score : 0 },
-          alerts: { label: "Alerts", value: alertFingerprintScore },
-        }}
+        notInstalled={nothingMonitored}
+        certCount={certAchievedCount}
         verdictHeadline={verdict.headline}
         isRealData={liveData.isRealData || powerLatest.isRealData}
         onNavigate={onNavigate}
