@@ -64,28 +64,48 @@ export function usePortfolioEnergyTrend(siteIds: string[], enabled: boolean) {
         }
       }
 
-      const rows = await fetchAll<{ site_id: string; device_id: string; ts_day: string; value_sum: number | null }>((a, b) =>
+      // Stessa coppia di metriche di useAggregatedSiteData: i contatori
+      // storici scrivono active_energy, quelli nuovi potrebbero arrivare come
+      // active_import_kwh — con una sola metrica il trend mostrava buchi.
+      const rows = await fetchAll<{ site_id: string; device_id: string; ts_day: string; metric: string; value_sum: number | null }>((a, b) =>
         supabase!
           .from('energy_daily')
-          .select('site_id, device_id, ts_day, value_sum')
-          .eq('metric', 'energy.active_energy')
+          .select('site_id, device_id, ts_day, metric, value_sum')
+          .in('metric', ['energy.active_energy', 'energy.active_import_kwh'])
           .gte('ts_day', sinceIso)
           .in('site_id', siteIds)
           .range(a, b),
       );
 
-      // kWh per mese (totale e per sito), con precedenza general per sito
-      const byMonth = new Map<string, number>();
-      const bySiteMonth = new Map<string, Map<string, number>>();
+      // Un valore per device-giorno (active_energy ha la precedenza se un
+      // domani arrivassero entrambe le metriche: mai sommarle, e' lo stesso kWh
+      // contato due volte). In piu' il filtro di plausibilita': nessun negozio
+      // consuma piu' di 50 MWh in un giorno — oltre, e' un sensore guasto che
+      // spara registri a caso (visto in produzione: 3.5 TWh/giorno da un
+      // gateway MSCHN malconfigurato) e non deve toccare i grafici.
+      const MAX_DEVICE_DAY_KWH = 50_000;
+      const perDeviceDay = new Map<string, { site: string; day: string; v: number; primary: boolean }>();
       for (const r of rows) {
         const gen = generalBySite.get(r.site_id);
         if (gen && gen.size > 0 && !gen.has(r.device_id)) continue; // solo general dove esiste
         const v = Number(r.value_sum || 0);
-        if (v <= 0) continue;
-        const k = monthKey(r.ts_day);
+        if (v <= 0 || v > MAX_DEVICE_DAY_KWH) continue;
+        const key = `${r.device_id}|${r.ts_day}`;
+        const primary = r.metric === 'energy.active_energy';
+        const prev = perDeviceDay.get(key);
+        if (!prev || (primary && !prev.primary)) {
+          perDeviceDay.set(key, { site: r.site_id, day: r.ts_day, v, primary });
+        }
+      }
+
+      // kWh per mese (totale e per sito), con precedenza general per sito
+      const byMonth = new Map<string, number>();
+      const bySiteMonth = new Map<string, Map<string, number>>();
+      for (const { site, day, v } of perDeviceDay.values()) {
+        const k = monthKey(day);
         byMonth.set(k, (byMonth.get(k) || 0) + v);
-        if (!bySiteMonth.has(r.site_id)) bySiteMonth.set(r.site_id, new Map());
-        const sm = bySiteMonth.get(r.site_id)!;
+        if (!bySiteMonth.has(site)) bySiteMonth.set(site, new Map());
+        const sm = bySiteMonth.get(site)!;
         sm.set(k, (sm.get(k) || 0) + v);
       }
       if (byMonth.size === 0) return { monthly12: [], yoy: [], years: [], perSite: {} };

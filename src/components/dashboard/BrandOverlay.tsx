@@ -211,7 +211,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
   /** Incrocia i punti di monitoraggio (contratti/flag) con i device reali:
       installed = device censiti; pipeline = punto previsto senza device. */
   const buildDomainStats = (pointIds: string[], domain: 'energy' | 'air') => {
-    const nameOf = (id: string) => adminSites.find(s => s.id === id)?.name || id;
+    const nameOf = (id: string) =>
+      filteredProjects.find(p => p.siteId === id)?.displayName
+      || filteredProjects.find(p => p.siteId === id)?.name
+      || adminSites.find(s => s.id === id)?.name || id;
     let online = 0, offline = 0, pipeline = 0;
     const list: { name: string; state: 'online' | 'offline' | 'pipeline' }[] = [];
     for (const id of pointIds) {
@@ -227,15 +230,29 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
     list.sort((a, b) => order[a.state] - order[b.state] || a.name.localeCompare(b.name));
     return { total: pointIds.length, online, offline, installed: online + offline, pipeline, list };
   };
+  /** Punti per dominio = UNIONE di flag/certificazioni E device installati.
+      Prima contavano SOLO le righe di `certifications` (cert_type o flag
+      has_*_monitoring): i siti con monitor reali censiti ma senza flag —
+      la regola, non l'eccezione: 29 siti FENDI con device aria e 1 solo
+      flag — sparivano e il contatore mostrava "0 AIR SITES" con 218 siti
+      che trasmettevano. I device sono la verita' sul campo; i flag restano
+      per i punti in pipeline (previsti ma non ancora installati). */
+  const domainPointIds = (flagIds: string[] | undefined, domain: 'energy' | 'air') => {
+    const ids = new Set(flagIds ?? []);
+    for (const s of allSitesData) {
+      if (s.capabilities[domain] && !s.siteId.startsWith('s-demo-')) ids.add(s.siteId);
+    }
+    return [...ids];
+  };
   const energyPoints = useMemo(
-    () => buildDomainStats(overviewKpis?.energyPointSites ?? [], 'energy'),
+    () => buildDomainStats(domainPointIds(overviewKpis?.energyPointSites, 'energy'), 'energy'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [overviewKpis, certDomainLive, adminSites]
+    [overviewKpis, certDomainLive, adminSites, allSitesData]
   );
   const airPoints = useMemo(
-    () => buildDomainStats(overviewKpis?.airPointSites ?? [], 'air'),
+    () => buildDomainStats(domainPointIds(overviewKpis?.airPointSites, 'air'), 'air'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [overviewKpis, certDomainLive, adminSites]
+    [overviewKpis, certDomainLive, adminSites, allSitesData]
   );
 
   // ── Spec v2 Step 3: invasione Monitoring — card compatte + card deck ──
@@ -389,11 +406,31 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       .sort((a, b) => b.value - a.value);
   }, [sitesWithAir]);
 
-  /** Migliore e peggiore del periodo (spec v2: KPI qualitativo immediato). */
+  /** Classifica per intensita' (kWh/m²) sui siti con area compilata: la base
+      equa per confrontare negozi di taglie diverse. Usata dal ranking E dal
+      best/worst della overview, cosi' i due raccontano la stessa storia. */
+  const energyIntensityRank = useMemo(() => {
+    return sitesWithEnergy
+      .map(s => {
+        const site = adminSites.find(a => a.id === s.siteId);
+        const area = site?.area_m2 ?? site?.areaSqm;
+        const kwh = s.energy.monthlyKwh ?? 0;
+        return area && area > 0 && kwh > 0 ? { siteId: s.siteId, name: s.siteName, value: kwh / area } : null;
+      })
+      .filter((x): x is { siteId: string; name: string; value: number } => !!x)
+      .sort((a, b) => b.value - a.value);
+  }, [sitesWithEnergy, adminSites]);
+
+  /** Migliore e peggiore del periodo (spec v2: KPI qualitativo immediato).
+      Sull'INTENSITA' quando possibile: il best in kWh assoluti era sempre il
+      negozio piu' piccolo (o quello appena collegato con due giorni di dati),
+      non il piu' efficiente. Fallback dichiarato sui kWh assoluti. */
   const energyBestWorst = useMemo(() => {
-    if (energyLeaderboard.length < 2) return null;
-    return { best: energyLeaderboard[energyLeaderboard.length - 1], worst: energyLeaderboard[0] };
-  }, [energyLeaderboard]);
+    const byIntensity = energyIntensityRank.length >= 2;
+    const list = byIntensity ? energyIntensityRank : energyLeaderboard;
+    if (list.length < 2) return null;
+    return { best: list[list.length - 1], worst: list[0], byIntensity };
+  }, [energyIntensityRank, energyLeaderboard]);
   /* (best/worst aria ora arriva dall'IAQ Index del hook: bestWorstIaq) */
 
   /** Domain deck cards (the same ones the hover preview shows ghosted).
@@ -439,17 +476,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
     /* Ranking: energy in kWh/m2 where areas exist (declared fallback to
        absolute kWh), air in CO2 with qualitative colors */
-    const intensityList = isEnergy
-      ? sitesWithEnergy
-          .map(s => {
-            const site = adminSites.find(a => a.id === s.siteId);
-            const area = site?.area_m2 ?? site?.areaSqm;
-            const kwh = s.energy.monthlyKwh ?? 0;
-            return area && area > 0 && kwh > 0 ? { siteId: s.siteId, name: s.siteName, value: kwh / area } : null;
-          })
-          .filter((x): x is { siteId: string; name: string; value: number } => !!x)
-          .sort((a, b) => b.value - a.value)
-      : [];
+    const intensityList = isEnergy ? energyIntensityRank : [];
     const useIntensity = isEnergy && intensityList.length >= 2;
     const rankList = isEnergy ? (useIntensity ? intensityList : energyLeaderboard) : airLeaderboard;
     const rankMax = rankList[0]?.value || 1;
@@ -481,7 +508,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
           {
             v: energyBestWorst ? null : '—',
             l: 'Best & worst performers',
-            m: 'The two extremes of the period: where to learn from, and where to look first.',
+            m: energyBestWorst?.byIntensity
+              ? 'Lowest and highest kWh/m² of the period — normalised by store size, so a small store can’t win by being small.'
+              : 'The two extremes of the period by absolute consumption (site areas not set).',
             bw: energyBestWorst,
           },
           {
@@ -605,7 +634,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'trend',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header('Portfolio trend', 'Aggregated consumption · last 12 months — pick up to 4 stores to benchmark them')}
+            {header('Portfolio trend', 'Aggregated consumption · last 12 months (current month is partial) — pick up to 4 stores to benchmark them')}
             {candidates.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {candidates.map(c => {
@@ -664,7 +693,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'yoy',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header('Year over year', 'Monthly consumption, this year against last — seasonality and progress')}
+            {header('Year over year', 'Monthly consumption, this year against last (current month is partial) — seasonality and progress')}
             <div className="flex-1 min-h-0">
               {hasYoy ? (
                 <ZoomableChart width="100%" height="100%">

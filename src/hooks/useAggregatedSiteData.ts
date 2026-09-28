@@ -202,19 +202,34 @@ async function fetchAggregatedDataForSites(siteIds: string[]): Promise<FetchResu
       const batch = deviceIds.slice(i, i + batchSize);
       const { data, error } = await supabase
         .from('energy_daily')
-        .select('device_id, value_sum')
+        .select('device_id, ts_day, metric, value_sum')
         .in('device_id', batch)
         .gte('ts_day', days)
         .in('metric', ['energy.active_import_kwh', 'energy.active_energy']);
       if (!error && data) rows = rows.concat(data);
     }
 
-    const siteKwh: Record<string, number> = {};
+    // Un valore per device-giorno (mai sommare le due metriche: sono lo stesso
+    // kWh con due nomi) + filtro di plausibilita' — oltre 50 MWh/giorno per
+    // device e' un sensore guasto, non un negozio (visto in produzione:
+    // TWh/giorno da un gateway malconfigurato che azzerava la scala dei KPI).
+    const MAX_DEVICE_DAY_KWH = 50_000;
+    const perDeviceDay: Record<string, { v: number; primary: boolean }> = {};
     rows.forEach((row: any) => {
       if (row.value_sum === null) return;
-      const siteId = deviceToSite[row.device_id];
+      const v = Number(row.value_sum);
+      if (!(v > 0) || v > MAX_DEVICE_DAY_KWH) return;
+      const key = `${row.device_id}|${row.ts_day}`;
+      const primary = row.metric === 'energy.active_energy';
+      const prev = perDeviceDay[key];
+      if (!prev || (primary && !prev.primary)) perDeviceDay[key] = { v, primary };
+    });
+
+    const siteKwh: Record<string, number> = {};
+    Object.entries(perDeviceDay).forEach(([key, { v }]) => {
+      const siteId = deviceToSite[key.split('|')[0]];
       if (!siteId) return;
-      siteKwh[siteId] = (siteKwh[siteId] || 0) + Number(row.value_sum);
+      siteKwh[siteId] = (siteKwh[siteId] || 0) + v;
     });
     return siteKwh;
   }
