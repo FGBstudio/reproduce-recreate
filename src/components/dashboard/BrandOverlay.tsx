@@ -1948,7 +1948,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {/* ============================================================ */}
       {/* Mobile: Collapsible summary + Detail Drawer */}
       {/* ============================================================ */}
-      <div className="md:hidden fixed bottom-20 left-2 right-2 z-30 pointer-events-auto">
+      {/* bottom ancorato all'altezza REALE della RegionNav (che a 390px va su
+          due righe ~120px): con bottom-20 fisso la barra finiva sotto la nav */}
+      <div className="md:hidden fixed left-2 right-2 z-30 pointer-events-auto" style={{ bottom: 'calc(var(--region-nav-h, 5rem) + 0.5rem)' }}>
         <div className="glass-panel rounded-xl p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

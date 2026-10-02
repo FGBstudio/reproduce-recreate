@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Globe, Building2, Tag, Shield, LogOut, ChevronRight, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +40,10 @@ const MobileBurgerMenu = ({
   const { holdings } = useAllHoldings();
   const { brands } = useAllBrands();
 
+  // il ritardo di chiusura post-selezione va cancellato se il menu si smonta
+  const closeTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
   const availableBrands = useMemo(() => {
     if (!selectedHolding) return brands;
     return brands.filter(b => b.holdingId === selectedHolding);
@@ -73,8 +77,9 @@ const MobileBurgerMenu = ({
 
       {/* Off-canvas panel - slides from left */}
       <div
+        aria-hidden={!isOpen}
         className={`fixed top-0 left-0 h-[100dvh] w-72 z-50 flex flex-col md:hidden transition-transform duration-300 ease-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
         style={{
           background: "rgba(10, 15, 25, 0.92)",
@@ -87,7 +92,7 @@ const MobileBurgerMenu = ({
       >
         {/* Header — X button has 48px touch target */}
         <div className="flex items-center justify-between px-5 pb-5 border-b border-white/8">
-          <span className="text-sm font-semibold text-foreground uppercase tracking-widest opacity-60">Menu</span>
+          <span className="text-sm font-semibold text-foreground uppercase tracking-widest opacity-60">{t('menu.title')}</span>
           <button
             onClick={onClose}
             className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
@@ -99,7 +104,7 @@ const MobileBurgerMenu = ({
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 no-scrollbar" style={{ WebkitOverflowScrolling: "touch" }}>
 
           {/* Language
           <div>
@@ -133,7 +138,7 @@ const MobileBurgerMenu = ({
                         onHoldingChange?.(val === "all" ? null : val);
                         onBrandChange?.(null);
                         // Auto-close menu after selection
-                        if (val !== "all") setTimeout(() => onClose(), 250);
+                        if (val !== "all") closeTimer.current = window.setTimeout(() => onClose(), 250);
                       }}
                     >
                       <SelectTrigger className="flex-1 min-h-[44px] border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
@@ -156,7 +161,7 @@ const MobileBurgerMenu = ({
                       onValueChange={(val) => {
                         onBrandChange?.(val === "all" ? null : val);
                         // Auto-close menu after selection
-                        if (val !== "all") setTimeout(() => onClose(), 250);
+                        if (val !== "all") closeTimer.current = window.setTimeout(() => onClose(), 250);
                       }}
                     >
                       <SelectTrigger className="flex-1 min-h-[44px] border-0 bg-transparent text-sm focus:ring-0 px-0 text-foreground">
@@ -201,7 +206,7 @@ const MobileBurgerMenu = ({
                 style={{ minHeight: 48 }}
               >
                 <Download className="w-4 h-4 text-fgb-accent" />
-                <span className="text-sm text-foreground flex-1 text-left">Installa app</span>
+                <span className="text-sm text-foreground flex-1 text-left">{t('menu.install_app')}</span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
               {/* Rientro nell'intro anche quando la preferenza e' "skip" */}
@@ -211,7 +216,7 @@ const MobileBurgerMenu = ({
                 style={{ minHeight: 48 }}
               >
                 <Globe className="w-4 h-4 text-fgb-accent" />
-                <span className="text-sm text-foreground flex-1 text-left">About FGB</span>
+                <span className="text-sm text-foreground flex-1 text-left">{t('menu.about')}</span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>

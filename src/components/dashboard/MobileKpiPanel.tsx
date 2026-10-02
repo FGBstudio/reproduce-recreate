@@ -90,7 +90,8 @@ const MobileKpiPanel = ({
 }: MobileKpiPanelProps) => {
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 md:hidden transition-transform duration-300 ease-out`}
+      className={`fixed bottom-0 left-0 right-0 md:hidden transition-transform duration-300 ease-out flex flex-col`}
+      aria-hidden={!isOpen}
       style={{
         transform: isOpen ? "translateY(0)" : "translateY(100%)",
         height: "42dvh",
@@ -100,10 +101,14 @@ const MobileKpiPanel = ({
         borderTop: "1px solid rgba(255,255,255,0.10)",
         borderRadius: "20px 20px 0 0",
         zIndex: 38,
+        overflow: "hidden",
+        // da chiuso resta montato per la transizione ma non deve catturare
+        // tocchi ne' tab-focus fuori schermo
+        pointerEvents: isOpen ? undefined : "none",
       }}
     >
       {/* Drag handle — visual affordance */}
-      <div className="flex items-center justify-center pt-3 pb-1">
+      <div className="flex items-center justify-center pt-3 pb-1 shrink-0">
         <div className="w-12 h-1.5 bg-foreground/25 rounded-full" />
       </div>
 
@@ -117,10 +122,12 @@ const MobileKpiPanel = ({
         <ChevronDown className="w-5 h-5 text-muted-foreground" />
       </button>
 
-      {/* Scrollable content — safe-area bottom padding so last item is reachable */}
+      {/* Scrollable content. flex-1 min-h-0 e NON h-full: h-full valeva 42dvh
+          interi, che sommati alla drag handle facevano traboccare gli ultimi
+          ~22px di contenuto sotto il bordo del pannello. */}
       <div
-        className="overflow-y-auto h-full px-4 pt-2"
-        style={{ paddingBottom: "calc(var(--region-nav-h, 4rem) + 0.5rem)" }}
+        className="overflow-y-auto flex-1 min-h-0 px-4 pt-2 no-scrollbar"
+        style={{ paddingBottom: "calc(var(--region-nav-h, 5rem) + 0.5rem)", WebkitOverflowScrolling: "touch" }}
       >
         {showBrandOverlay ? (
           <div className="space-y-3">

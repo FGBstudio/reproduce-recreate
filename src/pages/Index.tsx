@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import Header from "@/components/dashboard/Header";
 import RegionNav from "@/components/dashboard/RegionNav";
 import RegionOverlay from "@/components/dashboard/RegionOverlay";
 import BrandOverlay from "@/components/dashboard/BrandOverlay";
 import MapView from "@/components/dashboard/MapView";
-import ProjectDetail from "@/components/dashboard/ProjectDetail";
+// Lazy: ProjectDetail è il monolite da ~7300 righe — importato staticamente
+// veniva parsato prima del login da ogni visitatore; ora si carica alla
+// prima apertura di un sito.
+const ProjectDetail = lazy(() => import("@/components/dashboard/ProjectDetail"));
 import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
 import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
 import WrappedPlayer from "@/components/wrapped/WrappedPlayer";
@@ -347,13 +350,16 @@ const Index = () => {
         />
       )}
 
-      {/* Project Detail Modal */}
+      {/* Project Detail Modal (lazy: fallback nullo, la mappa resta visibile
+          per la frazione di secondo del primo caricamento del chunk) */}
       {selectedProject && (
-        <ProjectDetail 
-          project={selectedProject} 
-          onClose={handleCloseProject}
-          initialDashboard={initialSection as any}
-        />
+        <Suspense fallback={null}>
+          <ProjectDetail
+            project={selectedProject}
+            onClose={handleCloseProject}
+            initialDashboard={initialSection as any}
+          />
+        </Suspense>
       )}
 
       {/* FGB Weekly Wrapped — fullscreen overlay player */}

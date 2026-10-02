@@ -498,6 +498,11 @@ const translations: Record<string, Record<Language, string>> = {
   'menu.logged_as': { en: 'Logged in as', it: 'Accesso come', fr: 'Connecté en tant que', es: 'Conectado como', zh: '登录为' },
   'menu.admin_panel': { en: 'Admin Panel', it: 'Pannello Admin', fr: "Panneau d'administration", es: 'Panel de administración', zh: '管理面板' },
   'menu.close': { en: 'Close menu', it: 'Chiudi menu', fr: 'Fermer le menu', es: 'Cerrar menú', zh: '关闭菜单' },
+  'menu.title': { en: 'Menu', it: 'Menu', fr: 'Menu', es: 'Menú', zh: '菜单' },
+  'menu.install_app': { en: 'Install app', it: 'Installa app', fr: "Installer l'app", es: 'Instalar app', zh: '安装应用' },
+  'menu.about': { en: 'About FGB', it: 'Chi è FGB', fr: 'À propos de FGB', es: 'Acerca de FGB', zh: '关于 FGB' },
+  'auth.show_password': { en: 'Show', it: 'Mostra', fr: 'Afficher', es: 'Mostrar', zh: '显示' },
+  'auth.hide_password': { en: 'Hide', it: 'Nascondi', fr: 'Masquer', es: 'Ocultar', zh: '隐藏' },
 
   // LEED Certification Widget
   'leed.acquired': { en: 'Acquired', it: 'Acquisiti', fr: 'Acquis', es: 'Adquiridos', zh: '已获得' },

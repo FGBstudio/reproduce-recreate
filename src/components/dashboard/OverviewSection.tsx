@@ -1060,7 +1060,9 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
     return (
       <OverviewMobileView
         siteName={project.displayName || project.name}
-        city={project.address}
+        // city, non address: la vista mobile la stampa uppercase nella banda
+        // Outdoor e nell'hero — con l'indirizzo completo andava a capo ovunque
+        city={project.city || project.address}
         outdoorTemp={outdoorTempC ?? project.data?.temp}
         periodLabel={periodLabel}
         overall={overallStatus}

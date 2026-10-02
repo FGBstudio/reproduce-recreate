@@ -24,38 +24,64 @@ interface Props {
 
 const LoginSheet: React.FC<Props> = ({ open, onOpenChange, initialMode = "login" }) => {
   const [vvh, setVvh] = useState<number | null>(null);
+  const [kbGap, setKbGap] = useState(0);
   const dragStart = useRef<number | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  /* il callback vive in un ref: tenerlo nelle deps dell'effetto history
+     faceva ripartire l'effetto (e push di un secondo stato fittizio) ogni
+     volta che il padre passava una funzione non memoizzata */
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
 
-  /* tastiera: l'altezza utile e' quella del visualViewport */
+  /* Tastiera: su iOS il layout viewport NON si restringe (interactive-widget
+     e' solo-Chrome), quindi bottom:0 resta DIETRO la tastiera. Oltre alla
+     maxHeight serve alzare il foglio del gap reale misurato dal
+     visualViewport; l'evento "scroll" copre il caso iOS in cui cambia solo
+     offsetTop senza resize. */
   useEffect(() => {
     if (!open) return;
     const vv = window.visualViewport;
     if (!vv) return;
-    const onResize = () => setVvh(Math.round(vv.height));
-    vv.addEventListener("resize", onResize);
-    onResize();
-    return () => { vv.removeEventListener("resize", onResize); setVvh(null); };
+    const measure = () => {
+      setVvh(Math.round(vv.height));
+      setKbGap(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    };
+    vv.addEventListener("resize", measure);
+    vv.addEventListener("scroll", measure);
+    measure();
+    return () => {
+      vv.removeEventListener("resize", measure);
+      vv.removeEventListener("scroll", measure);
+      setVvh(null); setKbGap(0);
+    };
   }, [open]);
 
   /* Back di Android: chiude lo sheet invece di uscire dalla app */
   useEffect(() => {
     if (!open) return;
-    const onBack = (e: Event) => { e.preventDefault(); onOpenChange(false); };
+    const onBack = (e: Event) => { e.preventDefault(); onOpenChangeRef.current(false); };
     window.addEventListener("fgb:back", onBack);
-    /* fallback web/gesto: uno stato fittizio nella history */
+    /* fallback web/gesto: uno stato fittizio nella history, posseduto da
+       questo effetto (ownsEntry) cosi' il cleanup non fa back() se l'entry
+       e' gia' stata consumata dal popstate */
+    let ownsEntry = true;
     window.history.pushState({ fgbSheet: 1 }, "");
-    const onPop = () => onOpenChange(false);
+    const onPop = () => { ownsEntry = false; onOpenChangeRef.current(false); };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("fgb:back", onBack);
       window.removeEventListener("popstate", onPop);
-      if (window.history.state?.fgbSheet) window.history.back();
+      if (ownsEntry && window.history.state?.fgbSheet) window.history.back();
     };
-  }, [open, onOpenChange]);
+  }, [open]);
 
-  /* swipe verso il basso sulla zona maniglia */
-  const onGrabPointerDown = (e: React.PointerEvent) => { dragStart.current = e.clientY; };
+  /* swipe verso il basso sulla zona maniglia. setPointerCapture: per il
+     mouse la cattura implicita non esiste e il drag si perdeva appena il
+     cursore usciva dalla maniglia alta 14px, lasciando un transform appeso */
+  const onGrabPointerDown = (e: React.PointerEvent) => {
+    dragStart.current = e.clientY;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
+  };
   const onGrabPointerMove = (e: React.PointerEvent) => {
     if (dragStart.current == null || !sheetRef.current) return;
     const dy = Math.max(0, e.clientY - dragStart.current);
@@ -80,8 +106,10 @@ const LoginSheet: React.FC<Props> = ({ open, onOpenChange, initialMode = "login"
         .fgb-sheet input:focus{border-color:#009193 !important;box-shadow:0 0 0 3px rgba(0,145,147,.15) !important}
         .fgb-sheet textarea{font-size:16px !important;background:#fff !important;border-radius:14px !important}
         /* il submit resta visibile in fondo all'area scrollabile, sopra la
-           tastiera, senza ristrutturare LoginForm */
-        .fgb-sheet form button[type="submit"]{position:sticky;bottom:0;z-index:2}
+           tastiera, senza ristrutturare LoginForm. L'alone nel colore del
+           foglio copre gli spazi attorno alla pill: prima il contenuto
+           (inclusa la checkbox termini) scorreva A VISTA sotto il bottone */
+        .fgb-sheet form button[type="submit"]{position:sticky;bottom:0;z-index:2;box-shadow:0 0 0 10px #f6f6f5}
         @media (prefers-reduced-motion: reduce){.fgb-sheet-anim{transition:none !important}}
       `}</style>
 
@@ -104,8 +132,9 @@ const LoginSheet: React.FC<Props> = ({ open, onOpenChange, initialMode = "login"
         role="dialog"
         aria-modal="true"
         aria-label="Sign in"
-        className="fgb-sheet fgb-sheet-anim fixed left-0 right-0 bottom-0 z-[90] flex flex-col"
+        className="fgb-sheet fgb-sheet-anim fixed left-0 right-0 z-[90] flex flex-col"
         style={{
+          bottom: kbGap, // su iOS alza il foglio sopra la tastiera
           maxHeight: maxH,
           background: "#f6f6f5", color: "#4a4b4d",
           borderRadius: "28px 28px 0 0",

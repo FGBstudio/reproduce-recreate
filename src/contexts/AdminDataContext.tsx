@@ -126,14 +126,20 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
 
     setLoading(true);
     try {
-      // Fetch holdings
-      const { data: holdingsData, error: holdingsError } = await supabase
-        .from('holdings')
-        .select('*')
-        .order('name');
-      
+      // Le cinque letture sono indipendenti: in parallelo, non in serie.
+      // Prima erano cinque await sequenziali — su 4G un utente pagava
+      // cinque round-trip uno in fila all'altro prima del primo render.
+      const [holdingsRes, brandsRes, sitesRes, certsRes, membershipsRes] = await Promise.all([
+        supabase.from('holdings').select('*').order('name'),
+        supabase.from('brands').select('*').order('name'),
+        supabase.from('sites').select('*').neq('id', INBOX_SITE_ID).order('name'),
+        supabase.from('certifications').select('site_id, cert_type'),
+        supabase.from('user_memberships').select('*'),
+      ]);
+
+      const { data: holdingsData, error: holdingsError } = holdingsRes;
       if (holdingsError) throw holdingsError;
-      
+
       const mappedHoldings: AdminHolding[] = (holdingsData || []).map(h => ({
         id: h.id,
         name: h.name,
@@ -143,14 +149,9 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       }));
       setHoldings(mappedHoldings);
 
-      // Fetch brands
-      const { data: brandsData, error: brandsError } = await supabase
-        .from('brands')
-        .select('*')
-        .order('name');
-      
+      const { data: brandsData, error: brandsError } = brandsRes;
       if (brandsError) throw brandsError;
-      
+
       const mappedBrands: AdminBrand[] = (brandsData || []).map(b => ({
         id: b.id,
         holdingId: b.holding_id,
@@ -161,13 +162,7 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       }));
       setBrands(mappedBrands);
 
-      // Fetch sites (exclude inbox) - include module columns
-      const { data: sitesData, error: sitesError } = await supabase
-        .from('sites')
-        .select('*')
-        .neq('id', INBOX_SITE_ID)
-        .order('name');
-      
+      const { data: sitesData, error: sitesError } = sitesRes;
       if (sitesError) throw sitesError;
       
       const mappedSites: AdminSite[] = (sitesData || []).map(s => ({
@@ -194,10 +189,8 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       // Module configuration comes ONLY from sites table (DB is source of truth)
       // No localStorage override - ensures consistency across devices
       
-      // Fetch certifications for all sites
-      const { data: certsData } = await supabase
-        .from('certifications')
-        .select('site_id, cert_type');
+      // Certifications (dalla batch parallela)
+      const { data: certsData } = certsRes;
 
       const certsBySite: Record<string, CertificationType[]> = {};
       (certsData || []).forEach(c => {
@@ -242,11 +235,9 @@ export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
       });
       setProjects(siteProjects);
 
-      // Fetch memberships
-      const { data: membershipsData, error: membershipsError } = await supabase
-        .from('user_memberships')
-        .select('*');
-      
+      // Memberships (dalla batch parallela)
+      const { data: membershipsData, error: membershipsError } = membershipsRes;
+
       if (!membershipsError && membershipsData) {
         const mappedMemberships: UserMembership[] = membershipsData.map(m => ({
           id: m.id,

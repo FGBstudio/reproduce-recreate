@@ -151,7 +151,10 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
     return "bg-rose-400";
   }, [displayIntensity]);
 
-  if (currentRegion === "GLOBAL" || !region) return null;
+  // `visible` governava solo il pannello desktop: su mobile la barra KPI
+  // restava montata (e con la pipeline dati attiva) anche sotto il
+  // BrandOverlay, sovrapponendosi alla barra riassunto del brand.
+  if (currentRegion === "GLOBAL" || !region || !visible) return null;
 
   const aqColorClass = {
     EXCELLENT: "text-emerald-400",

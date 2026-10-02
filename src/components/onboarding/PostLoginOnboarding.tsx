@@ -324,7 +324,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
            e lo snap aggancia la prima card al bordo del viewport: mandatory
            sempre, proximity sugli schermi stretti. Senza snap la card parte
            allineata alla colonna del titolo a ogni larghezza. */
-        .fgbw-strip{display:flex;gap:18px;overflow-x:auto;scrollbar-width:none;
+        .fgbw-strip{display:flex;gap:18px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
           margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
           padding:6px calc(50vw - 50%) 26px;
           -webkit-mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
@@ -361,7 +361,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
           .fgbw-card{flex:0 0 80%;min-height:270px;padding:24px 24px 22px;scroll-snap-align:center}
           /* le tre opzioni Monitoring (Clair/Greeny/Water) scorrono in
              orizzontale invece di impilarsi (rev 03/09) */
-          .fgbw-hw{display:flex;overflow-x:auto;gap:14px;scrollbar-width:none;
+          .fgbw-hw{display:flex;overflow-x:auto;overscroll-behavior-x:contain;gap:14px;scrollbar-width:none;
             margin-left:-24px;margin-right:-24px;padding:4px 24px 14px}
           .fgbw-hw::-webkit-scrollbar{display:none}
           .fgbw-hw-card{flex:0 0 260px}

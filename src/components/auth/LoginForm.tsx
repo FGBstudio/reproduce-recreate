@@ -243,9 +243,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
               <Lock className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
               <Input type={showPassword ? "text" : "password"} autoComplete="current-password" enterKeyHint="go" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`${inputCls} pr-14`} />
               {/* su mobile il toggle e' TESTUALE (spec §3), su desktop resta l'icona */}
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${iconCls}`} aria-label={showPassword ? "Hide password" : "Show password"}>
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${iconCls}`} aria-label={showPassword ? t("auth.hide_password") : t("auth.show_password")}>
                 <span className="max-[900px]:hidden">{showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</span>
-                <span className="hidden max-[900px]:inline text-[11px] font-semibold uppercase tracking-wider">{showPassword ? "Hide" : "Show"}</span>
+                <span className="hidden max-[900px]:inline text-[11px] font-semibold uppercase tracking-wider">{showPassword ? t("auth.hide_password") : t("auth.show_password")}</span>
               </button>
             </div>
           </div>

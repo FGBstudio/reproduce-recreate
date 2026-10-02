@@ -118,7 +118,7 @@ const IntroGlobe: React.FC<Props> = ({ selectedSlug, onSelect }) => {
     <div aria-label={`FGB locations worldwide, selected: ${selected.name}`} role="group">
       <svg
         viewBox="0 0 600 420"
-        style={{ width: '100%', height: 'auto', display: 'block', cursor: grabbing ? 'grabbing' : 'grab', touchAction: 'none' }}
+        style={{ width: '100%', height: 'auto', display: 'block', cursor: grabbing ? 'grabbing' : 'grab', touchAction: 'pan-y' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
