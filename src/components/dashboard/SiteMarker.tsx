@@ -714,7 +714,9 @@ export const SiteMarker = ({
       </AnimatePresence>
 
       <button
-        onPointerDown={(e) => { e.stopPropagation(); onMarkerClick(project); }}
+        // Solo onClick: con onPointerDown il sito si apriva al tocco-GIU',
+        // quindi iniziare un pan della mappa sopra un marker navigava nel
+        // dettaglio prima che Leaflet potesse classificare il gesto come drag.
         onClick={(e) => { e.stopPropagation(); onMarkerClick(project); }}
         title={project.displayName || project.name}
         style={{

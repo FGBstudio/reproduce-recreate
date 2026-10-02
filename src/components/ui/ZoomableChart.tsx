@@ -102,12 +102,15 @@ const ChartBody: React.FC<InnerProps> = ({ children, enableZoom, onExpand, showE
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2 || lastDist == null) return;
-      e.preventDefault();
-      e.stopPropagation();
       const d = dist(e);
       if (d <= 0) return;
       const factor = lastDist / d; // dita che si allargano → factor < 1 → zoom in
+      // preventDefault SOLO quando lo zoom del grafico sta davvero agendo:
+      // bloccarlo sempre toglieva anche il pinch-zoom nativo della pagina
+      // (accessibilità) sopra ogni grafico.
       if (Math.abs(factor - 1) < 0.02) return;
+      e.preventDefault();
+      e.stopPropagation();
       const rect = el.getBoundingClientRect();
       const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const ratio = Math.max(0, Math.min(1, (cx - rect.left) / rect.width));

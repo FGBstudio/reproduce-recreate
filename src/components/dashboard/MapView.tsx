@@ -118,6 +118,9 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
       map.current?.remove();
       map.current = null;
       tileLayerRef.current = null;
+      // lo <style> iniettato va rimosso: ogni rimontaggio (StrictMode,
+      // rientro rotta) ne duplicava le regole in <head>
+      zoomStyle.remove();
     };
   }, []);
 
@@ -177,7 +180,9 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
         className: "fgb-site-marker",
         html: `<div data-marker-portal="${projectKey}" style="width:58px;height:58px;overflow:visible;"></div>`,
         iconSize: [58, 58],
-        iconAnchor: [32, 32],
+        // ancora al centro esatto (58/2): con [32,32] ogni pin era disegnato
+        // 3px fuori dalla sua coordinata reale
+        iconAnchor: [29, 29],
       });
     };
 
@@ -214,6 +219,15 @@ const MapView = ({ currentRegion, onProjectSelect, onProjectSectionSelect, activ
     resolveHosts();
     clusterGroup.on("animationend spiderfied unspiderfied", resolveHosts);
     map.current!.on("zoomend", resolveHosts);
+
+    // Cleanup: l'effetto rigira a ogni refetch (visibleProjects e' un array
+    // nuovo ogni 60s) e senza off() gli handler zoomend si accumulavano senza
+    // limite sulla mappa long-lived — ogni pinch-zoom diventava via via piu'
+    // costoso (ognuno chiamava setPortalHosts su closure stantie).
+    return () => {
+      clusterGroup.off("animationend spiderfied unspiderfied", resolveHosts);
+      map.current?.off("zoomend", resolveHosts);
+    };
   }, [visibleProjects, activeFilters, selectedHolding, selectedBrand]);
 
   const handleSphereClick = (project: Project, section: ProjectSection) => {

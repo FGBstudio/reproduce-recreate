@@ -549,6 +549,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Touch/swipe handling
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
+  const touchOnChart = useRef(false);
   const minSwipeDistance = 50;
   
   // Dynamic data based on time period - use real-time data if available, otherwise mock
@@ -3612,31 +3615,47 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     }
   };
 
-  // Swipe handlers
+  // Swipe handlers.
+  // Due guardie rispetto alla versione precedente, che tracciava solo la X:
+  // 1. dominanza orizzontale (|dx| > |dy|*1.5): uno scroll verticale col
+  //    pollice ha quasi sempre >50px di deriva orizzontale e cambiava slide
+  //    a meta' scroll;
+  // 2. i tocchi che NASCONO su un grafico non cambiano slide: trascinare il
+  //    dito su una serie per leggere il tooltip recharts flippava la pagina.
   const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
     touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
     touchEndX.current = null;
+    touchEndY.current = null;
+    touchOnChart.current = !!(e.target as HTMLElement | null)?.closest?.(
+      ".recharts-wrapper, .recharts-responsive-container"
+    );
   };
 
   const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
     touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
   };
 
   const handleTouchEnd = () => {
     if (!touchStartX.current || !touchEndX.current) return;
-    
+
     const distance = touchStartX.current - touchEndX.current;
+    const dy = Math.abs((touchStartY.current ?? 0) - (touchEndY.current ?? touchStartY.current ?? 0));
+    const horizontalDominant = Math.abs(distance) > dy * 1.5;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
-    
-    if (isLeftSwipe) {
-      nextSlide();
-    } else if (isRightSwipe) {
-      prevSlide();
+
+    if (horizontalDominant && !touchOnChart.current) {
+      if (isLeftSwipe) nextSlide();
+      else if (isRightSwipe) prevSlide();
     }
-    
+
     touchStartX.current = null;
     touchEndX.current = null;
+    touchStartY.current = null;
+    touchEndY.current = null;
+    touchOnChart.current = false;
   };
 
   const handleDashboardChange = (dashboard: DashboardType) => {
@@ -4352,7 +4371,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
-                              <Tooltip 
+                              <Tooltip trigger="click" 
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' kWh', '']}
                               />
@@ -4866,7 +4885,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                       <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                   </Pie>
-                                  <Tooltip 
+                                  <Tooltip trigger="click" 
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     formatter={(value: any) => [Number(value).toFixed(2) + ' kW', '']}
                                   />
@@ -5088,7 +5107,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                   <Cell key={`cell-${index}`} fill={entry.fill} />
                                 ))}
                               </Pie>
-                              <Tooltip formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' kWh', 'Total']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                              <Tooltip trigger="click" formatter={(value: number) => [value.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' kWh', 'Total']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                             </PieChart>
                           </ZoomableChart>
 
@@ -6919,7 +6938,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     <Cell key={`cell-fs-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
+                <Tooltip trigger="click" 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   formatter={(value: any) => [Number(value).toFixed(2) + ' kW', '']}
                 />
@@ -7320,7 +7339,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => [`${value.toLocaleString()} kWh`, 'Total']} />
+                <Tooltip trigger="click" formatter={(value: number) => [`${value.toLocaleString()} kWh`, 'Total']} />
               </PieChart>
             </ZoomableChart>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
