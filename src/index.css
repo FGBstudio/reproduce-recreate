@@ -457,22 +457,16 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--fgb-accent) / 0.45); }
 .custom-scrollbar { scrollbar-width: thin; scrollbar-color: hsl(var(--fgb-accent) / 0.25) transparent; }
 
-/* Landscape lock for mobile - force portrait */
-@media screen and (max-width: 768px) and (orientation: landscape) {
-  html {
-    transform: rotate(-90deg);
-    transform-origin: left top;
-    width: 100vh;
-    height: 100vw;
-    overflow-x: hidden;
-    position: absolute;
-    top: 100%;
-    left: 0;
-  }
-}
-
-/* Landscape warning overlay (optional visual) */
-@media screen and (max-width: 768px) and (orientation: landscape) {
+/* Landscape su telefono: SOLO l'overlay "ruota il dispositivo".
+   Due fix rispetto alla versione precedente:
+   1. via il transform rotate(-90deg) su html — rendeva html containing block
+      di ogni position:fixed (sheet, menu, overlay) e rompeva l'hit-testing
+      touch di Leaflet;
+   2. la condizione era max-width:768px, che un telefono moderno ruotato
+      (844-932px di larghezza) non matcha mai: si riceveva il layout desktop
+      in un viewport alto 390px. Si giudica dall'ALTEZZA, che in landscape
+      telefonico è sempre bassa. */
+@media screen and (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   body::before {
     content: "Per una migliore esperienza, ruota il dispositivo in verticale / Please rotate to portrait";
     position: fixed;

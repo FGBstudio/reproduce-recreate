@@ -73,7 +73,7 @@ const MobileBurgerMenu = ({
 
       {/* Off-canvas panel - slides from left */}
       <div
-        className={`fixed top-0 left-0 h-full w-72 z-50 flex flex-col md:hidden transition-transform duration-300 ease-out ${
+        className={`fixed top-0 left-0 h-[100dvh] w-72 z-50 flex flex-col md:hidden transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
@@ -81,7 +81,7 @@ const MobileBurgerMenu = ({
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
           borderRight: "1px solid rgba(255,255,255,0.08)",
-          paddingTop: "max(1.5rem, env(safe-area-inset-top))",
+          paddingTop: "max(1.5rem, var(--sat, 0px))",
           paddingLeft: "max(0px, env(safe-area-inset-left))",
         }}
       >
@@ -221,7 +221,7 @@ const MobileBurgerMenu = ({
         {/* Logout at bottom — safe-area bottom padding */}
         <div
           className="px-5 pt-4 border-t border-white/8"
-          style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+          style={{ paddingBottom: "max(1.25rem, var(--sab, 0px))" }}
         >
           <button
             onClick={handleLogout}

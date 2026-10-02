@@ -208,7 +208,7 @@ const Header = ({ userName = "Maria Rossi", onSearch, onProjectSelect, onBurgerO
     <header
       className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between"
       style={{
-        paddingTop: "max(1rem, env(safe-area-inset-top))",
+        paddingTop: "max(1rem, var(--sat, 0px))",
         paddingBottom: "0.75rem",
         paddingLeft: "max(1rem, env(safe-area-inset-left))",
         paddingRight: "max(1rem, env(safe-area-inset-right))",

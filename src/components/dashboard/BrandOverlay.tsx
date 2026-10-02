@@ -1530,7 +1530,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
       {/* ============================================================ */}
       {certView && isDesktopVisible && (
         <div className="hidden md:block fixed top-24 right-4 md:right-8 z-20 pointer-events-none" style={{ width: 'calc(100% - 360px - 3rem)' }}>
-          <div className="pointer-events-auto h-[calc(100vh-14rem)]">
+          <div className="pointer-events-auto h-[calc(100dvh-14rem)]">
             <CertificationsOverview projects={filteredProjects} domainLive={certDomainLive} onOpenSite={onOpenSite} />
           </div>
         </div>
@@ -1546,14 +1546,14 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
             .fgb-invasion-scroll::-webkit-scrollbar{width:5px}
             .fgb-invasion-scroll::-webkit-scrollbar-track{background:transparent}
             .fgb-invasion-scroll::-webkit-scrollbar-thumb{background:rgba(0,145,147,.4);border-radius:999px}
-            .fgb-invasion-scroll > .glass-panel{height:calc(100vh - 15.5rem);flex-shrink:0}
+            .fgb-invasion-scroll > .glass-panel{height:calc(100dvh - 15.5rem);flex-shrink:0}
             .fgb-hm-cell{position:relative;transition:transform .15s ease}
             .fgb-hm-cell:hover{transform:scale(1.3);z-index:5}
             .fgb-hm-cell:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;background:hsl(var(--popover)/.97);color:hsl(var(--foreground));border:1px solid hsl(var(--border));padding:4px 8px;border-radius:8px;font-size:10px;font-weight:600;z-index:50;box-shadow:0 8px 20px rgba(0,0,0,.3);pointer-events:none}
           `}</style>
           {monDomain !== null ? (
             /* ══ Vista di dominio: card deck sfogliabile, un grafico alla volta ══ */
-            <div className="pointer-events-auto h-[calc(100vh-14rem)] flex flex-col">
+            <div className="pointer-events-auto h-[calc(100dvh-14rem)] flex flex-col">
               <div className="flex items-center gap-3 mb-3">
                 <button onClick={() => { setMonDomain(null); setDeckIndex(0); }} className="px-3 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-xs text-muted-foreground hover:text-foreground transition-colors">
                   ← {language === 'it' ? 'Indietro' : 'Back'}
@@ -1567,7 +1567,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               </div>
             </div>
           ) : (
-          <div className="pointer-events-auto h-[calc(100vh-14rem)] flex flex-col items-center overflow-hidden">
+          <div className="pointer-events-auto h-[calc(100dvh-14rem)] flex flex-col items-center overflow-hidden">
             {/* ══ Card compatte ENERGY | AIR (dimensioni stile Free/Custom):
                 a riposo glass; al passaggio compare l'immagine "da dietro"
                 (edificio del perimetro o logo cliente) con la tinta di

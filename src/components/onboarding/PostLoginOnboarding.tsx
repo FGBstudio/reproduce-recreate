@@ -281,7 +281,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
       style={{ background: PAPER, fontFamily: "'Futura','Poppins','Century Gothic',system-ui,sans-serif", color: INK }}
     >
       {/* ── chrome persistente ── */}
-      <div ref={progressRef} aria-hidden style={{ position: "fixed", left: 0, top: 0, height: 2, width: 0, background: TEAL, zIndex: 90 }} />
+      <div ref={progressRef} aria-hidden style={{ position: "fixed", left: 0, top: "var(--sat, 0px)", height: 2, width: 0, background: TEAL, zIndex: 90 }} />
       {/* header condiviso SOLO mobile (SPEC mobile §1.3/§4): logo green.webp
           sulla home chiara, safe-area --sat, pill Dashboard */}
       <div className="min-[901px]:hidden sticky top-0 z-[85]">

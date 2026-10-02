@@ -265,7 +265,7 @@ const Index = () => {
   const isStoreUserLocked = clientRole === 'STORE_USER';
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
+    <div className="h-[100dvh] w-full overflow-hidden bg-background">
       {/* Map Layer */}
       <MapView 
         currentRegion={currentRegion} 

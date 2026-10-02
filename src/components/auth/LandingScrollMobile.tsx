@@ -226,8 +226,9 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
         }
       `}</style>
 
-      {/* barra di avanzamento: sostituisce la scrollbar */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, height: 2 }}>
+      {/* barra di avanzamento: sostituisce la scrollbar. top = --sat: con la
+          status bar in overlay, a top:0 finiva nascosta dietro l'orologio. */}
+      <div style={{ position: "sticky", top: "var(--sat, 0px)", zIndex: 50, height: 2 }}>
         <div ref={barRef} style={{ height: "100%", width: 0, background: "#9fd5d9" }} />
       </div>
 

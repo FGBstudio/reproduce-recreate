@@ -3737,7 +3737,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       <div
         className={`absolute top-0 left-0 w-full justify-between items-center z-10 ${isMobileOverview ? "hidden" : "flex"}`}
         style={{
-          paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+          paddingTop: "max(0.75rem, var(--sat, 0px))",
           paddingBottom: "0.75rem",
           paddingLeft: "max(1rem, env(safe-area-inset-left))",
           paddingRight: "max(1rem, env(safe-area-inset-right))",
@@ -3836,7 +3836,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                 areaM2: project.area_m2 ?? null,
               })}
               className="absolute z-30 w-11 h-11 rounded-full bg-white/15 backdrop-blur-xl border border-white/30 flex items-center justify-center active:scale-95 transition-transform"
-              style={{ top: "max(0.75rem, env(safe-area-inset-top))", right: "max(1rem, env(safe-area-inset-right))" }}
+              style={{ top: "max(0.75rem, var(--sat, 0px))", right: "max(1rem, env(safe-area-inset-right))" }}
               title="FGB Weekly Wrapped"
             >
               <Sparkles className="w-5 h-5 text-fgb-accent" />
@@ -3846,7 +3846,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               funzioni della barra top, che qui è nascosta */}
           <div
             className="absolute left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-white/15 backdrop-blur-xl border border-white/30 shadow-lg max-w-[calc(100vw-1.5rem)]"
-            style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+            style={{ bottom: "calc(0.75rem + var(--sab, 0px))" }}
           >
             <TimePeriodSelector
               value={timePeriod}
@@ -3882,11 +3882,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       <div
         className="absolute inset-0 flex flex-col"
         style={isMobileOverview ? undefined : {
-          paddingTop: "calc(3.5rem + max(1rem, env(safe-area-inset-top)))",
+          paddingTop: "calc(3.5rem + max(1rem, var(--sat, 0px)))",
           // Ridotto (era 3.5rem): la barra di paginazione ora e' un overlay
           // sfumato sul fondo, serve solo lo spazio perche' il contenuto
           // non finisca sotto i comandi.
-          paddingBottom: "max(2.25rem, calc(2.25rem + env(safe-area-inset-bottom)))",
+          paddingBottom: "max(2.25rem, calc(2.25rem + var(--sab, 0px)))",
         }}
       >
         {/* Overlay di progresso PDF: la generazione blocca il main thread
@@ -6596,7 +6596,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             Nell'overview mobile la banda sparisce (scroll a sezioni proprio). */}
         <div
           className={`absolute bottom-0 inset-x-0 justify-center items-center gap-4 md:gap-5 pt-8 z-20 pointer-events-none bg-gradient-to-t ${materialSkin ? "from-[#EDF5F2] via-[#EDF5F2]/55" : "from-black/45 via-black/15"} to-transparent ${isMobileOverview ? "hidden" : "flex"}`}
-          style={{ paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))" }}
+          style={{ paddingBottom: "calc(0.375rem + var(--sab, 0px))" }}
         >
           <button onClick={prevSlide} disabled={currentSlide === 0} className="pointer-events-auto w-11 h-11 md:w-8 md:h-8 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
             <ChevronLeft className="w-4 h-4" />
