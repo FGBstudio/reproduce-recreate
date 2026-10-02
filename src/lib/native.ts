@@ -8,11 +8,11 @@ import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 const isNative = Capacitor.isNativePlatform();
 
-/** URL pubblico dell'app web (GitHub Pages): e' l'unico posto che puo'
-    ricevere i link delle email di Supabase anche quando si usa l'app nativa —
-    nel WebView `window.location.origin` e' capacitor://localhost e i link
-    risulterebbero inapribili su qualunque dispositivo. */
-const WEB_APP_URL = "https://fgbstudio.github.io/reproduce-recreate/";
+/** URL pubblico dell'app web (dominio custom, gia' nella allow-list Supabase):
+    e' l'unico posto che puo' ricevere i link delle email di Supabase anche
+    quando si usa l'app nativa — nel WebView `window.location.origin` e'
+    capacitor://localhost e i link risulterebbero inapribili ovunque. */
+const WEB_APP_URL = "https://xmonitoring.fgb-studio.com/";
 
 /** Redirect per le email di auth (signup, reset password). */
 export function authRedirectUrl(): string {
