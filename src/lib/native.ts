@@ -5,9 +5,20 @@
  */
 import { Capacitor } from "@capacitor/core";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
-import { App as CapApp } from "@capacitor/app";
 
 const isNative = Capacitor.isNativePlatform();
+
+/** URL pubblico dell'app web (GitHub Pages): e' l'unico posto che puo'
+    ricevere i link delle email di Supabase anche quando si usa l'app nativa —
+    nel WebView `window.location.origin` e' capacitor://localhost e i link
+    risulterebbero inapribili su qualunque dispositivo. */
+const WEB_APP_URL = "https://fgbstudio.github.io/reproduce-recreate/";
+
+/** Redirect per le email di auth (signup, reset password). */
+export function authRedirectUrl(): string {
+  if (isNative) return WEB_APP_URL;
+  return window.location.origin + window.location.pathname;
+}
 
 /** Vibrazione leggera per i tap primari (selezioni, toggle, tab). */
 export function hapticLight(): void {
@@ -21,18 +32,6 @@ export function hapticMedium(): void {
   Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
 }
 
-/**
- * Back hardware Android: senza questo listener il tasto back CHIUDE l'app
- * da qualsiasi schermata. Con il listener: se c'è storia di navigazione fa
- * back interno; solo alla radice minimizza l'app (comportamento Android standard).
- */
-export function registerAndroidBackButton(): void {
-  if (!isNative) return;
-  CapApp.addListener("backButton", ({ canGoBack }) => {
-    if (canGoBack && window.history.length > 1) {
-      window.history.back();
-    } else {
-      CapApp.minimizeApp().catch(() => {});
-    }
-  });
-}
+/* Il listener del back hardware Android vive SOLO in main.tsx (fgb:back con
+   contratto preventDefault + minimizeApp alla radice). La copia che stava qui
+   ne ignorava il contratto e causava doppio history.back(): eliminata. */

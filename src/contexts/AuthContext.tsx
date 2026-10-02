@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { authRedirectUrl } from '@/lib/native';
 import { User, UserRole, UserProfile, AuthState } from '@/lib/types/admin';
 
 interface AuthContextType extends AuthState {
@@ -177,7 +178,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        // Nel WebView nativo window.location.origin è capacitor://localhost:
+        // le email devono puntare sempre al web pubblicato.
+        emailRedirectTo: authRedirectUrl(),
         data: metadata,
       },
     });

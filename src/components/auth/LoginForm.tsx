@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { authRedirectUrl } from "@/lib/native";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
   useEffect(() => {
     if (isPasswordRecovery) setMode("update_password");
   }, [isPasswordRecovery]);
+
+  /* Il redirect post-aggiornamento password e' ritardato di 1.5s: se il form
+     viene smontato prima (es. chiusura del login sheet) il timer navigherebbe
+     comunque — va cancellato allo smontaggio. */
+  const navTimer = React.useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(navTimer.current), []);
 
   useEffect(() => {
     const handler = () => {
@@ -111,7 +118,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
     try {
       if (!isSupabaseConfigured) { setError(t("auth.not_configured")); return; }
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}${window.location.pathname}`,
+        // authRedirectUrl: sul nativo punta al web pubblicato (nel WebView
+        // l'origin è capacitor://localhost e il link email non si aprirebbe).
+        redirectTo: authRedirectUrl(),
       });
       if (resetError) setError(resetError.message);
       else setSuccessMessage(t("auth.reset_sent"));
@@ -132,7 +141,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
       const { error: updateError } = await updatePassword(newPassword);
       if (updateError) throw updateError;
       setSuccessMessage(t("auth.password_updated"));
-      setTimeout(() => navigate("/", { replace: true }), 1500);
+      navTimer.current = window.setTimeout(() => navigate("/", { replace: true }), 1500);
     } catch (err: any) {
       setError(err.message || t("auth.password_update_error"));
     } finally {
@@ -270,19 +279,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
               <Label className={`text-sm ${textMuted}`}>{t("auth.first_name")} *</Label>
               <div className="relative">
                 <User className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Mario" className={`pl-10 ${inputClsNoPad}`} />
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" enterKeyHint="next" placeholder="Mario" className={`pl-10 ${inputClsNoPad}`} />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className={`text-sm ${textMuted}`}>{t("auth.last_name")} *</Label>
-              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Rossi" className={inputClsNoPad} />
+              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" enterKeyHint="next" placeholder="Rossi" className={inputClsNoPad} />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className={`text-sm ${textMuted}`}>{t("auth.email")} *</Label>
             <div className="relative">
               <Mail className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className={`pl-10 ${inputClsNoPad}`} />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" inputMode="email" autoCapitalize="none" enterKeyHint="next" placeholder="name@company.com" className={`pl-10 ${inputClsNoPad}`} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -290,14 +299,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
               <Label className={`text-sm ${textMuted}`}>{t("auth.company")} *</Label>
               <div className="relative">
                 <Building2 className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
-                <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Corp" className={`pl-10 ${inputClsNoPad}`} />
+                <Input value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" enterKeyHint="next" placeholder="Acme Corp" className={`pl-10 ${inputClsNoPad}`} />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className={`text-sm ${textMuted}`}>{t("auth.job_title")}</Label>
               <div className="relative">
                 <Briefcase className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${iconCls}`} />
-                <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Energy Manager" className={`pl-10 ${inputClsNoPad}`} />
+                <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} autoComplete="organization-title" enterKeyHint="next" placeholder="Energy Manager" className={`pl-10 ${inputClsNoPad}`} />
               </div>
             </div>
           </div>
@@ -311,7 +320,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ initialMode = "login", theme = "l
           <div className="flex items-start gap-3">
             <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(c) => setTermsAccepted(c as boolean)} className={isDark ? "mt-0.5 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#006367]" : "mt-0.5"} />
             <Label htmlFor="terms" className={`text-sm cursor-pointer ${textMuted}`}>
-              {t("auth.terms_accept")} <a href="#" className={isDark ? "underline text-white" : "underline"} style={isDark ? undefined : { color: ACCENT }}>{t("auth.terms_link")}</a>
+              {t("auth.terms_accept")} <button type="button" className={isDark ? "underline text-white" : "underline"} style={isDark ? undefined : { color: ACCENT }}>{t("auth.terms_link")}</button>
             </Label>
           </div>
           <Button type="submit" disabled={isSubmitting} className={btnCls} style={btnStyle}>
