@@ -1,0 +1,6 @@
+pandas>=2.2
+numpy>=1.26
+xgboost>=2.1
+scikit-learn>=1.5
+holidays>=0.56
+psycopg2-binary>=2.9
