@@ -10,6 +10,13 @@ import MapView from "@/components/dashboard/MapView";
 const ProjectDetail = lazy(() => import("@/components/dashboard/ProjectDetail"));
 import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
 import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
+// UX2 preview (branch ux2-preview): Home portfolio + tab bar + insights.
+// Rollback = rimuovere questi import e i tre blocchi marcati "UX2".
+import PortfolioHome from "@/components/home/PortfolioHome";
+import InsightsFeed from "@/components/home/InsightsFeed";
+import FgbTabBar, { type HomeView } from "@/components/home/FgbTabBar";
+import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
+import { useIsMobile } from "@/hooks/use-mobile";
 import WrappedPlayer from "@/components/wrapped/WrappedPlayer";
 import PostLoginOnboarding from "@/components/onboarding/PostLoginOnboarding";
 import { readIntroMode } from "@/lib/intro/config";
@@ -31,6 +38,9 @@ const Index = () => {
   const [initialSection, setInitialSection] = useState<ProjectSection | undefined>(undefined);
   // Mobile-only state
   const [isBurgerOpen, setIsBurgerOpen] = useState(false);
+  // UX2: vista mobile corrente — la Home e' il default e l'ingresso per tutti
+  const [homeView, setHomeView] = useState<HomeView>("home");
+  const isMobile = useIsMobile();
   const [isKpiPanelOpen, setIsKpiPanelOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -55,6 +65,9 @@ const Index = () => {
   const { clientRole, holdingId, brandId, siteId, allowedRegions, isLoading: scopeLoading } = useUserScope();
   const { sites, brands, holdings } = useAdminData();
   const { projects: allProjectsList } = useAllProjects();
+  // UX2: dati del perimetro per Home/Insights (solo mobile: su desktop la
+  // lista vuota disabilita la query e non si paga nulla)
+  const { sites: homeSites, isLoading: homeLoading } = useAggregatedSiteData(isMobile ? allProjectsList : []);
 
   // --- NUOVA FUNZIONE: GeoIP Detection ---
   useEffect(() => {
@@ -159,8 +172,13 @@ const Index = () => {
               timezone: site.timezone || 'UTC',
             };
             
-            setSelectedProject(project);
-            setAutoOpenProject(true);
+            // UX2 preview (mobile): la Home e' obbligatoria per OGNI ruolo —
+            // niente auto-apertura; lo store user vede la sua unica tile e
+            // tocca per entrare. Su desktop il comportamento resta identico.
+            if (window.innerWidth >= 768) {
+              setSelectedProject(project);
+              setAutoOpenProject(true);
+            }
 
             // --- MODIFICA: Forza la regione del progetto per lo Store User ---
             if (project.region) {
@@ -360,6 +378,23 @@ const Index = () => {
             initialDashboard={initialSection as any}
           />
         </Suspense>
+      )}
+
+      {/* ── UX2 preview: Home portfolio, Insights e tab bar (solo mobile) ── */}
+      {isMobile && !selectedProject && !showOnboarding && homeView === "home" && (
+        <PortfolioHome
+          projects={allProjectsList}
+          sites={homeSites}
+          isLoading={homeLoading}
+          onOpenSite={handleProjectSelect}
+          onExplore={() => setHomeView("map")}
+        />
+      )}
+      {isMobile && !selectedProject && !showOnboarding && homeView === "insights" && (
+        <InsightsFeed projects={allProjectsList} sites={homeSites} onOpenSite={handleProjectSelect} />
+      )}
+      {isMobile && !selectedProject && !showOnboarding && (
+        <FgbTabBar view={homeView} onView={setHomeView} onMenu={() => setIsBurgerOpen(true)} />
       )}
 
       {/* FGB Weekly Wrapped — fullscreen overlay player */}
