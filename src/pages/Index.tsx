@@ -380,21 +380,30 @@ const Index = () => {
         </Suspense>
       )}
 
-      {/* ── UX2 preview: Home portfolio, Insights e tab bar (solo mobile) ── */}
-      {isMobile && !selectedProject && !showOnboarding && homeView === "home" && (
-        <PortfolioHome
-          projects={allProjectsList}
-          sites={homeSites}
-          isLoading={homeLoading}
-          onOpenSite={handleProjectSelect}
-          onExplore={() => setHomeView("map")}
-        />
-      )}
-      {isMobile && !selectedProject && !showOnboarding && homeView === "insights" && (
-        <InsightsFeed projects={allProjectsList} sites={homeSites} onOpenSite={handleProjectSelect} />
-      )}
-      {isMobile && !selectedProject && !showOnboarding && (
-        <FgbTabBar view={homeView} onView={setHomeView} onMenu={() => setIsBurgerOpen(true)} />
+      {/* ── UX2 preview: Home portfolio, Insights e tab bar (solo mobile) ──
+          Le viste restano SEMPRE montate: lo scambio e' una dissolvenza
+          (.fgb-view) sulla mappa che vive sotto — niente rimontaggi, niente
+          scatti. Scegliere "Map" = i layer si dissolvono e la scena si svela. */}
+      {isMobile && !showOnboarding && (
+        <>
+          <PortfolioHome
+            visible={!selectedProject && homeView === "home"}
+            projects={allProjectsList}
+            sites={homeSites}
+            isLoading={homeLoading}
+            onOpenSite={handleProjectSelect}
+            onExplore={() => setHomeView("map")}
+          />
+          <InsightsFeed
+            visible={!selectedProject && homeView === "insights"}
+            projects={allProjectsList}
+            sites={homeSites}
+            onOpenSite={handleProjectSelect}
+          />
+          {!selectedProject && (
+            <FgbTabBar view={homeView} onView={setHomeView} onMenu={() => setIsBurgerOpen(true)} />
+          )}
+        </>
       )}
 
       {/* FGB Weekly Wrapped — fullscreen overlay player */}

@@ -484,6 +484,27 @@ body {
   }
 }
 
+/* ── UX2 preview: layer Home/Insights sopra la mappa ───────────────────── */
+/* Le viste sono SEMPRE montate e si scambiano in dissolvenza: la mappa vive
+   sotto, visibile attraverso il vetro — il passaggio Home→Mappa è la stessa
+   scena che si svela, non un cambio di schermata. Stessa curva dei pannelli
+   deck (0.2,0.8,0.2,1). */
+.fgb-view {
+  transition: opacity .38s cubic-bezier(.2,.8,.2,1), transform .38s cubic-bezier(.2,.8,.2,1);
+  will-change: opacity, transform;
+}
+.fgb-view-hidden { opacity: 0; transform: translateY(14px) scale(.985); pointer-events: none; }
+@keyframes fgb-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.fgb-rise { animation: fgb-rise .45s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .fgb-view { transition: opacity .2s linear; }
+  .fgb-view-hidden { transform: none; }
+  .fgb-rise { animation: none; }
+}
+
 /* ── UX mobile: overscroll e accessibilità movimento ───────────────────── */
 
 /* Niente bounce/glow di overscroll sul body: l'app è a schermo pieno con

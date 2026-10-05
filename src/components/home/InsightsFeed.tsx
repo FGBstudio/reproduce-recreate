@@ -12,12 +12,13 @@ import type { Project } from "@/lib/data";
 import type { SiteRealData } from "@/hooks/useAggregatedSiteData";
 
 interface Props {
+  visible: boolean;
   projects: Project[];
   sites: SiteRealData[];
   onOpenSite: (p: Project) => void;
 }
 
-const InsightsFeed = ({ projects, sites, onOpenSite }: Props) => {
+const InsightsFeed = ({ visible, projects, sites, onOpenSite }: Props) => {
   const cards = useMemo(() => {
     const byId = new Map(projects.map(p => [p.siteId || "", p]));
     const out: { key: string; icon: JSX.Element; title: string; line: string; tone: "crit" | "warn" | "info"; p?: Project }[] = [];
@@ -56,9 +57,10 @@ const InsightsFeed = ({ projects, sites, onOpenSite }: Props) => {
   };
 
   return (
-    <div className="md:hidden fixed inset-0 z-[45] flex flex-col" style={{ background: "#0a1a1e" }}>
+    <div className={`md:hidden fixed inset-0 z-[45] flex flex-col fgb-view ${visible ? "" : "fgb-view-hidden"}`} aria-hidden={!visible}
+      style={{ background: "linear-gradient(180deg, rgba(5,13,16,.82) 0%, rgba(5,13,16,.68) 40%, rgba(5,13,16,.80) 100%)", WebkitBackdropFilter: "blur(22px) saturate(140%)", backdropFilter: "blur(22px) saturate(140%)" }}>
       <div className="shrink-0 px-5" style={{ paddingTop: "calc(var(--sat, 0px) + 18px)" }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: "#9fd5d9" }}>FGB Monitoring</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-fgb-accent fgb-rise">FGB Monitoring</p>
         <h1 className="text-2xl font-semibold text-white mt-1">Insights</h1>
         <p className="text-[12px] text-white/50 mt-1">What needs your attention, newest first.</p>
       </div>
@@ -73,8 +75,8 @@ const InsightsFeed = ({ projects, sites, onOpenSite }: Props) => {
         )}
         {cards.map(c => (
           <button key={c.key} onClick={() => c.p && onOpenSite(c.p)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.98] transition-transform"
-            style={{ background: TONE[c.tone].bg, border: `1px solid ${TONE[c.tone].bd}`, minHeight: 56 }}>
+            className="glass-panel w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.98] transition-transform fgb-rise"
+            style={{ borderColor: TONE[c.tone].bd, boxShadow: `0 8px 28px ${TONE[c.tone].bg}`, minHeight: 56 }}>
             <span className="shrink-0" style={{ color: TONE[c.tone].fg }}>{c.icon}</span>
             <span className="flex-1 min-w-0">
               <span className="block text-[13px] font-semibold text-white truncate">{c.title}</span>
