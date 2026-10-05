@@ -42,8 +42,8 @@ const FgbTabBar = ({ view, onView, onMenu }: Props) => {
         style={{
           width: "15%",
           left: `${(activeIdx >= 0 ? activeIdx : 0) * 25 + 5}%`,
-          background: "hsl(var(--fgb-accent))",
-          boxShadow: "0 0 12px hsl(var(--fgb-accent) / .6)",
+          background: "#9fd5d9",
+          boxShadow: "0 0 12px rgba(0,145,147,.6)",
           transition: "left .35s cubic-bezier(.2,.8,.2,1)",
           opacity: activeIdx >= 0 ? 1 : 0,
         }}
@@ -56,7 +56,7 @@ const FgbTabBar = ({ view, onView, onMenu }: Props) => {
               key={key}
               onClick={() => { hapticLight(); key === "menu" ? onMenu() : onView(key); }}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors duration-300"
-              style={{ minHeight: 58, color: active ? "hsl(var(--fgb-accent))" : "rgba(255,255,255,.55)" }}
+              style={{ minHeight: 58, color: active ? "#9fd5d9" : "rgba(255,255,255,.55)" }}
               aria-current={active ? "page" : undefined}
             >
               <Icon className="w-5 h-5 transition-transform duration-300" style={{ transform: active ? "translateY(-1px) scale(1.08)" : "none" }} />
