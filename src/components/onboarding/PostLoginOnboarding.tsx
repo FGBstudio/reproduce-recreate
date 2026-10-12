@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ArrowUpRight, ArrowRight, Trophy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { useUserScope } from "@/hooks/useUserScope";
 import { useAdminData } from "@/contexts/AdminDataContext";
 import { recordForClient } from "@/hooks/useClientPartnership";
@@ -137,6 +138,8 @@ const monthShort = (d: string) => new Date(d).toLocaleDateString("en-US", { mont
 interface Props { onComplete: () => void; }
 
 const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
+  // Back Android: chiude l'intro verso la dashboard (pila overlay, brief §2.2)
+  useBackDismiss(true, onComplete);
   const scroller = useRef<HTMLDivElement>(null);
   const sbar = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);

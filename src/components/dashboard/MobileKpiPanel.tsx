@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { ChevronDown } from "lucide-react";
+import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
 import { co2Level, CO2_LEVEL_COLORS } from "@/lib/airQuality";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
@@ -88,6 +89,8 @@ const MobileKpiPanel = ({
   selectedHolding,
   showBrandOverlay,
 }: MobileKpiPanelProps) => {
+  // Back Android chiude il pannello (pila overlay, brief §2.2)
+  useBackDismiss(isOpen, onClose);
   return (
     <div
       className={`fixed bottom-0 left-0 right-0 md:hidden transition-transform duration-300 ease-out flex flex-col`}

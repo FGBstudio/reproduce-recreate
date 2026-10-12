@@ -15,6 +15,7 @@
  */
 import React, { useEffect, useRef, useState } from "react";
 import LoginForm from "./LoginForm";
+import { useBackDismiss } from "@/hooks/useBackDismiss";
 
 interface Props {
   open: boolean;
@@ -56,11 +57,10 @@ const LoginSheet: React.FC<Props> = ({ open, onOpenChange, initialMode = "login"
     };
   }, [open]);
 
-  /* Back di Android: chiude lo sheet invece di uscire dalla app */
+  /* Back di Android: via la pila comune degli overlay (brief §2.2) */
+  useBackDismiss(open, () => onOpenChangeRef.current(false));
   useEffect(() => {
     if (!open) return;
-    const onBack = (e: Event) => { e.preventDefault(); onOpenChangeRef.current(false); };
-    window.addEventListener("fgb:back", onBack);
     /* fallback web/gesto: uno stato fittizio nella history, posseduto da
        questo effetto (ownsEntry) cosi' il cleanup non fa back() se l'entry
        e' gia' stata consumata dal popstate */
@@ -69,7 +69,6 @@ const LoginSheet: React.FC<Props> = ({ open, onOpenChange, initialMode = "login"
     const onPop = () => { ownsEntry = false; onOpenChangeRef.current(false); };
     window.addEventListener("popstate", onPop);
     return () => {
-      window.removeEventListener("fgb:back", onBack);
       window.removeEventListener("popstate", onPop);
       if (ownsEntry && window.history.state?.fgbSheet) window.history.back();
     };

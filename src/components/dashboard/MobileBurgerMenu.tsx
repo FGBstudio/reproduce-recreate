@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { X, Globe, Building2, Tag, Shield, LogOut, ChevronRight, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +40,9 @@ const MobileBurgerMenu = ({
   const { language, toggleLanguage, t } = useLanguage();
   const { holdings } = useAllHoldings();
   const { brands } = useAllBrands();
+
+  // Back Android chiude il menu (pila overlay, brief §2.2)
+  useBackDismiss(isOpen, onClose);
 
   // il ritardo di chiusura post-selezione va cancellato se il menu si smonta
   const closeTimer = useRef<number | undefined>(undefined);
