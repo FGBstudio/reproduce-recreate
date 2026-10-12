@@ -1112,6 +1112,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         notInstalled={nothingMonitored}
         certCount={certAchievedCount}
         certTopLevel={certTopLevel}
+        certDetails={buildingCerts.filter(c => c.state === "achieved").map(c => ({ type: c.certType!, level: c.level ?? null }))}
         verdictHeadline={verdict.headline}
         isRealData={liveData.isRealData || powerLatest.isRealData}
         onNavigate={onNavigate}

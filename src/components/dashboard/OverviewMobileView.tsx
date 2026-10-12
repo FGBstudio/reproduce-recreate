@@ -74,6 +74,8 @@ interface OverviewMobileViewProps {
   onNavigate?: (tab: string) => void;
   /** Certificazioni attive del sito (LEED, BREEAM, ...): sezione grigia dedicata */
   certifications?: string[];
+  /** Dettaglio certificazioni ottenute (per livelli e «Dati spiegati») */
+  certDetails?: { type: string; level: string | null }[];
 }
 
 // Loghi ufficiali già presenti in public/ (stessi path di SiteMarker).
@@ -170,6 +172,23 @@ const ValueRow = ({
           {it.unit && <em className="not-italic text-[11px] font-semibold opacity-80 ml-0.5">{it.unit}</em>}
         </span>
         <small className="text-[11px] tracking-[0.18em] opacity-70 font-bold mt-0.5">{it.label}</small>
+      </div>
+    ))}
+  </div>
+);
+
+/** Misuratori sottili (§5.4.5): valore, barra 30×5 riempita in %, etichetta. */
+const MeterRow = ({ items, light, ink }: { items: Array<{ label: string; value: string; pct?: number }>; light?: boolean; ink?: string }) => (
+  <div className="grid grid-cols-4 gap-2 mb-4 w-full max-w-[300px]">
+    {items.map(it => (
+      <div key={it.label} className="flex flex-col items-center">
+        <span className="text-[14px] font-medium tabular-nums" style={ink ? { color: ink } : undefined}>{it.value}</span>
+        <span className="block rounded-[3px] mt-1" style={{ width: 30, height: 5, background: light ? "rgba(1,71,75,.18)" : "rgba(255,255,255,.25)" }}>
+          {typeof it.pct === "number" && (
+            <span className="block h-full rounded-[3px]" style={{ width: `${Math.max(0, Math.min(100, it.pct))}%`, background: ink || (light ? "#0b5357" : "#fff") }} />
+          )}
+        </span>
+        <span className="text-[11px] tracking-[0.12em] uppercase opacity-70 font-semibold mt-1">{it.label}</span>
       </div>
     ))}
   </div>
@@ -322,8 +341,8 @@ const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onC
 /** Sezione a piena altezza: fascia esterna + edificio col contenuto del modulo. */
 const ModuleScreen = ({
   city, outdoorTemp, outdoorExtra, outdoorLabel, icon, label, verdict, scoreLine,
-  values, limitRatio, big, bigUnit, bigColor, rows, ctaLabel, onCta, light, buildingClass, pitch,
-  centerContent,
+  values, limitRatio, big, bigUnit, bigColor, rows, meters, ctaLabel, onCta, light, buildingClass, pitch,
+  centerContent, onExplain, explainLabel, ink,
 }: any) => (
   <section data-screen className="h-full snap-start snap-always flex flex-col shrink-0">
     <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} outdoorLabel={outdoorLabel} />
@@ -349,7 +368,20 @@ const ModuleScreen = ({
           </div>
         ) : (
           <>
-            <div className="text-[31px] font-bold leading-tight mt-3">{verdict}</div>
+            <div className="text-[31px] font-bold leading-tight mt-3 flex items-center justify-center gap-2">
+              {verdict}
+              {onExplain && (
+                <button
+                  type="button"
+                  onClick={onExplain}
+                  aria-label={explainLabel}
+                  className="grid place-items-center rounded-full font-semibold"
+                  style={{ width: 22, height: 22, fontSize: 13, border: `1.4px solid ${light ? "rgba(1,71,75,.7)" : "rgba(255,255,255,.7)"}`, opacity: .85, padding: 12, boxSizing: "content-box", margin: -12 }}
+                >
+                  ?
+                </button>
+              )}
+            </div>
             <div className="text-[11px] opacity-75 tracking-wide">{scoreLine}</div>
             {values && <ValueRow items={values} light={light} />}
             {typeof limitRatio === "number" && <LimitBar ratio={limitRatio} light={light} />}
@@ -363,7 +395,9 @@ const ModuleScreen = ({
                 <div className="text-[11px] tracking-[0.26em] font-bold opacity-75 mt-2">{bigUnit}</div>
               </div>
             )}
-            {rows && rows.length > 0 && (
+            {meters && meters.length > 0 ? (
+              <MeterRow items={meters} light={light} ink={ink} />
+            ) : rows && rows.length > 0 ? (
               <div className="grid grid-cols-2 gap-x-8 gap-y-1 mb-4 text-[12.5px] w-full max-w-[250px]">
                 {rows.map((r: any) => (
                   <div
@@ -375,11 +409,34 @@ const ModuleScreen = ({
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
           </>
         )}
 
-        <CtaGlass onClick={onCta} light={light}>{ctaLabel}</CtaGlass>
+        {onExplain && !pitch ? (
+          <div className="flex gap-2.5 w-full max-w-[320px]">
+            <button
+              type="button"
+              onClick={onExplain}
+              className={`flex-1 min-h-[44px] rounded-full font-bold text-[11px] tracking-[0.14em] whitespace-nowrap border transition-all active:scale-[0.98] ${
+                light ? "text-[#01474b] border-[#01474b]/30" : "text-white border-white/35"
+              }`}
+            >
+              ⓘ {explainLabel}
+            </button>
+            <button
+              type="button"
+              onClick={onCta}
+              className={`flex-1 min-h-[44px] rounded-full font-bold text-[11px] tracking-[0.14em] whitespace-nowrap backdrop-blur-md border shadow-lg transition-all active:scale-[0.98] ${
+                light ? "text-[#01474b] bg-white/45 border-[#01474b]/25" : "text-white bg-white/[0.16] border-white/40"
+              }`}
+            >
+              {ctaLabel}
+            </button>
+          </div>
+        ) : (
+          <CtaGlass onClick={onCta} light={light}>{ctaLabel}</CtaGlass>
+        )}
       </div>
     </div>
   </section>
@@ -388,7 +445,7 @@ const ModuleScreen = ({
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, periodLabel, overall, energy, air, water, moduleConfig,
   power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, notInstalled, certCount = 0,
-  verdictHeadline, isRealData, onNavigate, certifications, certTopLevel,
+  verdictHeadline, isRealData, onNavigate, certifications, certTopLevel, certDetails,
 }: OverviewMobileViewProps) => {
   const { t, language } = useLanguage();
   // Numeri localizzati (brief §2.3): «12,4» in it/fr/es, «12.4» in en
@@ -406,6 +463,9 @@ export const OverviewMobileView = ({
     .split("{s_es}").join(n === 1 ? "" : "es")
     .split("{s}").join(n === 1 ? "" : "s");
   const outdoorLabel = t("ovm.outdoor");
+  /** Variante approvata §5.4: facciata ambra quando il giudizio del modulo
+      è Fair (OK). Per Poor il bordeaux è ancora da confermare (§8.4). */
+  const FAIR = { buildingClass: "bg-gradient-to-b from-[#f2dcae] to-[#e3c487]", light: true, ink: "#5b3d0c" };
   const energyRatio = ratioFromLimit(power.total, energyLimitKw);
   const energyPct = energyLimitKw ? Math.round(energyRatio * 100) : undefined;
   const airRatio = ratioFromLimit(airMetrics.avgCo2 ?? airMetrics.co2, airMetrics.co2Limit);
@@ -455,6 +515,8 @@ export const OverviewMobileView = ({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeScreen, setActiveScreen] = useState(0);
   const [showAllAlerts, setShowAllAlerts] = useState(false);
+  // Foglio «Dati spiegati» (§5.5): quale scheda aprire, null = chiuso
+  const [explainTab, setExplainTab] = useState<string | null>(null);
   const onScroll = useCallback(() => {
     const el = scrollerRef.current;
     if (!el || !el.clientHeight) return;
@@ -584,7 +646,11 @@ export const OverviewMobileView = ({
       <ModuleScreen
         city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
         icon={Zap} label={t("ovm.energy")}
-        buildingClass="bg-gradient-to-b from-[#028084] to-[#016368]"
+        buildingClass={energy.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#028084] to-[#016368]"}
+        light={energy.level === "OK" ? true : undefined}
+        ink={energy.level === "OK" ? FAIR.ink : undefined}
+        onExplain={moduleConfig.energy.enabled ? () => setExplainTab("power") : undefined}
+        explainLabel={t("ovm.explain")}
         verdict={t(VERDICT_KEY[energy.level])}
         scoreLine={t("ovm.score_line").replace("{s}", String(energy.score))}
         values={moduleConfig.energy.enabled ? [
@@ -603,12 +669,12 @@ export const OverviewMobileView = ({
         bigColor={energy.level !== "NO_DATA" && power.total != null
           ? performanceColor(energyLimitKw ? energyRatio : ratioFromScore(energy.score), "dark")
           : undefined}
-        rows={[
-          { label: t("ovm.row_hvac"), value: fmt(power.hvac) },
-          { label: t("ovm.row_lighting"), value: fmt(power.lighting) },
-          { label: t("ovm.row_plugs"), value: fmt(power.plugs) },
-          { label: t("ovm.row_other"), value: fmt(power.other) },
-        ]}
+        meters={[power.hvac, power.lighting, power.plugs, power.other].some(v => typeof v === "number") ? [
+          { label: t("ovm.row_hvac"), value: fmt(power.hvac), pct: power.total ? ((power.hvac ?? 0) / power.total) * 100 : undefined },
+          { label: t("ovm.row_lighting"), value: fmt(power.lighting), pct: power.total ? ((power.lighting ?? 0) / power.total) * 100 : undefined },
+          { label: t("ovm.row_plugs"), value: fmt(power.plugs), pct: power.total ? ((power.plugs ?? 0) / power.total) * 100 : undefined },
+          { label: t("ovm.row_other"), value: fmt(power.other), pct: power.total ? ((power.other ?? 0) / power.total) * 100 : undefined },
+        ] : undefined}
         pitch={!moduleConfig.energy.enabled ? { title: t("ovm.pitch_energy_t"), body: t("ovm.pitch_energy_b") } : undefined}
         ctaLabel={moduleConfig.energy.enabled ? t("ovm.cta_energy") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.energy.enabled && onNavigate?.("energy")}
@@ -623,7 +689,10 @@ export const OverviewMobileView = ({
         light
         city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
         icon={Wind} label={t("ovm.air")}
-        buildingClass="bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"
+        buildingClass={air.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"}
+        ink={air.level === "OK" ? FAIR.ink : undefined}
+        onExplain={moduleConfig.air.enabled ? () => setExplainTab("co2") : undefined}
+        explainLabel={t("ovm.explain")}
         verdict={t(VERDICT_KEY[air.level])}
         scoreLine={t("ovm.iaq_line").replace("{s}", String(air.score))}
         values={moduleConfig.air.enabled ? [
@@ -638,11 +707,11 @@ export const OverviewMobileView = ({
         big={air.level === "NO_DATA" ? "—" : String(air.score)}
         bigUnit={t("ovm.iaq_now")}
         bigColor={air.level !== "NO_DATA" ? performanceColor(ratioFromScore(air.score), "light") : undefined}
-        rows={[
-          { label: t("ovm.row_temp"), value: airMetrics.temperature != null ? `${fmt(airMetrics.temperature)}°` : "—" },
-          { label: t("ovm.row_humidity"), value: airMetrics.humidity != null ? `${fmtInt(airMetrics.humidity)}%` : "—" },
-          { label: "TVOC", value: fmtInt(airMetrics.voc) },
-          { label: "PM2.5", value: fmtInt(airMetrics.pm25) },
+        meters={[
+          { label: t("ovm.row_temp"), value: airMetrics.temperature != null ? `${fmt(airMetrics.temperature)}°` : "—", pct: airMetrics.temperature != null ? (airMetrics.temperature / 40) * 100 : undefined },
+          { label: t("ovm.row_humidity"), value: airMetrics.humidity != null ? `${fmtInt(airMetrics.humidity)}%` : "—", pct: airMetrics.humidity ?? undefined },
+          { label: "TVOC", value: fmtInt(airMetrics.voc), pct: airMetrics.voc != null ? Math.min(100, (airMetrics.voc / 3000) * 100) : undefined },
+          { label: "PM2.5", value: fmtInt(airMetrics.pm25), pct: airMetrics.pm25 != null ? Math.min(100, (airMetrics.pm25 / 35) * 100) : undefined },
         ]}
         pitch={!moduleConfig.air.enabled ? { title: t("ovm.pitch_air_t"), body: t("ovm.pitch_air_b") } : undefined}
         ctaLabel={moduleConfig.air.enabled ? t("ovm.cta_air") : t("ovm.cta_ask")}
@@ -679,6 +748,14 @@ export const OverviewMobileView = ({
           buildingClass="bg-gradient-to-b from-[#7d8a8f] to-[#5c696e]"
           verdict={t("ovm.certified")}
           scoreLine={tn("ovm.active_certs", certifications.length)}
+          onExplain={() => setExplainTab("leed")}
+          explainLabel={t("ovm.explain")}
+          values={certDetails && certDetails.filter(c => c.level).length > 0
+            ? certDetails.filter(c => c.level).slice(0, 3).map(c => ({
+                value: String(c.level).length > 8 ? String(c.level).slice(0, 5) + "." : String(c.level),
+                label: c.type,
+              }))
+            : undefined}
           centerContent={
             /* I loghi ufficiali al centro, distribuiti uniformemente;
                chip bianco per leggibilità sul grigio */
