@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud } from "lucide-react";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
+import ExplainSheet from "@/components/dashboard/ExplainSheet";
 
 type StatusLevel = "GOOD" | "OK" | "WARNING" | "CRITICAL" | "NO_DATA";
 
@@ -811,6 +812,27 @@ export const OverviewMobileView = ({
         )}
       </section>
       </div>
+
+      {/* Foglio «Dati spiegati» (§5.5): schede, livelli e «ADESSO» */}
+      <ExplainSheet
+        tab={explainTab}
+        onClose={() => setExplainTab(null)}
+        onTab={setExplainTab}
+        current={{
+          iaq: air.level !== "NO_DATA" ? air.score : undefined,
+          co2: airMetrics.avgCo2 ?? airMetrics.co2,
+          temp: airMetrics.temperature,
+          humidity: airMetrics.humidity,
+          tvoc: airMetrics.voc,
+          pm25: airMetrics.pm25,
+          power: power.total,
+        }}
+        currentCertLevel={{
+          leed: certDetails?.find(c => c.type === "LEED")?.level ?? undefined,
+          well: certDetails?.find(c => c.type === "WELL")?.level ?? undefined,
+          breeam: certDetails?.find(c => c.type === "BREEAM")?.level ?? undefined,
+        }}
+      />
     </div>
   );
 };

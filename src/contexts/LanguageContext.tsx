@@ -559,7 +559,58 @@ const translations: Record<string, Record<Language, string>> = {
   'ovm.module_not_installed': { en: 'Module not installed at this site', it: 'Modulo non installato in questo sito', fr: 'Module non installé sur ce site', es: 'Módulo no instalado en este sitio', zh: '该站点未安装此模块' },
   'ovm.not_monitored_row': { en: '{m} · not monitored', it: '{m} · non monitorato', fr: '{m} · non surveillé', es: '{m} · no monitorizado', zh: '{m} · 未监测' },
 
-  // ── Pannello KPI mobile (brief §2.3/§4.3: mischiava IT e EN hardcoded) ──
+  // ── Foglio «Dati spiegati» (brief §5.5 + contenuti §7). Le soglie non
+  //    ufficiali sono INDICATIVE e vanno validate da FGB prima del rilascio. ──
+  'xp.title': { en: 'DATA EXPLAINED', it: 'DATI SPIEGATI', fr: 'DONNÉES EXPLIQUÉES', es: 'DATOS EXPLICADOS', zh: '数据解读' },
+  'xp.now': { en: 'NOW', it: 'ADESSO', fr: 'MAINTENANT', es: 'AHORA', zh: '当前' },
+  'xp.close': { en: 'Close', it: 'Chiudi', fr: 'Fermer', es: 'Cerrar', zh: '关闭' },
+  'xp.lvl_excellent': { en: 'Excellent', it: 'Eccellente', fr: 'Excellent', es: 'Excelente', zh: '优' },
+  'xp.lvl_good': { en: 'Good', it: 'Buono', fr: 'Bon', es: 'Bueno', zh: '良' },
+  'xp.lvl_moderate': { en: 'Moderate', it: 'Moderato', fr: 'Modéré', es: 'Moderado', zh: '中' },
+  'xp.lvl_poor': { en: 'Poor', it: 'Scarso', fr: 'Faible', es: 'Deficiente', zh: '差' },
+  'xp.lvl_medium': { en: 'Medium', it: 'Medio', fr: 'Moyen', es: 'Medio', zh: '中等' },
+  'xp.lvl_high': { en: 'High', it: 'Alto', fr: 'Élevé', es: 'Alto', zh: '高' },
+  // CO₂
+  'xp.def_co2': { en: 'Measures how well air is refreshed relative to the people present. High values reduce focus and wellbeing.', it: "Misura quanto l'aria viene ricambiata rispetto alle persone presenti. Valori alti riducono concentrazione e benessere.", fr: "Mesure le renouvellement de l'air par rapport aux personnes présentes. Des valeurs élevées réduisent concentration et bien-être.", es: 'Mide cuánto se renueva el aire respecto a las personas presentes. Valores altos reducen la concentración y el bienestar.', zh: '衡量空气相对于在场人数的更新程度。数值高会降低专注力和舒适度。' },
+  'xp.co2_l1': { en: 'Optimal air renewal.', it: "Ricambio d'aria ottimale.", fr: "Renouvellement d'air optimal.", es: 'Renovación de aire óptima.', zh: '换气状况极佳。' },
+  'xp.co2_l2': { en: 'Typical of a well-ventilated office.', it: 'Tipico di un ufficio ben ventilato.', fr: "Typique d'un bureau bien ventilé.", es: 'Típico de una oficina bien ventilada.', zh: '通风良好的办公室的典型水平。' },
+  'xp.co2_l3': { en: 'Increase the air exchange.', it: "Aumentare il ricambio d'aria.", fr: "Augmenter le renouvellement d'air.", es: 'Aumentar la renovación de aire.', zh: '需要增加换气。' },
+  'xp.co2_l4': { en: 'Insufficient ventilation, act now.', it: 'Ventilazione insufficiente, intervenire.', fr: 'Ventilation insuffisante, intervenir.', es: 'Ventilación insuficiente, actuar.', zh: '通风不足，需要处理。' },
+  // IAQ (soglie da airQuality.ts: 85/70/50)
+  'xp.def_iaq': { en: 'Synthetic index (0–100) driven by the worst pollutant, like the EPA AQI: air quality is set by what is worst.', it: "Indice sintetico (0–100) guidato dall'inquinante peggiore, come l'AQI EPA: la qualità dell'aria la detta il peggiore.", fr: "Indice synthétique (0–100) déterminé par le pire polluant, comme l'AQI EPA.", es: 'Índice sintético (0–100) determinado por el peor contaminante, como el AQI de la EPA.', zh: '综合指数（0–100），由最差的污染物决定，类似 EPA 的 AQI。' },
+  'xp.iaq_l1': { en: 'Every pollutant is in its best range.', it: 'Tutti gli inquinanti nella fascia migliore.', fr: 'Tous les polluants dans la meilleure plage.', es: 'Todos los contaminantes en su mejor rango.', zh: '所有污染物均处于最佳区间。' },
+  'xp.iaq_l2': { en: 'Comfortable air for daily work.', it: 'Aria confortevole per il lavoro quotidiano.', fr: 'Air confortable pour le travail quotidien.', es: 'Aire confortable para el trabajo diario.', zh: '适合日常工作的舒适空气。' },
+  'xp.iaq_l3': { en: 'One pollutant needs attention.', it: 'Un inquinante richiede attenzione.', fr: "Un polluant demande de l'attention.", es: 'Un contaminante requiere atención.', zh: '有一项污染物需要关注。' },
+  'xp.iaq_l4': { en: 'Act on the driving pollutant.', it: "Intervenire sull'inquinante che guida l'indice.", fr: 'Agir sur le polluant dominant.', es: 'Actuar sobre el contaminante dominante.', zh: '需对主导污染物采取措施。' },
+  // TVOC (scala UBA, da airQuality.ts)
+  'xp.def_tvoc': { en: 'Total volatile organic compounds: solvents, cleaning products, furniture. UBA indoor scale.', it: 'Composti organici volatili totali: solventi, prodotti di pulizia, arredi. Scala indoor UBA.', fr: "Composés organiques volatils totaux : solvants, produits d'entretien, mobilier. Échelle UBA.", es: 'Compuestos orgánicos volátiles totales: disolventes, limpieza, mobiliario. Escala UBA.', zh: '总挥发性有机物：溶剂、清洁剂、家具。采用德国 UBA 室内标准。' },
+  'xp.tvoc_l1': { en: 'Normal background level.', it: 'Livello di fondo normale.', fr: 'Niveau de fond normal.', es: 'Nivel de fondo normal.', zh: '正常本底水平。' },
+  'xp.tvoc_l2': { en: 'Ventilate more often.', it: 'Ventilare più spesso.', fr: 'Aérer plus souvent.', es: 'Ventilar más a menudo.', zh: '需更频繁通风。' },
+  'xp.tvoc_l3': { en: 'Find and remove the source.', it: 'Trovare e rimuovere la fonte.', fr: 'Trouver et éliminer la source.', es: 'Encontrar y eliminar la fuente.', zh: '查找并清除污染源。' },
+  // PM2.5 (curva del codice, soglie indicative)
+  'xp.def_pm25': { en: 'Fine particles under 2.5 µm: they reach deep into the lungs. Thresholds indicative, to be validated.', it: 'Particolato fine sotto 2,5 µm: arriva in profondità nei polmoni. Soglie indicative, da validare.', fr: 'Particules fines < 2,5 µm : elles pénètrent profondément dans les poumons. Seuils indicatifs.', es: 'Partículas finas < 2,5 µm: llegan a lo profundo de los pulmones. Umbrales indicativos.', zh: '2.5 微米以下细颗粒物：可深入肺部。阈值为参考值，待确认。' },
+  'xp.pm25_l1': { en: 'Clean air.', it: 'Aria pulita.', fr: 'Air propre.', es: 'Aire limpio.', zh: '空气洁净。' },
+  'xp.pm25_l2': { en: 'Acceptable for indoor spaces.', it: 'Accettabile per ambienti interni.', fr: 'Acceptable en intérieur.', es: 'Aceptable en interiores.', zh: '室内可接受水平。' },
+  'xp.pm25_l3': { en: 'Check filtration and sources.', it: 'Verificare filtrazione e fonti.', fr: 'Vérifier filtration et sources.', es: 'Revisar filtración y fuentes.', zh: '检查过滤与来源。' },
+  'xp.pm25_l4': { en: 'Filtration insufficient.', it: 'Filtrazione insufficiente.', fr: 'Filtration insuffisante.', es: 'Filtración insuficiente.', zh: '过滤不足。' },
+  // Temp / Umidità (solo definizione: soglie per tipologia da definire con FGB)
+  'xp.def_temp': { en: 'Indoor air temperature. Comfort bands depend on season and building type — to be defined with FGB.', it: "Temperatura dell'aria interna. Le fasce di comfort dipendono da stagione e tipologia di edificio — da definire con FGB.", fr: "Température de l'air intérieur. Plages de confort selon saison et type de bâtiment — à définir avec FGB.", es: 'Temperatura del aire interior. Las bandas de confort dependen de la estación y del edificio — por definir con FGB.', zh: '室内空气温度。舒适区间取决于季节与建筑类型——待与 FGB 确定。' },
+  'xp.def_humidity': { en: 'Relative humidity. Very low dries airways; very high favours mould. Comfort bands to be defined with FGB.', it: "Umidità relativa. Troppo bassa secca le vie respiratorie; troppo alta favorisce le muffe. Fasce da definire con FGB.", fr: "Humidité relative. Trop basse assèche les voies respiratoires ; trop haute favorise les moisissures.", es: 'Humedad relativa. Muy baja reseca las vías respiratorias; muy alta favorece el moho.', zh: '相对湿度。过低使呼吸道干燥；过高易生霉。区间待与 FGB 确定。' },
+  // Energy
+  'xp.def_intensity': { en: 'Energy used in a year per square metre. Lets you compare buildings of different sizes.', it: 'Energia consumata in un anno per metro quadro. Permette di confrontare edifici di dimensioni diverse.', fr: "Énergie consommée en un an par mètre carré. Permet de comparer des bâtiments de tailles différentes.", es: 'Energía consumida en un año por metro cuadrado. Permite comparar edificios de distintos tamaños.', zh: '每平方米的年耗能。可比较不同规模的建筑。' },
+  'xp.int_l1': { en: 'Very high efficiency building.', it: 'Edificio ad altissima efficienza.', fr: 'Bâtiment à très haute efficacité.', es: 'Edificio de altísima eficiencia.', zh: '能效极高的建筑。' },
+  'xp.int_l2': { en: 'In line with a well-run modern office.', it: 'In linea con un ufficio moderno ben gestito.', fr: 'Conforme à un bureau moderne bien géré.', es: 'En línea con una oficina moderna bien gestionada.', zh: '与管理良好的现代办公楼相当。' },
+  'xp.int_l3': { en: 'Savings possible on HVAC schedules and night loads.', it: 'Margini di risparmio su orari HVAC e carichi notturni.', fr: 'Économies possibles sur horaires CVC et charges nocturnes.', es: 'Margen de ahorro en horarios HVAC y cargas nocturnas.', zh: '可在暖通时段与夜间负载上节能。' },
+  'xp.int_l4': { en: 'High consumption: an energy audit is needed.', it: 'Consumi elevati: serve una diagnosi energetica.', fr: "Consommation élevée : un audit énergétique s'impose.", es: 'Consumo elevado: se necesita una auditoría energética.', zh: '耗能偏高：需要能源诊断。' },
+  'xp.def_power': { en: 'Instant electrical load versus the contracted limit. Staying below the limit avoids penalties and oversizing.', it: 'Potenza istantanea rispetto al limite di contratto. Restare sotto il limite evita penali e sovradimensionamenti.', fr: 'Puissance instantanée par rapport à la limite contractuelle.', es: 'Potencia instantánea respecto al límite contratado.', zh: '即时负载与合同限值的对比。保持低于限值可避免罚金。' },
+  // Certificazioni (soglie ufficiali)
+  'xp.def_leed': { en: 'Building sustainability protocol (USGBC). The level depends on points earned out of 110.', it: "Protocollo di sostenibilità dell'edificio (USGBC). Il livello dipende dai punti ottenuti su 110.", fr: "Protocole de durabilité du bâtiment (USGBC). Le niveau dépend des points obtenus sur 110.", es: 'Protocolo de sostenibilidad del edificio (USGBC). El nivel depende de los puntos sobre 110.', zh: '建筑可持续认证（USGBC）。等级取决于 110 分中的得分。' },
+  'xp.def_well': { en: 'Protocol focused on occupant health and wellbeing (IWBI).', it: 'Protocollo centrato su salute e benessere degli occupanti (IWBI).', fr: 'Protocole centré sur la santé et le bien-être des occupants (IWBI).', es: 'Protocolo centrado en la salud y el bienestar de los ocupantes (IWBI).', zh: '关注使用者健康与福祉的认证（IWBI）。' },
+  'xp.def_breeam': { en: 'UK-born sustainability protocol; the level is a percentage score.', it: 'Protocollo di sostenibilità di origine UK; il livello è un punteggio percentuale.', fr: "Protocole de durabilité d'origine britannique ; le niveau est un score en pourcentage.", es: 'Protocolo de sostenibilidad de origen británico; el nivel es un porcentaje.', zh: '源自英国的可持续认证；等级为百分比得分。' },
+  'xp.leed_l1': { en: 'Base requirements met.', it: 'Requisiti di base soddisfatti.', fr: 'Exigences de base satisfaites.', es: 'Requisitos básicos cumplidos.', zh: '满足基本要求。' },
+  'xp.leed_l2': { en: 'Good performance across categories.', it: 'Buone prestazioni su più categorie.', fr: 'Bonnes performances sur plusieurs catégories.', es: 'Buen desempeño en varias categorías.', zh: '多类别表现良好。' },
+  'xp.leed_l3': { en: 'High performance; Platinum within reach.', it: 'Prestazioni alte; il Platinum è a portata.', fr: 'Hautes performances ; le Platinum est à portée.', es: 'Alto desempeño; el Platinum está al alcance.', zh: '高水平表现；铂金级可期。' },
+  'xp.leed_l4': { en: 'The highest level of the protocol.', it: 'Il livello più alto del protocollo.', fr: 'Le niveau le plus élevé du protocole.', es: 'El nivel más alto del protocolo.', zh: '该认证的最高等级。' },
   'kpi.energy_intensity': { en: 'Energy Intensity', it: 'Intensità energetica', fr: 'Intensité énergétique', es: 'Intensidad energética', zh: '能耗强度' },
   'kpi.air_quality': { en: 'Air Quality', it: 'Qualità dell\'aria', fr: 'Qualité de l\'air', es: 'Calidad del aire', zh: '空气质量' },
   'kpi.active_sites': { en: 'Active Sites', it: 'Siti attivi', fr: 'Sites actifs', es: 'Sitios activos', zh: '活跃站点' },
