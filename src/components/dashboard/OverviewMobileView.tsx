@@ -15,7 +15,7 @@
  * carosello che intercetta gli swipe orizzontali.
  */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud } from "lucide-react";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
@@ -185,6 +185,14 @@ const LimitBar = ({ ratio, light }: { ratio: number; light?: boolean }) => (
   </div>
 );
 
+/** Modulo non installato: una sola riga in trasparenza al posto della
+    schermata intera (brief §5.3). snap-none: lo scroll la attraversa. */
+const NotMonitoredRow = ({ text }: { text: string }) => (
+  <section className="snap-none shrink-0 flex items-center justify-center bg-[#01474b]" style={{ minHeight: 56 }}>
+    <span className="text-white/30 text-[12px] font-bold tracking-[0.18em] uppercase">{text}</span>
+  </section>
+);
+
 /**
  * Indicatore di posizione fra le schermate: sostituisce la scrollbar di
  * sistema, che sul WebView si materializzava come una banda opaca sul bordo
@@ -229,7 +237,7 @@ const ModuleScreen = ({
   values, limitRatio, big, bigUnit, bigColor, rows, ctaLabel, onCta, light, buildingClass, pitch,
   centerContent,
 }: any) => (
-  <section className="h-full snap-start snap-always flex flex-col shrink-0">
+  <section data-screen className="h-full snap-start snap-always flex flex-col shrink-0">
     <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} outdoorLabel={outdoorLabel} />
     <div
       className={`flex-1 flex flex-col items-center text-center relative -mt-[26px] px-5 pt-11 pb-16 ${buildingClass} ${
@@ -315,16 +323,40 @@ export const OverviewMobileView = ({
   const airRatio = ratioFromLimit(airMetrics.avgCo2 ?? airMetrics.co2, airMetrics.co2Limit);
   const airPct = airMetrics.co2Limit ? Math.round(airRatio * 100) : undefined;
 
+  /** Stati di modulo (brief §5.3): derivati dalle INSTALLAZIONI, mai
+      dall'assenza di dati. `enabled` viene dai flag sites.module_* (accesi
+      dall'assegnazione dei device): non installato = flag spento; offline =
+      installato ma senza dati recenti (level NO_DATA). Un sito offline non
+      deve mai apparire «non installato». */
+  type ModState = "active" | "not_installed" | "offline";
+  const stateOf = (enabled: boolean, level: StatusLevel): ModState =>
+    !enabled ? "not_installed" : level === "NO_DATA" ? "offline" : "active";
+
   const modules = [
-    { key: "energy", icon: Zap, score: energy.score, enabled: moduleConfig.energy.enabled, level: energy.level },
-    { key: "air", icon: Wind, score: air.score, enabled: moduleConfig.air.enabled, level: air.level },
-    { key: "water", icon: Droplet, score: water.score, enabled: moduleConfig.water.enabled, level: water.level },
+    { key: "energy", icon: Zap, score: energy.score, enabled: moduleConfig.energy.enabled, level: energy.level, state: stateOf(moduleConfig.energy.enabled, energy.level) },
+    { key: "air", icon: Wind, score: air.score, enabled: moduleConfig.air.enabled, level: air.level, state: stateOf(moduleConfig.air.enabled, air.level) },
+    { key: "water", icon: Droplet, score: water.score, enabled: moduleConfig.water.enabled, level: water.level, state: stateOf(moduleConfig.water.enabled, water.level) },
   ];
 
+  /** Nota transitoria al tap su un modulo non installato (brief §5.3). */
+  const [moduleNote, setModuleNote] = useState(false);
+  const noteTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(noteTimer.current), []);
+  const showModuleNote = () => {
+    setModuleNote(true);
+    window.clearTimeout(noteTimer.current);
+    noteTimer.current = window.setTimeout(() => setModuleNote(false), 2500);
+  };
+
   const hasCerts = !!certifications && certifications.length > 0;
-  // hero, energy, air, water, [certifications], fingerprint
-  const screenCount = hasCerts ? 6 : 5;
-  const AIR_INDEX = 2; // unica schermata a fondo chiaro: i puntini vanno scuri
+  // Schermate a piena altezza: hero + moduli INSTALLATI + [cert] + alert.
+  // I moduli non installati sono righe compatte (brief §5.3) e non contano.
+  const fullModules = modules.filter(m => m.state !== "not_installed");
+  const screenCount = 1 + fullModules.length + (hasCerts ? 1 : 0) + 1;
+  // unica schermata a fondo chiaro (aria): i puntini vanno scuri
+  const AIR_INDEX = moduleConfig.air.enabled
+    ? 1 + (moduleConfig.energy.enabled ? 1 : 0)
+    : -1;
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeScreen, setActiveScreen] = useState(0);
@@ -332,9 +364,15 @@ export const OverviewMobileView = ({
   const onScroll = useCallback(() => {
     const el = scrollerRef.current;
     if (!el || !el.clientHeight) return;
-    const i = Math.min(screenCount - 1, Math.max(0, Math.round(el.scrollTop / el.clientHeight)));
-    setActiveScreen((prev) => (prev === i ? prev : i));
-  }, [screenCount]);
+    // le righe compatte dei moduli non installati rompono l'assunto
+    // «ogni sezione è alta una schermata»: si usa la posizione reale
+    const tops: number[] = [];
+    el.querySelectorAll("[data-screen]").forEach(n => tops.push((n as HTMLElement).offsetTop));
+    if (tops.length === 0) return;
+    let best = 0;
+    tops.forEach((tp, i) => { if (Math.abs(tp - el.scrollTop) < Math.abs(tops[best] - el.scrollTop)) best = i; });
+    setActiveScreen(prev => (prev === best ? prev : best));
+  }, []);
 
   return (
     <div className="relative h-full">
@@ -346,7 +384,7 @@ export const OverviewMobileView = ({
       >
       {/* ── 1 · HERO: score complessivo ── */}
       {/* pb-16: clearance per la barra periodo/report/settings in overlay */}
-      <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-5 pt-10 pb-16 bg-gradient-to-b from-[#016368] via-[#009193] to-[#33a7a9]">
+      <section data-screen className="relative h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-5 pt-10 pb-16 bg-gradient-to-b from-[#016368] via-[#009193] to-[#33a7a9]">
         <div className="font-bold text-[19px] tracking-wide">{siteName}</div>
         <div className="text-[11px] opacity-80 tracking-[0.08em] flex items-center justify-center gap-1">
           <span>{(city || "").toUpperCase()}</span>
@@ -395,12 +433,22 @@ export const OverviewMobileView = ({
             <button
               key={m.key}
               type="button"
-              onClick={() => m.enabled && onNavigate?.(m.key)}
-              className={`text-center transition-transform active:scale-95 ${m.enabled ? "" : "opacity-45"}`}
+              onClick={() => (m.state === "not_installed" ? showModuleNote() : onNavigate?.(m.key))}
+              className={`text-center transition-transform active:scale-95 ${m.state === "not_installed" ? "opacity-30" : ""}`}
             >
-              <m.icon className="w-[21px] h-[21px] mx-auto" />
+              {/* offline (mockup §5.3): icona piena + pallino ambra in alto a dx */}
+              <span className="relative inline-block">
+                <m.icon className="w-[21px] h-[21px] mx-auto" />
+                {m.state === "offline" && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full"
+                    style={{ background: "#f59e0b", border: "1.2px solid #fff" }}
+                  />
+                )}
+              </span>
               <div className="text-[22px] font-bold leading-tight mt-1">
-                {m.enabled && m.level !== "NO_DATA" ? m.score : "—"}
+                {m.state === "active" ? m.score : "—"}
               </div>
               <div className="text-[11px] tracking-[0.16em] opacity-75 font-bold">{t(`ovm.${m.key}`)}</div>
             </button>
@@ -412,13 +460,22 @@ export const OverviewMobileView = ({
           </div>
         </div>
 
+        {moduleNote && (
+          <div className="absolute left-8 right-8 bottom-24 z-10 text-[12px] text-white bg-[#01474b]/90 rounded-full px-4 py-2.5 shadow-lg">
+            {t("ovm.module_not_installed")}
+          </div>
+        )}
+
         <div className="opacity-65 text-[11px] tracking-[0.24em] pt-2">
           {t("ovm.scroll")}
           <span className="block text-[13px] motion-safe:animate-bounce">▾</span>
         </div>
       </section>
 
-      {/* ── 2 · ENERGY ── */}
+      {/* ── 2 · ENERGY (riga compatta se non installato, brief §5.3) ── */}
+      {modules[0].state === "not_installed" ? (
+        <NotMonitoredRow text={t("ovm.not_monitored_row").replace("{m}", t("ovm.energy"))} />
+      ) : (
       <ModuleScreen
         city={city} outdoorTemp={outdoorTemp}
         icon={Zap} label={t("ovm.energy")}
@@ -451,8 +508,12 @@ export const OverviewMobileView = ({
         ctaLabel={moduleConfig.energy.enabled ? t("ovm.cta_energy") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.energy.enabled && onNavigate?.("energy")}
       />
+      )}
 
       {/* ── 3 · AIR (edificio chiaro: testi scuri) ── */}
+      {modules[1].state === "not_installed" ? (
+        <NotMonitoredRow text={t("ovm.not_monitored_row").replace("{m}", t("ovm.air"))} />
+      ) : (
       <ModuleScreen
         light
         city={city} outdoorTemp={outdoorTemp}
@@ -482,8 +543,12 @@ export const OverviewMobileView = ({
         ctaLabel={moduleConfig.air.enabled ? t("ovm.cta_air") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.air.enabled && onNavigate?.("air")}
       />
+      )}
 
       {/* ── 4 · WATER ── */}
+      {modules[2].state === "not_installed" ? (
+        <NotMonitoredRow text={t("ovm.not_monitored_row").replace("{m}", t("ovm.water"))} />
+      ) : (
       <ModuleScreen
         city={city} outdoorTemp={outdoorTemp}
         icon={Droplet} label={t("ovm.water")}
@@ -499,6 +564,7 @@ export const OverviewMobileView = ({
         ctaLabel={moduleConfig.water.enabled ? t("ovm.cta_water") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.water.enabled && onNavigate?.("water")}
       />
+      )}
 
       {/* ── 4b · CERTIFICATIONS (grigio, solo se presenti) ── */}
       {certifications && certifications.length > 0 && (
@@ -535,7 +601,7 @@ export const OverviewMobileView = ({
 
       {/* ── 5 · ALERTS (il radar del fingerprint e' stato tolto: non era
              utile — rev 15/09, allineato al desktop) ── */}
-      <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b]">
+      <section data-screen className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b]">
         <AlertTriangle className="w-8 h-8 opacity-80 mb-2" aria-hidden="true" />
         <h4 className="m-0 text-[11px] font-bold tracking-[0.3em] opacity-75">
           {t("ovm.alerts_open").replace("{n}", nf0.format(alerts.criticalCount + alerts.warningCount))}

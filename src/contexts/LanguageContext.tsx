@@ -554,6 +554,8 @@ const translations: Record<string, Record<Language, string>> = {
   'ovm.active_certs': { en: '{n} active certification{s}', it: '{n} certificazion{s_it} attiv{s_it2}', fr: '{n} certification{s} active{s}', es: '{n} certificación{s_es} activa{s}', zh: '{n} 项有效认证' },
   'ovm.alerts_open': { en: 'ALERTS · {n} OPEN', it: 'ALLARMI · {n} APERTI', fr: 'ALERTES · {n} OUVERTES', es: 'ALERTAS · {n} ABIERTAS', zh: '警报 · {n} 条未处理' },
   'ovm.no_alerts': { en: 'No open alerts', it: 'Nessun allarme aperto', fr: 'Aucune alerte ouverte', es: 'Sin alertas abiertas', zh: '没有未处理的警报' },
+  'ovm.module_not_installed': { en: 'Module not installed at this site', it: 'Modulo non installato in questo sito', fr: 'Module non installé sur ce site', es: 'Módulo no instalado en este sitio', zh: '该站点未安装此模块' },
+  'ovm.not_monitored_row': { en: '{m} · not monitored', it: '{m} · non monitorato', fr: '{m} · non surveillé', es: '{m} · no monitorizado', zh: '{m} · 未监测' },
 
   // ── Pannello KPI mobile (brief §2.3/§4.3: mischiava IT e EN hardcoded) ──
   'kpi.energy_intensity': { en: 'Energy Intensity', it: 'Intensità energetica', fr: 'Intensité énergétique', es: 'Intensidad energética', zh: '能耗强度' },
