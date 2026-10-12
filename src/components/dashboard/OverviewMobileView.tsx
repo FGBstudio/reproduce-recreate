@@ -477,7 +477,7 @@ export const OverviewMobileView = ({
         <NotMonitoredRow text={t("ovm.not_monitored_row").replace("{m}", t("ovm.energy"))} />
       ) : (
       <ModuleScreen
-        city={city} outdoorTemp={outdoorTemp}
+        city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
         icon={Zap} label={t("ovm.energy")}
         buildingClass="bg-gradient-to-b from-[#028084] to-[#016368]"
         verdict={t(VERDICT_KEY[energy.level])}
@@ -516,7 +516,7 @@ export const OverviewMobileView = ({
       ) : (
       <ModuleScreen
         light
-        city={city} outdoorTemp={outdoorTemp}
+        city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
         icon={Wind} label={t("ovm.air")}
         buildingClass="bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"
         verdict={t(VERDICT_KEY[air.level])}
@@ -550,7 +550,7 @@ export const OverviewMobileView = ({
         <NotMonitoredRow text={t("ovm.not_monitored_row").replace("{m}", t("ovm.water"))} />
       ) : (
       <ModuleScreen
-        city={city} outdoorTemp={outdoorTemp}
+        city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
         icon={Droplet} label={t("ovm.water")}
         buildingClass="bg-gradient-to-b from-[#02a3a5] to-[#009193]"
         verdict={t(VERDICT_KEY[water.level])}
@@ -569,7 +569,7 @@ export const OverviewMobileView = ({
       {/* ── 4b · CERTIFICATIONS (grigio, solo se presenti) ── */}
       {certifications && certifications.length > 0 && (
         <ModuleScreen
-          city={city} outdoorTemp={outdoorTemp}
+          city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
           icon={Award} label={t("ovm.cta_cert").replace(" →", "")}
           buildingClass="bg-gradient-to-b from-[#7d8a8f] to-[#5c696e]"
           verdict={t("ovm.certified")}
