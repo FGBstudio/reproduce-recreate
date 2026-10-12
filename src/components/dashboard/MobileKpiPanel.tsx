@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ChevronDown } from "lucide-react";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
 import { co2Level, CO2_LEVEL_COLORS } from "@/lib/airQuality";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
@@ -18,6 +19,7 @@ interface MobileKpiPanelProps {
 
 // Inline region stats — no fixed positioning, used inside panel
 const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) => {
+  const { t } = useLanguage();
   const { projects: mergedProjects } = useAllProjects();
   const { intensityByRegion, avgCo2ByRegion, co2SiteCountByRegion } = useRegionEnergyIntensity();
 
@@ -46,12 +48,12 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
   return (
     <div className="grid grid-cols-2 gap-2">
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
-        <div className="text-xs text-muted-foreground mb-1">Energy Intensity</div>
+        <div className="text-xs text-muted-foreground mb-1">{t("kpi.energy_intensity")}</div>
         <div className="text-xl font-bold text-foreground">{(displayIntensity / 1000).toFixed(2)}</div>
         <div className="text-[11px] text-muted-foreground">MWh/m²</div>
       </div>
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
-        <div className="text-xs text-muted-foreground mb-1">Air Quality</div>
+        <div className="text-xs text-muted-foreground mb-1">{t("kpi.air_quality")}</div>
         <div
           className={`text-xl font-bold ${
             aqScore === "—" ? "text-foreground" : CO2_LEVEL_COLORS[aqScore]
@@ -64,11 +66,11 @@ const RegionPerformanceInline = ({ currentRegion }: { currentRegion: string }) =
         )}
       </div>
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
-        <div className="text-xs text-muted-foreground mb-1">Active Sites</div>
+        <div className="text-xs text-muted-foreground mb-1">{t("kpi.active_sites")}</div>
         <div className="text-xl font-bold text-foreground">{displayOnline}</div>
       </div>
       <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/8">
-        <div className="text-xs text-muted-foreground mb-1">Critical Alerts</div>
+        <div className="text-xs text-muted-foreground mb-1">{t("kpi.critical_alerts")}</div>
         <div
           className={`text-xl font-bold ${
             displayCritical > 0 ? "text-rose-400" : "text-emerald-400"
@@ -89,6 +91,7 @@ const MobileKpiPanel = ({
   selectedHolding,
   showBrandOverlay,
 }: MobileKpiPanelProps) => {
+  const { t } = useLanguage();
   // Back Android chiude il pannello (pila overlay, brief §2.2)
   useBackDismiss(isOpen, onClose);
   return (
@@ -120,7 +123,7 @@ const MobileKpiPanel = ({
         onClick={onClose}
         className="absolute top-2 right-4 flex items-center justify-center rounded-full hover:bg-foreground/10 transition-colors"
         style={{ minWidth: 48, minHeight: 48 }}
-        aria-label="Chiudi pannello KPI"
+        aria-label={t("kpi.close")}
       >
         <ChevronDown className="w-5 h-5 text-muted-foreground" />
       </button>
@@ -135,26 +138,22 @@ const MobileKpiPanel = ({
         {showBrandOverlay ? (
           <div className="space-y-3">
             <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-              {selectedBrand ? "Brand Overview" : "Holding Overview"}
+              {selectedBrand ? t("kpi.brand_overview") : t("kpi.holding_overview")}
             </h3>
             <p className="text-xs text-muted-foreground text-center py-6">
-              Seleziona un sito sulla mappa per vedere i dettagli,
-              <br />
-              oppure usa i filtri per aggregare i dati.
+              {t("kpi.select_site_hint")}
             </p>
           </div>
         ) : currentRegion !== "GLOBAL" ? (
           <div className="space-y-3">
             <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-              Regional Performance — {currentRegion}
+              {t("kpi.regional_performance")} — {currentRegion}
             </h3>
             <RegionPerformanceInline currentRegion={currentRegion} />
           </div>
         ) : (
-          <div className="flex items-center justify-center h-24 text-muted-foreground text-sm text-center">
-            Seleziona una regione o usa i filtri
-            <br />
-            per vedere i KPI
+          <div className="flex items-center justify-center h-24 text-muted-foreground text-sm text-center px-6">
+            {t("kpi.select_region_hint")}
           </div>
         )}
       </div>

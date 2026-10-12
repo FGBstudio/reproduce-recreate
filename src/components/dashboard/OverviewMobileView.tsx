@@ -15,7 +15,8 @@
  * carosello che intercetta gli swipe orizzontali.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud } from "lucide-react";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 
@@ -81,21 +82,18 @@ const CERT_LOGOS: Record<string, string> = {
   BREEAM: "/breeam_logo.webp",
 };
 
-const VERDICT: Record<StatusLevel, string> = {
-  GOOD: "Good",
-  OK: "Fair",
-  WARNING: "Attention",
-  CRITICAL: "Critical",
-  NO_DATA: "No data",
+const VERDICT_KEY: Record<StatusLevel, string> = {
+  GOOD: "ovm.v_good",
+  OK: "ovm.v_fair",
+  WARNING: "ovm.v_attention",
+  CRITICAL: "ovm.v_critical",
+  NO_DATA: "ovm.v_nodata",
 };
 
-const fmt = (v?: number, digits = 1) =>
-  typeof v === "number" && Number.isFinite(v) ? v.toFixed(digits) : "—";
-const fmtInt = (v?: number) =>
-  typeof v === "number" && Number.isFinite(v) ? String(Math.round(v)) : "—";
+
 
 /** Anello dello score complessivo. */
-const ScoreRing = ({ score, dash }: { score: number; dash?: boolean }) => {
+const ScoreRing = ({ score, dash, label }: { score: number; dash?: boolean; label: string }) => {
   const r = 68;
   const circ = 2 * Math.PI * r;
   return (
@@ -107,16 +105,16 @@ const ScoreRing = ({ score, dash }: { score: number; dash?: boolean }) => {
         transform="rotate(-90 82 82)"
       />
       <text x="82" y="90" textAnchor="middle" fontSize="44" fontWeight="700" fill="#ffffff">{dash ? "—" : score}</text>
-      <text x="82" y="110" textAnchor="middle" fontSize="10" letterSpacing="4" fill="rgba(255,255,255,.75)">SCORE</text>
+      <text x="82" y="110" textAnchor="middle" fontSize="10" letterSpacing="4" fill="rgba(255,255,255,.75)">{label}</text>
     </svg>
   );
 };
 
 /** Fascia con le condizioni esterne al sito, sopra l'edificio. */
-const Outdoor = ({ city, temp, extra }: { city?: string; temp?: number; extra?: string }) => (
+const Outdoor = ({ city, temp, extra, outdoorLabel }: { city?: string; temp?: number; extra?: string; outdoorLabel: string }) => (
   <div className="relative overflow-hidden flex-shrink-0 px-5 pt-10 pb-9 text-center text-[#01565b] bg-gradient-to-b from-white via-[#eef8f9] to-[#9fd5d9]">
     <div className="text-[9px] font-bold tracking-[0.26em] opacity-70">
-      {(city || "OUTDOOR").toUpperCase()}{city ? " · OUTDOOR" : ""}
+      {(city || outdoorLabel).toUpperCase()}{city ? ` · ${outdoorLabel}` : ""}
     </div>
     <div className="text-[17px] font-semibold mt-1 flex items-center justify-center gap-1.5">
       <Cloud className="w-4 h-4 opacity-80" aria-hidden="true" />
@@ -227,12 +225,12 @@ const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onC
 
 /** Sezione a piena altezza: fascia esterna + edificio col contenuto del modulo. */
 const ModuleScreen = ({
-  city, outdoorTemp, outdoorExtra, icon, label, verdict, scoreLine,
+  city, outdoorTemp, outdoorExtra, outdoorLabel, icon, label, verdict, scoreLine,
   values, limitRatio, big, bigUnit, bigColor, rows, ctaLabel, onCta, light, buildingClass, pitch,
   centerContent,
 }: any) => (
   <section className="h-full snap-start snap-always flex flex-col shrink-0">
-    <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} />
+    <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} outdoorLabel={outdoorLabel} />
     <div
       className={`flex-1 flex flex-col items-center text-center relative -mt-[26px] px-5 pt-11 pb-16 ${buildingClass} ${
         light ? "text-[#01474b]" : "text-white"
@@ -296,6 +294,22 @@ export const OverviewMobileView = ({
   power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, notInstalled, certCount = 0,
   verdictHeadline, isRealData, onNavigate, certifications,
 }: OverviewMobileViewProps) => {
+  const { t, language } = useLanguage();
+  // Numeri localizzati (brief §2.3): «12,4» in it/fr/es, «12.4» in en
+  const nf1 = useMemo(() => new Intl.NumberFormat(language, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), [language]);
+  const nf0 = useMemo(() => new Intl.NumberFormat(language, { maximumFractionDigits: 0 }), [language]);
+  const fmt = (v?: number, digits = 1) =>
+    typeof v === "number" && Number.isFinite(v) ? (digits === 0 ? nf0 : nf1).format(v) : "—";
+  const fmtInt = (v?: number) =>
+    typeof v === "number" && Number.isFinite(v) ? nf0.format(Math.round(v)) : "—";
+  /** Sostituisce {n} e i marcatori di plurale della chiave. */
+  const tn = (key: string, n: number) => t(key)
+    .replace("{n}", nf0.format(n))
+    .split("{s_it2}").join(n === 1 ? "a" : "e")
+    .split("{s_it}").join(n === 1 ? "e" : "i")
+    .split("{s_es}").join(n === 1 ? "" : "es")
+    .split("{s}").join(n === 1 ? "" : "s");
+  const outdoorLabel = t("ovm.outdoor");
   const energyRatio = ratioFromLimit(power.total, energyLimitKw);
   const energyPct = energyLimitKw ? Math.round(energyRatio * 100) : undefined;
   const airRatio = ratioFromLimit(airMetrics.avgCo2 ?? airMetrics.co2, airMetrics.co2Limit);
@@ -348,23 +362,21 @@ export const OverviewMobileView = ({
         {isRealData && (
           <div className="mt-1.5">
             <span className="inline-block text-[8px] font-bold tracking-[0.16em] text-[#01474b] bg-[#9fd5d9] px-2.5 py-[3px] rounded-full">
-              ● LIVE
+              ● {t("ovm.live")}
             </span>
           </div>
         )}
 
-        <div className="mt-auto mb-1.5"><ScoreRing score={overall.score} dash={notInstalled} /></div>
+        <div className="mt-auto mb-1.5"><ScoreRing score={overall.score} dash={notInstalled} label={t("ovm.score")} /></div>
         {/* Zero installazioni: niente "No data · 0/100", parole giuste per
             uno store certificato senza dispositivi (rev 15/09, come desktop) */}
         <div className="text-[34px] font-bold leading-none">
-          {notInstalled ? (certCount > 0 ? "Certified" : "Not monitored") : VERDICT[overall.level]}
+          {notInstalled ? (certCount > 0 ? t("ovm.certified") : t("ovm.not_monitored")) : t(VERDICT_KEY[overall.level])}
         </div>
         <div className="text-[11px] opacity-80 tracking-wide mb-auto px-4">
           {notInstalled
-            ? (certCount > 0
-              ? `${certCount} building certification${certCount === 1 ? "" : "s"} · monitoring not installed yet`
-              : "No monitoring devices installed yet")
-            : (verdictHeadline || `Overall performance · ${overall.score} / 100`)}
+            ? (certCount > 0 ? tn("ovm.certs_no_monitoring", certCount) : t("ovm.no_devices"))
+            : (verdictHeadline || t("ovm.overall_line").replace("{s}", String(overall.score)))}
         </div>
 
         <div className="flex gap-6 justify-center pt-1.5">
@@ -376,7 +388,7 @@ export const OverviewMobileView = ({
           >
             <Award className="w-[21px] h-[21px] mx-auto" />
             <div className="text-[22px] font-bold leading-tight mt-1">{certCount > 0 ? certCount : "—"}</div>
-            <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">AWARD</div>
+            <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.award")}</div>
           </button>
           {modules.map((m) => (
             <button
@@ -389,18 +401,18 @@ export const OverviewMobileView = ({
               <div className="text-[22px] font-bold leading-tight mt-1">
                 {m.enabled && m.level !== "NO_DATA" ? m.score : "—"}
               </div>
-              <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">{m.key.toUpperCase()}</div>
+              <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">{t(`ovm.${m.key}`)}</div>
             </button>
           ))}
           <div className="text-center" style={{ color: alerts.criticalCount > 0 ? "#f9cace" : undefined }}>
             <AlertTriangle className="w-[21px] h-[21px] mx-auto" />
             <div className="text-[22px] font-bold leading-tight mt-1">{alerts.criticalCount + alerts.warningCount}</div>
-            <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">ALERTS</div>
+            <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.alerts")}</div>
           </div>
         </div>
 
         <div className="opacity-65 text-[9px] tracking-[0.24em] pt-2">
-          SCROLL
+          {t("ovm.scroll")}
           <span className="block text-[13px] motion-safe:animate-bounce">▾</span>
         </div>
       </section>
@@ -408,37 +420,34 @@ export const OverviewMobileView = ({
       {/* ── 2 · ENERGY ── */}
       <ModuleScreen
         city={city} outdoorTemp={outdoorTemp}
-        icon={Zap} label="Energy"
+        icon={Zap} label={t("ovm.energy")}
         buildingClass="bg-gradient-to-b from-[#028084] to-[#016368]"
-        verdict={VERDICT[energy.level]}
-        scoreLine={`score ${energy.score} / 100`}
+        verdict={t(VERDICT_KEY[energy.level])}
+        scoreLine={t("ovm.score_line").replace("{s}", String(energy.score))}
         values={moduleConfig.energy.enabled ? [
-          { value: fmt(energyAvgKw), unit: "kW", label: `AVG ${periodLabel.toUpperCase()}` },
-          { value: energyLimitKw ? fmt(energyLimitKw, 0) : "—", unit: energyLimitKw ? "kW" : undefined, label: "LIMIT SET" },
+          { value: fmt(energyAvgKw), unit: "kW", label: t("ovm.avg_period").replace("{p}", periodLabel.toUpperCase()) },
+          { value: energyLimitKw ? fmt(energyLimitKw, 0) : "—", unit: energyLimitKw ? "kW" : undefined, label: t("ovm.limit_set") },
           {
             value: energyPct != null ? String(energyPct) : "—", unit: energyPct != null ? "%" : undefined,
-            label: "OF LIMIT", color: energyPct != null ? performanceColor(energyRatio, "dark") : undefined,
+            label: t("ovm.of_limit"), color: energyPct != null ? performanceColor(energyRatio, "dark") : undefined,
           },
         ] : undefined}
         limitRatio={energyLimitKw ? energyRatio : undefined}
         big={fmt(power.total)}
-        bigUnit="KW · CURRENT LOAD"
+        bigUnit={t("ovm.current_load")}
         // Senza dati niente colore di performance: un "—" bordeaux sembrerebbe
         // un allarme invece che assenza di telemetria
         bigColor={energy.level !== "NO_DATA" && power.total != null
           ? performanceColor(energyLimitKw ? energyRatio : ratioFromScore(energy.score), "dark")
           : undefined}
         rows={[
-          { label: "HVAC", value: fmt(power.hvac) },
-          { label: "Lighting", value: fmt(power.lighting) },
-          { label: "Plugs", value: fmt(power.plugs) },
-          { label: "Other", value: fmt(power.other) },
+          { label: t("ovm.row_hvac"), value: fmt(power.hvac) },
+          { label: t("ovm.row_lighting"), value: fmt(power.lighting) },
+          { label: t("ovm.row_plugs"), value: fmt(power.plugs) },
+          { label: t("ovm.row_other"), value: fmt(power.other) },
         ]}
-        pitch={!moduleConfig.energy.enabled ? {
-          title: "Every kWh has a story.",
-          body: "See where energy goes, hour by hour — and what it costs you.",
-        } : undefined}
-        ctaLabel={moduleConfig.energy.enabled ? "ENERGY DASHBOARD →" : "ASK US HOW →"}
+        pitch={!moduleConfig.energy.enabled ? { title: t("ovm.pitch_energy_t"), body: t("ovm.pitch_energy_b") } : undefined}
+        ctaLabel={moduleConfig.energy.enabled ? t("ovm.cta_energy") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.energy.enabled && onNavigate?.("energy")}
       />
 
@@ -446,53 +455,47 @@ export const OverviewMobileView = ({
       <ModuleScreen
         light
         city={city} outdoorTemp={outdoorTemp}
-        icon={Wind} label="Air"
+        icon={Wind} label={t("ovm.air")}
         buildingClass="bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"
-        verdict={VERDICT[air.level]}
-        scoreLine={`IAQ index · ${air.score} / 100`}
+        verdict={t(VERDICT_KEY[air.level])}
+        scoreLine={t("ovm.iaq_line").replace("{s}", String(air.score))}
         values={moduleConfig.air.enabled ? [
-          { value: fmtInt(airMetrics.avgCo2), unit: "ppm", label: "AVG CO₂" },
-          { value: airMetrics.co2Limit ? fmtInt(airMetrics.co2Limit) : "—", unit: airMetrics.co2Limit ? "ppm" : undefined, label: "LIMIT SET" },
+          { value: fmtInt(airMetrics.avgCo2), unit: "ppm", label: t("ovm.avg_co2") },
+          { value: airMetrics.co2Limit ? fmtInt(airMetrics.co2Limit) : "—", unit: airMetrics.co2Limit ? "ppm" : undefined, label: t("ovm.limit_set") },
           {
             value: airPct != null ? String(airPct) : "—", unit: airPct != null ? "%" : undefined,
-            label: "OF LIMIT", color: airPct != null ? performanceColor(airRatio, "light") : undefined,
+            label: t("ovm.of_limit"), color: airPct != null ? performanceColor(airRatio, "light") : undefined,
           },
         ] : undefined}
         limitRatio={airMetrics.co2Limit ? airRatio : undefined}
         big={air.level === "NO_DATA" ? "—" : String(air.score)}
-        bigUnit="IAQ INDEX · NOW"
+        bigUnit={t("ovm.iaq_now")}
         bigColor={air.level !== "NO_DATA" ? performanceColor(ratioFromScore(air.score), "light") : undefined}
         rows={[
-          { label: "Temp", value: airMetrics.temperature != null ? `${fmt(airMetrics.temperature)}°` : "—" },
-          { label: "Humidity", value: airMetrics.humidity != null ? `${fmtInt(airMetrics.humidity)}%` : "—" },
+          { label: t("ovm.row_temp"), value: airMetrics.temperature != null ? `${fmt(airMetrics.temperature)}°` : "—" },
+          { label: t("ovm.row_humidity"), value: airMetrics.humidity != null ? `${fmtInt(airMetrics.humidity)}%` : "—" },
           { label: "TVOC", value: fmtInt(airMetrics.voc) },
           { label: "PM2.5", value: fmtInt(airMetrics.pm25) },
         ]}
-        pitch={!moduleConfig.air.enabled ? {
-          title: "You breathe it all day.",
-          body: "CO₂, humidity and particles — measured where your people actually work.",
-        } : undefined}
-        ctaLabel={moduleConfig.air.enabled ? "AIR DASHBOARD →" : "ASK US HOW →"}
+        pitch={!moduleConfig.air.enabled ? { title: t("ovm.pitch_air_t"), body: t("ovm.pitch_air_b") } : undefined}
+        ctaLabel={moduleConfig.air.enabled ? t("ovm.cta_air") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.air.enabled && onNavigate?.("air")}
       />
 
       {/* ── 4 · WATER ── */}
       <ModuleScreen
         city={city} outdoorTemp={outdoorTemp}
-        icon={Droplet} label="Water"
+        icon={Droplet} label={t("ovm.water")}
         buildingClass="bg-gradient-to-b from-[#02a3a5] to-[#009193]"
-        verdict={VERDICT[water.level]}
-        scoreLine={`score ${water.score} / 100`}
+        verdict={t(VERDICT_KEY[water.level])}
+        scoreLine={t("ovm.score_line").replace("{s}", String(water.score))}
         big={fmt(waterFlow)}
-        bigUnit="L/MIN · CURRENT FLOW"
+        bigUnit={t("ovm.current_flow")}
         bigColor={water.level !== "NO_DATA" && waterFlow != null
           ? performanceColor(ratioFromScore(water.score), "dark")
           : undefined}
-        pitch={!moduleConfig.water.enabled ? {
-          title: "You can't save what you don't measure.",
-          body: "Leaks, waste and savings — spotted live, before they hit the bill.",
-        } : undefined}
-        ctaLabel={moduleConfig.water.enabled ? "WATER DASHBOARD →" : "ASK US HOW →"}
+        pitch={!moduleConfig.water.enabled ? { title: t("ovm.pitch_water_t"), body: t("ovm.pitch_water_b") } : undefined}
+        ctaLabel={moduleConfig.water.enabled ? t("ovm.cta_water") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.water.enabled && onNavigate?.("water")}
       />
 
@@ -500,10 +503,10 @@ export const OverviewMobileView = ({
       {certifications && certifications.length > 0 && (
         <ModuleScreen
           city={city} outdoorTemp={outdoorTemp}
-          icon={Award} label="Certifications"
+          icon={Award} label={t("ovm.cta_cert").replace(" →", "")}
           buildingClass="bg-gradient-to-b from-[#7d8a8f] to-[#5c696e]"
-          verdict="Certified"
-          scoreLine={`${certifications.length} active certification${certifications.length > 1 ? "s" : ""}`}
+          verdict={t("ovm.certified")}
+          scoreLine={tn("ovm.active_certs", certifications.length)}
           centerContent={
             /* I loghi ufficiali al centro, distribuiti uniformemente;
                chip bianco per leggibilità sul grigio */
@@ -524,7 +527,7 @@ export const OverviewMobileView = ({
               ))}
             </div>
           }
-          ctaLabel="CERTIFICATIONS →"
+          ctaLabel={t("ovm.cta_cert")}
           onCta={() => onNavigate?.("certification")}
         />
       )}
@@ -534,11 +537,11 @@ export const OverviewMobileView = ({
       <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b]">
         <AlertTriangle className="w-8 h-8 opacity-80 mb-2" aria-hidden="true" />
         <h4 className="m-0 text-[9px] font-bold tracking-[0.3em] opacity-75">
-          ALERTS · {alerts.criticalCount + alerts.warningCount} OPEN
+          {t("ovm.alerts_open").replace("{n}", nf0.format(alerts.criticalCount + alerts.warningCount))}
         </h4>
         <div className="w-full max-w-[270px] mx-auto text-left text-[12.5px] mt-4">
           {alerts.list.length === 0 ? (
-            <div className="opacity-70 text-center py-4 text-[12px]">No open alerts</div>
+            <div className="opacity-70 text-center py-4 text-[12px]">{t("ovm.no_alerts")}</div>
           ) : (
             alerts.list.slice(0, 3).map((a, i) => (
               <div key={i} className="flex justify-between gap-2.5 py-2 border-b border-white/15">
@@ -550,7 +553,7 @@ export const OverviewMobileView = ({
         </div>
 
         <div className="mt-auto w-full flex justify-center">
-          <CtaGlass onClick={() => onNavigate?.("energy")}>ALL ALERTS →</CtaGlass>
+          <CtaGlass onClick={() => onNavigate?.("energy")}>{t("ovm.cta_alerts")}</CtaGlass>
         </div>
       </section>
       </div>
