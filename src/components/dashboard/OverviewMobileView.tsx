@@ -113,7 +113,7 @@ const ScoreRing = ({ score, dash, label }: { score: number; dash?: boolean; labe
 /** Fascia con le condizioni esterne al sito, sopra l'edificio. */
 const Outdoor = ({ city, temp, extra, outdoorLabel }: { city?: string; temp?: number; extra?: string; outdoorLabel: string }) => (
   <div className="relative overflow-hidden flex-shrink-0 px-5 pt-10 pb-9 text-center text-[#01565b] bg-gradient-to-b from-white via-[#eef8f9] to-[#9fd5d9]">
-    <div className="text-[9px] font-bold tracking-[0.26em] opacity-70">
+    <div className="text-[11px] font-bold tracking-[0.26em] opacity-70">
       {(city || outdoorLabel).toUpperCase()}{city ? ` · ${outdoorLabel}` : ""}
     </div>
     <div className="text-[17px] font-semibold mt-1 flex items-center justify-center gap-1.5">
@@ -167,7 +167,7 @@ const ValueRow = ({
           {it.value}
           {it.unit && <em className="not-italic text-[11px] font-semibold opacity-80 ml-0.5">{it.unit}</em>}
         </span>
-        <small className="text-[7.5px] tracking-[0.18em] opacity-70 font-bold mt-0.5">{it.label}</small>
+        <small className="text-[11px] tracking-[0.18em] opacity-70 font-bold mt-0.5">{it.label}</small>
       </div>
     ))}
   </div>
@@ -213,7 +213,7 @@ const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onC
   <button
     type="button"
     onClick={onClick}
-    className={`w-full max-w-[250px] py-3.5 rounded-full font-bold text-[10.5px] tracking-[0.14em] transition-all active:scale-[0.98] backdrop-blur-md border shadow-lg ${
+    className={`w-full max-w-[250px] min-h-[44px] py-3.5 rounded-full font-bold text-[11px] tracking-[0.14em] transition-all active:scale-[0.98] backdrop-blur-md border shadow-lg ${
       light
         ? "text-[#01474b] bg-white/40 border-[#01474b]/25"
         : "text-white bg-white/[0.16] border-white/40"
@@ -264,7 +264,7 @@ const ModuleScreen = ({
                 <div className="text-[64px] font-bold leading-none tracking-tight" style={bigColor ? { color: bigColor } : undefined}>
                   {big}
                 </div>
-                <div className="text-[9px] tracking-[0.26em] font-bold opacity-75 mt-2">{bigUnit}</div>
+                <div className="text-[11px] tracking-[0.26em] font-bold opacity-75 mt-2">{bigUnit}</div>
               </div>
             )}
             {rows && rows.length > 0 && (
@@ -328,6 +328,7 @@ export const OverviewMobileView = ({
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeScreen, setActiveScreen] = useState(0);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
   const onScroll = useCallback(() => {
     const el = scrollerRef.current;
     if (!el || !el.clientHeight) return;
@@ -361,7 +362,7 @@ export const OverviewMobileView = ({
         </div>
         {isRealData && (
           <div className="mt-1.5">
-            <span className="inline-block text-[8px] font-bold tracking-[0.16em] text-[#01474b] bg-[#9fd5d9] px-2.5 py-[3px] rounded-full">
+            <span className="inline-block text-[11px] font-bold tracking-[0.16em] text-[#01474b] bg-[#9fd5d9] px-2.5 py-[3px] rounded-full">
               ● {t("ovm.live")}
             </span>
           </div>
@@ -388,7 +389,7 @@ export const OverviewMobileView = ({
           >
             <Award className="w-[21px] h-[21px] mx-auto" />
             <div className="text-[22px] font-bold leading-tight mt-1">{certCount > 0 ? certCount : "—"}</div>
-            <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.award")}</div>
+            <div className="text-[11px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.award")}</div>
           </button>
           {modules.map((m) => (
             <button
@@ -401,17 +402,17 @@ export const OverviewMobileView = ({
               <div className="text-[22px] font-bold leading-tight mt-1">
                 {m.enabled && m.level !== "NO_DATA" ? m.score : "—"}
               </div>
-              <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">{t(`ovm.${m.key}`)}</div>
+              <div className="text-[11px] tracking-[0.16em] opacity-75 font-bold">{t(`ovm.${m.key}`)}</div>
             </button>
           ))}
           <div className="text-center" style={{ color: alerts.criticalCount > 0 ? "#f9cace" : undefined }}>
             <AlertTriangle className="w-[21px] h-[21px] mx-auto" />
             <div className="text-[22px] font-bold leading-tight mt-1">{alerts.criticalCount + alerts.warningCount}</div>
-            <div className="text-[8px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.alerts")}</div>
+            <div className="text-[11px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.alerts")}</div>
           </div>
         </div>
 
-        <div className="opacity-65 text-[9px] tracking-[0.24em] pt-2">
+        <div className="opacity-65 text-[11px] tracking-[0.24em] pt-2">
           {t("ovm.scroll")}
           <span className="block text-[13px] motion-safe:animate-bounce">▾</span>
         </div>
@@ -536,14 +537,14 @@ export const OverviewMobileView = ({
              utile — rev 15/09, allineato al desktop) ── */}
       <section className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b]">
         <AlertTriangle className="w-8 h-8 opacity-80 mb-2" aria-hidden="true" />
-        <h4 className="m-0 text-[9px] font-bold tracking-[0.3em] opacity-75">
+        <h4 className="m-0 text-[11px] font-bold tracking-[0.3em] opacity-75">
           {t("ovm.alerts_open").replace("{n}", nf0.format(alerts.criticalCount + alerts.warningCount))}
         </h4>
-        <div className="w-full max-w-[270px] mx-auto text-left text-[12.5px] mt-4">
+        <div className="w-full max-w-[270px] mx-auto text-left text-[12.5px] mt-4 flex-1 min-h-0 overflow-y-auto no-scrollbar">
           {alerts.list.length === 0 ? (
             <div className="opacity-70 text-center py-4 text-[12px]">{t("ovm.no_alerts")}</div>
           ) : (
-            alerts.list.slice(0, 3).map((a, i) => (
+            (showAllAlerts ? alerts.list : alerts.list.slice(0, 3)).map((a, i) => (
               <div key={i} className="flex justify-between gap-2.5 py-2 border-b border-white/15">
                 <span className={a.severity === "critical" ? "text-[#f9cace]" : undefined}>{a.title}</span>
                 {a.ago && <b className="opacity-65 font-normal shrink-0">{a.ago}</b>}
@@ -552,9 +553,14 @@ export const OverviewMobileView = ({
           )}
         </div>
 
-        <div className="mt-auto w-full flex justify-center">
-          <CtaGlass onClick={() => onNavigate?.("energy")}>{t("ovm.cta_alerts")}</CtaGlass>
-        </div>
+        {/* Bug §5.1: portava alla dashboard Energy. La "vista alert" è questa
+            schermata: la CTA espande la lista completa in loco e sparisce
+            quando non c'è altro da mostrare. */}
+        {alerts.list.length > 3 && !showAllAlerts && (
+          <div className="mt-auto w-full flex justify-center pt-3">
+            <CtaGlass onClick={() => setShowAllAlerts(true)}>{t("ovm.cta_alerts")}</CtaGlass>
+          </div>
+        )}
       </section>
       </div>
     </div>
