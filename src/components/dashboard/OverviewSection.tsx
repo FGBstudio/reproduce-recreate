@@ -1039,6 +1039,18 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
     return rows;
   }, [certRows, certifications]);
   const certAchievedCount = buildingCerts.filter(c => c.state === "achieved").length;
+  /* Livello più alto raggiunto (hero mobile §5.2: scala Certified→Platinum).
+     Normalizza i cert_level liberi del DB al nome canonico. */
+  const certTopLevel = useMemo(() => {
+    const ORDER = ["certified", "silver", "gold", "platinum"];
+    let best: string | null = null;
+    for (const c of buildingCerts) {
+      if (c.state !== "achieved" || !c.level) continue;
+      const norm = ORDER.find(l => String(c.level).toLowerCase().includes(l));
+      if (norm && (best === null || ORDER.indexOf(norm) > ORDER.indexOf(best))) best = norm;
+    }
+    return best ? best.charAt(0).toUpperCase() + best.slice(1) : null;
+  }, [buildingCerts]);
   /* Zero installazioni: nessun modulo monitorato. Niente badge Offline/Demo
      e niente "No Data · 0/100": sono fuori luogo per uno store che ha solo
      la certificazione (rev 14/09). */
@@ -1099,6 +1111,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         }}
         notInstalled={nothingMonitored}
         certCount={certAchievedCount}
+        certTopLevel={certTopLevel}
         verdictHeadline={verdict.headline}
         isRealData={liveData.isRealData || powerLatest.isRealData}
         onNavigate={onNavigate}

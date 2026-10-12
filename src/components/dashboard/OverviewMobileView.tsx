@@ -68,6 +68,8 @@ interface OverviewMobileViewProps {
   /** Certificazioni edificio ottenute (pill Award) */
   certCount?: number;
   verdictHeadline?: string;
+  /** Livello cert piu alto raggiunto: scala Certified→Platinum nell'hero */
+  certTopLevel?: string | null;
   isRealData: boolean;
   onNavigate?: (tab: string) => void;
   /** Certificazioni attive del sito (LEED, BREEAM, ...): sezione grigia dedicata */
@@ -185,6 +187,92 @@ const LimitBar = ({ ratio, light }: { ratio: number; light?: boolean }) => (
   </div>
 );
 
+/* ── Hero «device-first» (brief §5.2, mockup v2 approvato 12/10) ── */
+
+/** Gradiente e accento dell'hero secondo il giudizio (token §1.4). */
+const HERO_TONES: Record<string, { c1: string; c2: string; acc: string }> = {
+  GOOD: { c1: "#0d6b6d", c2: "#0b3437", acc: "#3fd0d2" },
+  OK: { c1: "#7a5a12", c2: "#2f240b", acc: "#f2b84b" },
+  WARNING: { c1: "#7a5a12", c2: "#2f240b", acc: "#f2b84b" },
+  CRITICAL: { c1: "#6b1638", c2: "#2c0c1a", acc: "#e5577a" },
+  NO_DATA: { c1: "#2a3a3e", c2: "#141c1e", acc: "#9fb0b0" },
+};
+
+/** Colori delle sotto-sezioni dell'hero (mockup §5.2). */
+const HERO_MODULE_COLOR: Record<string, string> = {
+  energy: "#f2b84b",
+  air: "#3fd0d2",
+  water: "#7fb2ff",
+};
+
+/** Scala a tacche dello score: finestra min · score · max (mockup: 70·85·100). */
+const TickScale = ({ value, acc }: { value: number; acc: string }) => {
+  const min = Math.max(0, Math.floor((value - 15) / 10) * 10);
+  const max = Math.min(100, min + 30);
+  const N = 29;
+  const pos = Math.max(0, Math.min(1, (value - min) / (max - min || 1)));
+  const activeIdx = Math.round(pos * (N - 1));
+  return (
+    <div className="mt-6 max-w-[270px]">
+      <div className="relative flex justify-between items-end text-[12px] opacity-70 mb-1.5" style={{ height: 26 }}>
+        <span className="tabular-nums">{min}</span>
+        <span
+          className="absolute -translate-x-1/2 text-[21px] font-bold tabular-nums text-white"
+          style={{ left: `${pos * 100}%`, opacity: 1 }}
+        >
+          {value}
+        </span>
+        <span className="tabular-nums">{max}</span>
+      </div>
+      <div className="flex items-end justify-between" aria-hidden="true" style={{ height: 22 }}>
+        {Array.from({ length: N }, (_, i) => (
+          <span
+            key={i}
+            style={{
+              width: i === activeIdx ? 3 : 1.4,
+              height: i === activeIdx ? 22 : i % 5 === 0 ? 16 : 11,
+              background: i === activeIdx ? acc : "rgba(255,255,255,.55)",
+              boxShadow: i === activeIdx ? `0 0 8px ${acc}` : undefined,
+              borderRadius: 2,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/** Scala dei livelli certificazione col marker sul più alto raggiunto. */
+const CERT_LEVELS = ["Certified", "Silver", "Gold", "Platinum"];
+const LevelScale = ({ top, acc }: { top: string; acc: string }) => {
+  const idx = Math.max(0, CERT_LEVELS.findIndex(l => l.toLowerCase() === top.toLowerCase()));
+  const N = 25;
+  const activeIdx = Math.round((idx / (CERT_LEVELS.length - 1)) * (N - 1));
+  return (
+    <div className="flex-1 min-w-0">
+      <div className="flex justify-between text-[11px] mb-1">
+        {CERT_LEVELS.map((l, i) => (
+          <span key={l} className={i === idx ? "font-bold text-white" : "opacity-55"}>{l}</span>
+        ))}
+      </div>
+      <div className="flex items-end justify-between" aria-hidden="true" style={{ height: 15 }}>
+        {Array.from({ length: N }, (_, i) => (
+          <span
+            key={i}
+            style={{
+              width: i === activeIdx ? 3 : 1.3,
+              height: i === activeIdx ? 15 : 9,
+              background: i === activeIdx ? acc : "rgba(255,255,255,.5)",
+              boxShadow: i === activeIdx ? `0 0 8px ${acc}` : undefined,
+              borderRadius: 2,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 /** Modulo non installato: una sola riga in trasparenza al posto della
     schermata intera (brief §5.3). snap-none: lo scroll la attraversa. */
 const NotMonitoredRow = ({ text }: { text: string }) => (
@@ -300,7 +388,7 @@ const ModuleScreen = ({
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, periodLabel, overall, energy, air, water, moduleConfig,
   power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, notInstalled, certCount = 0,
-  verdictHeadline, isRealData, onNavigate, certifications,
+  verdictHeadline, isRealData, onNavigate, certifications, certTopLevel,
 }: OverviewMobileViewProps) => {
   const { t, language } = useLanguage();
   // Numeri localizzati (brief §2.3): «12,4» in it/fr/es, «12.4» in en
@@ -337,6 +425,12 @@ export const OverviewMobileView = ({
     { key: "air", icon: Wind, score: air.score, enabled: moduleConfig.air.enabled, level: air.level, state: stateOf(moduleConfig.air.enabled, air.level) },
     { key: "water", icon: Droplet, score: water.score, enabled: moduleConfig.water.enabled, level: water.level, state: stateOf(moduleConfig.water.enabled, water.level) },
   ];
+
+  // Tono dell'hero secondo il giudizio; il motivo prende l'icona del modulo
+  // attivo che pesa di piu (score piu basso) — brief §5.2.
+  const heroTone = HERO_TONES[notInstalled ? "NO_DATA" : overall.level] ?? HERO_TONES.GOOD;
+  const worstActive = modules.filter(m => m.state === "active").sort((a, b) => a.score - b.score)[0];
+  const ReasonIcon = worstActive?.icon;
 
   /** Nota transitoria al tap su un modulo non installato (brief §5.3). */
   const [moduleNote, setModuleNote] = useState(false);
@@ -384,80 +478,91 @@ export const OverviewMobileView = ({
       >
       {/* ── 1 · HERO: score complessivo ── */}
       {/* pb-16: clearance per la barra periodo/report/settings in overlay */}
-      <section data-screen className="relative h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-5 pt-10 pb-16 bg-gradient-to-b from-[#016368] via-[#009193] to-[#33a7a9]">
+      <section
+        data-screen
+        className="relative h-full snap-start snap-always shrink-0 flex flex-col text-left text-white px-6 pt-10 pb-16 overflow-hidden"
+        style={{ background: `linear-gradient(180deg, ${heroTone.c1} 0%, ${heroTone.c2} 26%, #0a0f11 52%, #050809 100%)` }}
+      >
+        {/* intestazione: nome sito + condizioni (niente Live/Online/Month,
+            brief §5.2 — il periodo resta nella barra comandi in basso) */}
         <div className="font-bold text-[19px] tracking-wide">{siteName}</div>
-        <div className="text-[11px] opacity-80 tracking-[0.08em] flex items-center justify-center gap-1">
+        <div className="text-[11px] opacity-80 tracking-[0.08em] flex items-center gap-1.5 mt-0.5">
+          <Cloud className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           <span>{(city || "").toUpperCase()}</span>
-          {typeof outdoorTemp === "number" && (
-            <>
-              <span>·</span>
-              <span className="flex items-center gap-0.5">
-                {Math.round(outdoorTemp)}° <Cloud className="w-3.5 h-3.5" aria-hidden="true" />
-              </span>
-            </>
-          )}
-          <span>· {periodLabel.toUpperCase()}</span>
+          {typeof outdoorTemp === "number" && <span>· {Math.round(outdoorTemp)}°</span>}
         </div>
-        {isRealData && (
-          <div className="mt-1.5">
-            <span className="inline-block text-[11px] font-bold tracking-[0.16em] text-[#01474b] bg-[#9fd5d9] px-2.5 py-[3px] rounded-full">
-              ● {t("ovm.live")}
+
+        {/* 1 · cuore: giudizio grande, motivo, scala a tacche */}
+        <div className="mt-8">
+          <div style={{ fontSize: 62, fontWeight: 300, lineHeight: 1.02, letterSpacing: "-0.01em" }}>
+            {notInstalled ? (certCount > 0 ? t("ovm.certified") : t("ovm.not_monitored")) : t(VERDICT_KEY[overall.level])}
+          </div>
+          <div className="flex items-center gap-2 text-[12.5px] opacity-85 mt-2.5">
+            {ReasonIcon && !notInstalled && <ReasonIcon className="w-4 h-4 shrink-0" style={{ color: heroTone.acc }} aria-hidden="true" />}
+            <span>
+              {notInstalled
+                ? (certCount > 0 ? tn("ovm.certs_no_monitoring", certCount) : t("ovm.no_devices"))
+                : (verdictHeadline || t("ovm.overall_line").replace("{s}", String(overall.score)))}
             </span>
           </div>
-        )}
-
-        <div className="mt-auto mb-1.5"><ScoreRing score={overall.score} dash={notInstalled} label={t("ovm.score")} /></div>
-        {/* Zero installazioni: niente "No data · 0/100", parole giuste per
-            uno store certificato senza dispositivi (rev 15/09, come desktop) */}
-        <div className="text-[34px] font-bold leading-none">
-          {notInstalled ? (certCount > 0 ? t("ovm.certified") : t("ovm.not_monitored")) : t(VERDICT_KEY[overall.level])}
-        </div>
-        <div className="text-[11px] opacity-80 tracking-wide mb-auto px-4">
-          {notInstalled
-            ? (certCount > 0 ? tn("ovm.certs_no_monitoring", certCount) : t("ovm.no_devices"))
-            : (verdictHeadline || t("ovm.overall_line").replace("{s}", String(overall.score)))}
         </div>
 
-        <div className="flex gap-6 justify-center pt-1.5">
-          {/* Award per primo, stessa grafica delle altre pill (rev 15/09) */}
-          <button
-            type="button"
-            onClick={() => onNavigate?.("certification")}
-            className={`text-center transition-transform active:scale-95 ${certCount > 0 ? "" : "opacity-45"}`}
-          >
-            <Award className="w-[21px] h-[21px] mx-auto" />
-            <div className="text-[22px] font-bold leading-tight mt-1">{certCount > 0 ? certCount : "—"}</div>
-            <div className="text-[11px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.award")}</div>
-          </button>
+        {!notInstalled && <TickScale value={overall.score} acc={heroTone.acc} />}
+
+        {/* 2 · sotto-sezioni: moduli + alert, stati §5.3 */}
+        <div className="mt-auto pt-5 border-t border-white/10 flex items-start justify-between gap-2">
           {modules.map((m) => (
             <button
               key={m.key}
               type="button"
               onClick={() => (m.state === "not_installed" ? showModuleNote() : onNavigate?.(m.key))}
-              className={`text-center transition-transform active:scale-95 ${m.state === "not_installed" ? "opacity-30" : ""}`}
+              className={`text-left transition-transform active:scale-95 ${m.state === "not_installed" ? "opacity-30" : ""}`}
             >
-              {/* offline (mockup §5.3): icona piena + pallino ambra in alto a dx */}
-              <span className="relative inline-block">
-                <m.icon className="w-[21px] h-[21px] mx-auto" />
-                {m.state === "offline" && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full"
-                    style={{ background: "#f59e0b", border: "1.2px solid #fff" }}
-                  />
-                )}
-              </span>
-              <div className="text-[22px] font-bold leading-tight mt-1">
+              <div className="text-[27px] tabular-nums leading-tight" style={{ fontWeight: 300 }}>
                 {m.state === "active" ? m.score : "—"}
               </div>
-              <div className="text-[11px] tracking-[0.16em] opacity-75 font-bold">{t(`ovm.${m.key}`)}</div>
+              <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: HERO_MODULE_COLOR[m.key] }}>
+                <span className="relative inline-flex">
+                  <m.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                  {m.state === "offline" && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-1 -right-1 w-2 h-2 rounded-full"
+                      style={{ background: "#f59e0b", border: "1.2px solid #fff" }}
+                    />
+                  )}
+                </span>
+                <span className="capitalize">{t(`ovm.${m.key}`).toLowerCase()}</span>
+              </div>
             </button>
           ))}
-          <div className="text-center" style={{ color: alerts.criticalCount > 0 ? "#f9cace" : undefined }}>
-            <AlertTriangle className="w-[21px] h-[21px] mx-auto" />
-            <div className="text-[22px] font-bold leading-tight mt-1">{alerts.criticalCount + alerts.warningCount}</div>
-            <div className="text-[11px] tracking-[0.16em] opacity-75 font-bold">{t("ovm.alerts")}</div>
+          <div className="text-left">
+            <div className="text-[27px] tabular-nums leading-tight" style={{ fontWeight: 300, color: alerts.criticalCount + alerts.warningCount > 0 ? "#ffcf7a" : undefined }}>
+              {alerts.criticalCount + alerts.warningCount}
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: "#9fe3c8" }}>
+              <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="capitalize">{t("ovm.alerts").toLowerCase()}</span>
+            </div>
           </div>
+        </div>
+
+        {/* 3 · awards: conteggio + scala Certified → Platinum */}
+        <div className="mt-6 mb-1 flex items-end gap-5">
+          <button
+            type="button"
+            onClick={() => onNavigate?.("certification")}
+            className={`text-left shrink-0 transition-transform active:scale-95 ${certCount > 0 ? "" : "opacity-40"}`}
+          >
+            <div className="text-[34px] tabular-nums leading-none" style={{ fontWeight: 300 }}>
+              {certCount > 0 ? certCount : "—"}
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-semibold mt-1" style={{ color: "#f2b84b" }}>
+              <Award className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>{t("ovm.awards")}</span>
+            </div>
+          </button>
+          {certCount > 0 && certTopLevel && <LevelScale top={certTopLevel} acc={heroTone.acc} />}
         </div>
 
         {moduleNote && (
@@ -466,7 +571,7 @@ export const OverviewMobileView = ({
           </div>
         )}
 
-        <div className="opacity-65 text-[11px] tracking-[0.24em] pt-2">
+        <div className="opacity-65 text-[11px] tracking-[0.24em] pt-3 text-center">
           {t("ovm.scroll")}
           <span className="block text-[13px] motion-safe:animate-bounce">▾</span>
         </div>
