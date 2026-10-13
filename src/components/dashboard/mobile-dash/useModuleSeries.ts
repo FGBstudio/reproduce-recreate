@@ -145,6 +145,11 @@ const demoCfgFor = (module: DashModule, metric: string) =>
     ? (DEMO_WATER[metric] ?? DEMO_WATER.flow)
     : (DEMO_AIR[metric === "iaq" ? "co2" : metric] ?? DEMO_AIR.co2);
 
+/** Metriche «di livello» (pH, temperatura, pressione, umidità): non calano
+    nel weekend come i consumi — il modulatore giorno/weekend va appiattito. */
+const isLevelMetric = (module: DashModule, metric: string) =>
+  module === "water" ? ["ph", "wtemp", "pressure"].includes(metric) : ["temp", "humidity"].includes(metric);
+
 /** Serie demo deterministica per i siti vetrina (badge DEMO obbligatorio). */
 function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): DaySeries {
   const cfg = demoCfgFor(module, airMetric);
@@ -190,11 +195,13 @@ function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = 
   const cfg = demoCfgFor(module, airMetric);
   const kCat = DEMO_CAT_FACTOR[energyCat];
   const dp = cfg.base < 5 ? 100 : 10;
+  const flat = isLevelMetric(module, airMetric);
   const airShape = [0.95, 1.0, 1.12, 0.92, 1.02, 0.64, 0.59];
   const vals = module === "energy"
     ? [421, 398, 468, 388, 412, 118, 96].map(v => Math.round(v * kCat))
     : airShape.map(k => {
-        const raw = (cfg.base + cfg.amp * 0.38) * k;
+        const kk = flat ? 1 + (k - 1) * 0.06 : k; // livelli quasi piatti
+        const raw = (cfg.base + cfg.amp * 0.38) * kk;
         return isIaq ? co2ToScore(raw) : Math.round(raw * dp) / dp;
       });
   const heat = Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => {
@@ -223,11 +230,14 @@ function demoMonth(module: DashModule, airMetric: string, energyCat: EnergyCat =
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const future = day > now.getDate();
     const wd = new Date(now.getFullYear(), now.getMonth(), day).getDay();
+    const flat = isLevelMetric(module, airMetric);
     const v = future ? null
       : module === "energy"
         ? Math.round((wd === 0 || wd === 6 ? 110 : 390 + Math.round(60 * Math.sin(day))) * kCat)
         : (() => {
-            const raw = (cfg.base + cfg.amp * 0.38) * (wd === 0 || wd === 6 ? 0.62 : 1 + 0.08 * Math.sin(day));
+            const weekendK = flat ? 1 : wd === 0 || wd === 6 ? 0.62 : 1;
+            const sinAmp = flat ? 0.02 : 0.08;
+            const raw = (cfg.base + cfg.amp * 0.38) * weekendK * (1 + sinAmp * Math.sin(day));
             return isIaq ? co2ToScore(raw) : Math.round(raw * dp) / dp;
           })();
     return { day, date, v, future, today: day === now.getDate() };
