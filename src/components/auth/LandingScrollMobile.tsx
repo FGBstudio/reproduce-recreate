@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import CityTicker from "./CityTicker";
-import MobileAppHeader from "@/components/mobile/MobileAppHeader";
+import LandingHeaderMobile from "./LandingHeaderMobile";
 import { MARKERS, CERT_LOGOS } from "./LandingScroll";
 
 /**
@@ -67,13 +67,11 @@ const Dots: React.FC<{ count: number; idx: number; light?: boolean }> = ({ count
 
 const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const scroller = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
   const heroSec = useRef<HTMLElement>(null);
   const certsSec = useRef<HTMLElement>(null);
   const monSec = useRef<HTMLElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const globePaused = useRef(false);
-  const [hdrScrolled, setHdrScrolled] = useState(false);
   const [ctaShow, setCtaShow] = useState(false);
 
   const certDots = useSwipeDots(CERT_LOGOS.length);
@@ -131,9 +129,6 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
     const sc = scroller.current!;
 
     const onScroll = () => {
-      const max = sc.scrollHeight - sc.clientHeight;
-      if (barRef.current) barRef.current.style.width = max > 0 ? (sc.scrollTop / max) * 100 + "%" : "0%";
-      setHdrScrolled(sc.scrollTop > 10);
       const heroH = heroSec.current?.offsetHeight ?? sc.clientHeight;
       setCtaShow(sc.scrollTop > heroH * 0.7);
     };
@@ -226,21 +221,15 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
         }
       `}</style>
 
-      {/* barra di avanzamento: sostituisce la scrollbar. top = --sat: con la
-          status bar in overlay, a top:0 finiva nascosta dietro l'orologio. */}
-      <div style={{ position: "sticky", top: "var(--sat, 0px)", zIndex: 50, height: 2 }}>
-        <div ref={barRef} style={{ height: "100%", width: 0, background: "#9fd5d9" }} />
-      </div>
-
-      {/* ══ Header condiviso (§1.3): logo bianco, pill Sign in ══ */}
-      <MobileAppHeader
-        variant="dark"
-        scrolled={hdrScrolled}
+      {/* ══ Header a scomparsa + menu a mezza pagina (brief §3.1): niente
+          barra di avanzamento, in cima l'hero ha tutto lo schermo ══ */}
+      <LandingHeaderMobile
+        scrollerRef={scroller}
         links={[
           { label: "Certifications", onClick: () => scrollToRef(certsSec) },
           { label: "Monitoring", onClick: () => scrollToRef(monSec) },
         ]}
-        action={{ label: "Sign in", onClick: onSignIn }}
+        onSignIn={onSignIn}
       />
 
       {/* ══ HERO in una schermata: titolo, globo (invariato), numeri, CTA ══ */}
@@ -248,13 +237,11 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
         ref={heroSec}
         className="relative flex flex-col items-center px-6"
         style={{
-          /* la hero parte da y=0 (sotto progress e header, entrambi
-             traslucidi) e riempie TUTTO lo schermo: il buio finisce
-             esattamente al fold su qualunque telefono, e sotto il binario
-             della progress non spunta piu' il fondo chiaro (fix 08/09) */
+          /* la hero parte da y=0 (l'header è fixed e in cima non si vede,
+             §3.1) e riempie TUTTO lo schermo: il buio finisce esattamente
+             al fold su qualunque telefono */
           minHeight: "100dvh",
           background: "linear-gradient(180deg,#0a1c20 0%,#0d2530 100%)",
-          marginTop: "calc((var(--sat) + 52px) * -1)",
           paddingTop: "calc(var(--sat) + 64px)",
           paddingBottom: 26,
         }}
