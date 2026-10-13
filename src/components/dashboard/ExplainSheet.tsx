@@ -80,6 +80,31 @@ const TABS: TabDef[] = [
     ],
   },
   {
+    /* Soglie dal metrics_catalog (GOOD <50 / OK 50–100 / WARN 100–150 / CRIT >150) */
+    id: "pm10", group: "air", label: "PM10", icon: Haze, defKey: "xp.def_pm10", unit: "µg/m³",
+    levels: [
+      { nameKey: "xp.lvl_good", range: "< 50", adviceKey: "xp.pm10_l1", color: C.good, match: v => v < 50 },
+      { nameKey: "xp.lvl_moderate", range: "50–100", adviceKey: "xp.pm10_l2", color: C.mod, match: v => v >= 50 && v <= 100 },
+      { nameKey: "xp.lvl_poor", range: "> 100", adviceKey: "xp.pm10_l3", color: C.poor, match: v => v > 100 },
+    ],
+  },
+  {
+    id: "co", group: "air", label: "CO", icon: Wind, defKey: "xp.def_co", unit: "ppm",
+    levels: [
+      { nameKey: "xp.lvl_good", range: "< 4 ppm", adviceKey: "xp.co_l1", color: C.good, match: v => v < 4 },
+      { nameKey: "xp.lvl_moderate", range: "4–9 ppm", adviceKey: "xp.co_l2", color: C.mod, match: v => v >= 4 && v <= 9 },
+      { nameKey: "xp.lvl_poor", range: "> 9 ppm", adviceKey: "xp.co_l3", color: C.poor, match: v => v > 9 },
+    ],
+  },
+  {
+    id: "o3", group: "air", label: "O₃", icon: Wind, defKey: "xp.def_o3", unit: "ppb",
+    levels: [
+      { nameKey: "xp.lvl_good", range: "< 50 ppb", adviceKey: "xp.o3_l1", color: C.good, match: v => v < 50 },
+      { nameKey: "xp.lvl_moderate", range: "50–100 ppb", adviceKey: "xp.o3_l2", color: C.mod, match: v => v >= 50 && v <= 100 },
+      { nameKey: "xp.lvl_poor", range: "> 100 ppb", adviceKey: "xp.o3_l3", color: C.poor, match: v => v > 100 },
+    ],
+  },
+  {
     id: "power", group: "energy", label: "kW", icon: Zap, defKey: "xp.def_power", unit: "kW",
   },
   {

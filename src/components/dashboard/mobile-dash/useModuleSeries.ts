@@ -17,20 +17,29 @@ export type DashModule = "energy" | "air";
     «Base» (carico di base) non è una serie esistente in DB: resta fuori. */
 export type EnergyCat = "power" | "hvac" | "lighting" | "plugs";
 
-/** Metriche aria disponibili (telemetry_hourly/daily, alias storici inclusi). */
+/** Metriche aria disponibili (telemetry_hourly/daily) — stesso set dei grafici
+    desktop e dell'hardware WEEL/LEED (metrics_catalog): CO₂, TVOC, PM2.5,
+    PM10, CO, O₃, temperatura, umidità. Alias storici da api.ts. */
 export const AIR_METRICS: Record<string, { ids: string[]; unit: string }> = {
-  co2: { ids: ["iaq.co2", "co2"], unit: "ppm" },
-  pm25: { ids: ["iaq.pm25", "pm25"], unit: "µg/m³" },
-  tvoc: { ids: ["iaq.voc", "tvoc", "voc"], unit: "ppb" },
-  temp: { ids: ["env.temperature", "temp", "temperature"], unit: "°C" },
-  humidity: { ids: ["env.humidity", "humidity"], unit: "%" },
+  co2: { ids: ["iaq.co2", "co2", "CO2"], unit: "ppm" },
+  pm25: { ids: ["iaq.pm25", "pm25", "PM2.5", "pm2_5"], unit: "µg/m³" },
+  pm10: { ids: ["iaq.pm10", "pm10", "PM10"], unit: "µg/m³" },
+  tvoc: { ids: ["iaq.voc", "iaq.tvoc", "tvoc", "voc"], unit: "ppb" },
+  co: { ids: ["iaq.co", "co", "CO"], unit: "ppm" },
+  o3: { ids: ["iaq.o3", "o3", "O3"], unit: "ppb" },
+  temp: { ids: ["env.temperature", "env.temp", "iaq.temp", "temp", "temperature", "temp_c"], unit: "°C" },
+  humidity: { ids: ["env.humidity", "env.hum", "iaq.humidity", "humidity", "hum", "humidity_rh"], unit: "%" },
 };
+
+/** Fattore emissioni (kgCO2e/kWh) — stesso valore di ProjectDetail e del PDF. */
+export const CO2_EMISSION_FACTOR = 0.233;
 
 export interface DayPoint { h: number; v: number | null }       // ora locale 0-23
 export interface DaySeries {
   points: DayPoint[];
   peak?: { h: number; v: number };
   limit?: number;
+  limit2?: number;             // seconda soglia (rosso), es. CO₂ critical
   unit: string;
   totalKwh?: number;           // energia del giorno (solo energy)
   avg?: number;                // media del giorno
@@ -83,13 +92,17 @@ const hourInTz = (iso: string, tz: string) => {
   } catch { return new Date(iso).getUTCHours(); }
 };
 
-/** Parametri demo per metrica aria: scala plausibile, MAI valori di un'altra metrica. */
-const DEMO_AIR: Record<string, { base: number; amp: number; wiggle: number; limit?: number }> = {
-  co2: { base: 480, amp: 420, wiggle: 60, limit: 1000 },
+/** Parametri demo per metrica aria: scala plausibile, MAI valori di un'altra
+    metrica. Le soglie demo ricalcano i default di site_thresholds. */
+const DEMO_AIR: Record<string, { base: number; amp: number; wiggle: number; limit?: number; limit2?: number }> = {
+  co2: { base: 480, amp: 420, wiggle: 60, limit: 1000, limit2: 1500 },
   pm25: { base: 7, amp: 5, wiggle: 1.2, limit: 15 },
-  tvoc: { base: 140, amp: 130, wiggle: 25, limit: 500 },
-  temp: { base: 20.5, amp: 3, wiggle: 0.4 },
-  humidity: { base: 42, amp: 9, wiggle: 1.5 },
+  pm10: { base: 14, amp: 8, wiggle: 2.2, limit: 25 },
+  tvoc: { base: 140, amp: 130, wiggle: 25, limit: 300 },
+  co: { base: 1.1, amp: 1.6, wiggle: 0.3, limit: 4 },
+  o3: { base: 20, amp: 18, wiggle: 4, limit: 50 },
+  temp: { base: 20.5, amp: 3, wiggle: 0.4, limit: 26 },
+  humidity: { base: 42, amp: 9, wiggle: 1.5, limit: 60 },
 };
 
 /** Serie demo deterministica per i siti vetrina (badge DEMO obbligatorio). */
@@ -110,6 +123,7 @@ function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "
     // per l'IAQ «più alto = meglio»: niente annotazione del picco
     points: pts, peak: isIaq ? undefined : { h: peakPt.h, v: peakPt.v! },
     limit,
+    limit2: module === "air" && !isIaq ? cfg.limit2 : undefined,
     unit: module === "energy" ? "kW" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
     totalKwh: module === "energy" ? Math.round(412 * k) : undefined,
     avg: module === "energy" ? Math.round(11.6 * k * 10) / 10 : avg,
@@ -117,7 +131,7 @@ function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "
     overLimitMinutes: limit != null ? pts.filter(p => (p.v ?? 0) > limit).length * 60 : undefined,
     vsTypicalPct: module === "energy" ? -6 : undefined,
     costEur: module === "energy" ? Math.round(78 * k) : undefined,
-    hvacStrip: module === "air" && airMetric === "co2" ? Array.from({ length: 24 }, (_, h) => h >= 7 && h <= 20 && h !== 13 && h !== 17) : undefined,
+    hvacStrip: module === "air" && ["co2", "temp", "humidity"].includes(airMetric) ? Array.from({ length: 24 }, (_, h) => h >= 7 && h <= 20 && h !== 13 && h !== 17) : undefined,
     // causa energia (§6.1.8): temperatura esterna, giornata mite 14→25°
     outdoorTemp: module === "energy" ? Array.from({ length: 24 }, (_, h) => Math.round((14 + 11 * Math.exp(-((h - 15) ** 2) / 34)) * 10) / 10) : undefined,
     isDemo: true,
@@ -222,9 +236,27 @@ export function useEnergyCats(siteId: string | undefined, isDemoSite: boolean) {
 /** Fattori demo per le categorie (quota plausibile del carico totale). */
 const DEMO_CAT_FACTOR: Record<EnergyCat, number> = { power: 1, hvac: 0.45, lighting: 0.3, plugs: 0.18 };
 
+/** Metriche aria che il sito misura DAVVERO (regola d'oro §8.3): si guardano
+    gli ultimi 45 giorni di telemetry_daily e si mostrano solo quelle schede. */
+export function useAirMetricsAvailable(siteId: string | undefined, isDemoSite: boolean) {
+  return useQuery<string[]>({
+    queryKey: ["mdash-airmetrics", siteId],
+    queryFn: async () => {
+      const ALL = Object.keys(AIR_METRICS);
+      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? ALL : [];
+      const since = new Date(Date.now() - 45 * 86400e3).toISOString().slice(0, 10);
+      const { data } = await supabase!.from("telemetry_daily")
+        .select("metric").eq("site_id", siteId).gte("ts_day", since).limit(2000);
+      const present = new Set(((data || []) as unknown as Array<{ metric: string }>).map(r => r.metric));
+      return ALL.filter(k => AIR_METRICS[k].ids.some(id => present.has(id)));
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 const HVAC_ON_KW = 2; // soglia acceso/spento (brief §8.2, da raffinare per sito)
 
-export function useDaySeries(module: DashModule, siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, limit?: number, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
+export function useDaySeries(module: DashModule, siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, limit?: number, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", limit2?: number) {
   return useQuery<DaySeries | null>({
     queryKey: ["mdash-day", module, siteId, dateKey, airMetric, energyCat],
     queryFn: async (): Promise<DaySeries | null> => {
@@ -344,9 +376,12 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
       const peakPt = present.reduce((a, b) => (b.v > a.v ? b : a), present[0]);
       const avg = Math.round(present.reduce((a, b) => a + b.v, 0) / present.length);
       const over = limit ? present.filter(pt => pt.v > limit).length * 60 : undefined;
-      // causa: HVAC acceso/spento dal modulo Energy (potenza hvac > soglia)
+      // causa: HVAC acceso/spento dal modulo Energy (potenza hvac > soglia).
+      // Pertinente per CO₂ (ventilazione) e per temperatura/umidità (clima);
+      // per PM/CO/O₃ non si propone una causa non verificata (§6.1.8).
+      const wantsHvac = ["co2", "temp", "humidity"].includes(airMetric);
       let hvacStrip: boolean[] | undefined;
-      const { hvacIds } = await generalDeviceIds(siteId);
+      const { hvacIds } = wantsHvac ? await generalDeviceIds(siteId) : { hvacIds: [] as string[] };
       if (hvacIds.length > 0) {
         const { data: hv } = await supabase!.from("energy_hourly")
           .select("ts_hour, metric, value_avg")
@@ -365,11 +400,13 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
         points,
         // per l'IAQ «più alto = meglio»: l'annotazione del picco sarebbe fuorviante
         peak: !isIaq && peakPt ? { h: peakPt.h, v: peakPt.v } : undefined,
-        limit: airMetric === "co2" ? limit : undefined,
+        // soglia della metrica corrente (site_thresholds, passata dal container)
+        limit: isIaq ? undefined : limit,
+        limit2: isIaq ? undefined : limit2,
         unit: isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
         avg,
-        overLimitMinutes: airMetric === "co2" ? over : undefined,
-        hvacStrip: airMetric === "co2" ? hvacStrip : undefined,
+        overLimitMinutes: isIaq ? undefined : over,
+        hvacStrip: wantsHvac ? hvacStrip : undefined,
         isDemo: false,
       };
     },
