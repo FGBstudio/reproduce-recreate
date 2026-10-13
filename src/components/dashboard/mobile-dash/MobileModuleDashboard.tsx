@@ -78,7 +78,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     co2: { l: co2LimitPpm ?? thresholds?.air_co2_warning_ppm, l2: thresholds?.air_co2_critical_ppm },
     pm25: { l: thresholds?.air_pm25_warning_ugm3 },
     pm10: { l: thresholds?.air_pm10_warning_ugm3 },
-    tvoc: { l: thresholds?.air_voc_warning_ppb },
+    // TVOC: il desktop mostra ppb con limite FISSO a 500 (il grafico PC non
+    // legge air_voc_warning_ppb) — decisione owner 13/10: identico al PC
+    tvoc: { l: 500 },
     co: { l: thresholds?.air_co_warning_ppm },
     o3: { l: thresholds?.air_o3_warning_ppb },
     // per temperatura e umidità si rappresenta solo l'ECCESSO (max):

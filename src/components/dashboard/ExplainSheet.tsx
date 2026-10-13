@@ -63,11 +63,13 @@ const TABS: TabDef[] = [
   { id: "temp", group: "air", label: "Temp", icon: Thermometer, defKey: "xp.def_temp", unit: "°C" },
   { id: "humidity", group: "air", label: "RH", icon: Droplets, defKey: "xp.def_humidity", unit: "%" },
   {
+    /* Soglie allineate alle bande del grafico TVOC desktop (verde <250,
+       giallo 250–500, rosso >500 ppb) — decisione owner 13/10 */
     id: "tvoc", group: "air", label: "TVOC", icon: FlaskConical, defKey: "xp.def_tvoc", unit: "ppb",
     levels: [
-      { nameKey: "xp.lvl_good", range: "≤ 660 ppb", adviceKey: "xp.tvoc_l1", color: C.good, match: v => v <= 660 },
-      { nameKey: "xp.lvl_moderate", range: "660–2200 ppb", adviceKey: "xp.tvoc_l2", color: C.mod, match: v => v > 660 && v <= 2200 },
-      { nameKey: "xp.lvl_poor", range: "> 2200 ppb", adviceKey: "xp.tvoc_l3", color: C.poor, match: v => v > 2200 },
+      { nameKey: "xp.lvl_good", range: "< 250 ppb", adviceKey: "xp.tvoc_l1", color: C.good, match: v => v < 250 },
+      { nameKey: "xp.lvl_moderate", range: "250–500 ppb", adviceKey: "xp.tvoc_l2", color: C.mod, match: v => v >= 250 && v <= 500 },
+      { nameKey: "xp.lvl_poor", range: "> 500 ppb", adviceKey: "xp.tvoc_l3", color: C.poor, match: v => v > 500 },
     ],
   },
   {

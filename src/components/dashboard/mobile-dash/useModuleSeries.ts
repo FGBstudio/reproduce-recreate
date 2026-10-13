@@ -98,7 +98,7 @@ const DEMO_AIR: Record<string, { base: number; amp: number; wiggle: number; limi
   co2: { base: 480, amp: 420, wiggle: 60, limit: 1000, limit2: 1500 },
   pm25: { base: 7, amp: 5, wiggle: 1.2, limit: 15 },
   pm10: { base: 14, amp: 8, wiggle: 2.2, limit: 25 },
-  tvoc: { base: 140, amp: 130, wiggle: 25, limit: 300 },
+  tvoc: { base: 140, amp: 130, wiggle: 25, limit: 500 },
   co: { base: 1.1, amp: 1.6, wiggle: 0.3, limit: 4 },
   o3: { base: 20, amp: 18, wiggle: 4, limit: 50 },
   temp: { base: 20.5, amp: 3, wiggle: 0.4, limit: 26 },

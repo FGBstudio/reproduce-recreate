@@ -767,7 +767,8 @@ export const OverviewMobileView = ({
         meters={[
           { label: t("ovm.row_temp"), value: airMetrics.temperature != null ? `${fmt(airMetrics.temperature)}°` : "—", pct: airMetrics.temperature != null ? (airMetrics.temperature / 40) * 100 : undefined },
           { label: t("ovm.row_humidity"), value: airMetrics.humidity != null ? `${fmtInt(airMetrics.humidity)}%` : "—", pct: airMetrics.humidity ?? undefined },
-          { label: "TVOC", value: fmtInt(airMetrics.voc), pct: airMetrics.voc != null ? Math.min(100, (airMetrics.voc / 3000) * 100) : undefined },
+          /* scala 0–600 come il grafico TVOC desktop (limite 500 ppb) */
+          { label: "TVOC", value: fmtInt(airMetrics.voc), pct: airMetrics.voc != null ? Math.min(100, (airMetrics.voc / 600) * 100) : undefined },
           { label: "PM2.5", value: fmtInt(airMetrics.pm25), pct: airMetrics.pm25 != null ? Math.min(100, (airMetrics.pm25 / 35) * 100) : undefined },
         ]}
         pitch={!moduleConfig.air.enabled ? { title: t("ovm.pitch_air_t"), body: t("ovm.pitch_air_b") } : undefined}
