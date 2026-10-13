@@ -215,7 +215,18 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
     if (sc && ref.current) sc.scrollTo({ top: ref.current.offsetTop - 60, behavior: "smooth" });
   };
 
-  const globeSize = Math.min(typeof window !== "undefined" ? window.innerWidth * 0.76 : 300, 320);
+  // §3.3: il diametro del globo lo decide il CSS (.fgm-globe, con la regola
+  // per schermi bassi); qui si misura il contenitore per scalare il canvas.
+  const globeBox = useRef<HTMLDivElement>(null);
+  const [globeSize, setGlobeSize] = useState(() =>
+    Math.min(typeof window !== "undefined" ? window.innerWidth * 0.76 : 300, 320));
+  useEffect(() => {
+    const el = globeBox.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => { if (el.offsetWidth > 0) setGlobeSize(el.offsetWidth); });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <div
@@ -235,6 +246,20 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
           .fgm-color img{filter:none}
           .fgm-cta{transition:none}
         }
+        /* ── Hero: misure base + regola dedicata agli schermi bassi (§3.3).
+           Il globo NON si schiaccia mai: aspect-ratio 1, scala in proporzione. */
+        .fgm-globe{width:min(76vw,320px);aspect-ratio:1}
+        .fgm-hero-title{font-size:clamp(24px,6.8vw,32px)}
+        .fgm-nums b{font-size:26px}
+        .fgm-hero-cta{margin-top:24px;padding:14px 40px;min-height:52px}
+        @media (max-height: 600px){
+          .fgm-hero{padding-top:calc(var(--sat) + 36px) !important}
+          .fgm-globe{width:min(62vw,36svh)}
+          .fgm-hero-title{font-size:clamp(18px,5.2vw,23px)}
+          .fgm-nums b{font-size:19px}
+          .fgm-hero-cta{margin-top:14px;padding:10px 32px;min-height:46px}
+          .fgm-discover{display:none}
+        }
       `}</style>
 
       {/* ══ Header a scomparsa + menu a mezza pagina (brief §3.1): niente
@@ -252,7 +277,7 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
       <section
         ref={heroSec}
         data-cta-theme="none"
-        className="relative flex flex-col items-center px-6"
+        className="fgm-hero relative flex flex-col items-center px-6"
         style={{
           /* la hero parte da y=0 (l'header è fixed e in cima non si vede,
              §3.1) e riempie TUTTO lo schermo: il buio finisce esattamente
@@ -263,10 +288,10 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
           paddingBottom: 26,
         }}
       >
-        <h1 className="text-center text-[#e8ecec] font-medium" style={{ fontSize: "clamp(24px,6.8vw,32px)", lineHeight: 1.2, marginTop: 4 }}>
+        <h1 className="fgm-hero-title text-center text-[#e8ecec] font-medium" style={{ lineHeight: 1.2, marginTop: 4 }}>
           Precisely measured<br />Globally connected
         </h1>
-        <div className="relative mt-4" style={{ width: globeSize, height: globeSize }}>
+        <div ref={globeBox} className="fgm-globe relative mt-4">
           {/* absolute: il canvas 640 scalato non deve contribuire al layout,
               o allarga la pagina e sposta tutto (headline tagliata) */}
           <div style={{ position: "absolute", top: 0, left: 0, width: CANVAS, height: CANVAS, transform: `scale(${globeSize / CANVAS})`, transformOrigin: "0 0" }}>
@@ -296,19 +321,19 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
             { t: 300, l: "clients" },
           ].map((n) => (
             <div key={n.l} className="text-center">
-              <b data-target={n.t} data-fmt={n.fmt} className="block text-[#dfe5e6] font-medium tabular-nums" style={{ fontSize: 26, lineHeight: 1 }}>0</b>
+              <b data-target={n.t} data-fmt={n.fmt} className="block text-[#dfe5e6] font-medium tabular-nums" style={{ lineHeight: 1 }}>0</b>
               <span className="block text-[#b9c4c6] uppercase" style={{ fontSize: 9, letterSpacing: "0.22em", marginTop: 4 }}>{n.l}</span>
             </div>
           ))}
         </div>
         <button
           onClick={onSignIn}
-          className="rounded-full font-semibold"
-          style={{ marginTop: 24, background: "#eef0ee", color: "#016368", padding: "14px 40px", fontSize: 14, letterSpacing: "1.5px", minHeight: 52, width: "100%", maxWidth: 300 }}
+          className="fgm-hero-cta rounded-full font-semibold"
+          style={{ background: "#eef0ee", color: "#016368", fontSize: 14, letterSpacing: "1.5px", width: "100%", maxWidth: 300 }}
         >
           SIGN IN
         </button>
-        <div className="text-center uppercase" style={{ marginTop: "auto", paddingTop: 18, fontSize: 9, letterSpacing: "0.3em", color: "rgba(244,243,239,.62)" }}>
+        <div className="fgm-discover text-center uppercase" style={{ marginTop: "auto", paddingTop: 18, fontSize: 9, letterSpacing: "0.3em", color: "rgba(244,243,239,.62)" }}>
           Discover
           <i className="block mx-auto" style={{ width: 1, height: 20, marginTop: 8, background: "linear-gradient(rgba(244,243,239,.62),transparent)" }} />
         </div>
