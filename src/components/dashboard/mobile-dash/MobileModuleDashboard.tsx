@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { hapticLight } from "@/lib/native";
+import { useBackDismiss } from "@/hooks/useBackDismiss";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
@@ -53,6 +54,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const [anchor, setAnchor] = useState(() => new Date());
   const [airMetric, setAirMetric] = useState("co2");
   const [explainTab, setExplainTab] = useState<string | null>(null);
+  // back Android/gesto: chiude la dashboard e torna alla overview (§2.2)
+  useBackDismiss(true, onBack);
 
   const todayKey = keyOf(new Date());
   const dateKey = keyOf(anchor);
