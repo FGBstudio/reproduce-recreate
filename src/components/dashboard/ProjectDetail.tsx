@@ -477,19 +477,24 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // gestisce da sé navigazione (CTA + chip) e controlli (barra glass in basso)
   const isMobile = useIsMobile();
 
-  // Fetch latest outdoor temperature from weather_data
+  // Fetch latest outdoor temperature + humidity from weather_data
+  // (l'umidità serve al cielo della facciata Energy, brief §5.4.1)
   const [outdoorTemp, setOutdoorTemp] = useState<number | null>(null);
+  const [outdoorHumidity, setOutdoorHumidity] = useState<number | null>(null);
   useEffect(() => {
     if (!project?.siteId || !isSupabaseConfigured || !supabase) return;
     supabase
       .from('weather_data')
-      .select('temperature_c')
+      .select('temperature_c, humidity_percent')
       .eq('site_id', project.siteId)
       .order('timestamp', { ascending: false })
       .limit(1)
       .then(({ data }) => {
         if (data && data.length > 0 && data[0].temperature_c != null) {
           setOutdoorTemp(Math.round(data[0].temperature_c));
+        }
+        if (data && data.length > 0 && (data[0] as { humidity_percent?: number | null }).humidity_percent != null) {
+          setOutdoorHumidity(Math.round((data[0] as { humidity_percent: number }).humidity_percent));
         }
       });
   }, [project?.siteId]);
@@ -4130,6 +4135,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   benchmarkMatrix={benchmarkMatrix}
                   certifications={projectCertifications}
                   outdoorTempC={outdoorTemp}
+                  outdoorHumidityPct={outdoorHumidity}
                 />
               </div>
             )}

@@ -57,6 +57,8 @@ interface OverviewSectionProps {
   certifications?: string[];
   /** Temperatura esterna reale (weather_data), con fallback a project.data.temp */
   outdoorTempC?: number | null;
+  /** Umidità esterna reale (weather_data) — cielo della facciata Energy (§5.4.1) */
+  outdoorHumidityPct?: number | null;
 }
 
 const getStatusLevel = (score: number): StatusLevel => {
@@ -909,7 +911,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
 // ─────────────────────────────────────────────
 // MAIN COMPONENT EXPORT
 // ─────────────────────────────────────────────
-export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix, certifications, outdoorTempC }: OverviewSectionProps) => {
+export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix, certifications, outdoorTempC, outdoorHumidityPct }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
   const isMobile = useIsMobile();
 
@@ -1027,6 +1029,10 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         level: r.cert_level,
         year: r.issued_date ? new Date(r.issued_date).getFullYear() : null,
         state: classifyCertState(r.status),
+        // §5.4: i misuratori a punti (72/110) e il rinnovo in facciata
+        score: r.score,
+        targetScore: r.target_score,
+        expiry: r.expiry_date,
       }))
       .filter(r => r.state && r.certType && !NOT_BUILDING.has(r.certType))
       .sort((a, b) => (order[a.state!] ?? 9) - (order[b.state!] ?? 9));
@@ -1034,7 +1040,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
       // demo/mock: solo i nomi, mostrati come certificati senza livello
       return certifications
         .filter(n => !NOT_BUILDING.has(n))
-        .map(n => ({ certType: n, level: null, year: null, state: "achieved" as const }));
+        .map(n => ({ certType: n, level: null, year: null, state: "achieved" as const, score: null, targetScore: null, expiry: null }));
     }
     return rows;
   }, [certRows, certifications]);
@@ -1076,6 +1082,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         // Outdoor e nell'hero — con l'indirizzo completo andava a capo ovunque
         city={project.city || project.address}
         outdoorTemp={outdoorTempC ?? project.data?.temp}
+        outdoorHumidity={outdoorHumidityPct ?? undefined}
         periodLabel={periodLabel}
         overall={overallStatus}
         energy={energyStatus}
@@ -1112,7 +1119,10 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         notInstalled={nothingMonitored}
         certCount={certAchievedCount}
         certTopLevel={certTopLevel}
-        certDetails={buildingCerts.filter(c => c.state === "achieved").map(c => ({ type: c.certType!, level: c.level ?? null }))}
+        certDetails={buildingCerts.filter(c => c.state === "achieved").map(c => ({
+          type: c.certType!, level: c.level ?? null,
+          score: c.score ?? null, targetScore: c.targetScore ?? null, expiry: c.expiry ?? null,
+        }))}
         verdictHeadline={verdict.headline}
         isRealData={liveData.isRealData || powerLatest.isRealData}
         onNavigate={onNavigate}

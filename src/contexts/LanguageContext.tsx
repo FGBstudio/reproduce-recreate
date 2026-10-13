@@ -509,6 +509,8 @@ const translations: Record<string, Record<Language, string>> = {
 
   // ── Overview mobile del sito (brief mobile §2.3/§5.1: era tutta hardcoded) ──
   'ovm.outdoor': { en: 'OUTDOOR', it: 'ESTERNO', fr: 'EXTÉRIEUR', es: 'EXTERIOR', zh: '室外' },
+  'ovm.rh': { en: 'RH', it: 'UR', fr: 'HR', es: 'HR', zh: '湿度' },
+  'ovm.next_renewal': { en: 'RENEWAL · IN {n} MONTH{s}', it: 'RINNOVO · TRA {n} MES{s_it}', fr: 'RENOUVELLEMENT · DANS {n} MOIS', es: 'RENOVACIÓN · EN {n} MES{s_es}', zh: '续证 · {n} 个月后' },
   'ovm.score': { en: 'SCORE', it: 'PUNTEGGIO', fr: 'SCORE', es: 'PUNTUACIÓN', zh: '评分' },
   'ovm.live': { en: 'LIVE', it: 'LIVE', fr: 'LIVE', es: 'LIVE', zh: '实时' },
   'ovm.v_good': { en: 'Good', it: 'Buono', fr: 'Bon', es: 'Bueno', zh: '良好' },

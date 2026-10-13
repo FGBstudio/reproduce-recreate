@@ -33,6 +33,8 @@ interface OverviewMobileViewProps {
   siteName: string;
   city?: string;
   outdoorTemp?: number;
+  /** Umidità esterna reale — compare nel cielo della facciata Energy (§5.4.1) */
+  outdoorHumidity?: number;
   periodLabel: string;
   overall: ModuleStatus;
   energy: ModuleStatus;
@@ -75,8 +77,8 @@ interface OverviewMobileViewProps {
   onNavigate?: (tab: string) => void;
   /** Certificazioni attive del sito (LEED, BREEAM, ...): sezione grigia dedicata */
   certifications?: string[];
-  /** Dettaglio certificazioni ottenute (per livelli e «Dati spiegati») */
-  certDetails?: { type: string; level: string | null }[];
+  /** Dettaglio certificazioni ottenute (livelli, punti, rinnovo — §5.4) */
+  certDetails?: { type: string; level: string | null; score?: number | null; targetScore?: number | null; expiry?: string | null }[];
 }
 
 // Loghi ufficiali già presenti in public/ (stessi path di SiteMarker).
@@ -125,18 +127,12 @@ const Outdoor = ({ city, temp, extra, outdoorLabel }: { city?: string; temp?: nu
       <Cloud className="w-4 h-4 opacity-80" aria-hidden="true" />
       {typeof temp === "number" ? `${Math.round(temp)}°` : "—"}{extra ? ` · ${extra}` : ""}
     </div>
-    {/* skyline: i "comignoli" appoggiati sulla linea del tetto (come nel mockup) */}
+    {/* Forma del cornicione (§5.4): UN solo volume tecnico sul tetto, a
+        sinistra (≈ x 18–43, alto ~16px), appoggiato sul parapetto. */}
     <div
       aria-hidden="true"
-      className="absolute inset-x-0 bottom-0 h-9 opacity-[0.16] pointer-events-none"
-      style={{
-        background: [
-          "linear-gradient(#01565b,#01565b) 5% 100%/24px 32px no-repeat",
-          "linear-gradient(#01565b,#01565b) 20% 100%/16px 20px no-repeat",
-          "linear-gradient(#01565b,#01565b) 70% 100%/28px 26px no-repeat",
-          "linear-gradient(#01565b,#01565b) 86% 100%/14px 15px no-repeat",
-        ].join(", "),
-      }}
+      className="absolute bottom-0 pointer-events-none opacity-[0.22]"
+      style={{ left: 18, width: 25, height: 16, background: "#01565b", borderRadius: "2px 2px 0 0" }}
     />
   </div>
 );
@@ -343,7 +339,7 @@ const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onC
 const ModuleScreen = ({
   city, outdoorTemp, outdoorExtra, outdoorLabel, icon, label, verdict, scoreLine,
   values, limitRatio, big, bigUnit, bigColor, rows, meters, ctaLabel, onCta, light, buildingClass, pitch,
-  centerContent, onExplain, explainLabel, ink,
+  centerContent, onExplain, explainLabel, ink, deviceImg,
 }: any) => (
   <section data-screen className="h-full snap-start snap-always flex flex-col shrink-0">
     <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} outdoorLabel={outdoorLabel} />
@@ -376,26 +372,49 @@ const ModuleScreen = ({
                   type="button"
                   onClick={onExplain}
                   aria-label={explainLabel}
-                  className="grid place-items-center rounded-full font-semibold"
-                  style={{ width: 22, height: 22, fontSize: 13, border: `1.4px solid ${light ? "rgba(1,71,75,.7)" : "rgba(255,255,255,.7)"}`, opacity: .85, padding: 12, boxSizing: "content-box", margin: -12 }}
+                  className="grid place-items-center"
+                  style={{ width: 44, height: 44, margin: "-12px -12px -12px -6px" }}
                 >
-                  ?
+                  {/* cerchio ~20px, bordo 1.4, colore testo al 70% (§5.4.2) */}
+                  <span aria-hidden className="grid place-items-center rounded-full font-semibold"
+                    style={{ width: 20, height: 20, fontSize: 12, border: `1.4px solid ${light ? "rgba(1,71,75,.7)" : "rgba(255,255,255,.7)"}`, opacity: .85 }}>
+                    ?
+                  </span>
                 </button>
               )}
             </div>
             <div className="text-[11px] opacity-75 tracking-wide">{scoreLine}</div>
             {values && <ValueRow items={values} light={light} />}
             {typeof limitRatio === "number" && <LimitBar ratio={limitRatio} light={light} />}
-            {centerContent ? (
-              <div className="my-auto py-2 w-full">{centerContent}</div>
-            ) : (
-              <div className="my-auto py-2">
-                <div className="text-[64px] font-bold leading-none tracking-tight" style={bigColor ? { color: bigColor } : undefined}>
-                  {big}
+            {/* Centro della facciata (§5.4.3): il dispositivo che misura —
+                render ufficiale ~120px con ombra ellittica a terra — oppure
+                il contenuto dedicato (loghi cert), poi il valore live grande. */}
+            <div className="my-auto py-2 w-full flex flex-col items-center">
+              {deviceImg && (
+                <div className="flex flex-col items-center" aria-hidden="true">
+                  <img
+                    src={deviceImg}
+                    alt=""
+                    loading="lazy"
+                    className="object-contain"
+                    style={{ height: "clamp(72px, 14svh, 120px)", maxWidth: 190 }}
+                  />
+                  <span
+                    className="block -mt-1"
+                    style={{ width: 104, height: 14, background: "radial-gradient(ellipse at center, rgba(0,0,0,.18) 0%, rgba(0,0,0,0) 68%)" }}
+                  />
                 </div>
-                <div className="text-[11px] tracking-[0.26em] font-bold opacity-75 mt-2">{bigUnit}</div>
-              </div>
-            )}
+              )}
+              {centerContent}
+              {big != null && (
+                <div className={deviceImg || centerContent ? "mt-3" : undefined}>
+                  <div className="text-[64px] font-bold leading-none tracking-tight" style={bigColor ? { color: bigColor } : undefined}>
+                    {big}
+                  </div>
+                  <div className="text-[11px] tracking-[0.26em] font-bold opacity-75 mt-2">{bigUnit}</div>
+                </div>
+              )}
+            </div>
             {meters && meters.length > 0 ? (
               <MeterRow items={meters} light={light} ink={ink} />
             ) : rows && rows.length > 0 ? (
@@ -419,7 +438,7 @@ const ModuleScreen = ({
             <button
               type="button"
               onClick={onExplain}
-              className={`flex-1 min-h-[44px] rounded-full font-bold text-[11px] tracking-[0.14em] whitespace-nowrap border transition-all active:scale-[0.98] ${
+              className={`flex-1 min-h-[44px] rounded-full font-bold text-[10px] tracking-[0.14em] whitespace-nowrap border transition-all active:scale-[0.98] ${
                 light ? "text-[#01474b] border-[#01474b]/30" : "text-white border-white/35"
               }`}
             >
@@ -428,7 +447,7 @@ const ModuleScreen = ({
             <button
               type="button"
               onClick={onCta}
-              className={`flex-1 min-h-[44px] rounded-full font-bold text-[11px] tracking-[0.14em] whitespace-nowrap backdrop-blur-md border shadow-lg transition-all active:scale-[0.98] ${
+              className={`flex-1 min-h-[44px] rounded-full font-bold text-[10px] tracking-[0.14em] whitespace-nowrap backdrop-blur-md border shadow-lg transition-all active:scale-[0.98] ${
                 light ? "text-[#01474b] bg-white/45 border-[#01474b]/25" : "text-white bg-white/[0.16] border-white/40"
               }`}
             >
@@ -444,7 +463,7 @@ const ModuleScreen = ({
 );
 
 export const OverviewMobileView = ({
-  siteName, city, outdoorTemp, periodLabel, overall, energy, air, water, moduleConfig,
+  siteName, city, outdoorTemp, outdoorHumidity, periodLabel, overall, energy, air, water, moduleConfig,
   power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, notInstalled, certCount = 0,
   verdictHeadline, isRealData, onNavigate, certifications, certTopLevel, certDetails,
 }: OverviewMobileViewProps) => {
@@ -467,6 +486,36 @@ export const OverviewMobileView = ({
   /** Variante approvata §5.4: facciata ambra quando il giudizio del modulo
       è Fair (OK). Per Poor il bordeaux è ancora da confermare (§8.4). */
   const FAIR = { buildingClass: "bg-gradient-to-b from-[#f2dcae] to-[#e3c487]", light: true, ink: "#5b3d0c" };
+
+  /* ── Certificazioni (§5.4): rinnovo più vicino come «valore live» e
+     misuratori a punti (72/110). Il mockup dice «next audit»: in DB esiste
+     solo expiry_date, quindi l'etichetta parla di rinnovo — non si inventa. */
+  const certRenewal = useMemo(() => {
+    const future = (certDetails || [])
+      .map(c => (c.expiry ? new Date(c.expiry) : null))
+      .filter((d): d is Date => !!d && !Number.isNaN(d.getTime()) && d.getTime() > Date.now())
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+    if (!future) return null;
+    const months = Math.max(0, Math.round((future.getTime() - Date.now()) / (30.44 * 86400e3)));
+    const label = new Intl.DateTimeFormat(language, { month: "short" }).format(future).replace(/\.$/, "");
+    return {
+      big: `${label.charAt(0).toUpperCase() + label.slice(1)} ’${String(future.getFullYear()).slice(2)}`,
+      months,
+    };
+  }, [certDetails, language]);
+  const certMeters = useMemo(() => {
+    const rows = (certDetails || []).filter(c => typeof c.score === "number");
+    if (rows.length === 0) return undefined;
+    return rows.slice(0, 4).map(c => {
+      const target = typeof c.targetScore === "number" && c.targetScore > 0 ? c.targetScore : undefined;
+      const asPct = !target && (c.score as number) <= 100;
+      return {
+        label: target ? `${c.type} PT` : c.type,
+        value: target ? `${nf0.format(c.score as number)}/${nf0.format(target)}` : asPct ? `${nf0.format(c.score as number)}%` : nf0.format(c.score as number),
+        pct: target ? ((c.score as number) / target) * 100 : asPct ? (c.score as number) : undefined,
+      };
+    });
+  }, [certDetails, nf0]);
   const energyRatio = ratioFromLimit(power.total, energyLimitKw);
   const energyPct = energyLimitKw ? Math.round(energyRatio * 100) : undefined;
   const airRatio = ratioFromLimit(airMetrics.avgCo2 ?? airMetrics.co2, airMetrics.co2Limit);
@@ -646,6 +695,10 @@ export const OverviewMobileView = ({
       ) : (
       <ModuleScreen
         city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
+        /* §5.4.1: il cielo racconta il fuori col dato che spiega il modulo —
+           per l'energia l'umidità relativa (clima → carico HVAC) */
+        outdoorExtra={typeof outdoorHumidity === "number" ? `${t("ovm.rh")} ${nf0.format(outdoorHumidity)}%` : undefined}
+        deviceImg="/intro/hw-greeny.webp"
         icon={Zap} label={t("ovm.energy")}
         buildingClass={energy.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#028084] to-[#016368]"}
         light={energy.level === "OK" ? true : undefined}
@@ -689,6 +742,9 @@ export const OverviewMobileView = ({
       <ModuleScreen
         light
         city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
+        /* §5.4.1 prevede qui la pill con l'AQI esterno: il provider meteo
+           (weather_data) non lo fornisce — non si inventa (§8.3) */
+        deviceImg="/intro/hw-clair.webp"
         icon={Wind} label={t("ovm.air")}
         buildingClass={air.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"}
         ink={air.level === "OK" ? FAIR.ink : undefined}
@@ -726,6 +782,7 @@ export const OverviewMobileView = ({
       ) : (
       <ModuleScreen
         city={city} outdoorTemp={outdoorTemp} outdoorLabel={outdoorLabel}
+        deviceImg="/intro/hw-water.webp"
         icon={Droplet} label={t("ovm.water")}
         buildingClass="bg-gradient-to-b from-[#02a3a5] to-[#009193]"
         verdict={t(VERDICT_KEY[water.level])}
@@ -758,18 +815,19 @@ export const OverviewMobileView = ({
               }))
             : undefined}
           centerContent={
-            /* I loghi ufficiali al centro, distribuiti uniformemente;
-               chip bianco per leggibilità sul grigio */
-            <div className="flex flex-wrap items-center justify-evenly gap-6 px-2">
-              {certifications.slice(0, 6).map((c) => (
+            /* §5.4.3: niente dispositivo — i tre loghi ufficiali in FILA,
+               tile bianche ~78pt, raggio 16, ombra leggera (mockup v2) */
+            <div className="flex items-center justify-center gap-3 px-2">
+              {certifications.slice(0, 3).map((c) => (
                 <div
                   key={c}
-                  className="w-[104px] h-[104px] rounded-2xl bg-white shadow-lg flex items-center justify-center p-3"
+                  className="flex items-center justify-center bg-white p-2.5"
+                  style={{ width: 78, height: 78, borderRadius: 16, boxShadow: "0 6px 16px rgba(0,0,0,.18)" }}
                 >
                   {CERT_LOGOS[c] ? (
                     <img src={CERT_LOGOS[c]} alt={c} className="max-w-full max-h-full object-contain" />
                   ) : (
-                    <span className="text-[13px] font-bold text-[#5c696e] text-center leading-tight">
+                    <span className="text-[11px] font-bold text-[#5c696e] text-center leading-tight">
                       {c.replace(/_/g, " ")}
                     </span>
                   )}
@@ -777,6 +835,10 @@ export const OverviewMobileView = ({
               ))}
             </div>
           }
+          /* Valore live (§5.4.4): il rinnovo più vicino, stile «Mar ’27» */
+          big={certRenewal?.big}
+          bigUnit={certRenewal ? tn("ovm.next_renewal", certRenewal.months) : undefined}
+          meters={certMeters}
           ctaLabel={t("ovm.cta_cert")}
           onCta={() => onNavigate?.("certification")}
         />
