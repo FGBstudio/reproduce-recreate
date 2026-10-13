@@ -36,6 +36,7 @@ import { useProjectModuleConfig } from "@/hooks/useProjectModuleConfig";
 import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/components/modules/DemoDashboards";
 import { getSupportedMetricsForDevices, isLeedMonitor, type AirMetric } from "@/lib/airMonitorType";
 import { OverviewSection } from "./OverviewSection";
+import MobileModuleDashboard from "./mobile-dash/MobileModuleDashboard";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp } from "@/lib/api";
@@ -3603,6 +3604,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Overview mobile = esperienza a schermo intero senza chrome
   const isMobileOverview = isMobile && activeDashboard === "overview";
 
+  // Dashboard modulo mobile (brief §6): su mobile Energy e Aria usano la vista
+  // dedicata a schermo intero, SOLO se il modulo è attivo (i moduli bloccati
+  // restano sul ModuleGate esistente). Durante la generazione PDF le slide
+  // desktop devono comunque montare: le catture html2canvas leggono i loro ref.
+  const energyMobileDash = isMobile && activeDashboard === "energy" && resolvedModuleConfig.energy.enabled;
+  const airMobileDash = isMobile && activeDashboard === "air" && resolvedModuleConfig.air.enabled;
+  const isMobileModuleDash = energyMobileDash || airMobileDash;
+
   const nextSlide = () => {
     if (currentSlide < totalSlides - 1) {
       setCurrentSlide(prev => prev + 1);
@@ -3754,7 +3763,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           Nascosto nell'overview mobile: il back è affidato al gesto/tasto
           nativo e il Wrapped si sposta dentro la vista. */}
       <div
-        className={`absolute top-0 left-0 w-full justify-between items-center z-10 ${isMobileOverview ? "hidden" : "flex"}`}
+        className={`absolute top-0 left-0 w-full justify-between items-center z-10 ${isMobileOverview || isMobileModuleDash ? "hidden" : "flex"}`}
         style={{
           paddingTop: "max(0.75rem, var(--sat, 0px))",
           paddingBottom: "0.75rem",
@@ -3900,7 +3909,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           la vista occupa l'intero schermo */}
       <div
         className="absolute inset-0 flex flex-col"
-        style={isMobileOverview ? undefined : {
+        style={isMobileOverview || isMobileModuleDash ? undefined : {
           paddingTop: "calc(3.5rem + max(1rem, var(--sat, 0px)))",
           // Ridotto (era 3.5rem): la barra di paginazione ora e' un overlay
           // sfumato sul fondo, serve solo lo spazio perche' il contenuto
@@ -3922,7 +3931,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         {/* Title Area with Dashboard Tabs — nascosta nell'overview mobile
             (periodo/report/settings passano alla barra glass in basso) */}
         <div
-          className={`mb-2 md:mb-4 relative z-20 ${isMobileOverview ? "hidden" : ""}`}
+          className={`mb-2 md:mb-4 relative z-20 ${isMobileOverview || isMobileModuleDash ? "hidden" : ""}`}
           style={{
             paddingLeft: "max(1rem, env(safe-area-inset-left))",
             paddingRight: "max(1rem, env(safe-area-inset-right))",
@@ -4074,8 +4083,24 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           </div>
         </div>
 
+        {/* Dashboard modulo mobile (brief §6): Energy/Aria a schermo intero.
+            Copre tutto il main content (absolute inset-0 z-30); le slide
+            desktop sotto non montano, salvo durante la generazione PDF. */}
+        {isMobileModuleDash && (
+          <MobileModuleDashboard
+            module={activeDashboard === "energy" ? "energy" : "air"}
+            siteId={project.siteId}
+            siteName={project.name}
+            timezone={resolveTimezone(siteTimezone)}
+            isDemoSite={!!demoProfile || !isSupabaseConfigured}
+            priceKwh={liveEnergyPriceEur > 0 ? liveEnergyPriceEur : undefined}
+            onBack={() => handleDashboardChange("overview")}
+            onExportPdf={handleExportPdf}
+          />
+        )}
+
         {/* Carousel Content - Scrollable with touch support */}
-        <div 
+        <div
           className="flex-1 relative overflow-hidden z-20"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -4109,8 +4134,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </div>
             )}
             
-            {/* ENERGY DASHBOARD */}
-            {activeDashboard === "energy" && (
+            {/* ENERGY DASHBOARD (desktop; su mobile vedi MobileModuleDashboard
+                più sotto — qui monta solo durante il PDF, per i ref dei grafici) */}
+            {activeDashboard === "energy" && (!energyMobileDash || isGeneratingPdf) && (
               <ModuleGate module="energy" config={resolvedModuleConfig.energy} demoContent={<EnergyDemoContent />}>
                 <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Energy Overview */}
@@ -5172,8 +5198,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
               </ModuleGate>
             )}
             
-            {/* AIR QUALITY DASHBOARD */}
-            {activeDashboard === "air" && (
+            {/* AIR QUALITY DASHBOARD (desktop; su mobile vedi MobileModuleDashboard) */}
+            {activeDashboard === "air" && (!airMobileDash || isGeneratingPdf) && (
               <ModuleGate module="air" config={resolvedModuleConfig.air} demoContent={<AirDemoContent />}>
                 <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Overview + Building Grid */}
@@ -6614,7 +6640,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             >=44px (regola lotto 3); su desktop i comandi si fanno discreti.
             Nell'overview mobile la banda sparisce (scroll a sezioni proprio). */}
         <div
-          className={`absolute bottom-0 inset-x-0 justify-center items-center gap-4 md:gap-5 pt-8 z-20 pointer-events-none bg-gradient-to-t ${materialSkin ? "from-[#EDF5F2] via-[#EDF5F2]/55" : "from-black/45 via-black/15"} to-transparent ${isMobileOverview ? "hidden" : "flex"}`}
+          className={`absolute bottom-0 inset-x-0 justify-center items-center gap-4 md:gap-5 pt-8 z-20 pointer-events-none bg-gradient-to-t ${materialSkin ? "from-[#EDF5F2] via-[#EDF5F2]/55" : "from-black/45 via-black/15"} to-transparent ${isMobileOverview || isMobileModuleDash ? "hidden" : "flex"}`}
           style={{ paddingBottom: "calc(0.375rem + var(--sab, 0px))" }}
         >
           <button onClick={prevSlide} disabled={currentSlide === 0} className="pointer-events-auto w-11 h-11 md:w-8 md:h-8 rounded-full border border-gray-300 hover:bg-foreground/80 disabled:opacity-30 bg-foreground/40 flex items-center justify-center transition active:scale-95 text-gray-700">
