@@ -9,7 +9,6 @@ import MapView from "@/components/dashboard/MapView";
 // prima apertura di un sito.
 const ProjectDetail = lazy(() => import("@/components/dashboard/ProjectDetail"));
 import MobileBurgerMenu from "@/components/dashboard/MobileBurgerMenu";
-import MobileKpiPanel from "@/components/dashboard/MobileKpiPanel";
 import WrappedPlayer from "@/components/wrapped/WrappedPlayer";
 import PostLoginOnboarding from "@/components/onboarding/PostLoginOnboarding";
 import { readIntroMode } from "@/lib/intro/config";
@@ -31,7 +30,6 @@ const Index = () => {
   const [initialSection, setInitialSection] = useState<ProjectSection | undefined>(undefined);
   // Mobile-only state
   const [isBurgerOpen, setIsBurgerOpen] = useState(false);
-  const [isKpiPanelOpen, setIsKpiPanelOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     // intro_mode=skip (preferenza utente, SPEC intro §6): dritto alla dashboard
@@ -302,17 +300,8 @@ const Index = () => {
         canChangeBrand={canChangeBrand}
       />
 
-      {/* Mobile KPI Panel (slides from bottom) */}
-      {!selectedProject && (
-        <MobileKpiPanel
-          isOpen={isKpiPanelOpen}
-          onClose={() => setIsKpiPanelOpen(false)}
-          currentRegion={currentRegion}
-          selectedBrand={selectedBrand}
-          selectedHolding={selectedHolding}
-          showBrandOverlay={!!(showBrandOverlay)}
-        />
-      )}
+      {/* Il pannello KPI mobile non è più un overlay separato: vive dentro
+          la card regionale di RegionOverlay, che si espande (§4.1) */}
 
       {/* Desktop: Brand/Holding Overlay */}
       <BrandOverlay
@@ -344,8 +333,6 @@ const Index = () => {
           selectedBrand={selectedBrand}
           onHoldingChange={canChangeHolding ? setSelectedHolding : undefined}
           onBrandChange={canChangeBrand ? setSelectedBrand : undefined}
-          kpiPanelOpen={isKpiPanelOpen}
-          onKpiPanelToggle={() => setIsKpiPanelOpen(p => !p)}
           allowedRegions={allowedRegions}
         />
       )}

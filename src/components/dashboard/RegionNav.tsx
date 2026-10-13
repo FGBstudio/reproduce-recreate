@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { hapticLight } from "@/lib/native";
-import { Zap, Wind, Droplets, Building2, Tag, BarChart2 } from "lucide-react";
+import { Zap, Wind, Droplets, Building2, Tag } from "lucide-react";
 import { MonitoringType } from "@/lib/data";
 import { useAllHoldings, useAllBrands, useAllProjects } from "@/hooks/useRealTimeData";
 import { useUserScope } from "@/hooks/useUserScope";
@@ -22,8 +22,6 @@ interface RegionNavProps {
   selectedBrand: string | null;
   onHoldingChange?: (holdingId: string | null) => void;
   onBrandChange?: (brandId: string | null) => void;
-  kpiPanelOpen?: boolean;
-  onKpiPanelToggle?: () => void;
   allowedRegions?: string[] | null;
 }
 
@@ -51,8 +49,6 @@ const RegionNav = ({
   selectedBrand,
   onHoldingChange,
   onBrandChange,
-  kpiPanelOpen = false,
-  onKpiPanelToggle,
   allowedRegions,
 }: RegionNavProps) => {
   const { holdings } = useAllHoldings();
@@ -62,7 +58,7 @@ const RegionNav = ({
 
   // Pubblica l'altezza reale della barra come CSS var: con flex-wrap le righe
   // variano (1-2) in base alla larghezza, e i pannelli ancorati in basso
-  // (RegionOverlay mobile, MobileKpiPanel) devono sapere quanto spazio lasciare.
+  // (la card regionale di RegionOverlay) devono sapere quanto spazio lasciare.
   // Prima usavano offset fissi (bottom-20, 4rem) calibrati sulla barra a 1 riga.
   const navRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -188,19 +184,8 @@ const RegionNav = ({
           })}
         </div>
 
-        {/* KPI button */}
-        <button
-          onClick={onKpiPanelToggle}
-          className={`glass-panel flex items-center gap-1 rounded-full px-4 min-h-[44px] transition-all active:scale-95 ${
-            kpiPanelOpen
-              ? "bg-fgb-accent text-background shadow-[0_0_12px_rgba(0,255,255,0.5)]"
-              : "text-foreground hover:bg-fgb-light/30"
-          }`}
-          title="KPI Dashboard"
-        >
-          <BarChart2 className="w-4 h-4" />
-          <span className="text-[10px] font-bold">KPI</span>
-        </button>
+        {/* Il bottone KPI non c'è più (§4.1): i KPI vivono nella card
+            regionale, che si espande con tap o trascinamento. */}
       </div>
 
       {/* ── DESKTOP: Original layout (unchanged) ── */}

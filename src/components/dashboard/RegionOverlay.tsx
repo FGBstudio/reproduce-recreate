@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { regions, projects as allProjects, type Project } from "@/lib/data";
 import { useAggregatedSiteData } from "@/hooks/useAggregatedSiteData";
 import { useAllProjects } from "@/hooks/useRealTimeData";
@@ -24,6 +25,39 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerContent, setMobileDrawerContent] = useState<string | null>(null);
+
+  // ── §4: la card regionale mobile SI ESPANDE nel pannello KPI ──
+  // Un solo contenitore: la sezione KPI grande anima la propria altezza da 0
+  // a KPI_H dentro la stessa card (niente secondo pannello sopra la mappa).
+  const KPI_H = 248;
+  const [kpiExpanded, setKpiExpanded] = useState(false);
+  const [dragExtra, setDragExtra] = useState<number | null>(null); // altezza mentre il dito trascina
+  const dragStart = useRef<{ y: number; extra: number; t: number } | null>(null);
+  useBackDismiss(kpiExpanded, () => setKpiExpanded(false));
+  // cambiando regione (o sparendo) la card torna compatta
+  useEffect(() => { setKpiExpanded(false); setDragExtra(null); }, [currentRegion, visible]);
+
+  const onHandleDown = (e: React.PointerEvent) => {
+    dragStart.current = { y: e.clientY, extra: kpiExpanded ? KPI_H : 0, t: performance.now() };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+  const onHandleMove = (e: React.PointerEvent) => {
+    if (!dragStart.current) return;
+    const extra = dragStart.current.extra + (dragStart.current.y - e.clientY); // su = cresce
+    setDragExtra(Math.max(0, Math.min(KPI_H, extra)));
+  };
+  const onHandleUp = (e: React.PointerEvent) => {
+    const start = dragStart.current;
+    dragStart.current = null;
+    if (!start) return;
+    setDragExtra(null);
+    const dy = start.y - e.clientY; // >0 = verso l'alto
+    const dt = Math.max(1, performance.now() - start.t);
+    const fast = Math.abs(dy) / dt > 0.5; // px/ms (soglia §4.2)
+    const far = Math.abs(dy) > KPI_H * 0.3;
+    if (fast || far) setKpiExpanded(dy > 0);
+    // altrimenti la transition CSS riporta la sezione dov'era
+  };
   const { language, t } = useLanguage();
   const region = regions[currentRegion];
   
@@ -499,13 +533,83 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
       className="md:hidden fixed left-2 right-2 z-30 pointer-events-auto"
       style={{ bottom: "calc(var(--region-nav-h, 5rem) + 0.5rem)" }}
     >
-      <div className="glass-panel rounded-xl p-3">
-        <div className="flex items-center justify-between mb-2">
+      <div className="glass-panel rounded-xl p-3 pt-1.5">
+        {/* Maniglia (§4.1): presa ≥44px, pointer events SOLO qui per non
+            litigare con lo scroll interno del pannello aperto */}
+        <div
+          className="flex items-center justify-center -mx-3 cursor-grab"
+          style={{ minHeight: 24, touchAction: "none" }}
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={onHandleUp}
+          aria-hidden
+        >
+          <div className="rounded-full" style={{ width: 40, height: 4, background: "rgba(255,255,255,.4)" }} />
+        </div>
+        <button
+          type="button"
+          onClick={() => setKpiExpanded(x => !x)}
+          className="w-full flex items-center justify-between mb-2 text-left"
+          aria-expanded={kpiExpanded}
+        >
           <div>
             <h3 className="text-sm font-semibold text-foreground">{region.name}</h3>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('region.performance')}</p>
           </div>
+          {kpiExpanded
+            ? <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
+            : <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0" />}
+        </button>
+
+        {/* Pannello KPI integrato: stessa card, altezza animata (§4.1 p.3).
+            Mentre si trascina segue il dito (niente transition). */}
+        <div
+          className="overflow-hidden"
+          style={{
+            height: dragExtra ?? (kpiExpanded ? KPI_H : 0),
+            transition: dragExtra != null ? "none" : "height 250ms ease-out",
+          }}
+        >
+          <div className="overflow-y-auto no-scrollbar pr-0.5" style={{ height: KPI_H, WebkitOverflowScrolling: "touch" }}>
+            <div className="grid grid-cols-2 gap-2 pb-2">
+              <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/10">
+                <div className="text-xs text-muted-foreground mb-1">{t('kpi.energy_intensity')}</div>
+                <div className="text-xl font-bold text-foreground">
+                  {activeFilters.includes('energy') && displayIntensity > 0 ? displayIntensity.toFixed(1) : '—'}
+                </div>
+                <div className="text-[11px] text-muted-foreground">kWh/m²</div>
+              </div>
+              <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/10">
+                <div className="text-xs text-muted-foreground mb-1">{t('kpi.air_quality')}</div>
+                <div className={`text-xl font-bold ${activeFilters.includes('air') ? aqColorClass : 'text-muted-foreground'}`}>
+                  {activeFilters.includes('air') ? displayAq : '—'}
+                </div>
+                {displayCo2 > 0 && activeFilters.includes('air') && (
+                  <div className="text-[11px] text-muted-foreground">CO₂: {displayCo2} ppm</div>
+                )}
+              </div>
+              <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/10">
+                <div className="text-xs text-muted-foreground mb-1">{t('kpi.active_sites')}</div>
+                <div className="text-xl font-bold text-foreground">{displayOnline}</div>
+              </div>
+              <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/10">
+                <div className="text-xs text-muted-foreground mb-1">{t('kpi.critical_alerts')}</div>
+                <div className={`text-xl font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                  {displayCritical}
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground italic text-center pb-1">
+              {(hasRealIntensity || hasRealCo2)
+                ? `${Math.max(realSiteCount, co2SiteCountByRegion[currentRegion] ?? 0)} ${t('region.sites_live_data')}`
+                : aggregated.hasRealData
+                  ? `${sitesCount} ${t('region.sites_in_region')}`
+                  : t('region.select_pin')}
+            </p>
+          </div>
         </div>
+
         <div className="grid grid-cols-4 gap-1.5">
           {/* Energy Intensity */}
           <button 
@@ -521,7 +625,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             className={`text-center p-2 rounded-lg bg-foreground/5 border border-foreground/10 ${activeFilters.includes('air') ? 'active:bg-foreground/10' : 'opacity-30 grayscale'}`}
           >
             <div className={`text-sm font-bold ${aqColorClass}`}>{activeFilters.includes('air') ? displayAq : '—'}</div>
-            <div className="text-[8px] uppercase text-muted-foreground">Air</div>
+            <div className="text-[8px] uppercase text-muted-foreground">{t('region.k_air')}</div>
           </button>
           {/* Active Sites */}
           <button 
@@ -529,7 +633,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             className="text-center p-2 rounded-lg bg-foreground/5 border border-foreground/10 active:bg-foreground/10"
           >
             <div className="text-sm font-bold text-foreground">{displayOnline}</div>
-            <div className="text-[8px] uppercase text-muted-foreground">Online</div>
+            <div className="text-[8px] uppercase text-muted-foreground">{t('region.k_online')}</div>
           </button>
           {/* Alerts */}
           <button 
@@ -537,7 +641,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             className="text-center p-2 rounded-lg bg-foreground/5 border border-foreground/10 active:bg-foreground/10"
           >
             <div className={`text-sm font-bold ${displayCritical > 0 ? "text-rose-400" : "text-emerald-400"}`}>{displayCritical}</div>
-            <div className="text-[8px] uppercase text-muted-foreground">Alerts</div>
+            <div className="text-[8px] uppercase text-muted-foreground">{t('region.k_alerts')}</div>
           </button>
         </div>
       </div>
