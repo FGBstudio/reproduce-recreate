@@ -16,7 +16,7 @@ import { X, Wind, Zap, Award, Thermometer, Droplets, FlaskConical, Haze, Gauge, 
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 
-type Group = "air" | "energy" | "cert";
+type Group = "air" | "energy" | "water" | "cert";
 
 interface LevelRow {
   nameKey: string;      // chiave i18n del nome livello (o nome proprio es. "Gold")
@@ -104,6 +104,31 @@ const TABS: TabDef[] = [
       { nameKey: "xp.lvl_good", range: "< 50 ppb", adviceKey: "xp.o3_l1", color: C.good, match: v => v < 50 },
       { nameKey: "xp.lvl_moderate", range: "50–100 ppb", adviceKey: "xp.o3_l2", color: C.mod, match: v => v >= 50 && v <= 100 },
       { nameKey: "xp.lvl_poor", range: "> 100 ppb", adviceKey: "xp.o3_l3", color: C.poor, match: v => v > 100 },
+    ],
+  },
+  /* ── Acqua (soglie dal metrics_catalog: pH 6.5–8.5, torbidità 1/5, cloro 0.2–0.5) ── */
+  { id: "wflow", group: "water", label: "L/min", icon: Droplets, defKey: "xp.def_wflow", unit: "L/min" },
+  {
+    id: "wph", group: "water", label: "pH", icon: FlaskConical, defKey: "xp.def_wph", unit: "pH",
+    levels: [
+      { nameKey: "xp.lvl_optimal", range: "6.5–8.5", adviceKey: "xp.wph_l1", color: C.good, match: v => v >= 6.5 && v <= 8.5 },
+      { nameKey: "xp.lvl_poor", range: "< 6.5 · > 8.5", adviceKey: "xp.wph_l2", color: C.poor, match: v => v < 6.5 || v > 8.5 },
+    ],
+  },
+  {
+    id: "wturb", group: "water", label: "NTU", icon: Haze, defKey: "xp.def_wturb", unit: "NTU",
+    levels: [
+      { nameKey: "xp.lvl_optimal", range: "0–1 NTU", adviceKey: "xp.wturb_l1", color: C.good, match: v => v <= 1 },
+      { nameKey: "xp.lvl_moderate", range: "1–5 NTU", adviceKey: "xp.wturb_l2", color: C.mod, match: v => v > 1 && v <= 5 },
+      { nameKey: "xp.lvl_poor", range: "> 5 NTU", adviceKey: "xp.wturb_l3", color: C.poor, match: v => v > 5 },
+    ],
+  },
+  {
+    id: "wchlor", group: "water", label: "Cl", icon: FlaskConical, defKey: "xp.def_wchlor", unit: "mg/L",
+    levels: [
+      { nameKey: "xp.lvl_optimal", range: "0.2–0.5 mg/L", adviceKey: "xp.wchlor_l1", color: C.good, match: v => v >= 0.2 && v <= 0.5 },
+      { nameKey: "xp.lvl_moderate", range: "0.1–1.0 mg/L", adviceKey: "xp.wchlor_l2", color: C.mod, match: v => (v >= 0.1 && v < 0.2) || (v > 0.5 && v <= 1) },
+      { nameKey: "xp.lvl_poor", range: "< 0.1 · > 1.0", adviceKey: "xp.wchlor_l3", color: C.poor, match: v => v < 0.1 || v > 1 },
     ],
   },
   {

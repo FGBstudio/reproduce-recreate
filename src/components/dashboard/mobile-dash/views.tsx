@@ -10,8 +10,10 @@ import { AMBER, AXIS, INK, RULE, SUB, TEAL } from "./bits";
 import type { MonthSeries, WeekSeries, YearSeries } from "./useModuleSeries";
 import { hapticLight } from "@/lib/native";
 
-export const WeekBars = ({ s, onOpenDay, avgLabel, fmt, weekdays }: {
+export const WeekBars = ({ s, onOpenDay, avgLabel, fmt, weekdays, overLimit }: {
   s: WeekSeries; onOpenDay: (date: string) => void; avgLabel?: string; fmt: (v: number) => string; weekdays?: string[];
+  /** quando la metrica ha una soglia, l'ambra scatta sulla SOGLIA e non sulla media */
+  overLimit?: number;
 }) => {
   const max = Math.max(...s.days.map(d => d.v ?? 0), s.weekdayAvg ?? 0, 1);
   const H = 150;
@@ -28,7 +30,9 @@ export const WeekBars = ({ s, onOpenDay, avgLabel, fmt, weekdays }: {
         <div className="absolute inset-x-0 bottom-0 top-0 flex items-end justify-between px-1">
           {s.days.map((d, i) => {
             const isWeekend = i >= 5;
-            const over = d.v != null && s.weekdayAvg != null && !isWeekend && d.v > s.weekdayAvg * 1.1;
+            const over = d.v != null && (overLimit != null
+              ? d.v > overLimit
+              : s.weekdayAvg != null && !isWeekend && d.v > s.weekdayAvg * 1.1);
             const h = d.v != null ? Math.max(8, (d.v / max) * H) : 0;
             return (
               <button key={d.date} type="button" onClick={() => { if (d.v != null) { hapticLight(); onOpenDay(d.date); } }}
@@ -89,8 +93,10 @@ export const HourHeatmap = ({ s, onOpenDay, title, hint, weekdays, fmtCell }: {
   );
 };
 
-export const MonthCalendar = ({ s, weekdays, onOpenDay }: {
+export const MonthCalendar = ({ s, weekdays, onOpenDay, overLimit }: {
   s: MonthSeries; weekdays: string[]; onOpenDay: (date: string) => void;
+  /** punto ambra per i giorni sopra la soglia della metrica */
+  overLimit?: number;
 }) => {
   const firstDow = (() => {
     const d = new Date(`${s.cells[0].date}T00:00:00`);
@@ -120,7 +126,8 @@ export const MonthCalendar = ({ s, weekdays, onOpenDay }: {
             <span aria-hidden className="rounded-full" style={{
               width: c.v != null ? Math.max(4, Math.round((c.v / (s.maxV || 1)) * 14)) : 0,
               height: c.v != null ? Math.max(4, Math.round((c.v / (s.maxV || 1)) * 14)) : 0,
-              background: "rgba(10,143,145,.75)", marginTop: 2,
+              background: overLimit != null && c.v != null && c.v > overLimit ? "rgba(217,154,43,.85)" : "rgba(10,143,145,.75)",
+              marginTop: 2,
             }} />
           </button>
         ))}

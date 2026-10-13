@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { co2ToScore } from "@/lib/airQuality";
 
-export type DashModule = "energy" | "air";
+export type DashModule = "energy" | "air" | "water";
 
 /** Schede energia (§6.1.5): potenza totale o una categoria di dispositivi.
     «Base» (carico di base) non è una serie esistente in DB: resta fuori. */
@@ -34,9 +34,35 @@ export const AIR_METRICS: Record<string, { ids: string[]; unit: string }> = {
 /** Fattore emissioni (kgCO2e/kWh) — stesso valore di ProjectDetail e del PDF. */
 export const CO2_EMISSION_FACTOR = 0.233;
 
+/** Metriche acqua (telemetry, hardware water_meter/water_quality del
+    metrics_catalog). Il «consumo» in litri è un contatore cumulativo
+    (water.volume): da value_avg orario non si ricava un delta onesto,
+    quindi la serie primaria è la PORTATA media. */
+export const WATER_METRICS: Record<string, { ids: string[]; unit: string }> = {
+  flow: { ids: ["water.flow_rate", "flow_rate", "flow"], unit: "L/min" },
+  ph: { ids: ["water.ph", "ph"], unit: "pH" },
+  turbidity: { ids: ["water.turbidity", "turbidity"], unit: "NTU" },
+  chlorine: { ids: ["water.chlorine", "chlorine"], unit: "mg/L" },
+  wtemp: { ids: ["water.temp", "water_temp"], unit: "°C" },
+  pressure: { ids: ["water.pressure", "pressure"], unit: "bar" },
+};
+
+/** Tabella metriche del modulo (aria o acqua). */
+const metricsFor = (module: DashModule) => (module === "water" ? WATER_METRICS : AIR_METRICS);
+
+/** Arrotondamento per metrica: le grandezze piccole (pH, cloro, CO, bar)
+    hanno bisogno dei centesimi; le altre restano intere come oggi. */
+const roundFor = (module: DashModule, metric: string) => {
+  const fine = module === "water" ? metric !== "wtemp" : metric === "co";
+  return (v: number) => (fine ? Math.round(v * 100) / 100 : Math.round(v));
+};
+
 export interface DayPoint { h: number; v: number | null }       // ora locale 0-23
 export interface DaySeries {
   points: DayPoint[];
+  /** profilo tipico: media oraria degli ultimi 4 stessi giorni-settimana
+      (il pattern di «Actual vs Average» desktop, reso come linea fantasma) */
+  typical?: Array<number | null>;
   peak?: { h: number; v: number };
   limit?: number;
   limit2?: number;             // seconda soglia (rosso), es. CO₂ critical
@@ -105,26 +131,48 @@ const DEMO_AIR: Record<string, { base: number; amp: number; wiggle: number; limi
   humidity: { base: 42, amp: 9, wiggle: 1.5, limit: 60 },
 };
 
+/** Demo acqua: soglie qualità dal metrics_catalog (pH 6.5–8.5, torbidità 1/5, cloro ≤1). */
+const DEMO_WATER: Record<string, { base: number; amp: number; wiggle: number; limit?: number; limit2?: number }> = {
+  flow: { base: 2, amp: 9, wiggle: 1.1 },
+  ph: { base: 7.15, amp: 0.25, wiggle: 0.08, limit: 8.5 },
+  turbidity: { base: 0.55, amp: 0.55, wiggle: 0.12, limit: 1, limit2: 5 },
+  chlorine: { base: 0.45, amp: 0.1, wiggle: 0.04, limit: 1 },
+  wtemp: { base: 15.5, amp: 3, wiggle: 0.4 },
+  pressure: { base: 2.4, amp: 0.35, wiggle: 0.1 },
+};
+const demoCfgFor = (module: DashModule, metric: string) =>
+  module === "water"
+    ? (DEMO_WATER[metric] ?? DEMO_WATER.flow)
+    : (DEMO_AIR[metric === "iaq" ? "co2" : metric] ?? DEMO_AIR.co2);
+
 /** Serie demo deterministica per i siti vetrina (badge DEMO obbligatorio). */
 function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): DaySeries {
-  const cfg = DEMO_AIR[airMetric === "iaq" ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const cfg = demoCfgFor(module, airMetric);
   const k = module === "energy" ? DEMO_CAT_FACTOR[energyCat] : 1;
   const isIaq = module === "air" && airMetric === "iaq";
+  const dp = cfg.base < 5 ? 100 : 10; // centesimi per le grandezze piccole (cloro, torbidità…)
   const pts: DayPoint[] = Array.from({ length: 24 }, (_, h) => {
     const base = module === "energy" ? 6 + 10 * Math.exp(-((h - 13) ** 2) / 28) : cfg.base + cfg.amp * Math.exp(-((h - 15) ** 2) / 30);
     const wiggle = Math.sin(h * 1.7) * (module === "energy" ? 1.4 : cfg.wiggle);
     const raw = (base + wiggle) * k;
-    return { h, v: isIaq ? co2ToScore(raw) : Math.round(raw * 10) / 10 };
+    return { h, v: isIaq ? co2ToScore(raw) : Math.round(raw * dp) / dp };
+  });
+  // profilo tipico demo: la stessa giornata, leggermente più piatta
+  const typicalBase = module === "energy" ? 6 * k : cfg.base;
+  const typical = Array.from({ length: 24 }, (_, h) => {
+    const v = pts[h].v;
+    return v == null ? null : Math.round((v * 0.92 + typicalBase * 0.06) * dp) / dp;
   });
   const peakPt = pts.reduce((a, b) => ((b.v ?? 0) > (a.v ?? 0) ? b : a));
   const limit = module === "energy" ? (energyCat === "power" ? 25 : undefined) : isIaq ? undefined : cfg.limit;
-  const avg = Math.round((pts.reduce((a, p) => a + (p.v ?? 0), 0) / pts.length) * 10) / 10;
+  const avg = Math.round((pts.reduce((a, p) => a + (p.v ?? 0), 0) / pts.length) * dp) / dp;
   return {
     // per l'IAQ «più alto = meglio»: niente annotazione del picco
     points: pts, peak: isIaq ? undefined : { h: peakPt.h, v: peakPt.v! },
+    typical,
     limit,
-    limit2: module === "air" && !isIaq ? cfg.limit2 : undefined,
-    unit: module === "energy" ? "kW" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+    limit2: module !== "energy" && !isIaq ? cfg.limit2 : undefined,
+    unit: module === "energy" ? "kW" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
     totalKwh: module === "energy" ? Math.round(412 * k) : undefined,
     avg: module === "energy" ? Math.round(11.6 * k * 10) / 10 : avg,
     // coerente con la serie: minuti davvero sopra il limite disegnato
@@ -138,15 +186,16 @@ function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "
   };
 }
 function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): WeekSeries {
-  const isIaq = airMetric === "iaq";
-  const cfg = DEMO_AIR[isIaq ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const isIaq = module === "air" && airMetric === "iaq";
+  const cfg = demoCfgFor(module, airMetric);
   const kCat = DEMO_CAT_FACTOR[energyCat];
+  const dp = cfg.base < 5 ? 100 : 10;
   const airShape = [0.95, 1.0, 1.12, 0.92, 1.02, 0.64, 0.59];
   const vals = module === "energy"
-    ? [421, 398, 455, 388, 412, 118, 96].map(v => Math.round(v * kCat))
+    ? [421, 398, 468, 388, 412, 118, 96].map(v => Math.round(v * kCat))
     : airShape.map(k => {
         const raw = (cfg.base + cfg.amp * 0.38) * k;
-        return isIaq ? co2ToScore(raw) : Math.round(raw * 10) / 10;
+        return isIaq ? co2ToScore(raw) : Math.round(raw * dp) / dp;
       });
   const heat = Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => {
     const open = h >= 7 && h <= 20 && d < 5;
@@ -154,17 +203,18 @@ function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = 
   }));
   return {
     days: ["L", "M", "M", "G", "V", "S", "D"].map((label, i) => ({ label, date: `demo-${i}`, v: vals[i] })),
-    weekdayAvg: Math.round((vals.slice(0, 5).reduce((a, b) => a + b, 0) / 5) * 10) / 10,
+    weekdayAvg: Math.round((vals.slice(0, 5).reduce((a, b) => a + b, 0) / 5) * dp) / dp,
     heat, heatMax: 100,
     totalKwh: module === "energy" ? Math.round(2290 * kCat) : undefined,
     topDay: "demo-2",
     costEur: module === "energy" ? Math.round(430 * kCat) : undefined,
-    unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
+    unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
   };
 }
 function demoMonth(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): MonthSeries {
-  const isIaq = airMetric === "iaq";
-  const cfg = DEMO_AIR[isIaq ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const isIaq = module === "air" && airMetric === "iaq";
+  const cfg = demoCfgFor(module, airMetric);
+  const dp = cfg.base < 5 ? 100 : 10;
   const kCat = DEMO_CAT_FACTOR[energyCat];
   const now = new Date();
   const nDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -178,7 +228,7 @@ function demoMonth(module: DashModule, airMetric: string, energyCat: EnergyCat =
         ? Math.round((wd === 0 || wd === 6 ? 110 : 390 + Math.round(60 * Math.sin(day))) * kCat)
         : (() => {
             const raw = (cfg.base + cfg.amp * 0.38) * (wd === 0 || wd === 6 ? 0.62 : 1 + 0.08 * Math.sin(day));
-            return isIaq ? co2ToScore(raw) : Math.round(raw * 10) / 10;
+            return isIaq ? co2ToScore(raw) : Math.round(raw * dp) / dp;
           })();
     return { day, date, v, future, today: day === now.getDate() };
   });
@@ -191,7 +241,7 @@ function demoMonth(module: DashModule, airMetric: string, energyCat: EnergyCat =
     vsPrevPct: module === "energy" ? -6 : undefined,
     peak: demoPeak ? { date: demoPeak.date, v: demoPeak.v! } : undefined,
     baseloadKw: module === "energy" ? Math.round(4.2 * kCat * 10) / 10 : undefined,
-    unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
+    unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
   };
 }
 
@@ -236,25 +286,82 @@ export function useEnergyCats(siteId: string | undefined, isDemoSite: boolean) {
 /** Fattori demo per le categorie (quota plausibile del carico totale). */
 const DEMO_CAT_FACTOR: Record<EnergyCat, number> = { power: 1, hvac: 0.45, lighting: 0.3, plugs: 0.18 };
 
-/** Metriche aria che il sito misura DAVVERO (regola d'oro §8.3): si guardano
-    gli ultimi 45 giorni di telemetry_daily e si mostrano solo quelle schede. */
-export function useAirMetricsAvailable(siteId: string | undefined, isDemoSite: boolean) {
+/** Metriche (aria o acqua) che il sito misura DAVVERO (regola d'oro §8.3):
+    si guardano gli ultimi 45 giorni di telemetry_daily e si mostrano solo
+    quelle schede. */
+export function useSiteMetricsAvailable(module: DashModule, siteId: string | undefined, isDemoSite: boolean) {
   return useQuery<string[]>({
-    queryKey: ["mdash-airmetrics", siteId],
+    queryKey: ["mdash-metrics", module, siteId],
     queryFn: async () => {
-      const ALL = Object.keys(AIR_METRICS);
+      const TBL = metricsFor(module);
+      const ALL = Object.keys(TBL);
       if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? ALL : [];
       const since = new Date(Date.now() - 45 * 86400e3).toISOString().slice(0, 10);
       const { data } = await supabase!.from("telemetry_daily")
         .select("metric").eq("site_id", siteId).gte("ts_day", since).limit(2000);
       const present = new Set(((data || []) as unknown as Array<{ metric: string }>).map(r => r.metric));
-      return ALL.filter(k => AIR_METRICS[k].ids.some(id => present.has(id)));
+      return ALL.filter(k => TBL[k].ids.some(id => present.has(id)));
     },
     staleTime: 10 * 60 * 1000,
   });
 }
 
 const HVAC_ON_KW = 2; // soglia acceso/spento (brief §8.2, da raffinare per sito)
+
+/** Profilo orario di UN giorno (somma device per l'energia, media sito per
+    aria/acqua): mattone del «profilo tipico» dei 4 stessi giorni-settimana. */
+async function fetchDayHourMap(
+  module: DashModule, siteId: string, ids: string[], metricIds: string[], dayKey: string, tz: string,
+): Promise<Map<number, number>> {
+  const from = new Date(`${dayKey}T00:00:00`);
+  const fromUtc = new Date(from.getTime() - 26 * 3600e3).toISOString();
+  const toUtc = new Date(from.getTime() + 50 * 3600e3).toISOString();
+  if (module === "energy") {
+    const { data } = await supabase!.from("energy_hourly")
+      .select("ts_hour, metric, value_avg, value_sum")
+      .in("device_id", ids.slice(0, 50))
+      .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
+      .in("metric", ["energy.power_kw", "energy.active_energy", "energy.active_import_kwh"]);
+    const p = new Map<number, number>(), e = new Map<number, number>();
+    for (const r of (data || []) as unknown as HourRow[]) {
+      if (dayKeyInTz(new Date(r.ts_hour), tz) !== dayKey) continue;
+      const h = hourInTz(r.ts_hour, tz);
+      if (r.metric === "energy.power_kw" && r.value_avg != null) p.set(h, (p.get(h) || 0) + Number(r.value_avg));
+      else if (r.value_sum != null && Number(r.value_sum) <= 50000) e.set(h, (e.get(h) || 0) + Number(r.value_sum));
+    }
+    return p.size > 0 ? p : e;
+  }
+  const { data } = await supabase!.from("telemetry_hourly")
+    .select("ts_hour, metric, value_avg").eq("site_id", siteId)
+    .gte("ts_hour", fromUtc).lte("ts_hour", toUtc).in("metric", metricIds);
+  const agg = new Map<number, { s: number; n: number }>();
+  for (const r of (data || []) as unknown as HourRow[]) {
+    if (r.value_avg == null || dayKeyInTz(new Date(r.ts_hour), tz) !== dayKey) continue;
+    const h = hourInTz(r.ts_hour, tz);
+    const x = agg.get(h) || { s: 0, n: 0 };
+    x.s += Number(r.value_avg); x.n++;
+    agg.set(h, x);
+  }
+  return new Map([...agg.entries()].map(([h, x]) => [h, x.s / x.n]));
+}
+
+/** Media oraria dei 4 stessi giorni-settimana precedenti; null se scarsa. */
+async function fetchTypical(
+  module: DashModule, siteId: string, ids: string[], metricIds: string[], dateKey: string, tz: string,
+  mapV: (v: number) => number,
+): Promise<Array<number | null> | undefined> {
+  const prevKeys = [1, 2, 3, 4].map(i => {
+    const d = new Date(`${dateKey}T12:00:00`);
+    d.setDate(d.getDate() - 7 * i);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const maps = await Promise.all(prevKeys.map(k => fetchDayHourMap(module, siteId, ids, metricIds, k, tz).catch(() => new Map<number, number>())));
+  const typical = Array.from({ length: 24 }, (_, h) => {
+    const vals = maps.map(m => m.get(h)).filter((v): v is number => v != null);
+    return vals.length >= 2 ? mapV(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+  });
+  return typical.filter(v => v != null).length >= 6 ? typical : undefined;
+}
 
 export function useDaySeries(module: DashModule, siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, limit?: number, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", limit2?: number) {
   return useQuery<DaySeries | null>({
@@ -338,8 +445,11 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
             return e ? Math.round((e.s / e.n) * 10) / 10 : null;
           });
         }
+        // il PATTERN: profilo orario medio dei 4 stessi giorni-settimana
+        // (la versione mobile di «Actual vs Average»)
+        const typical = await fetchTypical("energy", siteId, ids, [], dateKey, tz, v => Math.round(v * 10) / 10);
         return {
-          points, peak: peakPt ? { h: peakPt.h, v: peakPt.v } : undefined, limit: effLimit, unit: "kW",
+          points, typical, peak: peakPt ? { h: peakPt.h, v: peakPt.v } : undefined, limit: effLimit, unit: "kW",
           totalKwh, avg, overLimitMinutes: over, vsTypicalPct,
           costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
           outdoorTemp,
@@ -347,11 +457,12 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
         };
       }
 
-      // ── ARIA: metrica oraria + striscia HVAC come causa ──
+      // ── ARIA / ACQUA: metrica oraria dalla telemetria del sito ──
       // IAQ (§6.1.5) non è una colonna: si deriva dalla CO₂ con la stessa
       // scala dell'overview (co2ToScore) — niente indici inventati.
-      const isIaq = airMetric === "iaq";
-      const metricIds = (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids;
+      const isIaq = module === "air" && airMetric === "iaq";
+      const rnd = roundFor(module, airMetric);
+      const metricIds = (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids;
       const { data } = await supabase!.from("telemetry_hourly")
         .select("ts_hour, metric, value_avg")
         .eq("site_id", siteId)
@@ -370,16 +481,19 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
         const e = byHour.get(h);
         if (!e) return { h, v: null };
         const mean = e.s / e.n;
-        return { h, v: isIaq ? co2ToScore(mean) : Math.round(mean) };
+        return { h, v: isIaq ? co2ToScore(mean) : rnd(mean) };
       });
       const present = points.filter(pt => pt.v != null) as Array<{ h: number; v: number }>;
       const peakPt = present.reduce((a, b) => (b.v > a.v ? b : a), present[0]);
-      const avg = Math.round(present.reduce((a, b) => a + b.v, 0) / present.length);
+      const avg = rnd(present.reduce((a, b) => a + b.v, 0) / present.length);
       const over = limit ? present.filter(pt => pt.v > limit).length * 60 : undefined;
+      // il PATTERN tipico degli stessi giorni-settimana, anche per aria/acqua
+      const typical = await fetchTypical(module, siteId, [], metricIds, dateKey, tz,
+        v => (isIaq ? co2ToScore(v) : rnd(v)));
       // causa: HVAC acceso/spento dal modulo Energy (potenza hvac > soglia).
       // Pertinente per CO₂ (ventilazione) e per temperatura/umidità (clima);
-      // per PM/CO/O₃ non si propone una causa non verificata (§6.1.8).
-      const wantsHvac = ["co2", "temp", "humidity"].includes(airMetric);
+      // per PM/CO/O₃ e per l'acqua non si propone una causa non verificata (§6.1.8).
+      const wantsHvac = module === "air" && ["co2", "temp", "humidity"].includes(airMetric);
       let hvacStrip: boolean[] | undefined;
       const { hvacIds } = wantsHvac ? await generalDeviceIds(siteId) : { hvacIds: [] as string[] };
       if (hvacIds.length > 0) {
@@ -398,12 +512,13 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
       }
       return {
         points,
+        typical,
         // per l'IAQ «più alto = meglio»: l'annotazione del picco sarebbe fuorviante
         peak: !isIaq && peakPt ? { h: peakPt.h, v: peakPt.v } : undefined,
-        // soglia della metrica corrente (site_thresholds, passata dal container)
+        // soglia della metrica corrente (site_thresholds / metrics_catalog)
         limit: isIaq ? undefined : limit,
         limit2: isIaq ? undefined : limit2,
-        unit: isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+        unit: isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
         avg,
         overLimitMinutes: isIaq ? undefined : over,
         hvacStrip: wantsHvac ? hvacStrip : undefined,
@@ -456,7 +571,7 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
         const { data: hr } = await supabase!.from("telemetry_hourly")
           .select("ts_hour, metric, value_avg").eq("site_id", siteId)
           .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
-          .in("metric", (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+          .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
         const agg = new Map<string, { s: number; n: number }>();
         for (const r of (hr || []) as unknown as HourRow[]) {
           if (r.value_avg == null) continue;
@@ -474,7 +589,8 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
           e.s += v; e.n++;
           dAgg.set(k, e);
         }
-        daySums = new Map([...dAgg.entries()].map(([k, e]) => [k, Math.round(e.s / e.n)]));
+        const rnd = roundFor(module, airMetric);
+        daySums = new Map([...dAgg.entries()].map(([k, e]) => [k, isIaq ? Math.round(e.s / e.n) : rnd(e.s / e.n)]));
       }
       if (heatRows.length === 0 && daySums.size === 0) return null;
 
@@ -489,16 +605,20 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
         if (heat[di][h]! > heatMax) heatMax = heat[di][h]!;
       }
       const labels = ["L", "M", "M", "G", "V", "S", "D"];
-      const days: WeekDay[] = dayKeys.map((date, i) => ({ label: labels[i], date, v: daySums.has(date) ? Math.round(daySums.get(date)!) : null }));
+      const rndW = roundFor(module, airMetric);
+      const days: WeekDay[] = dayKeys.map((date, i) => ({
+        label: labels[i], date,
+        v: daySums.has(date) ? (module === "energy" ? Math.round(daySums.get(date)!) : daySums.get(date)!) : null,
+      }));
       const weekdayVals = days.slice(0, 5).map(d => d.v).filter((v): v is number => v != null);
-      const weekdayAvg = weekdayVals.length ? Math.round(weekdayVals.reduce((a, b) => a + b, 0) / weekdayVals.length) : undefined;
+      const weekdayAvg = weekdayVals.length ? rndW(weekdayVals.reduce((a, b) => a + b, 0) / weekdayVals.length) : undefined;
       const totalKwh = module === "energy" ? Math.round([...daySums.values()].reduce((a, b) => a + b, 0)) : undefined;
       const top = days.filter(d => d.v != null).sort((a, b) => (b.v! - a.v!))[0];
       return {
         days, weekdayAvg, heat, heatMax,
         totalKwh, topDay: top?.date,
         costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
-        unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
+        unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
       };
     },
     enabled: !!mondayKey,
@@ -537,7 +657,7 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
         const { data } = await supabase!.from("telemetry_daily")
           .select("ts_day, metric, value_avg").eq("site_id", siteId)
           .gte("ts_day", first).lte("ts_day", last)
-          .in("metric", (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+          .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
         const agg = new Map<string, { s: number; n: number }>();
         for (const r of (data || []) as unknown as DayRow[]) {
           if (r.value_avg == null) continue;
@@ -545,14 +665,19 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
           e.s += Number(r.value_avg); e.n++;
           agg.set(r.ts_day, e);
         }
-        for (const [k, e] of agg) vals.set(k, isIaq ? co2ToScore(e.s / e.n) : Math.round(e.s / e.n));
+        const rnd = roundFor(module, airMetric);
+        for (const [k, e] of agg) vals.set(k, isIaq ? co2ToScore(e.s / e.n) : rnd(e.s / e.n));
       }
       if (vals.size === 0) return null;
 
       const cells: MonthDayCell[] = Array.from({ length: nDays }, (_, i) => {
         const day = i + 1;
         const date = `${monthKey}-${String(day).padStart(2, "0")}`;
-        return { day, date, v: vals.has(date) ? Math.round(vals.get(date)!) : null, future: date > todayKey, today: date === todayKey };
+        return {
+          day, date,
+          v: vals.has(date) ? (module === "energy" ? Math.round(vals.get(date)!) : vals.get(date)!) : null,
+          future: date > todayKey, today: date === todayKey,
+        };
       });
       const present = cells.filter(c => c.v != null) as Array<MonthDayCell & { v: number }>;
       const maxV = Math.max(...present.map(c => c.v));
@@ -575,7 +700,7 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
         vsPrevPct,
         peak: peakCell ? { date: peakCell.date, v: peakCell.v } : undefined,
         baseloadKw,
-        unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
+        unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
       };
     },
     enabled: !!monthKey,
@@ -596,24 +721,25 @@ export interface YearSeries {
 }
 
 function demoYear(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): YearSeries {
-  const isIaq = airMetric === "iaq";
-  const cfg = DEMO_AIR[isIaq ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const isIaq = module === "air" && airMetric === "iaq";
+  const cfg = demoCfgFor(module, airMetric);
+  const rnd = roundFor(module, airMetric);
   const kCat = DEMO_CAT_FACTOR[energyCat];
   const nowM = new Date().getMonth();
   const shape = [1.15, 1.1, 0.95, 0.85, 0.9, 1.05, 1.2, 1.18, 0.95, 0.9, 1.0, 1.12];
   const months: YearMonth[] = shape.map((k, i) => {
     if (i > nowM) return { m: i + 1, v: null };
     const raw = module === "energy" ? 11600 * k * kCat : (cfg.base + cfg.amp * 0.38) * (0.9 + 0.2 * (k - 0.85));
-    return { m: i + 1, v: module === "energy" ? Math.round(raw) : isIaq ? co2ToScore(raw) : Math.round(raw) };
+    return { m: i + 1, v: module === "energy" ? Math.round(raw) : isIaq ? co2ToScore(raw) : rnd(raw) };
   });
   const present = months.filter(x => x.v != null).map(x => x.v!) ;
   const totalKwh = module === "energy" ? present.reduce((a, b) => a + b, 0) : undefined;
   return {
     months,
-    avg: present.length ? Math.round(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
+    avg: present.length ? (module === "energy" || isIaq ? Math.round : rnd)(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
     totalKwh,
     costEur: module === "energy" ? Math.round((totalKwh || 0) * 0.19) : undefined,
-    unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+    unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
     isDemo: true,
   };
 }
@@ -646,7 +772,7 @@ export function useYearSeries(module: DashModule, siteId: string | undefined, ye
         const { data } = await supabase!.from("telemetry_daily")
           .select("ts_day, metric, value_avg").eq("site_id", siteId)
           .gte("ts_day", first).lte("ts_day", last)
-          .in("metric", (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+          .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
         for (const r of (data || []) as unknown as DayRow[]) {
           if (r.value_avg == null) continue;
           const m = Number(r.ts_day.slice(5, 7));
@@ -657,20 +783,21 @@ export function useYearSeries(module: DashModule, siteId: string | undefined, ye
       }
       if (byMonth.size === 0) return null;
 
+      const rnd = roundFor(module, airMetric);
       const months: YearMonth[] = Array.from({ length: 12 }, (_, i) => {
         const e = byMonth.get(i + 1);
         if (!e) return { m: i + 1, v: null };
-        const v = module === "energy" ? Math.round(e.s) : isIaq ? co2ToScore(e.s / e.n) : Math.round(e.s / e.n);
+        const v = module === "energy" ? Math.round(e.s) : isIaq ? co2ToScore(e.s / e.n) : rnd(e.s / e.n);
         return { m: i + 1, v };
       });
       const present = months.filter(x => x.v != null).map(x => x.v!);
       const totalKwh = module === "energy" ? present.reduce((a, b) => a + b, 0) : undefined;
       return {
         months,
-        avg: present.length ? Math.round(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
+        avg: present.length ? (module === "energy" || isIaq ? Math.round : rnd)(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
         totalKwh,
         costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
-        unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+        unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
         isDemo: false,
       };
     },

@@ -15,6 +15,8 @@ const W = 390, H = 230, PT = 26, PB = 14, PL = 14, PR = 44;
 
 interface Props {
   points: DayPoint[];
+  /** profilo tipico (media stessi giorni-settimana): linea fantasma tratteggiata */
+  typical?: Array<number | null>;
   unit: string;
   limit?: number;
   limitLabel?: string;   // es. «limite contratto 25 kW»
@@ -29,16 +31,17 @@ interface Props {
   yMax?: number;
 }
 
-const TimeSeriesChart = ({ points, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt, yMax }: Props) => {
+const TimeSeriesChart = ({ points, typical, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt, yMax }: Props) => {
   const [cursor, setCursor] = useState<number | null>(null); // ora selezionata
   const pressTimer = useRef<number | undefined>(undefined);
   const pressing = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const { maxV, x, y, linePath, areaPath, segs } = useMemo(() => {
+  const { maxV, x, y, linePath, areaPath, segs, typicalPath } = useMemo(() => {
     const vals = points.map(p => p.v).filter((v): v is number => v != null);
-    const rawMax = Math.max(...vals, limit ?? 0, 1);
+    const typVals = (typical ?? []).filter((v): v is number => v != null);
+    const rawMax = Math.max(...vals, ...typVals, limit ?? 0, 1);
     const maxV = yMax != null ? yMax : Math.ceil((rawMax * 1.15) / 5) * 5;
     const x = (h: number) => PL + (h / 23) * (W - PL - PR);
     const y = (v: number) => PT + (1 - v / maxV) * (H - PT - PB);
@@ -55,8 +58,16 @@ const TimeSeriesChart = ({ points, unit, limit, limitLabel, limit2, nowHour, now
     const areaPath = segs.map(seg =>
       `${d(seg)} L${x(seg[seg.length - 1].h).toFixed(1)},${H - PB} L${x(seg[0].h).toFixed(1)},${H - PB} Z`
     ).join(" ");
-    return { maxV, x, y, linePath, areaPath, segs };
-  }, [points, limit, yMax]);
+    // linea fantasma del profilo tipico (i buchi la spezzano, come la serie)
+    let typicalPath = "";
+    let pen = false;
+    (typical ?? []).forEach((v, h) => {
+      if (v == null) { pen = false; return; }
+      typicalPath += `${pen ? "L" : "M"}${x(h).toFixed(1)},${y(v).toFixed(1)} `;
+      pen = true;
+    });
+    return { maxV, x, y, linePath, areaPath, segs, typicalPath };
+  }, [points, typical, limit, yMax]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     start.current = { x: e.clientX, y: e.clientY };
@@ -140,8 +151,11 @@ const TimeSeriesChart = ({ points, unit, limit, limitLabel, limit2, nowHour, now
           </g>
         )}
 
-        {/* area + linea base (teal) */}
+        {/* area + profilo tipico (fantasma) + linea base (teal) */}
         <path d={areaPath} fill="url(#mdArea)" />
+        {typicalPath && (
+          <path d={typicalPath} fill="none" stroke="#c3d2d3" strokeWidth="1.4" strokeDasharray="4 4" strokeLinejoin="round" strokeLinecap="round" />
+        )}
         <path d={linePath} fill="none" stroke={TEAL} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
         {/* la STESSA linea ritagliata sopra le soglie (§6.1.6) */}
         {limit != null && (

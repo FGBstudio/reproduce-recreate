@@ -3615,7 +3615,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // desktop devono comunque montare: le catture html2canvas leggono i loro ref.
   const energyMobileDash = isMobile && activeDashboard === "energy" && resolvedModuleConfig.energy.enabled;
   const airMobileDash = isMobile && activeDashboard === "air" && resolvedModuleConfig.air.enabled;
-  const isMobileModuleDash = energyMobileDash || airMobileDash;
+  // Water in stile Dyson è una PROPOSTA (§5.6): etichettata nella barra
+  // superiore della dashboard finché il proprietario non la consolida.
+  const waterMobileDash = isMobile && activeDashboard === "water" && resolvedModuleConfig.water.enabled;
+  const isMobileModuleDash = energyMobileDash || airMobileDash || waterMobileDash;
 
   const nextSlide = () => {
     if (currentSlide < totalSlides - 1) {
@@ -4093,7 +4096,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             desktop sotto non montano, salvo durante la generazione PDF. */}
         {isMobileModuleDash && (
           <MobileModuleDashboard
-            module={activeDashboard === "energy" ? "energy" : "air"}
+            /* key: cambiando modulo si riparte da metrica e periodo puliti */
+            key={activeDashboard}
+            module={activeDashboard === "energy" ? "energy" : activeDashboard === "water" ? "water" : "air"}
             siteId={project.siteId}
             siteName={project.name}
             timezone={resolveTimezone(siteTimezone)}
@@ -5786,7 +5791,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             )}
             
             {/* WATER DASHBOARD */}
-            {activeDashboard === "water" && (
+            {activeDashboard === "water" && (!waterMobileDash || isGeneratingPdf) && (
               <ModuleGate module="water" config={resolvedModuleConfig.water} demoContent={<WaterDemoContent />}>
                 <LazySlides current={currentSlide} forceMount={isGeneratingPdf}>
                 {/* Slide 1: Consumo idrico & Distribuzione */}
