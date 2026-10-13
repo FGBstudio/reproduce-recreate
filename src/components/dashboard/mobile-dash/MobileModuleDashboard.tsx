@@ -9,17 +9,17 @@
  * il proprietario non approva una proposta. Le schede HVAC/Luci/Prese/Base
  * dell'energia arrivano con il loader per categoria (v2).
  */
-import { useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { hapticLight } from "@/lib/native";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
-import { HourHeatmap, LabelValueGrid, MonthCalendar, WeekBars } from "./views";
-import { useDaySeries, useMonthSeries, useWeekSeries, type DashModule } from "./useModuleSeries";
-import { co2Level } from "@/lib/airQuality";
+import { HourHeatmap, LabelValueGrid, MonthCalendar, WeekBars, YearBars } from "./views";
+import { useDaySeries, useEnergyCats, useMonthSeries, useWeekSeries, useYearSeries, type DashModule, type EnergyCat } from "./useModuleSeries";
+import { co2Level, scoreToLevel } from "@/lib/airQuality";
 import { isValidUUID } from "@/lib/utils";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -53,7 +53,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const [period, setPeriod] = useState<Period>("day");
   const [anchor, setAnchor] = useState(() => new Date());
   const [airMetric, setAirMetric] = useState("co2");
+  const [energyCat, setEnergyCat] = useState<EnergyCat>("power");
   const [explainTab, setExplainTab] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   // back Android/gesto: chiude la dashboard e torna alla overview (§2.2)
   useBackDismiss(true, onBack);
 
@@ -68,9 +70,11 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     ? (energyLimitKw ?? thresholds?.energy_power_limit_kw ?? undefined)
     : (co2LimitPpm ?? thresholds?.air_co2_warning_ppm ?? undefined);
 
-  const day = useDaySeries(module, safeSiteId, dateKey, timezone, isDemoSite, limit, priceKwh, airMetric);
-  const week = useWeekSeries(module, safeSiteId, mondayKey, timezone, isDemoSite, priceKwh, airMetric);
-  const month = useMonthSeries(module, safeSiteId, monthKey, timezone, isDemoSite, priceKwh, airMetric);
+  const day = useDaySeries(module, safeSiteId, dateKey, timezone, isDemoSite, limit, priceKwh, airMetric, energyCat);
+  const week = useWeekSeries(module, safeSiteId, mondayKey, timezone, isDemoSite, priceKwh, airMetric, energyCat);
+  const month = useMonthSeries(module, safeSiteId, monthKey, timezone, isDemoSite, priceKwh, airMetric, energyCat);
+  const yearData = useYearSeries(module, safeSiteId, anchor.getFullYear(), timezone, isDemoSite, priceKwh, airMetric, energyCat);
+  const cats = useEnergyCats(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
 
   const nf = useMemo(() => new Intl.NumberFormat(language, { maximumFractionDigits: 1 }), [language]);
   const nf0 = useMemo(() => new Intl.NumberFormat(language, { maximumFractionDigits: 0 }), [language]);
@@ -82,19 +86,25 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     const f = new Intl.DateTimeFormat(language, { weekday: "narrow" });
     return Array.from({ length: 7 }, (_, i) => f.format(new Date(base.getTime() + i * 86400e3)));
   }, [language]);
+  const monthHeads = useMemo(() => {
+    const f = new Intl.DateTimeFormat(language, { month: "narrow" });
+    return Array.from({ length: 12 }, (_, i) => f.format(new Date(2026, i, 1)));
+  }, [language]);
 
   const shift = (dir: 1 | -1) => {
     hapticLight();
     const d = new Date(anchor);
     if (period === "day") d.setDate(d.getDate() + dir);
     else if (period === "week") d.setDate(d.getDate() + dir * 7);
-    else d.setMonth(d.getMonth() + dir);
+    else if (period === "month") d.setMonth(d.getMonth() + dir);
+    else d.setFullYear(d.getFullYear() + dir);
     if (keyOf(d) > todayKey && d > new Date()) return;
     setAnchor(d);
   };
   const nextDisabled = period === "day" ? dateKey >= todayKey
     : period === "week" ? keyOf(new Date(mondayOf(anchor).getTime() + 7 * 86400e3)) > todayKey
-    : monthKey >= todayKey.slice(0, 7);
+    : period === "month" ? monthKey >= todayKey.slice(0, 7)
+    : anchor.getFullYear() >= new Date().getFullYear();
 
   // ── intestazioni del pager ──
   const pagerTitle = period === "day"
@@ -105,22 +115,40 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           try { return (dfRange as unknown as { formatRange: (x: Date, y: Date) => string }).formatRange(a, b); }
           catch { return `${dfRange.format(a)} – ${dfRange.format(b)}`; }
         })()
-      : dfMonth.format(anchor).replace(/^./, c => c.toUpperCase());
+      : period === "month"
+        ? dfMonth.format(anchor).replace(/^./, c => c.toUpperCase())
+        : String(anchor.getFullYear());
   const pagerSub = period === "day" ? dfWeekday.format(anchor)
     : period === "week" ? t("md.week_n").replace("{n}", String(isoWeek(anchor)))
-    : `${dfRange.format(new Date(anchor.getFullYear(), anchor.getMonth(), 1))} – ${dfRange.format(anchor)} ${anchor.getFullYear()}`;
+    : period === "month"
+      ? `${dfRange.format(new Date(anchor.getFullYear(), anchor.getMonth(), 1))} – ${dfRange.format(anchor)} ${anchor.getFullYear()}`
+      // Anno = proposta §6.4: etichettata finché il proprietario non conferma
+      : t("md.proposal");
 
   // ── verdetto del giorno ──
   const d = day.data;
+  // giudizi dell'aria al FEMMINILE («Buona», non «Buono»: nel mockup è così)
+  const AIR_V: Record<string, string> = {
+    EXCELLENT: "md.v_air_excellent", GOOD: "md.v_air_good", MODERATE: "md.v_air_moderate", POOR: "md.v_air_poor",
+  };
   const verdict = useMemo(() => {
     if (!d) return null;
     if (module === "energy") {
-      const over = d.limit != null && d.peak != null && d.peak.v > d.limit;
-      return {
-        color: over ? AMBER : TEAL,
-        word: over ? t("ovm.v_attention") : t("md.v_efficient"),
-        summary: d.avg != null ? t("md.avg_load").replace("{v}", `${nf.format(d.avg)} ${d.unit}`) : undefined,
-      };
+      if (d.limit != null) {
+        const over = d.peak != null && d.peak.v > d.limit;
+        return {
+          color: over ? AMBER : TEAL,
+          word: over ? t("ovm.v_attention") : t("md.v_efficient"),
+          summary: d.avg != null ? t("md.avg_load").replace("{v}", `${nf.format(d.avg)} ${d.unit}`) : undefined,
+        };
+      }
+      // categorie senza limite di contratto: niente giudizio inventato,
+      // si legge il carico medio e il totale del giorno
+      return d.avg != null ? {
+        color: TEAL,
+        word: `${nf.format(d.avg)} ${d.unit}`,
+        summary: d.totalKwh != null ? `${nf0.format(d.totalKwh)} kWh` : undefined,
+      } : null;
     }
     if (airMetric === "co2" && d.avg != null) {
       const lvl = co2Level(d.avg);
@@ -128,16 +156,31 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       const overruns = d.limit != null && d.points.filter(p => (p.v ?? 0) > d.limit!).length;
       return {
         color,
-        word: t(`xp.lvl_${lvl === "EXCELLENT" ? "excellent" : lvl === "GOOD" ? "good" : lvl === "MODERATE" ? "moderate" : "poor"}`),
+        word: t(AIR_V[lvl]),
         summary: overruns ? t("md.overruns").replace("{n}", String(overruns)) : `${nf0.format(d.avg)} ${d.unit}`,
       };
     }
+    if (airMetric === "iaq" && d.avg != null) {
+      const lvl = scoreToLevel(d.avg);
+      return {
+        color: lvl === "POOR" ? RED : lvl === "MODERATE" ? AMBER : TEAL,
+        word: t(AIR_V[lvl]),
+        summary: `${nf0.format(d.avg)} / 100`,
+      };
+    }
     return d.avg != null ? { color: TEAL, word: `${nf.format(d.avg)} ${d.unit}`, summary: undefined } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d, module, airMetric, t, nf, nf0]);
 
+  // Schede metrica (§6.1.5). Energy: solo le categorie con dispositivi reali
+  // (regola d'oro §8.3); «Base» non è una serie esistente e resta fuori.
+  const CAT_LABEL: Record<EnergyCat, string> = {
+    power: t("md.metric_power"), hvac: "HVAC", lighting: t("md.metric_lights"), plugs: t("md.metric_plugs"),
+  };
   const metricTabs = module === "energy"
-    ? [{ id: "power", label: t("md.metric_power") }]
+    ? (cats.data ?? ["power"]).map(c => ({ id: c, label: CAT_LABEL[c] }))
     : [
+        { id: "iaq", label: "IAQ" },
         { id: "co2", label: "CO₂" },
         { id: "pm25", label: "PM2.5" },
         { id: "tvoc", label: "TVOC" },
@@ -149,7 +192,35 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const exportData = () => {
     if (period === "day") return d?.points.map(p => ({ hour: p.h, value: p.v }));
     if (period === "week") return week.data?.days.map(x => ({ date: x.date, value: x.v }));
-    return month.data?.cells.map(c => ({ date: c.date, value: c.v }));
+    if (period === "month") return month.data?.cells.map(c => ({ date: c.date, value: c.v }));
+    return yearData.data?.months.map(x => ({ month: x.m, value: x.v }));
+  };
+  // PNG del grafico Giorno (§6.1.1): l'SVG serializzato su canvas 2×
+  const exportPng = () => {
+    const svg = rootRef.current?.querySelector("svg");
+    if (!svg) return;
+    const xml = new XMLSerializer().serializeToString(svg);
+    const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = 780; c.height = 460;
+      const ctx = c.getContext("2d");
+      if (!ctx) { URL.revokeObjectURL(url); return; }
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => {
+        if (!b) return;
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(b);
+        a.download = `${module}-${dateKey}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, "image/png");
+    };
+    img.src = url;
   };
   const download = (name: string, content: string, mime: string) => {
     const a = document.createElement("a");
@@ -159,6 +230,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     URL.revokeObjectURL(a.href);
   };
   const exportItems = [
+    ...(period === "day" ? [{ label: "PNG", onClick: exportPng }] : []),
     { label: "CSV", onClick: () => { const rows = exportData() || []; download(`${module}-${dateKey}.csv`, Object.keys(rows[0] || { x: 1 }).join(",") + "\n" + rows.map(r => Object.values(r).join(",")).join("\n"), "text/csv"); } },
     { label: "JSON", onClick: () => download(`${module}-${dateKey}.json`, JSON.stringify(exportData() || [], null, 1), "application/json") },
     ...(onExportPdf ? [{ label: "PDF", onClick: onExportPdf }] : []),
@@ -168,6 +240,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
 
   return (
     <div
+      ref={rootRef}
       className="absolute inset-0 z-30 flex flex-col overflow-y-auto no-scrollbar"
       style={{
         background: "linear-gradient(180deg, #f6fafa 0%, #ffffff 30%)",
@@ -185,7 +258,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         <div className="text-center min-w-0 flex-1">
           <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{period === "month" ? summaryLabel : module === "energy" ? t("ovm.energy") : t("ovm.air")}</span>
           <span className="truncate" style={{ fontSize: 13, color: SUB, marginLeft: 6 }}>{siteName}</span>
-          {(d?.isDemo || week.data?.isDemo) && (
+          {(d?.isDemo || week.data?.isDemo || month.data?.isDemo || yearData.data?.isDemo) && (
             <span className="align-middle" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "#b45309", background: "rgba(217,154,43,.15)", borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>DEMO</span>
           )}
         </div>
@@ -196,17 +269,43 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         <PeriodSegment
           value={period}
           onChange={setPeriod}
-          labels={{ day: t("md.day"), week: t("md.week"), month: t("md.month") } as Record<Period, string>}
+          labels={{ day: t("md.day"), week: t("md.week"), month: t("md.month"), year: t("md.year") }}
         />
       </div>
 
-      <PeriodPager title={pagerTitle} subtitle={pagerSub} onPrev={() => shift(-1)} onNext={() => shift(1)} nextDisabled={nextDisabled} titleSize={period === "week" ? 23 : 30} />
+      {/* Il mese ha l'intestazione del mockup §6.3 («attività del robot»):
+          titolo grande a sinistra con l'orologio, frecce a destra. */}
+      {period === "month" ? (
+        <div className="px-6 mt-3 flex items-start justify-between">
+          <div className="min-w-0">
+            <div style={{ fontSize: 32, fontWeight: 600, color: INK, lineHeight: 1.1 }}>{pagerTitle}</div>
+            <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: SUB, marginTop: 4 }}>
+              <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden />
+              {pagerSub}
+            </div>
+          </div>
+          <div className="flex shrink-0 -mr-2">
+            <button type="button" onClick={() => shift(-1)} aria-label="‹" className="grid place-items-center" style={{ width: 44, height: 44, color: SUB }}>
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button type="button" onClick={() => shift(1)} aria-label="›" disabled={nextDisabled} className="grid place-items-center" style={{ width: 44, height: 44, color: nextDisabled ? "#eaf0f0" : SUB }}>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <PeriodPager title={pagerTitle} subtitle={pagerSub} onPrev={() => shift(-1)} onNext={() => shift(1)} nextDisabled={nextDisabled} titleSize={period === "week" ? 23 : 30} />
+      )}
 
       {/* ── GIORNO ── */}
       {period === "day" && (
         <>
           {verdict && <VerdictLine color={verdict.color} verdict={verdict.word} summary={verdict.summary} onExplain={() => setExplainTab(module === "energy" ? "power" : airMetric)} />}
-          <MetricTabs tabs={metricTabs} value={module === "energy" ? "power" : airMetric} onChange={id => { if (module !== "energy") setAirMetric(id); }} />
+          <MetricTabs
+            tabs={metricTabs}
+            value={module === "energy" ? energyCat : airMetric}
+            onChange={id => { if (module === "energy") setEnergyCat(id as EnergyCat); else setAirMetric(id); }}
+          />
           {day.isLoading ? (
             <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
           ) : d ? (
@@ -222,14 +321,22 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 peakLabel={d.peak ? t("md.peak").replace("{v}", `${nf.format(d.peak.v)} ${d.unit}`).replace("{h}", `${pad(d.peak.h)}:00`) : undefined}
                 onSwipe={dir => (dir === 1 && nextDisabled ? undefined : shift(dir))}
                 fmt={v => nf0.format(v)}
+                yMax={module === "air" && (airMetric === "iaq" || airMetric === "humidity") ? 100 : undefined}
               />
               <TimeAxisBand />
+              {/* la causa (§6.1.8): temperatura esterna per l'energia,
+                  HVAC acceso/spento per la CO₂ — stesso asse X */}
+              {module === "energy" && d.outdoorTemp && (() => {
+                const vals = d.outdoorTemp.filter((v): v is number => v != null);
+                const range = vals.length ? `${nf0.format(Math.min(...vals))}° → ${nf0.format(Math.max(...vals))}°` : undefined;
+                return <CauseTrack variant="line" series={d.outdoorTemp} label={t("md.outdoor_temp")} note={range} />;
+              })()}
               {d.hvacStrip && <CauseTrack variant="onOff" strip={d.hvacStrip} label={t("md.hvac")} note={t("md.hvac_note")} />}
               <SummaryRow items={[
                 ...(module === "energy" && d.totalKwh != null ? [{ value: `${nf0.format(d.totalKwh)} kWh`, label: t("md.today_lbl") }] : []),
                 ...(module === "energy" && d.vsTypicalPct != null ? [{ value: `${d.vsTypicalPct > 0 ? "+" : ""}${d.vsTypicalPct}%`, label: t("md.vs_typical").replace("{d}", new Intl.DateTimeFormat(language, { weekday: "long" }).format(anchor)) }] : []),
                 ...(module === "energy" && d.costEur != null ? [{ value: `€ ${nf0.format(d.costEur)}`, label: t("md.cost_est") }] : []),
-                ...(module === "air" && d.avg != null ? [{ value: `${nf0.format(d.avg)} ${d.unit}`, label: t("md.avg") }] : []),
+                ...(module === "air" && d.avg != null ? [{ value: d.unit ? `${nf0.format(d.avg)} ${d.unit}` : `${nf0.format(d.avg)}/100`, label: t("md.avg") }] : []),
                 ...(module === "air" && d.overLimitMinutes ? [{ value: `${Math.floor(d.overLimitMinutes / 60)}h ${pad(d.overLimitMinutes % 60)}m`, label: t("md.over_time") }] : []),
                 ...(module === "air" && d.hvacStrip ? [{ value: String(d.hvacStrip.reduce((a, on, i) => a + (i > 0 && !on && d.hvacStrip![i - 1] ? 1 : 0), 0)), label: t("md.hvac_pauses") }] : []),
               ].slice(0, 3)} />
@@ -245,9 +352,24 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         week.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
         : week.data ? (
           <>
-            {week.data.totalKwh != null && (
-              <VerdictLine color={TEAL} verdict={t("md.v_average")} summary={`${nf.format(week.data.totalKwh / 1000)} MWh`} onExplain={() => setExplainTab(module === "energy" ? "power" : airMetric)} />
-            )}
+            {(() => {
+              const w = week.data!;
+              const openExplain = () => setExplainTab(module === "energy" ? "power" : airMetric);
+              if (module === "energy" && w.totalKwh != null) {
+                return <VerdictLine color={TEAL} verdict={t("md.v_average")} summary={`${nf.format(w.totalKwh / 1000)} MWh`} onExplain={openExplain} />;
+              }
+              // aria: giudizio dalla media settimanale della metrica (§6.2)
+              const vals = w.days.map(x => x.v).filter((v): v is number => v != null);
+              if (module !== "air" || vals.length === 0) return null;
+              const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+              if (airMetric === "co2" || airMetric === "iaq") {
+                const lvl = airMetric === "co2" ? co2Level(mean) : scoreToLevel(mean);
+                const color = lvl === "POOR" ? RED : lvl === "MODERATE" ? AMBER : TEAL;
+                const summary = airMetric === "co2" ? `${nf0.format(mean)} ${w.unit}` : `${nf0.format(mean)} / 100`;
+                return <VerdictLine color={color} verdict={t(AIR_V[lvl])} summary={summary} onExplain={openExplain} />;
+              }
+              return <VerdictLine color={TEAL} verdict={`${nf0.format(mean)} ${w.unit}`} onExplain={openExplain} />;
+            })()}
             <WeekBars
               s={week.data}
               onOpenDay={date => { if (!date.startsWith("demo")) { setAnchor(new Date(`${date}T12:00:00`)); } setPeriod("day"); }}
@@ -258,12 +380,19 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             <HourHeatmap
               s={week.data}
               onOpenDay={date => { if (!date.startsWith("demo")) { setAnchor(new Date(`${date}T12:00:00`)); } setPeriod("day"); }}
-              title={t("md.hour_load")}
+              title={module === "energy" ? t("md.hour_load") : t("md.hour_pattern")}
               hint={t("md.tap_day")}
               weekdays={weekdayHeads}
+              fmtCell={(v, di, hi) => `${weekdayHeads[di]} ${pad(hi)}:00 · ${nf0.format(v)}${week.data!.unit ? ` ${week.data!.unit}` : ""}`}
             />
             <SummaryRow items={[
               ...(week.data.totalKwh != null ? [{ value: `${nf.format(week.data.totalKwh / 1000)} MWh`, label: t("md.week_lbl") }] : []),
+              ...(module === "air" ? (() => {
+                const vals = week.data!.days.map(x => x.v).filter((v): v is number => v != null);
+                if (!vals.length) return [];
+                const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                return [{ value: week.data!.unit ? `${nf0.format(mean)} ${week.data!.unit}` : `${nf0.format(mean)}/100`, label: t("md.avg") }];
+              })() : []),
               ...(week.data.topDay ? [{
                 value: new Intl.DateTimeFormat(language, { weekday: "long" }).format(
                   week.data.topDay.startsWith("demo")
@@ -285,14 +414,19 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           <>
             <MonthCalendar s={month.data} weekdays={weekdayHeads} onOpenDay={date => { setAnchor(new Date(`${date}T12:00:00`)); setPeriod("day"); }} />
             {month.data.totalKwh != null && (
-              <p className="text-center mt-4" style={{ fontSize: 14, color: SUB }}>
-                {t("md.month_total")} <b className="tabular-nums" style={{ color: INK, fontWeight: 600 }}>{nf.format(month.data.totalKwh / 1000)} MWh</b>
+              /* mockup §6.3: etichetta in evidenza, VALORE in grigio */
+              <p className="text-center mt-4" style={{ fontSize: 14, color: INK, fontWeight: 600 }}>
+                {t("md.month_total")} <span className="tabular-nums" style={{ color: SUB, fontWeight: 400 }}>{nf.format(month.data.totalKwh / 1000)} MWh</span>
               </p>
             )}
             <LabelValueGrid items={[
               ...(month.data.costEur != null ? [{ label: t("md.cost_est"), value: `€ ${nf0.format(month.data.costEur)}` }] : []),
               ...(month.data.vsPrevPct != null ? [{ label: t("md.vs_prev_month"), value: `${month.data.vsPrevPct > 0 ? "+" : ""}${month.data.vsPrevPct}%` }] : []),
-              ...(month.data.peak ? [{ label: t("md.peak_lbl"), value: `${dfRange.format(new Date(`${month.data.peak.date}T12:00:00`))} · ${nf0.format(month.data.peak.v)} ${month.data.unit}` }] : []),
+              /* mockup: «Picco · 12 ott» sopra, «23,2 kW» sotto */
+              ...(month.data.peak ? [{
+                label: `${t("md.peak_lbl")} · ${dfRange.format(new Date(`${month.data.peak.date}T12:00:00`))}`,
+                value: `${nf0.format(month.data.peak.v)}${month.data.unit ? ` ${month.data.unit}` : ""}`,
+              }] : []),
               ...(month.data.baseloadKw != null ? [{ label: t("md.baseload"), value: `${nf.format(month.data.baseloadKw)} kW` }] : []),
             ]} />
             {onExportPdf && (
@@ -305,6 +439,27 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
 
+      {/* ── ANNO (§6.4 — PROPOSTA da confermare col proprietario) ── */}
+      {period === "year" && (
+        yearData.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
+        : yearData.data ? (
+          <>
+            <YearBars
+              s={yearData.data}
+              monthLabels={monthHeads}
+              onOpenMonth={m => { const dd = new Date(anchor.getFullYear(), m - 1, 1); setAnchor(dd); setPeriod("month"); }}
+              avgLabel={yearData.data.avg != null ? t("md.monthly_avg").replace("{v}", `${nf0.format(yearData.data.avg)}${yearData.data.unit ? ` ${yearData.data.unit}` : ""}`) : undefined}
+              fmt={v => nf0.format(v)}
+            />
+            <SummaryRow items={[
+              ...(yearData.data.totalKwh != null ? [{ value: `${nf.format(yearData.data.totalKwh / 1000)} MWh`, label: t("md.year_lbl") }] : []),
+              ...(module === "air" && yearData.data.avg != null ? [{ value: yearData.data.unit ? `${nf0.format(yearData.data.avg)} ${yearData.data.unit}` : `${nf0.format(yearData.data.avg)}/100`, label: t("md.avg") }] : []),
+              ...(yearData.data.costEur != null ? [{ value: `€ ${nf0.format(yearData.data.costEur)}`, label: t("md.cost_est") }] : []),
+            ].slice(0, 3)} />
+          </>
+        ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
       {/* «Dati spiegati» sulla metrica corrente (§6.7) */}
       <ExplainSheet
         tab={explainTab}
@@ -312,6 +467,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         onTab={setExplainTab}
         current={{
           power: module === "energy" ? d?.avg : undefined,
+          iaq: module === "air" && airMetric === "iaq" ? d?.avg : undefined,
           co2: module === "air" && airMetric === "co2" ? d?.avg : undefined,
           pm25: module === "air" && airMetric === "pm25" ? d?.avg : undefined,
           tvoc: module === "air" && airMetric === "tvoc" ? d?.avg : undefined,

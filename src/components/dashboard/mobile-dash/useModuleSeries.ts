@@ -9,8 +9,13 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { co2ToScore } from "@/lib/airQuality";
 
 export type DashModule = "energy" | "air";
+
+/** Schede energia (§6.1.5): potenza totale o una categoria di dispositivi.
+    «Base» (carico di base) non è una serie esistente in DB: resta fuori. */
+export type EnergyCat = "power" | "hvac" | "lighting" | "plugs";
 
 /** Metriche aria disponibili (telemetry_hourly/daily, alias storici inclusi). */
 export const AIR_METRICS: Record<string, { ids: string[]; unit: string }> = {
@@ -88,36 +93,47 @@ const DEMO_AIR: Record<string, { base: number; amp: number; wiggle: number; limi
 };
 
 /** Serie demo deterministica per i siti vetrina (badge DEMO obbligatorio). */
-function demoDay(module: DashModule, airMetric: string): DaySeries {
-  const cfg = DEMO_AIR[airMetric] ?? DEMO_AIR.co2;
+function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): DaySeries {
+  const cfg = DEMO_AIR[airMetric === "iaq" ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const k = module === "energy" ? DEMO_CAT_FACTOR[energyCat] : 1;
+  const isIaq = module === "air" && airMetric === "iaq";
   const pts: DayPoint[] = Array.from({ length: 24 }, (_, h) => {
     const base = module === "energy" ? 6 + 10 * Math.exp(-((h - 13) ** 2) / 28) : cfg.base + cfg.amp * Math.exp(-((h - 15) ** 2) / 30);
     const wiggle = Math.sin(h * 1.7) * (module === "energy" ? 1.4 : cfg.wiggle);
-    return { h, v: Math.round((base + wiggle) * 10) / 10 };
+    const raw = (base + wiggle) * k;
+    return { h, v: isIaq ? co2ToScore(raw) : Math.round(raw * 10) / 10 };
   });
   const peakPt = pts.reduce((a, b) => ((b.v ?? 0) > (a.v ?? 0) ? b : a));
-  const limit = module === "energy" ? 25 : cfg.limit;
+  const limit = module === "energy" ? (energyCat === "power" ? 25 : undefined) : isIaq ? undefined : cfg.limit;
   const avg = Math.round((pts.reduce((a, p) => a + (p.v ?? 0), 0) / pts.length) * 10) / 10;
   return {
-    points: pts, peak: { h: peakPt.h, v: peakPt.v! },
+    // per l'IAQ «più alto = meglio»: niente annotazione del picco
+    points: pts, peak: isIaq ? undefined : { h: peakPt.h, v: peakPt.v! },
     limit,
-    unit: module === "energy" ? "kW" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
-    totalKwh: module === "energy" ? 412 : undefined,
-    avg: module === "energy" ? 11.6 : avg,
+    unit: module === "energy" ? "kW" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+    totalKwh: module === "energy" ? Math.round(412 * k) : undefined,
+    avg: module === "energy" ? Math.round(11.6 * k * 10) / 10 : avg,
     // coerente con la serie: minuti davvero sopra il limite disegnato
     overLimitMinutes: limit != null ? pts.filter(p => (p.v ?? 0) > limit).length * 60 : undefined,
     vsTypicalPct: module === "energy" ? -6 : undefined,
-    costEur: module === "energy" ? 78 : undefined,
+    costEur: module === "energy" ? Math.round(78 * k) : undefined,
     hvacStrip: module === "air" && airMetric === "co2" ? Array.from({ length: 24 }, (_, h) => h >= 7 && h <= 20 && h !== 13 && h !== 17) : undefined,
+    // causa energia (§6.1.8): temperatura esterna, giornata mite 14→25°
+    outdoorTemp: module === "energy" ? Array.from({ length: 24 }, (_, h) => Math.round((14 + 11 * Math.exp(-((h - 15) ** 2) / 34)) * 10) / 10) : undefined,
     isDemo: true,
   };
 }
-function demoWeek(module: DashModule, airMetric: string): WeekSeries {
-  const cfg = DEMO_AIR[airMetric] ?? DEMO_AIR.co2;
+function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): WeekSeries {
+  const isIaq = airMetric === "iaq";
+  const cfg = DEMO_AIR[isIaq ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const kCat = DEMO_CAT_FACTOR[energyCat];
   const airShape = [0.95, 1.0, 1.12, 0.92, 1.02, 0.64, 0.59];
   const vals = module === "energy"
-    ? [421, 398, 455, 388, 412, 118, 96]
-    : airShape.map(k => Math.round((cfg.base + cfg.amp * 0.38) * k * 10) / 10);
+    ? [421, 398, 455, 388, 412, 118, 96].map(v => Math.round(v * kCat))
+    : airShape.map(k => {
+        const raw = (cfg.base + cfg.amp * 0.38) * k;
+        return isIaq ? co2ToScore(raw) : Math.round(raw * 10) / 10;
+      });
   const heat = Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => {
     const open = h >= 7 && h <= 20 && d < 5;
     return open ? Math.round(40 + 60 * Math.exp(-((h - 13) ** 2) / 30)) : Math.round(8 + (d >= 5 ? 4 : 0));
@@ -126,14 +142,16 @@ function demoWeek(module: DashModule, airMetric: string): WeekSeries {
     days: ["L", "M", "M", "G", "V", "S", "D"].map((label, i) => ({ label, date: `demo-${i}`, v: vals[i] })),
     weekdayAvg: Math.round((vals.slice(0, 5).reduce((a, b) => a + b, 0) / 5) * 10) / 10,
     heat, heatMax: 100,
-    totalKwh: module === "energy" ? 2290 : undefined,
+    totalKwh: module === "energy" ? Math.round(2290 * kCat) : undefined,
     topDay: "demo-2",
-    costEur: module === "energy" ? 430 : undefined,
-    unit: module === "energy" ? "kWh" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
+    costEur: module === "energy" ? Math.round(430 * kCat) : undefined,
+    unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
   };
 }
-function demoMonth(module: DashModule, airMetric: string): MonthSeries {
-  const cfg = DEMO_AIR[airMetric] ?? DEMO_AIR.co2;
+function demoMonth(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): MonthSeries {
+  const isIaq = airMetric === "iaq";
+  const cfg = DEMO_AIR[isIaq ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const kCat = DEMO_CAT_FACTOR[energyCat];
   const now = new Date();
   const nDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const cells: MonthDayCell[] = Array.from({ length: nDays }, (_, i) => {
@@ -143,52 +161,84 @@ function demoMonth(module: DashModule, airMetric: string): MonthSeries {
     const wd = new Date(now.getFullYear(), now.getMonth(), day).getDay();
     const v = future ? null
       : module === "energy"
-        ? (wd === 0 || wd === 6 ? 110 : 390 + Math.round(60 * Math.sin(day)))
-        : Math.round((cfg.base + cfg.amp * 0.38) * (wd === 0 || wd === 6 ? 0.62 : 1 + 0.08 * Math.sin(day)) * 10) / 10;
+        ? Math.round((wd === 0 || wd === 6 ? 110 : 390 + Math.round(60 * Math.sin(day))) * kCat)
+        : (() => {
+            const raw = (cfg.base + cfg.amp * 0.38) * (wd === 0 || wd === 6 ? 0.62 : 1 + 0.08 * Math.sin(day));
+            return isIaq ? co2ToScore(raw) : Math.round(raw * 10) / 10;
+          })();
     return { day, date, v, future, today: day === now.getDate() };
   });
   const present = cells.filter(c => c.v != null);
   const demoPeak = [...present].sort((a, b) => (b.v! - a.v!))[0];
   return {
     cells, maxV: Math.max(...present.map(c => c.v!), 1),
-    totalKwh: module === "energy" ? 3800 : undefined,
-    costEur: module === "energy" ? 720 : undefined,
+    totalKwh: module === "energy" ? Math.round(3800 * kCat) : undefined,
+    costEur: module === "energy" ? Math.round(720 * kCat) : undefined,
     vsPrevPct: module === "energy" ? -6 : undefined,
     peak: demoPeak ? { date: demoPeak.date, v: demoPeak.v! } : undefined,
-    baseloadKw: module === "energy" ? 4.2 : undefined,
-    unit: module === "energy" ? "kWh" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
+    baseloadKw: module === "energy" ? Math.round(4.2 * kCat * 10) / 10 : undefined,
+    unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
   };
 }
 
-async function generalDeviceIds(siteId: string): Promise<{ ids: string[]; hvacIds: string[] }> {
+/** Dispositivi del sito per categoria (precedenza general per la potenza totale). */
+async function deviceSets(siteId: string): Promise<Record<EnergyCat, string[]>> {
   const { data } = await supabase!.from("devices")
     .select("id, category, device_type")
     .eq("site_id", siteId);
   const all = (data || []) as unknown as DeviceRow[];
-  const general = all.filter(d => d.category === "general").map(d => d.id);
-  const hvacIds = all.filter(d => d.category === "hvac").map(d => d.id);
-  if (general.length > 0) return { ids: general, hvacIds };
+  const byCat = (c: string) => all.filter(d => d.category === c).map(d => d.id);
+  const general = byCat("general");
+  const hvac = byCat("hvac");
+  const lighting = byCat("lighting");
+  const plugs = byCat("plugs");
   const ENERGY = new Set(["hvac", "lighting", "plugs"]);
-  return {
-    ids: all.filter(d => (d.category && ENERGY.has(d.category)) || d.device_type === "energy_monitor").map(d => d.id),
-    hvacIds,
-  };
+  const fallback = all.filter(d => (d.category && ENERGY.has(d.category)) || d.device_type === "energy_monitor").map(d => d.id);
+  return { power: general.length > 0 ? general : fallback, hvac, lighting, plugs };
 }
+
+async function generalDeviceIds(siteId: string): Promise<{ ids: string[]; hvacIds: string[] }> {
+  const sets = await deviceSets(siteId);
+  return { ids: sets.power, hvacIds: sets.hvac };
+}
+
+/** Categorie energia con almeno un dispositivo: decide le schede visibili. */
+export function useEnergyCats(siteId: string | undefined, isDemoSite: boolean) {
+  return useQuery<EnergyCat[]>({
+    queryKey: ["mdash-cats", siteId],
+    queryFn: async () => {
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        return isDemoSite ? ["power", "hvac", "lighting", "plugs"] : ["power"];
+      }
+      const sets = await deviceSets(siteId);
+      const cats: EnergyCat[] = ["power"];
+      (["hvac", "lighting", "plugs"] as const).forEach(c => { if (sets[c].length > 0) cats.push(c); });
+      return cats;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+/** Fattori demo per le categorie (quota plausibile del carico totale). */
+const DEMO_CAT_FACTOR: Record<EnergyCat, number> = { power: 1, hvac: 0.45, lighting: 0.3, plugs: 0.18 };
 
 const HVAC_ON_KW = 2; // soglia acceso/spento (brief §8.2, da raffinare per sito)
 
-export function useDaySeries(module: DashModule, siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, limit?: number, priceKwh?: number, airMetric: string = "co2") {
+export function useDaySeries(module: DashModule, siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, limit?: number, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
   return useQuery<DaySeries | null>({
-    queryKey: ["mdash-day", module, siteId, dateKey, airMetric],
+    queryKey: ["mdash-day", module, siteId, dateKey, airMetric, energyCat],
     queryFn: async (): Promise<DaySeries | null> => {
-      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoDay(module, airMetric) : null;
+      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoDay(module, airMetric, energyCat) : null;
       const from = `${dateKey}T00:00:00`;
       // finestra UTC larga: filtriamo poi per giorno locale
       const fromUtc = new Date(new Date(from).getTime() - 26 * 3600e3).toISOString();
       const toUtc = new Date(new Date(from).getTime() + 50 * 3600e3).toISOString();
+      // il limite di contratto vale solo per la potenza totale (§6.1.5)
+      const effLimit = module === "energy" && energyCat !== "power" ? undefined : limit;
 
       if (module === "energy") {
-        const { ids, hvacIds } = await generalDeviceIds(siteId);
+        const sets = await deviceSets(siteId);
+        const ids = sets[energyCat];
         if (ids.length === 0) return null;
         const { data } = await supabase!.from("energy_hourly")
           .select("device_id, ts_hour, metric, value_avg, value_sum")
@@ -216,7 +266,7 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
           ? Math.round([...byHourEnergy.values()].reduce((a, b) => a + b, 0))
           : undefined;
         const avg = Math.round((present.reduce((a, b) => a + b.v, 0) / present.length) * 10) / 10;
-        const over = limit ? present.filter(pt => pt.v > limit).length * 60 : undefined;
+        const over = effLimit ? present.filter(pt => pt.v > effLimit).length * 60 : undefined;
         // vs stesso giorno-settimana (ultime 4 settimane) da energy_daily
         let vsTypicalPct: number | undefined;
         if (totalKwh) {
@@ -236,20 +286,45 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
             if (typical > 0) vsTypicalPct = Math.round(((totalKwh - typical) / typical) * 100);
           }
         }
+        // la causa (§6.1.8): temperatura esterna oraria da weather_data
+        let outdoorTemp: Array<number | null> | undefined;
+        const { data: wx } = await supabase!.from("weather_data")
+          .select("timestamp, temperature_c")
+          .eq("site_id", siteId)
+          .gte("timestamp", fromUtc).lte("timestamp", toUtc);
+        const wxByHour = new Map<number, { s: number; n: number }>();
+        for (const r of (wx || []) as unknown as Array<{ timestamp: string; temperature_c: number | null }>) {
+          if (r.temperature_c == null || dayKeyInTz(new Date(r.timestamp), tz) !== dateKey) continue;
+          const h = hourInTz(r.timestamp, tz);
+          const e = wxByHour.get(h) || { s: 0, n: 0 };
+          e.s += Number(r.temperature_c); e.n++;
+          wxByHour.set(h, e);
+        }
+        if (wxByHour.size > 1) {
+          outdoorTemp = Array.from({ length: 24 }, (_, h) => {
+            const e = wxByHour.get(h);
+            return e ? Math.round((e.s / e.n) * 10) / 10 : null;
+          });
+        }
         return {
-          points, peak: peakPt ? { h: peakPt.h, v: peakPt.v } : undefined, limit, unit: "kW",
+          points, peak: peakPt ? { h: peakPt.h, v: peakPt.v } : undefined, limit: effLimit, unit: "kW",
           totalKwh, avg, overLimitMinutes: over, vsTypicalPct,
           costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
+          outdoorTemp,
           isDemo: false,
         };
       }
 
-      // ── ARIA: CO₂ oraria + striscia HVAC come causa ──
+      // ── ARIA: metrica oraria + striscia HVAC come causa ──
+      // IAQ (§6.1.5) non è una colonna: si deriva dalla CO₂ con la stessa
+      // scala dell'overview (co2ToScore) — niente indici inventati.
+      const isIaq = airMetric === "iaq";
+      const metricIds = (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids;
       const { data } = await supabase!.from("telemetry_hourly")
         .select("ts_hour, metric, value_avg")
         .eq("site_id", siteId)
         .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
-        .in("metric", (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).ids);
+        .in("metric", metricIds);
       const byHour = new Map<number, { s: number; n: number }>();
       for (const r of (data || []) as unknown as HourRow[]) {
         if (r.value_avg == null || dayKeyInTz(new Date(r.ts_hour), tz) !== dateKey) continue;
@@ -261,7 +336,9 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
       if (byHour.size === 0) return null;
       const points: DayPoint[] = Array.from({ length: 24 }, (_, h) => {
         const e = byHour.get(h);
-        return { h, v: e ? Math.round(e.s / e.n) : null };
+        if (!e) return { h, v: null };
+        const mean = e.s / e.n;
+        return { h, v: isIaq ? co2ToScore(mean) : Math.round(mean) };
       });
       const present = points.filter(pt => pt.v != null) as Array<{ h: number; v: number }>;
       const peakPt = present.reduce((a, b) => (b.v > a.v ? b : a), present[0]);
@@ -284,18 +361,28 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
         }
         if (on.size > 0) hvacStrip = Array.from({ length: 24 }, (_, h) => (on.get(h) || 0) > HVAC_ON_KW);
       }
-      return { points, peak: peakPt ? { h: peakPt.h, v: peakPt.v } : undefined, limit: airMetric === "co2" ? limit : undefined, unit: (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, avg, overLimitMinutes: airMetric === "co2" ? over : undefined, hvacStrip: airMetric === "co2" ? hvacStrip : undefined, isDemo: false };
+      return {
+        points,
+        // per l'IAQ «più alto = meglio»: l'annotazione del picco sarebbe fuorviante
+        peak: !isIaq && peakPt ? { h: peakPt.h, v: peakPt.v } : undefined,
+        limit: airMetric === "co2" ? limit : undefined,
+        unit: isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+        avg,
+        overLimitMinutes: airMetric === "co2" ? over : undefined,
+        hvacStrip: airMetric === "co2" ? hvacStrip : undefined,
+        isDemo: false,
+      };
     },
     enabled: !!dateKey,
     staleTime: 5 * 60 * 1000,
   });
 }
 
-export function useWeekSeries(module: DashModule, siteId: string | undefined, mondayKey: string, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2") {
+export function useWeekSeries(module: DashModule, siteId: string | undefined, mondayKey: string, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
   return useQuery<WeekSeries | null>({
-    queryKey: ["mdash-week", module, siteId, mondayKey, airMetric],
+    queryKey: ["mdash-week", module, siteId, mondayKey, airMetric, energyCat],
     queryFn: async (): Promise<WeekSeries | null> => {
-      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoWeek(module, airMetric) : null;
+      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoWeek(module, airMetric, energyCat) : null;
       const start = new Date(`${mondayKey}T00:00:00`);
       const endKey = new Date(start.getTime() + 6 * 86400e3).toISOString().slice(0, 10);
       const fromUtc = new Date(start.getTime() - 26 * 3600e3).toISOString();
@@ -305,8 +392,9 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
       let heatRows: Array<{ ts: string; v: number }> = [];
       let daySums = new Map<string, number>();
 
+      const isIaq = module === "air" && airMetric === "iaq";
       if (module === "energy") {
-        const { ids } = await generalDeviceIds(siteId);
+        const ids = (await deviceSets(siteId))[energyCat];
         if (ids.length === 0) return null;
         const [{ data: hr }, { data: dd }] = await Promise.all([
           supabase!.from("energy_hourly").select("ts_hour, metric, value_avg, value_sum")
@@ -330,7 +418,8 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
       } else {
         const { data: hr } = await supabase!.from("telemetry_hourly")
           .select("ts_hour, metric, value_avg").eq("site_id", siteId)
-          .gte("ts_hour", fromUtc).lte("ts_hour", toUtc).in("metric", (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).ids);
+          .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
+          .in("metric", (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
         const agg = new Map<string, { s: number; n: number }>();
         for (const r of (hr || []) as unknown as HourRow[]) {
           if (r.value_avg == null) continue;
@@ -338,8 +427,9 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
           e.s += Number(r.value_avg); e.n++;
           agg.set(r.ts_hour, e);
         }
-        heatRows = [...agg.entries()].map(([ts, e]) => ({ ts, v: e.s / e.n }));
-        // per l'aria la "barra giorno" è la media giornaliera di CO₂
+        // IAQ: si converte la CO₂ oraria in score (stessa scala dell'overview)
+        heatRows = [...agg.entries()].map(([ts, e]) => ({ ts, v: isIaq ? co2ToScore(e.s / e.n) : e.s / e.n }));
+        // per l'aria la "barra giorno" è la media giornaliera della metrica
         const dAgg = new Map<string, { s: number; n: number }>();
         for (const { ts, v } of heatRows) {
           const k = dayKeyInTz(new Date(ts), tz);
@@ -371,7 +461,7 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
         days, weekdayAvg, heat, heatMax,
         totalKwh, topDay: top?.date,
         costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
-        unit: module === "energy" ? "kWh" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
+        unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
       };
     },
     enabled: !!mondayKey,
@@ -379,11 +469,11 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
   });
 }
 
-export function useMonthSeries(module: DashModule, siteId: string | undefined, monthKey: string /* YYYY-MM */, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2") {
+export function useMonthSeries(module: DashModule, siteId: string | undefined, monthKey: string /* YYYY-MM */, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
   return useQuery<MonthSeries | null>({
-    queryKey: ["mdash-month", module, siteId, monthKey, airMetric],
+    queryKey: ["mdash-month", module, siteId, monthKey, airMetric, energyCat],
     queryFn: async (): Promise<MonthSeries | null> => {
-      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoMonth(module, airMetric) : null;
+      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoMonth(module, airMetric, energyCat) : null;
       const [y, m] = monthKey.split("-").map(Number);
       const nDays = new Date(y, m, 0).getDate();
       const first = `${monthKey}-01`;
@@ -393,8 +483,9 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
 
       const vals = new Map<string, number>();
       let prevTotal = 0;
+      const isIaq = module === "air" && airMetric === "iaq";
       if (module === "energy") {
-        const { ids } = await generalDeviceIds(siteId);
+        const ids = (await deviceSets(siteId))[energyCat];
         if (ids.length === 0) return null;
         const { data } = await supabase!.from("energy_daily")
           .select("ts_day, value_sum").in("device_id", ids.slice(0, 50))
@@ -408,7 +499,8 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
       } else {
         const { data } = await supabase!.from("telemetry_daily")
           .select("ts_day, metric, value_avg").eq("site_id", siteId)
-          .gte("ts_day", first).lte("ts_day", last).in("metric", (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).ids);
+          .gte("ts_day", first).lte("ts_day", last)
+          .in("metric", (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
         const agg = new Map<string, { s: number; n: number }>();
         for (const r of (data || []) as unknown as DayRow[]) {
           if (r.value_avg == null) continue;
@@ -416,7 +508,7 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
           e.s += Number(r.value_avg); e.n++;
           agg.set(r.ts_day, e);
         }
-        for (const [k, e] of agg) vals.set(k, Math.round(e.s / e.n));
+        for (const [k, e] of agg) vals.set(k, isIaq ? co2ToScore(e.s / e.n) : Math.round(e.s / e.n));
       }
       if (vals.size === 0) return null;
 
@@ -434,16 +526,118 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
       if (module === "energy" && totalKwh && prevTotal > 0) {
         vsPrevPct = Math.round(((totalKwh - prevTotal * (present.length / nDays)) / (prevTotal * (present.length / nDays))) * 100);
       }
+      // carico di base (§6.3): stima onesta dal giorno più basso del mese
+      // (kWh del giorno / 24h ≈ kW medi a negozio chiuso) — niente query extra
+      const baseloadKw = module === "energy" && present.length >= 3
+        ? Math.round((Math.min(...present.map(c => c.v)) / 24) * 10) / 10
+        : undefined;
       return {
         cells, maxV,
         totalKwh,
         costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
         vsPrevPct,
         peak: peakCell ? { date: peakCell.date, v: peakCell.v } : undefined,
-        unit: module === "energy" ? "kWh" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
+        baseloadKw,
+        unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
       };
     },
     enabled: !!monthKey,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+/* ── Vista «Anno» (§6.4 — PROPOSTA, non mockuppata: 12 barre per mese).
+   Energy: somma mensile da energy_daily; Air: media mensile della metrica. ── */
+export interface YearMonth { m: number; v: number | null }
+export interface YearSeries {
+  months: YearMonth[];        // indice 0 = gennaio
+  avg?: number;               // media dei mesi con dati
+  totalKwh?: number;
+  costEur?: number;
+  unit: string;
+  isDemo: boolean;
+}
+
+function demoYear(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): YearSeries {
+  const isIaq = airMetric === "iaq";
+  const cfg = DEMO_AIR[isIaq ? "co2" : airMetric] ?? DEMO_AIR.co2;
+  const kCat = DEMO_CAT_FACTOR[energyCat];
+  const nowM = new Date().getMonth();
+  const shape = [1.15, 1.1, 0.95, 0.85, 0.9, 1.05, 1.2, 1.18, 0.95, 0.9, 1.0, 1.12];
+  const months: YearMonth[] = shape.map((k, i) => {
+    if (i > nowM) return { m: i + 1, v: null };
+    const raw = module === "energy" ? 11600 * k * kCat : (cfg.base + cfg.amp * 0.38) * (0.9 + 0.2 * (k - 0.85));
+    return { m: i + 1, v: module === "energy" ? Math.round(raw) : isIaq ? co2ToScore(raw) : Math.round(raw) };
+  });
+  const present = months.filter(x => x.v != null).map(x => x.v!) ;
+  const totalKwh = module === "energy" ? present.reduce((a, b) => a + b, 0) : undefined;
+  return {
+    months,
+    avg: present.length ? Math.round(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
+    totalKwh,
+    costEur: module === "energy" ? Math.round((totalKwh || 0) * 0.19) : undefined,
+    unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+    isDemo: true,
+  };
+}
+
+export function useYearSeries(module: DashModule, siteId: string | undefined, year: number, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
+  return useQuery<YearSeries | null>({
+    queryKey: ["mdash-year", module, siteId, year, airMetric, energyCat],
+    queryFn: async (): Promise<YearSeries | null> => {
+      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoYear(module, airMetric, energyCat) : null;
+      const first = `${year}-01-01`;
+      const last = `${year}-12-31`;
+      const isIaq = module === "air" && airMetric === "iaq";
+      const byMonth = new Map<number, { s: number; n: number }>();
+
+      if (module === "energy") {
+        const ids = (await deviceSets(siteId))[energyCat];
+        if (ids.length === 0) return null;
+        const { data } = await supabase!.from("energy_daily")
+          .select("ts_day, value_sum").in("device_id", ids.slice(0, 50))
+          .gte("ts_day", first).lte("ts_day", last)
+          .in("metric", ["energy.active_energy", "energy.active_import_kwh"]);
+        for (const r of (data || []) as unknown as DayRow[]) {
+          if (r.value_sum == null || Number(r.value_sum) > 50000) continue;
+          const m = Number(r.ts_day.slice(5, 7));
+          const e = byMonth.get(m) || { s: 0, n: 0 };
+          e.s += Number(r.value_sum); e.n++;
+          byMonth.set(m, e);
+        }
+      } else {
+        const { data } = await supabase!.from("telemetry_daily")
+          .select("ts_day, metric, value_avg").eq("site_id", siteId)
+          .gte("ts_day", first).lte("ts_day", last)
+          .in("metric", (AIR_METRICS[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+        for (const r of (data || []) as unknown as DayRow[]) {
+          if (r.value_avg == null) continue;
+          const m = Number(r.ts_day.slice(5, 7));
+          const e = byMonth.get(m) || { s: 0, n: 0 };
+          e.s += Number(r.value_avg); e.n++;
+          byMonth.set(m, e);
+        }
+      }
+      if (byMonth.size === 0) return null;
+
+      const months: YearMonth[] = Array.from({ length: 12 }, (_, i) => {
+        const e = byMonth.get(i + 1);
+        if (!e) return { m: i + 1, v: null };
+        const v = module === "energy" ? Math.round(e.s) : isIaq ? co2ToScore(e.s / e.n) : Math.round(e.s / e.n);
+        return { m: i + 1, v };
+      });
+      const present = months.filter(x => x.v != null).map(x => x.v!);
+      const totalKwh = module === "energy" ? present.reduce((a, b) => a + b, 0) : undefined;
+      return {
+        months,
+        avg: present.length ? Math.round(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
+        totalKwh,
+        costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
+        unit: module === "energy" ? "kWh" : isIaq ? "" : (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).unit,
+        isDemo: false,
+      };
+    },
+    enabled: !!year,
     staleTime: 10 * 60 * 1000,
   });
 }

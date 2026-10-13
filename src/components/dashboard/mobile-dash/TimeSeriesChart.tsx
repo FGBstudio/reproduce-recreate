@@ -25,9 +25,11 @@ interface Props {
   peakLabel?: string;    // es. «picco 23,2 kW · 11:40»
   onSwipe?: (dir: 1 | -1) => void;
   fmt: (v: number) => string;
+  /** Tetto dell'asse Y per scale chiuse (es. IAQ e umidità: 100). */
+  yMax?: number;
 }
 
-const TimeSeriesChart = ({ points, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt }: Props) => {
+const TimeSeriesChart = ({ points, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt, yMax }: Props) => {
   const [cursor, setCursor] = useState<number | null>(null); // ora selezionata
   const pressTimer = useRef<number | undefined>(undefined);
   const pressing = useRef(false);
@@ -37,7 +39,7 @@ const TimeSeriesChart = ({ points, unit, limit, limitLabel, limit2, nowHour, now
   const { maxV, x, y, linePath, areaPath, segs } = useMemo(() => {
     const vals = points.map(p => p.v).filter((v): v is number => v != null);
     const rawMax = Math.max(...vals, limit ?? 0, 1);
-    const maxV = Math.ceil((rawMax * 1.15) / 5) * 5;
+    const maxV = yMax != null ? yMax : Math.ceil((rawMax * 1.15) / 5) * 5;
     const x = (h: number) => PL + (h / 23) * (W - PL - PR);
     const y = (v: number) => PT + (1 - v / maxV) * (H - PT - PB);
     // segmenti contigui (i buchi spezzano la linea)
@@ -54,7 +56,7 @@ const TimeSeriesChart = ({ points, unit, limit, limitLabel, limit2, nowHour, now
       `${d(seg)} L${x(seg[seg.length - 1].h).toFixed(1)},${H - PB} L${x(seg[0].h).toFixed(1)},${H - PB} Z`
     ).join(" ");
     return { maxV, x, y, linePath, areaPath, segs };
-  }, [points, limit]);
+  }, [points, limit, yMax]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     start.current = { x: e.clientX, y: e.clientY };

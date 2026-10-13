@@ -120,20 +120,46 @@ export const SummaryRow = ({ items }: { items: Array<{ value: string; label: str
   </div>
 );
 
-/** Causa sotto il grafico (§6.1.8): traccia sottile o striscia acceso/spento. */
-export const CauseTrack = ({ variant, strip, label, note }: {
-  variant: "onOff"; strip: boolean[]; label: string; note?: string;
-}) => (
+/** Causa sotto il grafico (§6.1.8): striscia acceso/spento (HVAC) o traccia
+    sottile (temperatura esterna), sullo stesso asse X del grafico. */
+export const CauseTrack = (props:
+  | { variant: "onOff"; strip: boolean[]; label: string; note?: string }
+  | { variant: "line"; series: Array<number | null>; label: string; note?: string }
+) => (
   <div className="px-6 mt-4">
     <div className="flex items-baseline gap-2 mb-1.5">
-      <span style={{ fontSize: 12.5, fontWeight: 500, color: INK }}>{label}</span>
-      {note && <span style={{ fontSize: 11, color: SUB }}>{note}</span>}
+      <span style={{ fontSize: 12.5, fontWeight: 500, color: INK }}>{props.label}</span>
+      {props.note && <span style={{ fontSize: 11, color: SUB }}>{props.note}</span>}
     </div>
-    <div className="flex overflow-hidden" style={{ height: 10, borderRadius: 5, background: "#e6eeee" }} aria-hidden>
-      {strip.map((on, i) => (
-        <span key={i} className="flex-1" style={{ background: on ? "#9fd3d6" : "transparent" }} />
-      ))}
-    </div>
+    {props.variant === "onOff" ? (
+      <div className="flex overflow-hidden" style={{ height: 10, borderRadius: 5, background: "#e6eeee" }} aria-hidden>
+        {props.strip.map((on, i) => (
+          <span key={i} className="flex-1" style={{ background: on ? "#9fd3d6" : "transparent" }} />
+        ))}
+      </div>
+    ) : (
+      (() => {
+        /* stessa geometria orizzontale di TimeSeriesChart (PL14/PR44 su 390),
+           ma qui il contenitore è già dentro px-6: si disegna 0→342 */
+        const W = 342, H = 40;
+        const vals = props.series.filter((v): v is number => v != null);
+        if (vals.length < 2) return null;
+        const min = Math.min(...vals), max = Math.max(...vals);
+        const x = (h: number) => (h / 23) * W;
+        const y = (v: number) => 4 + (1 - (v - min) / (max - min || 1)) * (H - 8);
+        let d = "", pen = false;
+        props.series.forEach((v, h) => {
+          if (v == null) { pen = false; return; }
+          d += `${pen ? "L" : "M"}${x(h).toFixed(1)},${y(v).toFixed(1)} `;
+          pen = true;
+        });
+        return (
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full block" style={{ height: H }} aria-hidden>
+            <path d={d} fill="none" stroke="#8aa3a5" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+        );
+      })()
+    )}
   </div>
 );
 
