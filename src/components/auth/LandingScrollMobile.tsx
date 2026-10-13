@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import CityTicker from "./CityTicker";
@@ -72,7 +73,8 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
   const monSec = useRef<HTMLElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const globePaused = useRef(false);
-  const [ctaShow, setCtaShow] = useState(false);
+  // §3.2: variante della CTA sticky decisa dalla sezione che sta sotto di lei
+  const [ctaTheme, setCtaTheme] = useState<"light" | "dark" | "none">("none");
 
   const certDots = useSwipeDots(CERT_LOGOS.length);
   const monDots = useSwipeDots(3);
@@ -128,12 +130,25 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
   useEffect(() => {
     const sc = scroller.current!;
 
-    const onScroll = () => {
-      const heroH = heroSec.current?.offsetHeight ?? sc.clientHeight;
-      setCtaShow(sc.scrollTop > heroH * 0.7);
+    /* §3.2: un IntersectionObserver sulla fascia di viewport dove vive la
+       CTA sceglie la variante dalla sezione sottostante (data-cta-theme). */
+    let ctaIo: IntersectionObserver | null = null;
+    const buildCtaIo = () => {
+      ctaIo?.disconnect();
+      const h = sc.clientHeight;
+      ctaIo = new IntersectionObserver((es) => {
+        for (const e of es) {
+          if (e.isIntersecting) {
+            const th = (e.target as HTMLElement).dataset.ctaTheme;
+            setCtaTheme(th === "dark" ? "dark" : th === "none" ? "none" : "light");
+          }
+        }
+      }, { root: sc, rootMargin: `${-(h - 92)}px 0px -16px 0px`, threshold: 0 });
+      sc.querySelectorAll<HTMLElement>("[data-cta-theme]").forEach((el) => ctaIo!.observe(el));
     };
-    sc.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    buildCtaIo();
+    const ctaRo = new ResizeObserver(buildCtaIo);
+    ctaRo.observe(sc);
 
     /* Scene: si animano da sole quando entrano (mai guidate dal dito) */
     const io = new IntersectionObserver(
@@ -186,7 +201,8 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
     }
 
     return () => {
-      sc.removeEventListener("scroll", onScroll);
+      ctaIo?.disconnect();
+      ctaRo.disconnect();
       io.disconnect();
       nums.disconnect();
       heroIo.disconnect();
@@ -235,6 +251,7 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
       {/* ══ HERO in una schermata: titolo, globo (invariato), numeri, CTA ══ */}
       <section
         ref={heroSec}
+        data-cta-theme="none"
         className="relative flex flex-col items-center px-6"
         style={{
           /* la hero parte da y=0 (l'header è fixed e in cima non si vede,
@@ -298,7 +315,7 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
       </section>
 
       {/* ══ CERTIFICAZIONI: swipe con dots + 11 world records + GLANCE/BREATH + citta' ══ */}
-      <section ref={certsSec} className="py-14" style={{ background: "#f3f4f2" }}>
+      <section ref={certsSec} data-cta-theme="light" className="py-14" style={{ background: "#f3f4f2" }}>
         <div className="fgm-reveal px-6">
           <p className="text-[10px] font-semibold uppercase" style={{ letterSpacing: "0.28em", color: "#016368" }}>Certifications</p>
           <h2 className="font-semibold" style={{ fontSize: 26, lineHeight: 1.2, marginTop: 8, color: "#585d60" }}>
@@ -355,7 +372,7 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
       </section>
 
       {/* ══ MONITORING: swipe orizzontale, 3 card 80% con foto DENTRO ══ */}
-      <section ref={monSec} className="py-13" style={{ background: "#25655f", paddingTop: 52, paddingBottom: 52 }}>
+      <section ref={monSec} data-cta-theme="dark" className="py-13" style={{ background: "#25655f", paddingTop: 52, paddingBottom: 52 }}>
         <div className="fgm-reveal px-6">
           <p className="text-[10px] font-semibold uppercase" style={{ letterSpacing: "0.3em", color: "#9fd5d9" }}>Monitoring</p>
           <h2 className="font-semibold text-white" style={{ fontSize: 28, lineHeight: 1.1, marginTop: 10 }}>
@@ -391,7 +408,7 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
       </section>
 
       {/* ══ FREE / CUSTOM: impilate, si colorano quando entrano in vista ══ */}
-      <section className="flex flex-col items-center px-6 py-16" style={{ background: "#f3f4f2" }}>
+      <section data-cta-theme="none" className="flex flex-col items-center px-6 py-16" style={{ background: "#f3f4f2" }}>
         <h2 className="fgm-reveal font-bold text-center" style={{ fontSize: 27, color: "#009193" }}>Two ways in. One conversation.</h2>
         <p className="fgm-reveal text-center" style={{ fontSize: 13.5, color: "#7c8285", marginTop: 8 }}>Commercial terms are always defined one-to-one</p>
         <div className="flex flex-col gap-5 mt-8 w-full" style={{ maxWidth: 380 }}>
@@ -415,29 +432,50 @@ const LandingScrollMobile: React.FC<Props> = ({ onSignIn, onCreate }) => {
       </section>
 
       {/* ══ FOOTER ══ */}
-      <footer className="text-center" style={{ padding: "36px 24px calc(var(--sab) + 110px)", fontSize: 12, color: "#7c8285", background: "#f3f4f2" }}>
+      <footer data-cta-theme="light" className="text-center" style={{ padding: "36px 24px calc(var(--sab) + 110px)", fontSize: 12, color: "#7c8285", background: "#f3f4f2" }}>
         <img src="/green.webp" alt="FGB — Future Green Building" style={{ height: 26, width: "auto", margin: "0 auto 10px" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
         Milan · 21 locations worldwide<br />© 2026 FGB
       </footer>
 
-      {/* ══ CTA sticky: appare superata la hero, sopra la barra home ══ */}
+      {/* ══ CTA sticky adattiva (§3.2): pill compatta centrata, variante
+          dalla sezione sotto (teal su chiaro, vetro su scuro, nascosta dove
+          la sezione ha gia' una CTA propria). Dissolvenza ~200ms. ══ */}
       <div
-        className="fgm-cta"
+        className="fgm-cta flex justify-center"
         style={{
           position: "sticky", bottom: 0, zIndex: 35, marginTop: -90,
-          padding: "14px 24px calc(var(--sab) + 14px)",
-          background: "linear-gradient(transparent, #f3f4f2 40%)",
-          transform: ctaShow ? "none" : "translateY(110%)",
+          padding: "0 24px calc(var(--sab) + 14px)",
+          pointerEvents: "none",
+          transform: ctaTheme === "none" ? "translateY(140%)" : "none",
           transition: "transform .35s cubic-bezier(.2,.8,.2,1)",
         }}
       >
         <button
           type="button"
           onClick={onSignIn}
-          className="w-full rounded-full font-semibold text-white"
-          style={{ background: "#009193", minHeight: 54, fontSize: 14, letterSpacing: "0.24em", textTransform: "uppercase" }}
+          className="relative flex items-center rounded-full"
+          style={{ pointerEvents: "auto", minHeight: 44, gap: 12, padding: "0 8px 0 22px", boxSizing: "border-box", border: "1px solid transparent" }}
         >
-          Sign in
+          {/* due fondi sovrapposti: il cambio variante e' una dissolvenza */}
+          <span aria-hidden className="absolute inset-0 rounded-full" style={{
+            background: "linear-gradient(180deg, #0aa3a5, #008285)",
+            boxShadow: "0 8px 20px rgba(0,145,147,.32), inset 0 1px 0 rgba(255,255,255,.28)",
+            opacity: ctaTheme === "dark" ? 0 : 1, transition: "opacity .2s",
+          }} />
+          <span aria-hidden className="absolute inset-0 rounded-full" style={{
+            background: "linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,.07))",
+            border: "1px solid rgba(255,255,255,.38)",
+            backdropFilter: "blur(10px) saturate(140%)", WebkitBackdropFilter: "blur(10px) saturate(140%)",
+            opacity: ctaTheme === "dark" ? 1 : 0, transition: "opacity .2s",
+          }} />
+          <span className="relative font-semibold text-white uppercase" style={{ fontSize: 12, letterSpacing: "0.24em" }}>Sign in</span>
+          <span className="relative grid place-items-center rounded-full" style={{
+            width: 27, height: 27,
+            background: ctaTheme === "dark" ? "#fff" : "rgba(255,255,255,.22)",
+            transition: "background .2s",
+          }}>
+            <ArrowRight className="w-3.5 h-3.5" style={{ color: ctaTheme === "dark" ? "#009193" : "#fff", transition: "color .2s" }} />
+          </span>
         </button>
       </div>
     </div>
