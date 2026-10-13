@@ -61,6 +61,12 @@ export interface MonthSeries {
   isDemo: boolean;
 }
 
+/* Righe come arrivano dalle tabelle (il client non è tipizzato su questo
+   schema: il DB di produzione diverge dalle migrazioni del repo). */
+interface DeviceRow { id: string; category: string | null; device_type: string | null }
+interface HourRow { device_id?: string; ts_hour: string; metric: string; value_avg: number | null; value_sum?: number | null }
+interface DayRow { ts_day: string; metric?: string; value_avg?: number | null; value_sum?: number | null }
+
 const dayKeyInTz = (d: Date, tz: string) => {
   try {
     return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
@@ -158,13 +164,13 @@ async function generalDeviceIds(siteId: string): Promise<{ ids: string[]; hvacId
   const { data } = await supabase!.from("devices")
     .select("id, category, device_type")
     .eq("site_id", siteId);
-  const all = data || [];
-  const general = all.filter((d: any) => d.category === "general").map((d: any) => d.id);
-  const hvacIds = all.filter((d: any) => d.category === "hvac").map((d: any) => d.id);
+  const all = (data || []) as unknown as DeviceRow[];
+  const general = all.filter(d => d.category === "general").map(d => d.id);
+  const hvacIds = all.filter(d => d.category === "hvac").map(d => d.id);
   if (general.length > 0) return { ids: general, hvacIds };
   const ENERGY = new Set(["hvac", "lighting", "plugs"]);
   return {
-    ids: all.filter((d: any) => (d.category && ENERGY.has(d.category)) || d.device_type === "energy_monitor").map((d: any) => d.id),
+    ids: all.filter(d => (d.category && ENERGY.has(d.category)) || d.device_type === "energy_monitor").map(d => d.id),
     hvacIds,
   };
 }
@@ -191,7 +197,7 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
           .in("metric", ["energy.power_kw", "energy.active_energy", "energy.active_import_kwh"]);
         const byHourPower = new Map<number, number>();
         const byHourEnergy = new Map<number, number>();
-        for (const r of (data || []) as any[]) {
+        for (const r of (data || []) as unknown as HourRow[]) {
           if (dayKeyInTz(new Date(r.ts_hour), tz) !== dateKey) continue;
           const h = hourInTz(r.ts_hour, tz);
           if (r.metric === "energy.power_kw" && r.value_avg != null) {
@@ -221,7 +227,7 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
             .in("metric", ["energy.active_energy", "energy.active_import_kwh"]);
           const target = new Date(from).getDay();
           const sums = new Map<string, number>();
-          for (const r of (dd || []) as any[]) {
+          for (const r of (dd || []) as unknown as DayRow[]) {
             if (new Date(r.ts_day).getDay() !== target || r.value_sum == null || Number(r.value_sum) > 50000) continue;
             sums.set(r.ts_day, (sums.get(r.ts_day) || 0) + Number(r.value_sum));
           }
@@ -245,7 +251,7 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
         .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
         .in("metric", (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).ids);
       const byHour = new Map<number, { s: number; n: number }>();
-      for (const r of (data || []) as any[]) {
+      for (const r of (data || []) as unknown as HourRow[]) {
         if (r.value_avg == null || dayKeyInTz(new Date(r.ts_hour), tz) !== dateKey) continue;
         const h = hourInTz(r.ts_hour, tz);
         const e = byHour.get(h) || { s: 0, n: 0 };
@@ -271,7 +277,7 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
           .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
           .eq("metric", "energy.power_kw");
         const on = new Map<number, number>();
-        for (const r of (hv || []) as any[]) {
+        for (const r of (hv || []) as unknown as HourRow[]) {
           if (r.value_avg == null || dayKeyInTz(new Date(r.ts_hour), tz) !== dateKey) continue;
           const h = hourInTz(r.ts_hour, tz);
           on.set(h, (on.get(h) || 0) + Number(r.value_avg));
@@ -310,12 +316,12 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
             .in("device_id", ids.slice(0, 50)).gte("ts_day", mondayKey).lte("ts_day", endKey)
             .in("metric", ["energy.active_energy", "energy.active_import_kwh"]),
         ]);
-        for (const r of (dd || []) as any[]) {
+        for (const r of (dd || []) as unknown as DayRow[]) {
           if (r.value_sum == null || Number(r.value_sum) > 50000) continue;
           daySums.set(r.ts_day, (daySums.get(r.ts_day) || 0) + Number(r.value_sum));
         }
         const agg = new Map<string, number>();
-        for (const r of (hr || []) as any[]) {
+        for (const r of (hr || []) as unknown as HourRow[]) {
           const v = r.metric === "energy.power_kw" ? r.value_avg : r.value_sum;
           if (v == null) continue;
           agg.set(r.ts_hour, (agg.get(r.ts_hour) || 0) + Number(v));
@@ -326,7 +332,7 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
           .select("ts_hour, metric, value_avg").eq("site_id", siteId)
           .gte("ts_hour", fromUtc).lte("ts_hour", toUtc).in("metric", (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).ids);
         const agg = new Map<string, { s: number; n: number }>();
-        for (const r of (hr || []) as any[]) {
+        for (const r of (hr || []) as unknown as HourRow[]) {
           if (r.value_avg == null) continue;
           const e = agg.get(r.ts_hour) || { s: 0, n: 0 };
           e.s += Number(r.value_avg); e.n++;
@@ -394,7 +400,7 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
           .select("ts_day, value_sum").in("device_id", ids.slice(0, 50))
           .gte("ts_day", prevFirst).lte("ts_day", last)
           .in("metric", ["energy.active_energy", "energy.active_import_kwh"]);
-        for (const r of (data || []) as any[]) {
+        for (const r of (data || []) as unknown as DayRow[]) {
           if (r.value_sum == null || Number(r.value_sum) > 50000) continue;
           if (r.ts_day >= first) vals.set(r.ts_day, (vals.get(r.ts_day) || 0) + Number(r.value_sum));
           else prevTotal += Number(r.value_sum);
@@ -404,7 +410,7 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
           .select("ts_day, metric, value_avg").eq("site_id", siteId)
           .gte("ts_day", first).lte("ts_day", last).in("metric", (AIR_METRICS[airMetric] ?? AIR_METRICS.co2).ids);
         const agg = new Map<string, { s: number; n: number }>();
-        for (const r of (data || []) as any[]) {
+        for (const r of (data || []) as unknown as DayRow[]) {
           if (r.value_avg == null) continue;
           const e = agg.get(r.ts_day) || { s: 0, n: 0 };
           e.s += Number(r.value_avg); e.n++;
