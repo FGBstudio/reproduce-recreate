@@ -21,6 +21,8 @@ interface Props {
   secondary?: Array<number | null>;
   /** dati parziali (§10.2): etichetta del buco più grande, es. «nessun dato 10:00 – 13:00» */
   gapLabel?: { from: number; to: number; text: string };
+  /** finestra notturna (§10.3): fascia 01–05, ambra se la regola perdite scatta */
+  nightWindow?: { from: number; to: number; alert?: boolean; label?: string };
   unit: string;
   limit?: number;
   limitLabel?: string;   // es. «limite contratto 25 kW»
@@ -35,7 +37,7 @@ interface Props {
   yMax?: number;
 }
 
-const TimeSeriesChart = ({ points, typical, secondary, gapLabel, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt, yMax }: Props) => {
+const TimeSeriesChart = ({ points, typical, secondary, gapLabel, nightWindow, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt, yMax }: Props) => {
   const [cursor, setCursor] = useState<number | null>(null); // ora selezionata
   const pressTimer = useRef<number | undefined>(undefined);
   const pressing = useRef(false);
@@ -160,6 +162,23 @@ const TimeSeriesChart = ({ points, typical, secondary, gapLabel, unit, limit, li
           </g>
         )}
 
+        {/* finestra notturna (§10.3): si colora d'ambra quando la regola
+            perdite scatta, altrimenti è una fascia neutra */}
+        {nightWindow && (
+          <g>
+            <rect
+              x={x(nightWindow.from)} y={PT}
+              width={Math.max(2, x(nightWindow.to) - x(nightWindow.from))} height={H - PT - PB}
+              fill={nightWindow.alert ? "rgba(217,154,43,.16)" : "rgba(159,178,179,.10)"}
+            />
+            {nightWindow.label && (
+              <text x={(x(nightWindow.from) + x(nightWindow.to)) / 2} y={PT + 10} fontSize="8.5"
+                fill={nightWindow.alert ? "#b97a14" : SUB} textAnchor="middle">
+                {nightWindow.label}
+              </text>
+            )}
+          </g>
+        )}
         {/* area + profilo tipico (fantasma) + eventuale serie esterna + linea base */}
         <path d={areaPath} fill="url(#mdArea)" />
         {typicalPath && (

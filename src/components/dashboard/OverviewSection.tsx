@@ -21,6 +21,7 @@ import { useFingerprintVerdict } from "@/hooks/useFingerprintVerdict";
 import { getDemoProfile } from "@/lib/data/demoSiteMocks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OverviewMobileView } from "./OverviewMobileView";
+import { useWaterFacade } from "./mobile-dash/useModuleSeries";
 
 const seededRandom = (seed: number) => {
   const x = Math.sin(seed) * 10000;
@@ -1020,6 +1021,15 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
      hanno id non-UUID: si ripiega sui nomi della prop `certifications`. ── */
   const certSiteId = project?.siteId && isValidUUID(project.siteId) ? project.siteId : undefined;
   const { data: certRows } = useCertifications(certSiteId);
+  /* Facciata Water §10.3 (solo mobile): riassunto del contatore. Il hook è
+     chiamato sempre (Rules of Hooks), abilitato solo quando serve. */
+  const waterFacadeDemo = !certSiteId && !!project?.siteId; // sito vetrina (id non-UUID)
+  const { data: waterFacade } = useWaterFacade(
+    certSiteId ?? project?.siteId,
+    project?.timezone || "UTC",
+    waterFacadeDemo,
+    isMobile && moduleConfig.water.enabled,
+  );
   const buildingCerts = useMemo(() => {
     const NOT_BUILDING = new Set(["Energy", "Air", "Water"]);
     const order: Record<string, number> = { achieved: 0, in_progress: 1, pipeline: 2, potential: 3 };
@@ -1108,6 +1118,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
           pm25: liveData.metrics['iaq.pm25'] ?? liveData.metrics['pm25'],
         }}
         waterFlow={liveData.isRealData ? liveData.metrics['water.flow_rate'] : undefined}
+        waterFacade={waterFacade ?? undefined}
         alerts={{
           criticalCount: alertStatus.criticalCount,
           warningCount: alertStatus.warningCount,

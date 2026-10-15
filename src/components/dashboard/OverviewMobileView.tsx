@@ -65,6 +65,11 @@ interface OverviewMobileViewProps {
     pm25?: number;
   };
   waterFlow?: number;
+  /** Facciata Water §10.3: riassunto del contatore (litri oggi, notte, picco…) */
+  waterFacade?: {
+    todayLiters?: number; typicalLiters?: number; nightMin?: number;
+    peakLmin?: number; pressureBar?: number; weekM3?: number; isDemo: boolean;
+  };
   alerts: { criticalCount: number; warningCount: number; list: Array<{ title: string; ago?: string; severity?: string }> };
   /** Store senza dispositivi: hero con parole giuste al posto di 0/100 */
   notInstalled?: boolean;
@@ -464,7 +469,7 @@ const ModuleScreen = ({
 
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, outdoorHumidity, periodLabel, overall, energy, air, water, moduleConfig,
-  power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, alerts, notInstalled, certCount = 0,
+  power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, waterFacade, alerts, notInstalled, certCount = 0,
   verdictHeadline, isRealData, onNavigate, certifications, certTopLevel, certDetails,
 }: OverviewMobileViewProps) => {
   const { t, language } = useLanguage();
@@ -786,13 +791,34 @@ export const OverviewMobileView = ({
         deviceImg="/intro/hw-water.webp"
         icon={Droplet} label={t("ovm.water")}
         buildingClass="bg-gradient-to-b from-[#02a3a5] to-[#009193]"
-        verdict={t(VERDICT_KEY[water.level])}
-        scoreLine={t("ovm.score_line").replace("{s}", String(water.score))}
+        /* §10.3: verdetto dal consumo di oggi vs media dello stesso giorno —
+           «Normale · consumo in linea con i giorni simili» */
+        verdict={waterFacade?.todayLiters != null && waterFacade?.typicalLiters
+          ? (Math.abs((waterFacade.todayLiters - waterFacade.typicalLiters) / waterFacade.typicalLiters) > 0.2 ? t("ovm.v_attention") : t("md.v_normal"))
+          : t(VERDICT_KEY[water.level])}
+        scoreLine={waterFacade?.todayLiters != null && waterFacade?.typicalLiters
+          ? t("md.volume_in_line")
+          : t("ovm.score_line").replace("{s}", String(water.score))}
+        onExplain={moduleConfig.water.enabled ? () => setExplainTab("wflow") : undefined}
+        explainLabel={t("ovm.explain")}
+        /* riga valori: litri di oggi · media dello stesso giorno · perdite */
+        values={moduleConfig.water.enabled && waterFacade && (waterFacade.todayLiters != null || waterFacade.typicalLiters != null) ? [
+          { value: waterFacade.todayLiters != null ? nf0.format(waterFacade.todayLiters) : "—", unit: "L", label: t("ovm.today_lbl") },
+          { value: waterFacade.typicalLiters != null ? nf0.format(waterFacade.typicalLiters) : "—", unit: "L", label: t("ovm.weekday_avg_lbl") },
+          { value: nf0.format(alerts.list.filter(a => /water|leak|acqua|perdita/i.test(a.title)).length), label: t("ovm.leaks_lbl") },
+        ] : undefined}
         big={fmt(waterFlow)}
         bigUnit={t("ovm.current_flow")}
         bigColor={water.level !== "NO_DATA" && waterFlow != null
           ? performanceColor(ratioFromScore(water.score), "dark")
           : undefined}
+        /* misuratori del contatore (§10.3): niente distribuzione per uso finale */
+        meters={moduleConfig.water.enabled && waterFacade ? [
+          { label: t("ovm.night_min_lbl"), value: waterFacade.nightMin != null ? nf1.format(waterFacade.nightMin) : "—", pct: waterFacade.nightMin != null ? Math.min(100, (waterFacade.nightMin / 2) * 100) : undefined },
+          { label: t("ovm.peak_lmin_lbl"), value: waterFacade.peakLmin != null ? nf0.format(waterFacade.peakLmin) : "—", pct: waterFacade.peakLmin != null ? Math.min(100, (waterFacade.peakLmin / 30) * 100) : undefined },
+          { label: "Bar", value: waterFacade.pressureBar != null ? nf1.format(waterFacade.pressureBar) : "—", pct: waterFacade.pressureBar != null ? Math.min(100, (waterFacade.pressureBar / 6) * 100) : undefined },
+          { label: t("ovm.week_m3_lbl"), value: waterFacade.weekM3 != null ? nf1.format(waterFacade.weekM3) : "—", pct: undefined },
+        ] : undefined}
         pitch={!moduleConfig.water.enabled ? { title: t("ovm.pitch_water_t"), body: t("ovm.pitch_water_b") } : undefined}
         ctaLabel={moduleConfig.water.enabled ? t("ovm.cta_water") : t("ovm.cta_ask")}
         onCta={() => moduleConfig.water.enabled && onNavigate?.("water")}

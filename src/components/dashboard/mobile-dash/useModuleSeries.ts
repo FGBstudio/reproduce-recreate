@@ -142,7 +142,8 @@ const DEMO_AIR: Record<string, { base: number; amp: number; wiggle: number; limi
 
 /** Demo acqua: soglie qualità dal metrics_catalog (pH 6.5–8.5, torbidità 1/5, cloro ≤1). */
 const DEMO_WATER: Record<string, { base: number; amp: number; wiggle: number; limit?: number; limit2?: number }> = {
-  flow: { base: 2, amp: 9, wiggle: 1.1 },
+  // di notte il negozio chiuso va a ~0,2 L/min: coerente con la vista Notte
+  flow: { base: 0.2, amp: 11, wiggle: 0.9 },
   ph: { base: 7.15, amp: 0.25, wiggle: 0.08, limit: 8.5 },
   turbidity: { base: 0.55, amp: 0.55, wiggle: 0.12, limit: 1, limit2: 5 },
   chlorine: { base: 0.45, amp: 0.1, wiggle: 0.04, limit: 1 },
@@ -323,6 +324,80 @@ export function useEnergyCats(siteId: string | undefined, isDemoSite: boolean) {
 /** Fattori demo per le categorie (quota plausibile del carico totale). */
 const DEMO_CAT_FACTOR: Record<EnergyCat, number> = { power: 1, hvac: 0.45, lighting: 0.3, plugs: 0.18 };
 
+/* ── Facciata Water (§10.3): soli dati del contatore ──
+   litri di oggi (Σ portata oraria × 60), media dello stesso giorno-settimana
+   (4 settimane, telemetry_daily × 1440), minimo notturno e picco di oggi,
+   ultima pressione, volume della settimana. Niente distribuzione per uso
+   finale: senza sotto-contatori non è misurabile. ── */
+export interface WaterFacade {
+  todayLiters?: number;
+  typicalLiters?: number;      // stesso giorno-settimana, media 4 settimane
+  nightMin?: number;           // L/min, finestra 01–05 di oggi
+  peakLmin?: number;
+  pressureBar?: number;
+  weekM3?: number;
+  isDemo: boolean;
+}
+
+export function useWaterFacade(siteId: string | undefined, tz: string, isDemoSite: boolean, enabled: boolean) {
+  return useQuery<WaterFacade | null>({
+    queryKey: ["mdash-wfacade", siteId],
+    queryFn: async (): Promise<WaterFacade | null> => {
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        return isDemoSite
+          ? { todayLiters: 1840, typicalLiters: 2100, nightMin: 0.2, peakLmin: 24, pressureBar: 3.1, weekM3: 12.9, isDemo: true }
+          : null;
+      }
+      const todayKey = dayKeyInTz(new Date(), tz);
+      const fromUtc = new Date(Date.now() - 26 * 3600e3).toISOString();
+      const [{ data: hr }, { data: dd }, { data: pr }] = await Promise.all([
+        supabase!.from("telemetry_hourly")
+          .select("ts_hour, metric, value_avg").eq("site_id", siteId)
+          .gte("ts_hour", fromUtc).in("metric", WATER_METRICS.flow.ids),
+        supabase!.from("telemetry_daily")
+          .select("ts_day, metric, value_avg").eq("site_id", siteId)
+          .gte("ts_day", new Date(Date.now() - 29 * 86400e3).toISOString().slice(0, 10))
+          .in("metric", [...WATER_METRICS.flow.ids]),
+        supabase!.from("telemetry_latest")
+          .select("metric, value").eq("site_id", siteId).in("metric", WATER_METRICS.pressure.ids).limit(5),
+      ]);
+      let todayLiters = 0, nightMin: number | undefined, peakLmin: number | undefined, hasToday = false;
+      for (const r of (hr || []) as unknown as HourRow[]) {
+        if (r.value_avg == null || dayKeyInTz(new Date(r.ts_hour), tz) !== todayKey) continue;
+        hasToday = true;
+        const h = hourInTz(r.ts_hour, tz);
+        const v = Number(r.value_avg);
+        todayLiters += v * 60;
+        if (h >= NIGHT_FROM && h < NIGHT_TO) nightMin = Math.min(nightMin ?? Infinity, v);
+        peakLmin = Math.max(peakLmin ?? 0, v);
+      }
+      // media dello stesso giorno-settimana + volume della settimana corrente
+      const wd = new Date(`${todayKey}T12:00:00`).getDay();
+      let typSum = 0, typN = 0, weekL = 0;
+      const weekStart = (() => { const d = new Date(`${todayKey}T12:00:00`); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+      for (const r of (dd || []) as unknown as DayRow[]) {
+        if (r.value_avg == null) continue;
+        const liters = Number(r.value_avg) * 1440;
+        if (new Date(`${r.ts_day}T12:00:00`).getDay() === wd && r.ts_day < todayKey) { typSum += liters; typN++; }
+        if (r.ts_day >= weekStart && r.ts_day < todayKey) weekL += liters;
+      }
+      if (!hasToday && typN === 0) return null;
+      const pressRow = ((pr || []) as unknown as Array<{ value: number | null }>)[0];
+      return {
+        todayLiters: hasToday ? Math.round(todayLiters) : undefined,
+        typicalLiters: typN > 0 ? Math.round(typSum / typN) : undefined,
+        nightMin: nightMin != null && nightMin !== Infinity ? Math.round(nightMin * 100) / 100 : undefined,
+        peakLmin: peakLmin != null ? Math.round(peakLmin * 10) / 10 : undefined,
+        pressureBar: pressRow?.value != null ? Math.round(Number(pressRow.value) * 10) / 10 : undefined,
+        weekM3: weekL + todayLiters > 0 ? Math.round((weekL + todayLiters) / 100) / 10 : undefined,
+        isDemo: false,
+      };
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 /* ── Selettore sonde aria (§10.2): una riga per sonda con famiglia
    (WELL 8 metriche / LEED 4) e stato offline. La selezione filtra le query
    e decide QUALI schede esistono: niente «slide fantasma». ── */
@@ -392,6 +467,77 @@ export function useSiteMetricsAvailable(module: DashModule, siteId: string | und
 }
 
 const HVAC_ON_KW = 2; // soglia acceso/spento (brief §8.2, da raffinare per sito)
+
+/* ── Acqua (§10.3): regola perdite sul flusso notturno ──
+   «flusso nella finestra 01–05 sopra 0,5 L/min per 3 notti → possibile
+   perdita». Si guardano le ultime 3 notti concluse rispetto al giorno
+   selezionato, dalla telemetria oraria della portata. ── */
+export const NIGHT_FROM = 1, NIGHT_TO = 5, LEAK_LMIN = 0.5, LEAK_NIGHTS = 3;
+
+export interface WaterNight {
+  nights: Array<{ date: string; minFlow: number | null }>; // più recente per prima
+  streak: number;              // notti consecutive sopra soglia
+  leaking: boolean;            // streak >= LEAK_NIGHTS
+  estLitersPerDay?: number;    // min notturno × 24h, stima dello spreco
+  isDemo: boolean;
+}
+
+export function useWaterNight(siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, leaking = false) {
+  return useQuery<WaterNight | null>({
+    queryKey: ["mdash-wnight", siteId, dateKey, leaking],
+    queryFn: async (): Promise<WaterNight | null> => {
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        if (!isDemoSite) return null;
+        // demo: sito sano (min 0) o in perdita (1,2 L/min per 3 notti)
+        const nights = [0, 1, 2].map(i => {
+          const d = new Date(`${dateKey}T12:00:00`); d.setDate(d.getDate() - i);
+          return { date: d.toISOString().slice(0, 10), minFlow: leaking ? 1.2 : 0.2 };
+        });
+        return {
+          nights, streak: leaking ? 3 : 0, leaking,
+          estLitersPerDay: leaking ? Math.round(1.2 * 60 * 24) : undefined, isDemo: true,
+        };
+      }
+      const from = new Date(`${dateKey}T00:00:00`);
+      const fromUtc = new Date(from.getTime() - (LEAK_NIGHTS + 1) * 86400e3).toISOString();
+      const toUtc = new Date(from.getTime() + 26 * 3600e3).toISOString();
+      const { data } = await supabase!.from("telemetry_hourly")
+        .select("ts_hour, metric, value_avg").eq("site_id", siteId)
+        .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
+        .in("metric", WATER_METRICS.flow.ids);
+      const byNight = new Map<string, number>(); // data → min flow nella finestra
+      for (const r of (data || []) as unknown as HourRow[]) {
+        if (r.value_avg == null) continue;
+        const h = hourInTz(r.ts_hour, tz);
+        if (h < NIGHT_FROM || h >= NIGHT_TO) continue;
+        const k = dayKeyInTz(new Date(r.ts_hour), tz);
+        const v = Number(r.value_avg);
+        byNight.set(k, Math.min(byNight.get(k) ?? Infinity, v));
+      }
+      const nights: WaterNight["nights"] = [];
+      for (let i = 0; i < LEAK_NIGHTS; i++) {
+        const d = new Date(`${dateKey}T12:00:00`); d.setDate(d.getDate() - i);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const v = byNight.get(k);
+        nights.push({ date: k, minFlow: v != null && v !== Infinity ? Math.round(v * 100) / 100 : null });
+      }
+      if (nights.every(n => n.minFlow == null)) return null;
+      let streak = 0;
+      for (const n of nights) {
+        if (n.minFlow != null && n.minFlow > LEAK_LMIN) streak++;
+        else break;
+      }
+      const isLeak = streak >= LEAK_NIGHTS;
+      return {
+        nights, streak, leaking: isLeak,
+        estLitersPerDay: isLeak && nights[0].minFlow != null ? Math.round(nights[0].minFlow * 60 * 24) : undefined,
+        isDemo: false,
+      };
+    },
+    enabled: !!dateKey,
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 /** Profilo orario di UN giorno (somma device per l'energia, media sito per
     aria/acqua): mattone del «profilo tipico» dei 4 stessi giorni-settimana. */

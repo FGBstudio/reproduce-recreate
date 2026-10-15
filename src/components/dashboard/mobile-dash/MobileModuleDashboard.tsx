@@ -21,7 +21,8 @@ import { HourHeatmap, LabelValueGrid, MonthCarpet, WeekBars, YearBars } from "./
 import { CarbonBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
 import { useEuiCompare, usePeriodsYear, useWeatherCorr } from "./useEnergyInsights";
 import {
-  CO2_EMISSION_FACTOR, useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useWeekSeries, useYearSeries,
+  CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
+  useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useWaterNight, useWeekSeries, useYearSeries,
   type DashModule, type DaySeries, type EnergyCat, type MonthSeries, type WeekSeries, type YearSeries,
 } from "./useModuleSeries";
 import { co2Level, scoreToLevel } from "@/lib/airQuality";
@@ -57,8 +58,12 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const { t, language } = useLanguage();
   const [period, setPeriod] = useState<Period>("day");
   const [anchor, setAnchor] = useState(() => new Date());
-  // metrica corrente del modulo (aria: co2…, acqua: flow…)
+  // metrica corrente del modulo (aria: co2…, acqua: flow…).
+  // Per l'acqua «volume» e «notte» sono VISTE DERIVATE della portata
+  // (§10.3): la query gira sempre su water.flow_rate.
   const [airMetric, setAirMetric] = useState(module === "water" ? "flow" : "co2");
+  const waterDerived = module === "water" && (airMetric === "volume" || airMetric === "night");
+  const queryMetric = waterDerived ? "flow" : airMetric;
   // Schede energia: categorie reali + derivate (CO₂/costo) + gli
   // APPROFONDIMENTI del PC (§10.1): Confronto · Meteo · Carbonio · Periodi.
   type EnergyTab = EnergyCat | "co2e" | "cost" | "compare" | "weather" | "carbon" | "periods";
@@ -121,10 +126,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // famiglia delle sonde selezionate: tutte LEED → solo le 4 metriche base
   const selAllLeed = module === "air" && selProbes.length > 0 && selProbes.every(p => p.family === "LEED");
 
-  const dayRaw = useDaySeries(module, safeSiteId, dateKey, timezone, isDemoSite, limit, priceKwh, airMetric, energyCat, limit2, probeIds);
-  const weekRaw = useWeekSeries(module, safeSiteId, mondayKey, timezone, isDemoSite, priceKwh, airMetric, energyCat, probeIds);
-  const monthRaw = useMonthSeries(module, safeSiteId, monthKey, timezone, isDemoSite, priceKwh, airMetric, energyCat, probeIds);
-  const yearRaw = useYearSeries(module, safeSiteId, anchor.getFullYear(), timezone, isDemoSite, priceKwh, airMetric, energyCat, probeIds);
+  const dayRaw = useDaySeries(module, safeSiteId, dateKey, timezone, isDemoSite, limit, priceKwh, queryMetric, energyCat, limit2, probeIds);
+  const weekRaw = useWeekSeries(module, safeSiteId, mondayKey, timezone, isDemoSite, priceKwh, queryMetric, energyCat, probeIds);
+  const monthRaw = useMonthSeries(module, safeSiteId, monthKey, timezone, isDemoSite, priceKwh, queryMetric, energyCat, probeIds);
+  const yearRaw = useYearSeries(module, safeSiteId, anchor.getFullYear(), timezone, isDemoSite, priceKwh, queryMetric, energyCat, probeIds);
   const cats = useEnergyCats(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
   const avail = useSiteMetricsAvailable(module, module !== "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
   // §10.1 — approfondimenti: le schede esistono solo se hanno dati
@@ -177,10 +182,57 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     }
     return out;
   };
-  const day = { ...dayRaw, data: scaleDay(dayRaw.data) };
-  const week = { ...weekRaw, data: scaleDays(weekRaw.data) };
-  const month = { ...monthRaw, data: scaleDays(monthRaw.data) };
-  const yearData = { ...yearRaw, data: scaleDays(yearRaw.data) };
+  // §10.3 — vista VOLUME: litri derivati dalla portata media (L/min × 60
+  // per ogni ora; × 1440 sulle medie giornaliere). Derivazione dichiarata:
+  // il contatore cumulativo non espone delta onesti nelle tabelle orarie.
+  const scaleWaterDay = (s: DaySeries | null | undefined): DaySeries | null | undefined => {
+    if (!s || !(module === "water" && airMetric === "volume")) return s;
+    const r = (v: number) => Math.round(v * 60);
+    const pts = s.points.map(p => ({ h: p.h, v: p.v == null ? null : r(p.v) }));
+    const tot = pts.reduce((a, p) => a + (p.v ?? 0), 0);
+    const peakPt = pts.reduce((a, b) => ((b.v ?? 0) > (a.v ?? 0) ? b : a), pts[0]);
+    return {
+      ...s,
+      points: pts,
+      typical: s.typical?.map(v => (v == null ? null : r(v))),
+      peak: peakPt?.v ? { h: peakPt.h, v: peakPt.v } : undefined,
+      avg: tot > 0 ? tot : undefined, // il «valore del giorno» è il totale litri
+      limit: undefined, limit2: undefined, overLimitMinutes: undefined,
+      unit: "L/h",
+    };
+  };
+  const scaleWaterDays = <T extends WeekSeries | MonthSeries | YearSeries>(s: T | null | undefined): T | null | undefined => {
+    if (!s || !(module === "water" && airMetric === "volume")) return s;
+    const r = (v: number) => Math.round(v * 1440);
+    const out = { ...s, unit: "L" } as T;
+    if ("days" in out) {
+      (out as WeekSeries).days = (s as WeekSeries).days.map(x => ({ ...x, v: x.v == null ? null : r(x.v) }));
+      (out as WeekSeries).weekdayAvg = (s as WeekSeries).weekdayAvg != null ? r((s as WeekSeries).weekdayAvg!) : undefined;
+      (out as WeekSeries).heat = (s as WeekSeries).heat.map(row => row.map(v => (v == null ? null : v * 60)));
+      (out as WeekSeries).heatMax = (s as WeekSeries).heatMax * 60;
+    }
+    if ("cells" in out) {
+      (out as MonthSeries).cells = (s as MonthSeries).cells.map(c => ({ ...c, v: c.v == null ? null : r(c.v) }));
+      (out as MonthSeries).maxV = (s as MonthSeries).maxV * 1440;
+      (out as MonthSeries).hours = (s as MonthSeries).hours.map(row => row.map(v => (v == null ? null : v * 60)));
+      (out as MonthSeries).hoursMax = (s as MonthSeries).hoursMax * 60;
+      (out as MonthSeries).peak = (s as MonthSeries).peak ? { date: (s as MonthSeries).peak!.date, v: r((s as MonthSeries).peak!.v) } : undefined;
+    }
+    if ("months" in out) {
+      (out as YearSeries).months = (s as YearSeries).months.map(x => ({ ...x, v: x.v == null ? null : r(x.v) }));
+      (out as YearSeries).avg = (s as YearSeries).avg != null ? r((s as YearSeries).avg!) : undefined;
+    }
+    return out;
+  };
+  const day = { ...dayRaw, data: scaleWaterDay(scaleDay(dayRaw.data)) };
+  const week = { ...weekRaw, data: scaleWaterDays(scaleDays(weekRaw.data)) };
+  const month = { ...monthRaw, data: scaleWaterDays(scaleDays(monthRaw.data)) };
+  const yearData = { ...yearRaw, data: scaleWaterDays(scaleDays(yearRaw.data)) };
+
+  // §10.3 — regola perdite: 3 notti con flusso 01–05 sopra 0,5 L/min.
+  // In demo, il sito vetrina è «sano»; la variante in perdita si vede
+  // cambiando la soglia dal DB su un sito reale.
+  const wnight = useWaterNight(module === "water" ? (isDemoSite ? siteId : safeSiteId) : undefined, dateKey, timezone, isDemoSite, false);
 
   const nf = useMemo(() => new Intl.NumberFormat(language, { maximumFractionDigits: 1 }), [language]);
   const nf0 = useMemo(() => new Intl.NumberFormat(language, { maximumFractionDigits: 0 }), [language]);
@@ -257,6 +309,26 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   };
   const verdict = useMemo(() => {
     if (!d) return null;
+    // §10.3 — vista NOTTE: il giudizio è la regola perdite, leggibile
+    if (module === "water" && airMetric === "night") {
+      if (!wnight.data) return { color: "#9fb2b3", word: t("md.partial"), summary: undefined };
+      return wnight.data.leaking
+        ? { color: AMBER, word: t("md.leak_possible"), summary: t("md.leak_nights").replace("{n}", String(wnight.data.streak)) }
+        : { color: TEAL, word: t("md.v_normal"), summary: t("md.no_night_flow") };
+    }
+    // §10.3 — vista VOLUME: litri del giorno vs profilo tipico
+    if (module === "water" && airMetric === "volume" && d.avg != null) {
+      const typTot = d.typical ? d.typical.reduce((a, v) => a + (v ?? 0), 0) : 0;
+      const deltaPct = typTot > 0 ? Math.round(((d.avg - typTot) / typTot) * 100) : null;
+      const off = deltaPct != null && Math.abs(deltaPct) > 15;
+      return {
+        color: off ? AMBER : TEAL,
+        word: off ? t("ovm.v_attention") : t("md.v_normal"),
+        summary: off && deltaPct != null
+          ? `${deltaPct > 0 ? "+" : ""}${deltaPct}% ${t("md.vs_typical").replace("{d}", new Intl.DateTimeFormat(language, { weekday: "long" }).format(anchor))}`
+          : t("md.volume_in_line"),
+      };
+    }
     // §10.2: con un buco rilevante il giudizio viene SOSPESO, non inventato
     if (module !== "energy" && (d.missingMinutes ?? 0) >= 120) {
       return {
@@ -340,11 +412,14 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     co: "CO", o3: "O₃", temp: t("ovm.row_temp"), humidity: t("ovm.row_humidity"),
   };
   const WATER_LABEL: Record<string, string> = {
-    flow: t("md.metric_flow"), ph: "pH", turbidity: t("md.metric_turb"),
+    flow: t("md.metric_flow"), volume: t("md.metric_volume"), night: t("md.metric_night"),
+    ph: "pH", turbidity: t("md.metric_turb"),
     chlorine: t("md.metric_chlorine"), wtemp: t("ovm.row_temp"), pressure: t("md.metric_pressure"),
   };
   const AIR_ORDER = ["iaq", "co2", "pm25", "pm10", "tvoc", "co", "o3", "temp", "humidity"];
-  const WATER_ORDER = ["flow", "ph", "turbidity", "chlorine", "wtemp", "pressure"];
+  // §10.3: Portata · Volume · Notte · Pressione, più la qualità SOLO se
+  // il sensore esiste («niente Water Quality finta»)
+  const WATER_ORDER = ["flow", "volume", "night", "pressure", "ph", "turbidity", "chlorine", "wtemp"];
   // §10.2: con sole sonde LEED selezionate restano le 4 metriche base
   // (IAQ, CO₂, TVOC, Temp, Umidità) — niente schede che portano nel vuoto
   const LEED_BASE = new Set(["iaq", "co2", "tvoc", "temp", "humidity"]);
@@ -360,7 +435,11 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ...(period === "year" && periodsY.data ? [{ id: "periods", label: t("md.tab_periods") }] : []),
       ]
     : (module === "water" ? WATER_ORDER : AIR_ORDER)
-        .filter(k => k === "iaq" ? (avail.data ?? []).includes("co2") : (avail.data ?? []).includes(k))
+        .filter(k => {
+          // volume e notte sono viste derivate della portata (§10.3)
+          const needed = k === "iaq" ? "co2" : k === "volume" || k === "night" ? "flow" : k;
+          return (avail.data ?? []).includes(needed);
+        })
         .filter(k => module !== "air" || !selAllLeed || LEED_BASE.has(k))
         .map(k => ({ id: k, label: module === "water" ? WATER_LABEL[k] : AIR_LABEL[k] }));
   // la metrica corrente deve sempre esistere fra le schede
@@ -545,6 +624,11 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                   from: d.gap.from, to: d.gap.to,
                   text: t("md.no_data_range").replace("{a}", `${pad(d.gap.from)}:00`).replace("{b}", `${pad(Math.min(23, d.gap.to))}:00`),
                 } : undefined}
+                nightWindow={module === "water" && airMetric === "night" ? {
+                  from: NIGHT_FROM, to: NIGHT_TO,
+                  alert: wnight.data?.leaking,
+                  label: t("md.night_window"),
+                } : undefined}
                 unit={d.unit}
                 limit={d.limit}
                 limit2={d.limit2}
@@ -576,6 +660,24 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 return <CauseTrack variant="line" series={d.outdoorTemp} label={t("md.outdoor_temp")} note={range} />;
               })()}
               {d.hvacStrip && <CauseTrack variant="onOff" strip={d.hvacStrip} label={t("md.hvac")} note={t("md.hvac_note")} />}
+              {/* §10.3: la regola perdite scritta per esteso, leggibile */}
+              {module === "water" && airMetric === "night" && (
+                <div className="px-6 mt-3">
+                  <p style={{ fontSize: 12.5, fontWeight: 500, color: INK, margin: 0 }}>
+                    {t("md.leak_rule")}
+                    <span style={{ fontWeight: 400, color: SUB, marginLeft: 6 }}>
+                      {t("md.leak_rule_body").replace("{a}", `${pad(NIGHT_FROM)}–${pad(NIGHT_TO)}`).replace("{l}", String(LEAK_LMIN)).replace("{n}", String(LEAK_NIGHTS))}
+                    </span>
+                  </p>
+                  {wnight.data?.leaking && wnight.data.estLitersPerDay != null && (
+                    <p style={{ fontSize: 12, color: "#b97a14", margin: "4px 0 0" }}>
+                      {t("md.leak_estimate")
+                        .replace("{f}", nf2.format(wnight.data.nights[0].minFlow ?? 0))
+                        .replace("{l}", nf0.format(wnight.data.estLitersPerDay))}
+                    </p>
+                  )}
+                </div>
+              )}
               <SummaryRow items={[
                 ...(module === "energy" && d.totalKwh != null ? [{
                   value: DERIVED ? `${nf0.format(Math.round(d.totalKwh * DERIVED.f))} ${DERIVED.unit}` : `${nf0.format(d.totalKwh)} kWh`,
@@ -593,8 +695,22 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                     ...(outAvg != null && outAvg > 0 ? [{ value: `−${Math.round((1 - d.avg / outAvg) * 100)}%`, label: t("md.retained") }] : []),
                   ];
                 })() : []),
+                /* §10.3 — summary dedicate di Notte e Volume */
+                ...(module === "water" && airMetric === "night" && wnight.data ? [
+                  { value: wnight.data.nights[0]?.minFlow != null ? `${nf2.format(wnight.data.nights[0].minFlow)} L/min` : "—", label: t("md.night_min") },
+                  { value: String(wnight.data.streak), label: t("md.nights_row") },
+                  ...(wnight.data.estLitersPerDay != null ? [{ value: `≈ ${nf0.format(wnight.data.estLitersPerDay)} L`, label: t("md.wasted_day") }] : []),
+                ] : []),
+                ...(module === "water" && airMetric === "volume" && d.avg != null ? [
+                  { value: `${nf0.format(d.avg)} L`, label: t("md.today_lbl") },
+                  ...(d.typical ? (() => {
+                    const typTot = d.typical!.reduce((a, v) => a + (v ?? 0), 0);
+                    return typTot > 0 ? [{ value: `${nf0.format(typTot)} L`, label: t("md.typical_day") }] : [];
+                  })() : []),
+                  ...(d.peak ? [{ value: `${nf0.format(d.peak.v)} L/h`, label: t("md.peak_lbl") }] : []),
+                ] : []),
                 /* §10.2 dati parziali: media sui presenti + tempo senza dati */
-                ...(module !== "energy" && !d.outdoor && d.avg != null ? [{
+                ...(module !== "energy" && !(module === "water" && waterDerived) && !d.outdoor && d.avg != null ? [{
                   value: d.unit ? `${fmtV(d.avg)} ${d.unit}` : `${nf0.format(d.avg)}/100`,
                   label: (d.missingMinutes ?? 0) >= 120 ? t("md.on_present") : t("md.avg"),
                 }] : []),
