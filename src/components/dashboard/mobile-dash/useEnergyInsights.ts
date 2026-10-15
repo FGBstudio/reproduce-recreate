@@ -268,6 +268,34 @@ export function usePeriodsYear(siteId: string | undefined, year: number, isDemoS
         dailyKwh(siteId, `${year - 1}-01-01`, `${year - 1}-12-31`),
       ]);
       if (cur.size === 0) return null;
+      // prezzo STORICIZZATO per data (stessa fonte del PC, slide Periods):
+      // il costo di ogni mese usa la tariffa in vigore giorno per giorno
+      let priceAt: (day: string) => number | undefined = () => priceKwh;
+      try {
+        const { data: ph } = await supabase!.from("site_energy_price_history")
+          .select("price_eur_per_kwh, effective_from").eq("site_id", siteId)
+          .order("effective_from", { ascending: true });
+        const hist = (ph || []) as unknown as Array<{ price_eur_per_kwh: number; effective_from: string }>;
+        if (hist.length > 0) {
+          priceAt = (day: string) => {
+            let chosen = Number(hist[0].price_eur_per_kwh);
+            for (const row of hist) {
+              if (row.effective_from.slice(0, 10) <= day) chosen = Number(row.price_eur_per_kwh);
+              else break;
+            }
+            return chosen;
+          };
+        }
+      } catch { /* senza storico resta la tariffa corrente */ }
+      const costBy = new Map<number, number>();
+      let hasPrice = false;
+      for (const [day, v] of cur) {
+        const p = priceAt(day);
+        if (p == null || p <= 0) continue;
+        hasPrice = true;
+        const m = Number(day.slice(5, 7));
+        costBy.set(m, (costBy.get(m) || 0) + v * p);
+      }
       const nowKey = new Date().toISOString().slice(0, 7);
       const agg = (map: Map<string, number>) => {
         const by = new Map<number, { sum: number; days: number; peak?: { date: string; kwh: number } }>();
@@ -295,20 +323,22 @@ export function usePeriodsYear(siteId: string | undefined, year: number, isDemoS
         return {
           m,
           kwh: e ? Math.round(e.sum) : null,
-          cost: e && priceKwh ? Math.round(e.sum * priceKwh) : undefined,
+          cost: e && hasPrice && costBy.has(m) ? Math.round(costBy.get(m)!) : undefined,
           peakDay: e?.peak,
           vsPrevYearPct: vsPrev,
           current: monthKey === nowKey,
         };
       });
       const totalKwh = months.reduce((a, x) => a + (x.kwh ?? 0), 0);
+      const totalCost = hasPrice ? Math.round([...costBy.values()].reduce((a, v) => a + v, 0)) : undefined;
       const prevTotal = [...prevBy.values()].reduce((a, e) => a + e.sum, 0);
       return {
         months,
         totalKwh,
-        totalCost: priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
+        totalCost,
         vsPrevYearPct: prevTotal > 0 ? Math.round(((totalKwh - prevTotal) / prevTotal) * 100) : undefined,
-        avgPrice: priceKwh,
+        // media effettiva dell'anno, non la tariffa di oggi
+        avgPrice: totalCost != null && totalKwh > 0 ? Math.round((totalCost / totalKwh) * 10000) / 10000 : priceKwh,
         isDemo: false,
       };
     },
@@ -586,5 +616,105 @@ export function useBillsYear(siteId: string | undefined, year: number, isDemoSit
     // con una bolletta in analisi la lista si aggiorna da sola ogni 30 s
     // (l'equivalente del bottone «Aggiorna» del PC, senza bottone)
     refetchInterval: query => (((query.state.data as BillsYear | null)?.pendingCount ?? 0) > 0 ? 30_000 : false),
+  });
+}
+
+/* ── Ripartizione per categoria (parità E1 = donut «Breakdown» del PC) ──
+   Quote % del periodo per HVAC / Luci / Prese / Altro, dai contatori di
+   categoria quando esistono; col solo contatore generale la quota è il
+   VIRTUAL SPLIT del PC (energy_benchmarks per tipologia/zona climatica,
+   default 40/25/20/15), sempre dichiarato come simulazione. In più
+   l'area del sito per il KPI kWh/m² — MAI il fallback 850 m² del PC. ── */
+export interface EnergySplit {
+  /** quote del periodo, Σ≈100; "other" = generale − categorie misurate */
+  shares: Array<{ cat: "hvac" | "lighting" | "plugs" | "other"; pct: number }>;
+  simulated: boolean;
+  areaM2?: number;
+  isDemo: boolean;
+}
+
+const DEFAULT_SPLIT = { hvac: 40, lighting: 25, plugs: 20, other: 15 } as const;
+
+export function useEnergySplit(siteId: string | undefined, fromKey: string, toKey: string, isDemoSite: boolean) {
+  return useQuery<EnergySplit | null>({
+    queryKey: ["mdash-esplit", siteId, fromKey, toKey],
+    queryFn: async (): Promise<EnergySplit | null> => {
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        // demo: le stesse proporzioni delle schede categoria (DEMO_CAT_FACTOR)
+        return isDemoSite ? {
+          shares: [
+            { cat: "hvac", pct: 45 }, { cat: "lighting", pct: 30 },
+            { cat: "plugs", pct: 18 }, { cat: "other", pct: 7 },
+          ],
+          simulated: false, areaM2: 420, isDemo: true,
+        } : null;
+      }
+      const [{ data: devs }, { data: site }] = await Promise.all([
+        supabase!.from("devices").select("id, category, device_type").eq("site_id", siteId),
+        supabase!.from("sites").select("area_m2, typology, climate_zone, region").eq("id", siteId).maybeSingle(),
+      ]);
+      const all = (devs || []) as unknown as Array<{ id: string; category: string | null; device_type: string | null }>;
+      const siteRow = site as unknown as { area_m2: number | null; typology: string | null; climate_zone: string | null; region: string | null } | null;
+      const areaM2 = siteRow?.area_m2 != null && Number(siteRow.area_m2) > 0 ? Number(siteRow.area_m2) : undefined;
+      const byCat = (c: string) => all.filter(d => d.category === c).map(d => d.id);
+      const cats = { hvac: byCat("hvac"), lighting: byCat("lighting"), plugs: byCat("plugs") };
+      const general = byCat("general");
+      const catIds = [...cats.hvac, ...cats.lighting, ...cats.plugs];
+      const ids = [...new Set([...catIds, ...general])].slice(0, 50);
+      if (ids.length === 0) return areaM2 != null ? { shares: [], simulated: false, areaM2, isDemo: false } : null;
+      const { data: rows } = await supabase!.from("energy_daily")
+        .select("device_id, value_sum").in("device_id", ids)
+        .gte("ts_day", fromKey).lte("ts_day", toKey).in("metric", ENERGY_METRICS);
+      const sumOf = (set: string[]) => {
+        const s = new Set(set);
+        let tot = 0;
+        for (const r of (rows || []) as unknown as Array<{ device_id: string; value_sum: number | null }>) {
+          if (r.value_sum == null || Number(r.value_sum) > 50000 || !s.has(r.device_id)) continue;
+          tot += Number(r.value_sum);
+        }
+        return tot;
+      };
+      const hv = sumOf(cats.hvac), li = sumOf(cats.lighting), pl = sumOf(cats.plugs);
+      const measured = hv + li + pl;
+      if (measured > 0) {
+        // contatori di categoria veri: quota misurata; «Altro» = resto del generale
+        const gen = general.length > 0 ? sumOf(general) : 0;
+        const total = gen > measured ? gen : measured;
+        const other = Math.max(0, total - measured);
+        const pct = (v: number) => Math.round((v / total) * 100);
+        const shares = [
+          { cat: "hvac" as const, pct: pct(hv) }, { cat: "lighting" as const, pct: pct(li) },
+          { cat: "plugs" as const, pct: pct(pl) },
+          ...(other / total > 0.005 ? [{ cat: "other" as const, pct: pct(other) }] : []),
+        ].filter(s => s.pct > 0);
+        return shares.length > 0 ? { shares, simulated: false, areaM2, isDemo: false } : null;
+      }
+      // solo contatore generale: Virtual Split dichiarato come sul PC
+      const gen = sumOf(general);
+      if (gen <= 0) return areaM2 != null ? { shares: [], simulated: false, areaM2, isDemo: false } : null;
+      let split = { ...DEFAULT_SPLIT } as Record<keyof typeof DEFAULT_SPLIT, number>;
+      if (siteRow?.typology && siteRow?.climate_zone) {
+        try {
+          let q = supabase!.from("energy_benchmarks")
+            .select("hvac_pct, lighting_pct, plugs_pct, other_pct")
+            .eq("typology", siteRow.typology).eq("climate_zone", siteRow.climate_zone);
+          if (siteRow.region) q = q.eq("region", siteRow.region);
+          const { data: bm } = await q.limit(500);
+          const list = (bm || []) as unknown as Array<{ hvac_pct: number; lighting_pct: number; plugs_pct: number; other_pct: number }>;
+          if (list.length > 0) {
+            const avg = (k: keyof typeof list[0]) => list.reduce((a, r) => a + Number(r[k]), 0) / list.length;
+            split = { hvac: avg("hvac_pct"), lighting: avg("lighting_pct"), plugs: avg("plugs_pct"), other: avg("other_pct") };
+          }
+        } catch { /* resta il default 40/25/20/15 */ }
+      }
+      return {
+        shares: (["hvac", "lighting", "plugs", "other"] as const)
+          .map(cat => ({ cat, pct: Math.round(split[cat]) }))
+          .filter(s => s.pct > 0),
+        simulated: true, areaM2, isDemo: false,
+      };
+    },
+    enabled: !!siteId || isDemoSite,
+    staleTime: 10 * 60 * 1000,
   });
 }

@@ -21,8 +21,8 @@ import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
 import BillUploadSheet from "./BillUploadSheet";
 import BillDetail from "./BillDetail";
 import { HourHeatmap, LabelValueGrid, MonthCarpet, RangeBars, WeekBars, YearBars } from "./views";
-import { BillsCompareChart, CarbonBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
-import { useBillsYear, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem } from "./useEnergyInsights";
+import { BillsCompareChart, CarbonBars, CategoryBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
+import { useBillsYear, useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem } from "./useEnergyInsights";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSiteCurrency } from "@/hooks/useSiteCurrency";
@@ -153,6 +153,14 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const periodsY = usePeriodsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite, priceKwh ?? (isDemoSite ? 0.19 : undefined));
   // §10.6 — Bollette (decisione owner 15/10): fatturato vs misurato per anno
   const bills = useBillsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite);
+  // Parità E1 — ripartizione per categoria del periodo (solo scheda Potenza,
+  // orizzonti Giorno e Mese: il breakdown del PC calato dove si legge il totale)
+  const splitOn = module === "energy" && energyTab === "power" && !insightTab && (period === "day" || period === "month");
+  const splitFrom = period === "day" ? dateKey : `${monthKey}-01`;
+  const splitTo = period === "day" ? dateKey
+    : monthKey === todayKey.slice(0, 7) ? todayKey
+    : keyOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
+  const esplit = useEnergySplit(splitOn ? (isDemoSite ? siteId : safeSiteId) : undefined, splitFrom, splitTo, isDemoSite && splitOn);
   const [billSheetOpen, setBillSheetOpen] = useState(false);
   const [selBill, setSelBill] = useState<BillItem | null>(null);
   const queryClient = useQueryClient();
@@ -626,6 +634,32 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // ambra su SOGLIA (non su media) per barre e calendario di aria/acqua
   const overLimitFor = module !== "energy" ? (limit ?? undefined) : undefined;
 
+  // Parità E1 — il blocco ripartizione, riusato da Giorno e Mese: i kWh per
+  // categoria derivano dal TOTALE mostrato (stessa fonte, numeri riconciliati)
+  const CAT_SPLIT_LABEL: Record<string, string> = {
+    hvac: "HVAC", lighting: t("md.metric_lights"), plugs: t("md.metric_plugs"), other: t("md.cat_other"),
+  };
+  const splitEl = (totalKwh?: number) => {
+    const s = esplit.data;
+    if (!splitOn || !s || s.shares.length === 0 || totalKwh == null || totalKwh <= 0) return null;
+    return (
+      <CategoryBars
+        title={t("md.split_t")}
+        badge={s.simulated ? t("md.split_sim") : undefined}
+        note={s.simulated ? t("md.split_note") : undefined}
+        rows={s.shares.map(sh => ({
+          id: sh.cat,
+          label: CAT_SPLIT_LABEL[sh.cat],
+          pct: sh.pct,
+          kwh: Math.round((totalKwh * sh.pct) / 100),
+          // tap → scheda della categoria, solo se quella scheda esiste davvero
+          pickable: sh.cat !== "other" && !s.simulated && (cats.data ?? []).includes(sh.cat as EnergyCat),
+        }))}
+        onPick={id => setEnergyTab(id as EnergyTab)}
+      />
+    );
+  };
+
   return (
     <div
       ref={rootRef}
@@ -816,6 +850,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 ...(module !== "energy" && !d.outdoor && d.overLimitMinutes ? [{ value: `${Math.floor(d.overLimitMinutes / 60)}h ${pad(d.overLimitMinutes % 60)}m`, label: t("md.over_time") }] : []),
                 ...(module === "air" && d.hvacStrip ? [{ value: String(d.hvacStrip.reduce((a, on, i) => a + (i > 0 && !on && d.hvacStrip![i - 1] ? 1 : 0), 0)), label: t("md.hvac_pauses") }] : []),
               ].slice(0, 3)} />
+              {/* parità E1: da dove viene il consumo di oggi */}
+              {splitEl(d.totalKwh)}
             </>
           ) : (
             <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
@@ -944,7 +980,14 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 </p>
               );
             })()}
+            {/* parità E1: da dove viene il consumo del mese */}
+            {splitEl(month.data.totalKwh)}
             <LabelValueGrid items={[
+              /* parità E1: kWh/m² col m² VERO del sito (mai l'850 di default PC) */
+              ...(energyTab === "power" && esplit.data?.areaM2 != null && month.data.totalKwh != null ? [{
+                label: `kWh/m² · ${nf0.format(esplit.data.areaM2)} m²`,
+                value: nf.format(month.data.totalKwh / esplit.data.areaM2),
+              }] : []),
               ...(month.data.costEur != null && energyTab !== "cost" ? [{ label: t("md.cost_est"), value: `€ ${nf0.format(month.data.costEur)}` }] : []),
               ...(month.data.vsPrevPct != null ? [{ label: t("md.vs_prev_month"), value: `${month.data.vsPrevPct > 0 ? "+" : ""}${month.data.vsPrevPct}%` }] : []),
               /* aria/acqua con soglia: quanti giorni del mese l'hanno superata */

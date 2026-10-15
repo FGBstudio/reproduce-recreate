@@ -786,6 +786,11 @@ const translations: Record<string, Record<Language, string>> = {
   'md.file_too_big': { en: 'File is {s} MB — the limit is 10 MB', it: 'Il file pesa {s} MB — il limite è 10 MB', fr: 'Le fichier fait {s} Mo — la limite est 10 Mo', es: 'El archivo pesa {s} MB — el límite es 10 MB', zh: '文件 {s} MB — 上限为 10 MB' },
   'md.company_required': { en: 'Enter the supplier name', it: 'Inserisci il fornitore', fr: 'Saisissez le fournisseur', es: 'Introduce el proveedor', zh: '请输入供应商' },
   'md.max10': { en: 'max 10 MB', it: 'max 10 MB', fr: 'max 10 Mo', es: 'máx 10 MB', zh: '上限 10 MB' },
+  // Parità E1 — ripartizione per categoria (breakdown del PC)
+  'md.split_t': { en: 'Where consumption comes from', it: 'Da dove viene il consumo', fr: "D'où vient la consommation", es: 'De dónde viene el consumo', zh: '用电构成' },
+  'md.split_sim': { en: 'SIMULATED SPLIT', it: 'RIPARTIZIONE SIMULATA', fr: 'RÉPARTITION SIMULÉE', es: 'REPARTO SIMULADO', zh: '模拟分摊' },
+  'md.split_note': { en: 'This site only has the general meter: benchmark-based estimate, as on desktop.', it: 'Questo sito ha solo il contatore generale: stima da benchmark, come sul PC.', fr: "Ce site n'a que le compteur général : estimation par benchmark, comme sur PC.", es: 'Este sitio solo tiene el contador general: estimación por benchmark, como en PC.', zh: '该站点仅有总表：按基准估算，与桌面端一致。' },
+  'md.cat_other': { en: 'Other', it: 'Altro', fr: 'Autre', es: 'Otro', zh: '其他' },
   'md.partial': { en: 'Partial data', it: 'Dati parziali', fr: 'Données partielles', es: 'Datos parciales', zh: '数据不完整' },
   'md.partial_sub': { en: '{t} without data, verdict suspended', it: '{t} senza dati, giudizio sospeso', fr: '{t} sans données, verdict suspendu', es: '{t} sin datos, juicio suspendido', zh: '{t} 无数据，暂不评级' },
   'md.no_data_range': { en: 'no data {a} – {b}', it: 'nessun dato {a} – {b}', fr: 'aucune donnée {a} – {b}', es: 'sin datos {a} – {b}', zh: '无数据 {a} – {b}' },

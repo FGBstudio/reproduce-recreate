@@ -170,6 +170,48 @@ export const CarbonBars = ({ months, anchorMonth, monthLabels, fmt }: {
   );
 };
 
+/* ── Ripartizione per categoria (parità E1 = donut Breakdown del PC):
+   barre orizzontali ordinate col kWh e la quota; tap su una barra apre
+   la scheda di quella categoria. Il Virtual Split arriva già dichiarato
+   dal hook (badge ✨ + nota a carico del chiamante). ── */
+export const CategoryBars = ({ title, badge, note, rows, onPick }: {
+  title: string;
+  badge?: string;                 // «RIPARTIZIONE SIMULATA» quando serve
+  note?: string;
+  rows: Array<{ id: string; label: string; pct: number; kwh?: number; pickable?: boolean }>;
+  onPick?: (id: string) => void;
+}) => {
+  const COLORS = [TEAL, "#5fb6b8", "#9fd3d6", "#d9e6e6"];
+  const nf0 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+  const sorted = [...rows].sort((a, b) => b.pct - a.pct);
+  return (
+    <div className="px-6" style={{ marginTop: 22 }}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: INK }}>{title}</span>
+        {badge && (
+          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", color: "#6b5a9e", background: "#ece7f7", borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap" }}>
+            ✨ {badge}
+          </span>
+        )}
+      </div>
+      {sorted.map((r, i) => (
+        <button key={r.id} type="button" disabled={!r.pickable || !onPick}
+          onClick={() => { if (r.pickable && onPick) { hapticLight(); onPick(r.id); } }}
+          className="w-full flex items-center gap-2.5" style={{ marginTop: 9, fontSize: 12, minHeight: 24 }}>
+          <span className="text-left truncate" style={{ width: 64, flex: "none", color: INK }}>{r.label}</span>
+          <span className="flex-1 rounded-full" style={{ height: 14, background: "#eef4f4", position: "relative" }} aria-hidden>
+            <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, r.pct)}%`, background: COLORS[i % COLORS.length] }} />
+          </span>
+          <span className="text-right tabular-nums" style={{ width: 110, flex: "none", color: SUB }}>
+            {r.kwh != null ? `${nf0.format(r.kwh)} kWh · ` : ""}{r.pct}%
+          </span>
+        </button>
+      ))}
+      {note && <p style={{ fontSize: 11, color: SUB, margin: "8px 0 0" }}>{note}</p>}
+    </div>
+  );
+};
+
 /* ── Bollette (§10.6): per ogni mese la coppia fatturato | misurato.
    Fatturato = ardesia scura, misurato = teal (il dato dei NOSTRI
    contatori, lo stesso della vista Anno). Tap sul mese → vista Mese. ── */
