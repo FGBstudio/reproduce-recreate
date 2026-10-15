@@ -791,6 +791,10 @@ const translations: Record<string, Record<Language, string>> = {
   'md.split_sim': { en: 'SIMULATED SPLIT', it: 'RIPARTIZIONE SIMULATA', fr: 'RÉPARTITION SIMULÉE', es: 'REPARTO SIMULADO', zh: '模拟分摊' },
   'md.split_note': { en: 'This site only has the general meter: benchmark-based estimate, as on desktop.', it: 'Questo sito ha solo il contatore generale: stima da benchmark, come sul PC.', fr: "Ce site n'a que le compteur général : estimation par benchmark, comme sur PC.", es: 'Este sitio solo tiene el contador general: estimación por benchmark, como en PC.', zh: '该站点仅有总表：按基准估算，与桌面端一致。' },
   'md.cat_other': { en: 'Other', it: 'Altro', fr: 'Autre', es: 'Otro', zh: '其他' },
+  // Parità E2 — blocco real-time «In questo momento»
+  'md.live_now': { en: 'Right now', it: 'In questo momento', fr: 'En ce moment', es: 'Ahora mismo', zh: '当前功率' },
+  'md.live_upd': { en: 'updated {t}', it: 'aggiornato {t}', fr: 'mis à jour {t}', es: 'actualizado {t}', zh: '更新于 {t}' },
+  'md.live_stale': { en: 'no new data since {t}', it: 'dati fermi dalle {t}', fr: 'aucune donnée depuis {t}', es: 'sin datos desde las {t}', zh: '自 {t} 起无新数据' },
   'md.partial': { en: 'Partial data', it: 'Dati parziali', fr: 'Données partielles', es: 'Datos parciales', zh: '数据不完整' },
   'md.partial_sub': { en: '{t} without data, verdict suspended', it: '{t} senza dati, giudizio sospeso', fr: '{t} sans données, verdict suspendu', es: '{t} sin datos, juicio suspendido', zh: '{t} 无数据，暂不评级' },
   'md.no_data_range': { en: 'no data {a} – {b}', it: 'nessun dato {a} – {b}', fr: 'aucune donnée {a} – {b}', es: 'sin datos {a} – {b}', zh: '无数据 {a} – {b}' },

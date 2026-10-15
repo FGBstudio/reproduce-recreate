@@ -36,6 +36,7 @@ import {
 import { co2Level, scoreToLevel } from "@/lib/airQuality";
 import { isValidUUID } from "@/lib/utils";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
+import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 interface Props {
@@ -161,6 +162,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     : monthKey === todayKey.slice(0, 7) ? todayKey
     : keyOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
   const esplit = useEnergySplit(splitOn ? (isDemoSite ? siteId : safeSiteId) : undefined, splitFrom, splitTo, isDemoSite && splitOn);
+  // Parità E2 — «In questo momento»: il Power Consumption real-time del PC
+  // (energy_latest, 30 s, regola dei 2 giorni) su Giorno = oggi
+  const liveOn = module === "energy" && energyTab === "power" && !insightTab && period === "day" && dateKey === todayKey;
+  const live = useEnergyPowerByCategory(liveOn && !isDemoSite ? safeSiteId : undefined);
   const [billSheetOpen, setBillSheetOpen] = useState(false);
   const [selBill, setSelBill] = useState<BillItem | null>(null);
   const queryClient = useQueryClient();
@@ -634,6 +639,37 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // ambra su SOGLIA (non su media) per barre e calendario di aria/acqua
   const overLimitFor = module !== "energy" ? (limit ?? undefined) : undefined;
 
+  // Parità E2 — modello del blocco live: in demo i numeri seguono la stessa
+  // curva del grafico demo (coerenza coi 11,6 kW medi mostrati), sul reale
+  // energy_latest con freschezza onesta (≤10 min = live; >2 giorni = sparisce)
+  const liveModel = (() => {
+    if (!liveOn) return null;
+    if (isDemoSite) {
+      const now = new Date();
+      const h = now.getHours() + now.getMinutes() / 60;
+      const total = Math.round((6 + 10 * Math.exp(-((h - 13) ** 2) / 28)) * 10) / 10;
+      const r = (p: number) => Math.round(total * p * 10) / 10;
+      return {
+        total,
+        rows: [
+          { id: "hvac", kw: r(0.45) }, { id: "lighting", kw: r(0.3) },
+          { id: "plugs", kw: r(0.18) }, { id: "other", kw: r(0.07) },
+        ],
+        ts: now, fresh: true,
+      };
+    }
+    if (!safeSiteId || live.isLoading || !live.lastUpdate || live.isStale || !live.isRealData) return null;
+    const total = live.totalGeneral ?? ((live.hvac ?? 0) + (live.lighting ?? 0) + (live.plugs ?? 0));
+    if (!total || total <= 0) return null;
+    const rows = [
+      { id: "hvac", kw: live.hvac }, { id: "lighting", kw: live.lighting },
+      { id: "plugs", kw: live.plugs }, { id: "other", kw: live.other },
+    ].filter((x): x is { id: string; kw: number } => x.kw != null && x.kw > 0);
+    const ageMin = (Date.now() - new Date(live.lastUpdate).getTime()) / 60000;
+    return { total: Math.round(total * 10) / 10, rows, ts: new Date(live.lastUpdate), fresh: ageMin <= 10 };
+  })();
+  const hhmm = useMemo(() => new Intl.DateTimeFormat(language, { hour: "2-digit", minute: "2-digit" }), [language]);
+
   // Parità E1 — il blocco ripartizione, riusato da Giorno e Mese: i kWh per
   // categoria derivano dal TOTALE mostrato (stessa fonte, numeri riconciliati)
   const CAT_SPLIT_LABEL: Record<string, string> = {
@@ -850,6 +886,34 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 ...(module !== "energy" && !d.outdoor && d.overLimitMinutes ? [{ value: `${Math.floor(d.overLimitMinutes / 60)}h ${pad(d.overLimitMinutes % 60)}m`, label: t("md.over_time") }] : []),
                 ...(module === "air" && d.hvacStrip ? [{ value: String(d.hvacStrip.reduce((a, on, i) => a + (i > 0 && !on && d.hvacStrip![i - 1] ? 1 : 0), 0)), label: t("md.hvac_pauses") }] : []),
               ].slice(0, 3)} />
+              {/* parità E2: il «Power Consumption» real-time del PC — kW di
+                  adesso, totale e per categoria, con freschezza dichiarata */}
+              {liveModel && (
+                <div className="mx-6 rounded-2xl" style={{ marginTop: 20, border: "1px solid #eaf0f0", padding: "14px 16px" }}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span aria-hidden className="rounded-full shrink-0" style={{ width: 8, height: 8, background: liveModel.fresh ? TEAL : "#9fb2b3", boxShadow: liveModel.fresh ? "0 0 0 4px rgba(10,143,145,.15)" : undefined }} />
+                    <span style={{ fontSize: 12.5, fontWeight: 600 }}>{t("md.live_now")}</span>
+                    <span style={{ fontSize: 11, color: SUB }}>
+                      {t(liveModel.fresh ? "md.live_upd" : "md.live_stale").replace("{t}", hhmm.format(liveModel.ts))}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5" style={{ marginTop: 2 }}>
+                    <span className="tabular-nums" style={{ fontSize: 30, fontWeight: 600 }}>{nf.format(liveModel.total)}</span>
+                    <span style={{ fontSize: 14, color: SUB }}>kW</span>
+                  </div>
+                  {/* lo split live esiste solo coi contatori di categoria VERI:
+                      il Virtual Split vale per i kWh, non per l'istantaneo */}
+                  {liveModel.rows.length > 1 && liveModel.rows.map((x, i) => (
+                    <div key={x.id} className="flex items-center gap-2.5" style={{ marginTop: i === 0 ? 8 : 7, fontSize: 12 }}>
+                      <span className="truncate text-left" style={{ width: 64, flex: "none" }}>{CAT_SPLIT_LABEL[x.id]}</span>
+                      <span className="flex-1 rounded-full" style={{ height: 12, background: "#eef4f4", position: "relative" }} aria-hidden>
+                        <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, (x.kw / liveModel.total) * 100)}%`, background: [TEAL, "#5fb6b8", "#9fd3d6", "#d9e6e6"][i % 4] }} />
+                      </span>
+                      <span className="text-right tabular-nums" style={{ width: 70, flex: "none", color: SUB }}>{nf.format(x.kw)} kW</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {/* parità E1: da dove viene il consumo di oggi */}
               {splitEl(d.totalKwh)}
             </>
