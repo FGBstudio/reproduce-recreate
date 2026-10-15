@@ -10,6 +10,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { co2ToScore } from "@/lib/airQuality";
+import { getMonitorFamilyLabel } from "@/lib/airMonitorType";
 
 export type DashModule = "energy" | "air" | "water";
 
@@ -74,6 +75,11 @@ export interface DaySeries {
   costEur?: number;            // solo se la tariffa esiste
   hvacStrip?: boolean[];       // 24 ore: HVAC acceso (striscia causa, aria)
   outdoorTemp?: Array<number | null>; // 24 ore: causa energia (se disponibile)
+  /** PM esterno orario da weather_data (§10.2): stesso asse del PM interno */
+  outdoor?: Array<number | null>;
+  /** dati parziali (§10.2): minuti senza dati e buco più grande */
+  missingMinutes?: number;
+  gap?: { from: number; to: number };
   isDemo: boolean;
 }
 export interface WeekDay { label: string; date: string; v: number | null }
@@ -190,6 +196,10 @@ function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "
     hvacStrip: module === "air" && ["co2", "temp", "humidity"].includes(airMetric) ? Array.from({ length: 24 }, (_, h) => h >= 7 && h <= 20 && h !== 13 && h !== 17) : undefined,
     // causa energia (§6.1.8): temperatura esterna, giornata mite 14→25°
     outdoorTemp: module === "energy" ? Array.from({ length: 24 }, (_, h) => Math.round((14 + 11 * Math.exp(-((h - 15) ** 2) / 34)) * 10) / 10) : undefined,
+    // PM esterno demo (§10.2): fuori peggio che dentro (media ~22 µg/m³)
+    outdoor: module === "air" && (airMetric === "pm25" || airMetric === "pm10")
+      ? Array.from({ length: 24 }, (_, h) => Math.round(((airMetric === "pm25" ? 18 : 30) + 8 * Math.exp(-((h - 9) ** 2) / 22) + 5 * Math.exp(-((h - 19) ** 2) / 16)) * 10) / 10)
+      : undefined,
     isDemo: true,
   };
 }
@@ -313,6 +323,54 @@ export function useEnergyCats(siteId: string | undefined, isDemoSite: boolean) {
 /** Fattori demo per le categorie (quota plausibile del carico totale). */
 const DEMO_CAT_FACTOR: Record<EnergyCat, number> = { power: 1, hvac: 0.45, lighting: 0.3, plugs: 0.18 };
 
+/* ── Selettore sonde aria (§10.2): una riga per sonda con famiglia
+   (WELL 8 metriche / LEED 4) e stato offline. La selezione filtra le query
+   e decide QUALI schede esistono: niente «slide fantasma». ── */
+export interface AirProbe {
+  id: string;
+  label: string;
+  family: "WELL" | "LEED" | null;
+  metricsCount: number;
+  offlineHours?: number;       // presente solo se la sonda è offline (>2h)
+}
+
+export function useAirProbes(siteId: string | undefined, isDemoSite: boolean) {
+  return useQuery<AirProbe[]>({
+    queryKey: ["mdash-probes", siteId],
+    queryFn: async () => {
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        return isDemoSite ? [{ id: "demo-air", label: "Open space", family: "WELL" as const, metricsCount: 8 }] : [];
+      }
+      const { data } = await supabase!.from("devices")
+        .select("id, device_id, name, model, location, device_type")
+        .eq("site_id", siteId)
+        .eq("device_type", "air_quality");
+      const rows = (data || []) as unknown as Array<{ id: string; device_id?: string; name?: string | null; model?: string | null; location?: string | null }>;
+      if (rows.length === 0) return [];
+      // ultimo segnale per device da telemetry_latest (offline se >2h)
+      const { data: latest } = await supabase!.from("telemetry_latest")
+        .select("device_id, ts").in("device_id", rows.map(r => r.id)).limit(500);
+      const lastTs = new Map<string, number>();
+      for (const r of (latest || []) as unknown as Array<{ device_id: string; ts: string }>) {
+        const t = new Date(r.ts).getTime();
+        if (!lastTs.has(r.device_id) || t > lastTs.get(r.device_id)!) lastTs.set(r.device_id, t);
+      }
+      return rows.map(r => {
+        const family = getMonitorFamilyLabel(r);
+        const ageH = lastTs.has(r.id) ? (Date.now() - lastTs.get(r.id)!) / 3600e3 : undefined;
+        return {
+          id: r.id,
+          label: r.location || r.name || r.device_id || r.id,
+          family,
+          metricsCount: family === "LEED" ? 4 : 8,
+          offlineHours: ageH != null && ageH > 2 ? Math.floor(ageH) : undefined,
+        };
+      });
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 /** Metriche (aria o acqua) che il sito misura DAVVERO (regola d'oro §8.3):
     si guardano gli ultimi 45 giorni di telemetry_daily e si mostrano solo
     quelle schede. */
@@ -358,9 +416,12 @@ async function fetchDayHourMap(
     }
     return p.size > 0 ? p : e;
   }
-  const { data } = await supabase!.from("telemetry_hourly")
+  // aria/acqua: media del sito, o delle sole sonde selezionate (ids)
+  let q = supabase!.from("telemetry_hourly")
     .select("ts_hour, metric, value_avg").eq("site_id", siteId)
     .gte("ts_hour", fromUtc).lte("ts_hour", toUtc).in("metric", metricIds);
+  if (ids.length > 0) q = q.in("device_id", ids.slice(0, 50));
+  const { data } = await q;
   const agg = new Map<number, { s: number; n: number }>();
   for (const r of (data || []) as unknown as HourRow[]) {
     if (r.value_avg == null || dayKeyInTz(new Date(r.ts_hour), tz) !== dayKey) continue;
@@ -390,9 +451,9 @@ async function fetchTypical(
   return typical.filter(v => v != null).length >= 6 ? typical : undefined;
 }
 
-export function useDaySeries(module: DashModule, siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, limit?: number, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", limit2?: number) {
+export function useDaySeries(module: DashModule, siteId: string | undefined, dateKey: string, tz: string, isDemoSite: boolean, limit?: number, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", limit2?: number, probeIds?: string[]) {
   return useQuery<DaySeries | null>({
-    queryKey: ["mdash-day", module, siteId, dateKey, airMetric, energyCat],
+    queryKey: ["mdash-day", module, siteId, dateKey, airMetric, energyCat, probeIds?.join(",") ?? ""],
     queryFn: async (): Promise<DaySeries | null> => {
       if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoDay(module, airMetric, energyCat) : null;
       const from = `${dateKey}T00:00:00`;
@@ -490,11 +551,13 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
       const isIaq = module === "air" && airMetric === "iaq";
       const rnd = roundFor(module, airMetric);
       const metricIds = (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids;
-      const { data } = await supabase!.from("telemetry_hourly")
+      let q = supabase!.from("telemetry_hourly")
         .select("ts_hour, metric, value_avg")
         .eq("site_id", siteId)
         .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
         .in("metric", metricIds);
+      if (probeIds && probeIds.length > 0) q = q.in("device_id", probeIds.slice(0, 50));
+      const { data } = await q;
       const byHour = new Map<number, { s: number; n: number }>();
       for (const r of (data || []) as unknown as HourRow[]) {
         if (r.value_avg == null || dayKeyInTz(new Date(r.ts_hour), tz) !== dateKey) continue;
@@ -514,9 +577,59 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
       const peakPt = present.reduce((a, b) => (b.v > a.v ? b : a), present[0]);
       const avg = rnd(present.reduce((a, b) => a + b.v, 0) / present.length);
       const over = limit ? present.filter(pt => pt.v > limit).length * 60 : undefined;
+
+      // ── dati parziali (§10.2): i buchi restano buchi, con l'orario.
+      // Si contano le ore mancanti tra la prima e l'ultima ora con dati
+      // (se il giorno è oggi, fino all'ora corrente nel fuso del sito). ──
+      let missingMinutes: number | undefined;
+      let gap: { from: number; to: number } | undefined;
+      {
+        const isToday = dateKey === dayKeyInTz(new Date(), tz);
+        const firstH = present[0]?.h ?? 0;
+        const lastH = isToday ? hourInTz(new Date().toISOString(), tz) : (present[present.length - 1]?.h ?? 23);
+        let missing = 0, run = 0, runStart = -1, bestLen = 0, bestStart = -1;
+        for (let h = firstH; h <= lastH; h++) {
+          if (points[h].v == null) {
+            missing++;
+            if (run === 0) runStart = h;
+            run++;
+            if (run > bestLen) { bestLen = run; bestStart = runStart; }
+          } else run = 0;
+        }
+        if (missing > 0) {
+          missingMinutes = missing * 60;
+          if (bestLen > 0) gap = { from: bestStart, to: bestStart + bestLen };
+        }
+      }
+
       // il PATTERN tipico degli stessi giorni-settimana, anche per aria/acqua
-      const typical = await fetchTypical(module, siteId, [], metricIds, dateKey, tz,
+      const typical = await fetchTypical(module, siteId, probeIds ?? [], metricIds, dateKey, tz,
         v => (isIaq ? co2ToScore(v) : rnd(v)));
+
+      // ── PM interno/esterno (§10.2): l'esterno da weather_data, stesso asse ──
+      let outdoor: Array<number | null> | undefined;
+      if (module === "air" && (airMetric === "pm25" || airMetric === "pm10")) {
+        const col = airMetric === "pm25" ? "pm2_5" : "pm10";
+        const { data: wx } = await supabase!.from("weather_data")
+          .select(`timestamp, ${col}`)
+          .eq("site_id", siteId)
+          .gte("timestamp", fromUtc).lte("timestamp", toUtc);
+        const byH = new Map<number, { s: number; n: number }>();
+        for (const r of (wx || []) as unknown as Array<Record<string, unknown>>) {
+          const v = r[col];
+          if (v == null || dayKeyInTz(new Date(String(r.timestamp)), tz) !== dateKey) continue;
+          const h = hourInTz(String(r.timestamp), tz);
+          const e = byH.get(h) || { s: 0, n: 0 };
+          e.s += Number(v); e.n++;
+          byH.set(h, e);
+        }
+        if (byH.size > 1) {
+          outdoor = Array.from({ length: 24 }, (_, h) => {
+            const e = byH.get(h);
+            return e ? Math.round((e.s / e.n) * 10) / 10 : null;
+          });
+        }
+      }
       // causa: HVAC acceso/spento dal modulo Energy (potenza hvac > soglia).
       // Pertinente per CO₂ (ventilazione) e per temperatura/umidità (clima);
       // per PM/CO/O₃ e per l'acqua non si propone una causa non verificata (§6.1.8).
@@ -549,6 +662,9 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
         avg,
         overLimitMinutes: isIaq ? undefined : over,
         hvacStrip: wantsHvac ? hvacStrip : undefined,
+        outdoor,
+        missingMinutes,
+        gap,
         isDemo: false,
       };
     },
@@ -557,9 +673,9 @@ export function useDaySeries(module: DashModule, siteId: string | undefined, dat
   });
 }
 
-export function useWeekSeries(module: DashModule, siteId: string | undefined, mondayKey: string, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
+export function useWeekSeries(module: DashModule, siteId: string | undefined, mondayKey: string, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", probeIds?: string[]) {
   return useQuery<WeekSeries | null>({
-    queryKey: ["mdash-week", module, siteId, mondayKey, airMetric, energyCat],
+    queryKey: ["mdash-week", module, siteId, mondayKey, airMetric, energyCat, probeIds?.join(",") ?? ""],
     queryFn: async (): Promise<WeekSeries | null> => {
       if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoWeek(module, airMetric, energyCat) : null;
       const start = new Date(`${mondayKey}T00:00:00`);
@@ -595,10 +711,12 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
         }
         heatRows = [...agg.entries()].map(([ts, v]) => ({ ts, v }));
       } else {
-        const { data: hr } = await supabase!.from("telemetry_hourly")
+        let qw = supabase!.from("telemetry_hourly")
           .select("ts_hour, metric, value_avg").eq("site_id", siteId)
           .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
           .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+        if (probeIds && probeIds.length > 0) qw = qw.in("device_id", probeIds.slice(0, 50));
+        const { data: hr } = await qw;
         const agg = new Map<string, { s: number; n: number }>();
         for (const r of (hr || []) as unknown as HourRow[]) {
           if (r.value_avg == null) continue;
@@ -653,9 +771,9 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
   });
 }
 
-export function useMonthSeries(module: DashModule, siteId: string | undefined, monthKey: string /* YYYY-MM */, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
+export function useMonthSeries(module: DashModule, siteId: string | undefined, monthKey: string /* YYYY-MM */, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", probeIds?: string[]) {
   return useQuery<MonthSeries | null>({
-    queryKey: ["mdash-month", module, siteId, monthKey, airMetric, energyCat],
+    queryKey: ["mdash-month", module, siteId, monthKey, airMetric, energyCat, probeIds?.join(",") ?? ""],
     queryFn: async (): Promise<MonthSeries | null> => {
       if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoMonth(module, airMetric, energyCat) : null;
       const [y, m] = monthKey.split("-").map(Number);
@@ -681,10 +799,12 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
           else prevTotal += Number(r.value_sum);
         }
       } else {
-        const { data } = await supabase!.from("telemetry_daily")
+        let qm = supabase!.from("telemetry_daily")
           .select("ts_day, metric, value_avg").eq("site_id", siteId)
           .gte("ts_day", first).lte("ts_day", last)
           .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+        if (probeIds && probeIds.length > 0) qm = qm.in("device_id", probeIds.slice(0, 50));
+        const { data } = await qm;
         const agg = new Map<string, { s: number; n: number }>();
         for (const r of (data || []) as unknown as DayRow[]) {
           if (r.value_avg == null) continue;
@@ -737,10 +857,12 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
           }
         } else {
           const counts: Array<Array<number>> = Array.from({ length: nDays }, () => Array(24).fill(0));
-          const { data: hr } = await supabase!.from("telemetry_hourly")
+          let qc = supabase!.from("telemetry_hourly")
             .select("ts_hour, metric, value_avg").eq("site_id", siteId)
             .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
             .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+          if (probeIds && probeIds.length > 0) qc = qc.in("device_id", probeIds.slice(0, 50));
+          const { data: hr } = await qc;
           for (const r of (hr || []) as unknown as HourRow[]) {
             if (r.value_avg == null) continue;
             put(r.ts_hour, Number(r.value_avg), "avgCount", counts);
@@ -821,9 +943,9 @@ function demoYear(module: DashModule, airMetric: string, energyCat: EnergyCat = 
   };
 }
 
-export function useYearSeries(module: DashModule, siteId: string | undefined, year: number, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power") {
+export function useYearSeries(module: DashModule, siteId: string | undefined, year: number, tz: string, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", probeIds?: string[]) {
   return useQuery<YearSeries | null>({
-    queryKey: ["mdash-year", module, siteId, year, airMetric, energyCat],
+    queryKey: ["mdash-year", module, siteId, year, airMetric, energyCat, probeIds?.join(",") ?? ""],
     queryFn: async (): Promise<YearSeries | null> => {
       if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoYear(module, airMetric, energyCat) : null;
       const first = `${year}-01-01`;
@@ -846,10 +968,12 @@ export function useYearSeries(module: DashModule, siteId: string | undefined, ye
           byMonth.set(m, e);
         }
       } else {
-        const { data } = await supabase!.from("telemetry_daily")
+        let qy = supabase!.from("telemetry_daily")
           .select("ts_day, metric, value_avg").eq("site_id", siteId)
           .gte("ts_day", first).lte("ts_day", last)
           .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+        if (probeIds && probeIds.length > 0) qy = qy.in("device_id", probeIds.slice(0, 50));
+        const { data } = await qy;
         for (const r of (data || []) as unknown as DayRow[]) {
           if (r.value_avg == null) continue;
           const m = Number(r.ts_day.slice(5, 7));

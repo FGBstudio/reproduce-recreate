@@ -17,6 +17,10 @@ interface Props {
   points: DayPoint[];
   /** profilo tipico (media stessi giorni-settimana): linea fantasma tratteggiata */
   typical?: Array<number | null>;
+  /** seconda serie sullo stesso asse (es. PM esterno, §10.2): tratteggiata grigia */
+  secondary?: Array<number | null>;
+  /** dati parziali (§10.2): etichetta del buco più grande, es. «nessun dato 10:00 – 13:00» */
+  gapLabel?: { from: number; to: number; text: string };
   unit: string;
   limit?: number;
   limitLabel?: string;   // es. «limite contratto 25 kW»
@@ -31,17 +35,18 @@ interface Props {
   yMax?: number;
 }
 
-const TimeSeriesChart = ({ points, typical, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt, yMax }: Props) => {
+const TimeSeriesChart = ({ points, typical, secondary, gapLabel, unit, limit, limitLabel, limit2, nowHour, nowLabel, peak, peakLabel, onSwipe, fmt, yMax }: Props) => {
   const [cursor, setCursor] = useState<number | null>(null); // ora selezionata
   const pressTimer = useRef<number | undefined>(undefined);
   const pressing = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const { maxV, x, y, linePath, areaPath, segs, typicalPath } = useMemo(() => {
+  const { maxV, x, y, linePath, areaPath, segs, typicalPath, secondaryPath } = useMemo(() => {
     const vals = points.map(p => p.v).filter((v): v is number => v != null);
     const typVals = (typical ?? []).filter((v): v is number => v != null);
-    const rawMax = Math.max(...vals, ...typVals, limit ?? 0, 1);
+    const secVals = (secondary ?? []).filter((v): v is number => v != null);
+    const rawMax = Math.max(...vals, ...typVals, ...secVals, limit ?? 0, 1);
     const maxV = yMax != null ? yMax : Math.ceil((rawMax * 1.15) / 5) * 5;
     const x = (h: number) => PL + (h / 23) * (W - PL - PR);
     const y = (v: number) => PT + (1 - v / maxV) * (H - PT - PB);
@@ -59,15 +64,19 @@ const TimeSeriesChart = ({ points, typical, unit, limit, limitLabel, limit2, now
       `${d(seg)} L${x(seg[seg.length - 1].h).toFixed(1)},${H - PB} L${x(seg[0].h).toFixed(1)},${H - PB} Z`
     ).join(" ");
     // linea fantasma del profilo tipico (i buchi la spezzano, come la serie)
-    let typicalPath = "";
-    let pen = false;
-    (typical ?? []).forEach((v, h) => {
-      if (v == null) { pen = false; return; }
-      typicalPath += `${pen ? "L" : "M"}${x(h).toFixed(1)},${y(v).toFixed(1)} `;
-      pen = true;
-    });
-    return { maxV, x, y, linePath, areaPath, segs, typicalPath };
-  }, [points, typical, limit, yMax]);
+    const ghost = (arr?: Array<number | null>) => {
+      let p = "", pen = false;
+      (arr ?? []).forEach((v, h) => {
+        if (v == null) { pen = false; return; }
+        p += `${pen ? "L" : "M"}${x(h).toFixed(1)},${y(v).toFixed(1)} `;
+        pen = true;
+      });
+      return p;
+    };
+    const typicalPath = ghost(typical);
+    const secondaryPath = ghost(secondary);
+    return { maxV, x, y, linePath, areaPath, segs, typicalPath, secondaryPath };
+  }, [points, typical, secondary, limit, yMax]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     start.current = { x: e.clientX, y: e.clientY };
@@ -151,10 +160,30 @@ const TimeSeriesChart = ({ points, typical, unit, limit, limitLabel, limit2, now
           </g>
         )}
 
-        {/* area + profilo tipico (fantasma) + linea base (teal) */}
+        {/* area + profilo tipico (fantasma) + eventuale serie esterna + linea base */}
         <path d={areaPath} fill="url(#mdArea)" />
         {typicalPath && (
           <path d={typicalPath} fill="none" stroke="#c3d2d3" strokeWidth="1.4" strokeDasharray="4 4" strokeLinejoin="round" strokeLinecap="round" />
+        )}
+        {secondaryPath && (
+          <path d={secondaryPath} fill="none" stroke="#7f9597" strokeWidth="1.5" strokeDasharray="5 3" strokeLinejoin="round" strokeLinecap="round" />
+        )}
+        {/* dati parziali (§10.2): il buco resta un buco, con l'orario */}
+        {gapLabel && (
+          <g>
+            <rect
+              x={x(gapLabel.from)} y={PT}
+              width={Math.max(2, x(Math.min(23, gapLabel.to)) - x(gapLabel.from))} height={H - PT - PB}
+              fill="rgba(159,178,179,.07)"
+            />
+            <text
+              x={(x(gapLabel.from) + x(Math.min(23, gapLabel.to))) / 2}
+              y={(PT + H - PB) / 2}
+              fontSize="9.5" fill={SUB} textAnchor="middle"
+            >
+              {gapLabel.text}
+            </text>
+          </g>
         )}
         <path d={linePath} fill="none" stroke={TEAL} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
         {/* la STESSA linea ritagliata sopra le soglie (§6.1.6) */}

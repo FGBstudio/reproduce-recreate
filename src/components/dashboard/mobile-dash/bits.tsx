@@ -4,7 +4,7 @@
  * asse del tempo, riga di sintesi, menu esportazioni, striscia causa.
  * Palette §1.5 (dashboard chiara).
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, MoreHorizontal, Moon, Sun } from "lucide-react";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { hapticLight } from "@/lib/native";
@@ -162,6 +162,76 @@ export const CauseTrack = (props:
     )}
   </div>
 );
+
+/** Foglio selettore sonde (§10.2): una riga per sonda con famiglia e numero
+    di metriche; la sonda offline è segnalata. La selezione decide anche
+    QUALI schede metriche esistono — niente «slide fantasma». */
+export interface ProbeRow {
+  id: string; label: string; family: "WELL" | "LEED" | null; metricsCount: number; offlineHours?: number;
+}
+export const ProbeSheet = ({ open, probes, selected, labels, onApply, onClose }: {
+  open: boolean;
+  probes: ProbeRow[];
+  selected: string[] | null;          // null = tutte
+  labels: { title: string; all: string; metrics: string; offlineFor: string; note: string; apply: string };
+  onApply: (ids: string[] | null) => void;
+  onClose: () => void;
+}) => {
+  const [sel, setSel] = useState<string[] | null>(selected);
+  useEffect(() => { if (open) setSel(selected); }, [open, selected]);
+  useBackDismiss(open, onClose);
+  if (!open) return null;
+  const isAll = sel == null || sel.length === probes.length;
+  const toggle = (id: string) => {
+    hapticLight();
+    const cur = sel == null ? probes.map(p => p.id) : [...sel];
+    const i = cur.indexOf(id);
+    if (i >= 0) { if (cur.length > 1) cur.splice(i, 1); } else cur.push(id);
+    setSel(cur.length === probes.length ? null : cur);
+  };
+  return (
+    <>
+      <div className="fixed inset-0 z-[70]" style={{ background: "rgba(5,20,22,.42)" }} onClick={onClose} aria-hidden />
+      <div className="fixed inset-x-0 bottom-0 z-[71] rounded-t-3xl" role="dialog" aria-modal="true"
+        style={{ background: "#fbfdfd", boxShadow: "0 -12px 40px rgba(5,20,22,.25)", paddingBottom: "calc(var(--sab, 0px) + 14px)" }}>
+        <div className="flex justify-center pt-2.5 pb-1" aria-hidden><span className="rounded-full" style={{ width: 40, height: 4, background: "#d4e0e0" }} /></div>
+        <div className="flex items-center justify-between pl-6 pr-2">
+          <span className="uppercase font-bold" style={{ fontSize: 12, letterSpacing: "0.18em", color: INK }}>{labels.title}</span>
+          <button type="button" onClick={onClose} aria-label="×" className="grid place-items-center" style={{ width: 44, height: 44, fontSize: 18, color: SUB }}>×</button>
+        </div>
+        <div className="px-6 pt-1">
+          <button type="button" onClick={() => { hapticLight(); setSel(null); }}
+            className="w-full flex items-center gap-3 text-left" style={{ minHeight: 48, borderBottom: `1px solid ${RULE}` }}>
+            <span aria-hidden style={{ width: 18, color: TEAL, fontWeight: 700 }}>{isAll ? "✓" : ""}</span>
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{labels.all.replace("{n}", String(probes.length))}</span>
+          </button>
+          {probes.map(p => {
+            const on = isAll || (sel ?? []).includes(p.id);
+            return (
+              <button key={p.id} type="button" onClick={() => toggle(p.id)} disabled={p.offlineHours != null && probes.length === 1}
+                className="w-full flex items-center gap-3 text-left" style={{ minHeight: 52, borderBottom: `1px solid ${RULE}`, opacity: p.offlineHours != null ? 0.55 : 1 }}>
+                <span aria-hidden style={{ width: 18, color: TEAL, fontWeight: 700 }}>{on ? "✓" : ""}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate" style={{ fontSize: 14.5, color: INK }}>{p.label}</span>
+                  <span className="block" style={{ fontSize: 11.5, color: SUB }}>
+                    {p.family ?? "—"} · {p.metricsCount} {labels.metrics}
+                    {p.offlineHours != null && ` · ${labels.offlineFor.replace("{h}", String(p.offlineHours))}`}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+          <p style={{ fontSize: 12, color: SUB, margin: "10px 0 12px", lineHeight: 1.5 }}>{labels.note}</p>
+          <button type="button" onClick={() => { hapticLight(); onApply(sel); onClose(); }}
+            className="w-full rounded-full font-bold uppercase text-white"
+            style={{ minHeight: 48, fontSize: 12.5, letterSpacing: "0.14em", background: TEAL }}>
+            {labels.apply}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
 
 /** Menu «⋯»: tutte le esportazioni in un posto solo (§6.1.1). */
 export const ExportMenu = ({ items }: { items: Array<{ label: string; onClick: () => void }> }) => {

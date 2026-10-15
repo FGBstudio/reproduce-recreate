@@ -9,17 +9,17 @@
  * il proprietario non approva una proposta. Le schede HVAC/Luci/Prese/Base
  * dell'energia arrivano con il loader per categoria (v2).
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { hapticLight } from "@/lib/native";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
-import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
+import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, ProbeSheet, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
 import { HourHeatmap, LabelValueGrid, MonthCarpet, WeekBars, YearBars } from "./views";
 import {
-  CO2_EMISSION_FACTOR, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useWeekSeries, useYearSeries,
+  CO2_EMISSION_FACTOR, useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useWeekSeries, useYearSeries,
   type DashModule, type DaySeries, type EnergyCat, type MonthSeries, type WeekSeries, type YearSeries,
 } from "./useModuleSeries";
 import { co2Level, scoreToLevel } from "@/lib/airQuality";
@@ -103,10 +103,23 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     : (LIMITS[airMetric]?.l ?? undefined);
   const limit2 = module !== "energy" ? (LIMITS[airMetric]?.l2 ?? undefined) : undefined;
 
-  const dayRaw = useDaySeries(module, safeSiteId, dateKey, timezone, isDemoSite, limit, priceKwh, airMetric, energyCat, limit2);
-  const weekRaw = useWeekSeries(module, safeSiteId, mondayKey, timezone, isDemoSite, priceKwh, airMetric, energyCat);
-  const monthRaw = useMonthSeries(module, safeSiteId, monthKey, timezone, isDemoSite, priceKwh, airMetric, energyCat);
-  const yearRaw = useYearSeries(module, safeSiteId, anchor.getFullYear(), timezone, isDemoSite, priceKwh, airMetric, energyCat);
+  // ── Selettore sonde (§10.2): la selezione filtra le query e decide quali
+  // schede esistono. null = tutte le sonde del sito. Solo per l'aria. ──
+  const probes = useAirProbes(module === "air" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
+  const [probeSel, setProbeSel] = useState<string[] | null>(null);
+  const [probeSheetOpen, setProbeSheetOpen] = useState(false);
+  const probeIds = module === "air" && probeSel && probeSel.length > 0 ? probeSel : undefined;
+  const selProbes = useMemo(() => {
+    const all = probes.data ?? [];
+    return probeIds ? all.filter(p => probeIds.includes(p.id)) : all;
+  }, [probes.data, probeIds]);
+  // famiglia delle sonde selezionate: tutte LEED → solo le 4 metriche base
+  const selAllLeed = module === "air" && selProbes.length > 0 && selProbes.every(p => p.family === "LEED");
+
+  const dayRaw = useDaySeries(module, safeSiteId, dateKey, timezone, isDemoSite, limit, priceKwh, airMetric, energyCat, limit2, probeIds);
+  const weekRaw = useWeekSeries(module, safeSiteId, mondayKey, timezone, isDemoSite, priceKwh, airMetric, energyCat, probeIds);
+  const monthRaw = useMonthSeries(module, safeSiteId, monthKey, timezone, isDemoSite, priceKwh, airMetric, energyCat, probeIds);
+  const yearRaw = useYearSeries(module, safeSiteId, anchor.getFullYear(), timezone, isDemoSite, priceKwh, airMetric, energyCat, probeIds);
   const cats = useEnergyCats(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
   const avail = useSiteMetricsAvailable(module, module !== "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
 
@@ -220,8 +233,30 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const AIR_V: Record<string, string> = {
     EXCELLENT: "md.v_air_excellent", GOOD: "md.v_air_good", MODERATE: "md.v_air_moderate", POOR: "md.v_air_poor",
   };
+  const fmtGapT = (min: number) => {
+    const h = Math.floor(min / 60), m = min % 60;
+    return h > 0 ? (m > 0 ? `${h}h ${pad(m)}m` : `${h}h`) : `${m}m`;
+  };
   const verdict = useMemo(() => {
     if (!d) return null;
+    // §10.2: con un buco rilevante il giudizio viene SOSPESO, non inventato
+    if (module !== "energy" && (d.missingMinutes ?? 0) >= 120) {
+      return {
+        color: "#9fb2b3",
+        word: t("md.partial"),
+        summary: t("md.partial_sub").replace("{t}", fmtGapT(d.missingMinutes!)),
+      };
+    }
+    // §10.2 PM: fuori vs dentro — se non c'è mai un superamento, dillo
+    if (module === "air" && (airMetric === "pm25" || airMetric === "pm10") && d.avg != null && d.limit != null) {
+      const overruns = d.points.filter(p => (p.v ?? 0) > d.limit!).length;
+      const lvl = overruns > 0 ? "MODERATE" : "GOOD";
+      return {
+        color: overruns > 0 ? AMBER : TEAL,
+        word: t(AIR_V[lvl]),
+        summary: overruns > 0 ? t("md.overruns").replace("{n}", String(overruns)) : t("md.under_who"),
+      };
+    }
     if (module === "energy") {
       if (d.limit != null) {
         const over = d.peak != null && d.peak.v > d.limit;
@@ -292,6 +327,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   };
   const AIR_ORDER = ["iaq", "co2", "pm25", "pm10", "tvoc", "co", "o3", "temp", "humidity"];
   const WATER_ORDER = ["flow", "ph", "turbidity", "chlorine", "wtemp", "pressure"];
+  // §10.2: con sole sonde LEED selezionate restano le 4 metriche base
+  // (IAQ, CO₂, TVOC, Temp, Umidità) — niente schede che portano nel vuoto
+  const LEED_BASE = new Set(["iaq", "co2", "tvoc", "temp", "humidity"]);
   const metricTabs = module === "energy"
     ? [
         ...(cats.data ?? ["power"] as EnergyCat[]).map(c => ({ id: c as string, label: CAT_LABEL[c] })),
@@ -300,7 +338,15 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       ]
     : (module === "water" ? WATER_ORDER : AIR_ORDER)
         .filter(k => k === "iaq" ? (avail.data ?? []).includes("co2") : (avail.data ?? []).includes(k))
+        .filter(k => module !== "air" || !selAllLeed || LEED_BASE.has(k))
         .map(k => ({ id: k, label: module === "water" ? WATER_LABEL[k] : AIR_LABEL[k] }));
+  // la metrica corrente deve sempre esistere fra le schede
+  useEffect(() => {
+    if (module !== "energy" && metricTabs.length > 0 && !metricTabs.some(tb => tb.id === airMetric)) {
+      setAirMetric(metricTabs[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selAllLeed, avail.data, module]);
 
   // ── esportazioni (menu «⋯», §6.1.1) ──
   const exportData = () => {
@@ -433,6 +479,17 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         <PeriodPager title={pagerTitle} subtitle={pagerSub} onPrev={() => shift(-1)} onNext={() => shift(1)} nextDisabled={nextDisabled} titleSize={period === "week" ? 23 : 30} />
       )}
 
+      {/* §10.2: il selettore sonde del PC diventa una riga toccabile */}
+      {module === "air" && (probes.data?.length ?? 0) > 0 && (
+        <button type="button" onClick={() => { hapticLight(); setProbeSheetOpen(true); }}
+          className="mx-auto -mt-1 mb-1" style={{ fontSize: 12.5, color: SUB, minHeight: 36 }}>
+          {t("md.probes_label").replace("{x}",
+            probeIds == null ? t("md.all_f")
+            : selProbes.length === 1 ? selProbes[0].label
+            : String(selProbes.length))} ▾
+        </button>
+      )}
+
       {/* ── GIORNO ── */}
       {period === "day" && (
         <>
@@ -444,11 +501,18 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             <>
               <TimeSeriesChart
                 points={d.points}
-                typical={d.typical}
+                /* col PM esterno in campo il fantasma «tipico» affollerebbe
+                   il grafico: vince la serie esterna (§10.2) */
+                typical={d.outdoor ? undefined : d.typical}
+                secondary={d.outdoor}
+                gapLabel={d.gap && (d.missingMinutes ?? 0) >= 120 ? {
+                  from: d.gap.from, to: d.gap.to,
+                  text: t("md.no_data_range").replace("{a}", `${pad(d.gap.from)}:00`).replace("{b}", `${pad(Math.min(23, d.gap.to))}:00`),
+                } : undefined}
                 unit={d.unit}
                 limit={d.limit}
                 limit2={d.limit2}
-                limitLabel={d.limit != null ? (module === "energy" ? t("md.limit_contract") : t("md.limit")).replace("{v}", `${fmtV(d.limit)} ${d.unit}`) : undefined}
+                limitLabel={d.limit != null ? (module === "air" && (airMetric === "pm25" || airMetric === "pm10") ? t("md.limit_who") : module === "energy" ? t("md.limit_contract") : t("md.limit")).replace("{v}", `${fmtV(d.limit)} ${d.unit}`) : undefined}
                 nowHour={dateKey === todayKey ? new Date().getHours() : undefined}
                 nowLabel={t("md.now")}
                 peak={d.peak}
@@ -458,8 +522,12 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 yMax={module === "air" && (airMetric === "iaq" || airMetric === "humidity") ? 100 : undefined}
               />
               <TimeAxisBand />
-              {/* legenda del profilo tipico (il pattern «Actual vs Average») */}
-              {d.typical && (
+              {/* legenda: PM interno/esterno oppure profilo tipico */}
+              {d.outdoor ? (
+                <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
+                  ━ {t("md.indoor")} · – – {t("md.outdoor_lbl")}
+                </p>
+              ) : d.typical && (
                 <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
                   – – {t("md.typical_of").replace("{d}", new Intl.DateTimeFormat(language, { weekday: "long" }).format(anchor))}
                 </p>
@@ -479,13 +547,36 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 }] : []),
                 ...(module === "energy" && d.vsTypicalPct != null ? [{ value: `${d.vsTypicalPct > 0 ? "+" : ""}${d.vsTypicalPct}%`, label: t("md.vs_typical").replace("{d}", new Intl.DateTimeFormat(language, { weekday: "long" }).format(anchor)) }] : []),
                 ...(module === "energy" && d.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(d.costEur)}`, label: t("md.cost_est") }] : []),
-                ...(module !== "energy" && d.avg != null ? [{ value: d.unit ? `${fmtV(d.avg)} ${d.unit}` : `${nf0.format(d.avg)}/100`, label: t("md.avg") }] : []),
-                ...(module !== "energy" && d.overLimitMinutes ? [{ value: `${Math.floor(d.overLimitMinutes / 60)}h ${pad(d.overLimitMinutes % 60)}m`, label: t("md.over_time") }] : []),
+                /* §10.2 PM interno/esterno: tre colonne dedicate */
+                ...(module === "air" && d.outdoor && d.avg != null ? (() => {
+                  const outVals = d.outdoor!.filter((v): v is number => v != null);
+                  const outAvg = outVals.length ? outVals.reduce((a, b) => a + b, 0) / outVals.length : null;
+                  return [
+                    { value: `${fmtV(d.avg)} ${d.unit}`, label: t("md.indoor_avg") },
+                    ...(outAvg != null ? [{ value: nf0.format(outAvg), label: t("md.outdoor_avg") }] : []),
+                    ...(outAvg != null && outAvg > 0 ? [{ value: `−${Math.round((1 - d.avg / outAvg) * 100)}%`, label: t("md.retained") }] : []),
+                  ];
+                })() : []),
+                /* §10.2 dati parziali: media sui presenti + tempo senza dati */
+                ...(module !== "energy" && !d.outdoor && d.avg != null ? [{
+                  value: d.unit ? `${fmtV(d.avg)} ${d.unit}` : `${nf0.format(d.avg)}/100`,
+                  label: (d.missingMinutes ?? 0) >= 120 ? t("md.on_present") : t("md.avg"),
+                }] : []),
+                ...(module !== "energy" && (d.missingMinutes ?? 0) >= 120 ? [{ value: fmtGapT(d.missingMinutes!), label: t("md.no_data_lbl") }] : []),
+                ...(module !== "energy" && !d.outdoor && d.overLimitMinutes ? [{ value: `${Math.floor(d.overLimitMinutes / 60)}h ${pad(d.overLimitMinutes % 60)}m`, label: t("md.over_time") }] : []),
                 ...(module === "air" && d.hvacStrip ? [{ value: String(d.hvacStrip.reduce((a, on, i) => a + (i > 0 && !on && d.hvacStrip![i - 1] ? 1 : 0), 0)), label: t("md.hvac_pauses") }] : []),
               ].slice(0, 3)} />
             </>
           ) : (
             <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+          )}
+          {/* §10.2: le metriche che la sonda non misura spariscono dalle
+              schede — qui si spiega il perché, invece di un grafico vuoto */}
+          {module === "air" && selAllLeed && (
+            <div className="mx-6 mt-4 rounded-xl px-4 py-3" style={{ background: "#eef4f4" }}>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: INK, margin: 0 }}>{t("md.leed_missing_t")}</p>
+              <p style={{ fontSize: 12, color: SUB, margin: "2px 0 0" }}>{t("md.leed_missing_b")}</p>
+            </div>
           )}
         </>
       )}
@@ -655,6 +746,25 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             ].slice(0, 3)} />
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {/* Foglio selettore sonde (§10.2) */}
+      {module === "air" && (
+        <ProbeSheet
+          open={probeSheetOpen}
+          probes={probes.data ?? []}
+          selected={probeSel}
+          labels={{
+            title: t("md.probes"),
+            all: t("md.probes_all"),
+            metrics: t("md.metrics_lbl"),
+            offlineFor: t("md.offline_for"),
+            note: t("md.probes_note"),
+            apply: t("md.apply"),
+          }}
+          onApply={setProbeSel}
+          onClose={() => setProbeSheetOpen(false)}
+        />
       )}
 
       {/* «Dati spiegati» sulla metrica corrente (§6.7) */}
