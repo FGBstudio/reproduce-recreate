@@ -797,6 +797,13 @@ const translations: Record<string, Record<Language, string>> = {
   'md.live_stale': { en: 'no new data since {t}', it: 'dati fermi dalle {t}', fr: 'aucune donnée depuis {t}', es: 'sin datos desde las {t}', zh: '自 {t} 起无新数据' },
   // Parità A1 — valori per sonda nel foglio Sonde
   'md.last_at': { en: 'last values at {t} — excluded from charts, never estimated', it: 'ultimi valori alle {t} — esclusa dai grafici, non stimata', fr: 'dernières valeurs à {t} — exclue des graphiques, jamais estimée', es: 'últimos valores a las {t} — excluida de los gráficos, nunca estimada', zh: '最后数据于 {t} — 已从图表排除，绝不估算' },
+  // Parità C1 — vista Scadenze delle certificazioni
+  'cm.tab_deadlines': { en: 'Deadlines', it: 'Scadenze', fr: 'Échéances', es: 'Vencimientos', zh: '到期' },
+  'cm.deadlines_t': { en: 'Renewals and audits', it: 'Rinnovi e audit', fr: 'Renouvellements et audits', es: 'Renovaciones y auditorías', zh: '续证与审核' },
+  'cm.by_urgency': { en: 'by urgency', it: 'per urgenza', fr: 'par urgence', es: 'por urgencia', zh: '按紧急程度' },
+  'cm.renewal_cert': { en: 'certification renewal', it: 'rinnovo certificazione', fr: 'renouvellement de certification', es: 'renovación de certificación', zh: '证书续期' },
+  'cm.expired_since': { en: 'expired {n} months ago', it: 'scaduta da {n} mesi', fr: 'expirée depuis {n} mois', es: 'vencida hace {n} meses', zh: '已过期 {n} 个月' },
+  'cm.deadlines_note': { en: 'Amber under 6 months, red if expired. Certifications without an expiry date are not listed. Tap a row for its milestones.', it: 'Ambra sotto i 6 mesi, rossa se scaduta. Le certificazioni senza data di scadenza non compaiono. Tocca una riga per le sue milestone.', fr: "Ambre à moins de 6 mois, rouge si expirée. Les certifications sans date d'expiration n'apparaissent pas. Touchez une ligne pour ses jalons.", es: 'Ámbar a menos de 6 meses, roja si está vencida. Las certificaciones sin fecha de vencimiento no aparecen. Toca una fila para ver sus hitos.', zh: '不足 6 个月显示琥珀色，已过期显示红色。无到期日期的认证不显示。点按行查看其里程碑。' },
   'md.partial': { en: 'Partial data', it: 'Dati parziali', fr: 'Données partielles', es: 'Datos parciales', zh: '数据不完整' },
   'md.partial_sub': { en: '{t} without data, verdict suspended', it: '{t} senza dati, giudizio sospeso', fr: '{t} sans données, verdict suspendu', es: '{t} sin datos, juicio suspendido', zh: '{t} 无数据，暂不评级' },
   'md.no_data_range': { en: 'no data {a} – {b}', it: 'nessun dato {a} – {b}', fr: 'aucune donnée {a} – {b}', es: 'sin datos {a} – {b}', zh: '无数据 {a} – {b}' },

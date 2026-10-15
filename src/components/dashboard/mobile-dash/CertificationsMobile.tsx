@@ -17,7 +17,7 @@ import { hapticLight } from "@/lib/native";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { useCertifications, useCertificationMilestones, type Certification } from "@/hooks/useCertifications";
 import { isValidUUID } from "@/lib/utils";
-import { AMBER, INK, RULE, SUB, TEAL, MetricTabs, ExportMenu } from "./bits";
+import { AMBER, INK, RED, RULE, SUB, TEAL, MetricTabs, ExportMenu } from "./bits";
 
 interface Props {
   siteId?: string;
@@ -78,7 +78,7 @@ const protoOf = (certType: string): string => {
 
 const CertificationsMobile = ({ siteId, siteName, certNames, isDemoSite, onBack }: Props) => {
   const { t, language } = useLanguage();
-  const [view, setView] = useState<"summary" | "scorecard" | "milestones">("summary");
+  const [view, setView] = useState<"summary" | "scorecard" | "milestones" | "deadlines">("summary");
   const [msProto, setMsProto] = useState<string>("LEED");
   useBackDismiss(true, onBack);
 
@@ -161,10 +161,33 @@ const CertificationsMobile = ({ siteId, siteName, certNames, isDemoSite, onBack 
   const levelNow = (score: number) => [...LEED_LEVELS].reverse().find(l => score >= l.pts);
   const levelNext = (score: number) => LEED_LEVELS.find(l => score < l.pts);
 
+  /* ── SCADENZE (parità C1 = drill-down «Next Audit» del PC): una riga per
+     certificazione con expiry, ordinata per urgenza. Senza expiry la riga
+     non c'è; senza nessuna scadenza la vista non esiste. ── */
+  const deadlines = useMemo(() => {
+    const now = Date.now();
+    return rows
+      .map(r => {
+        if (!r.expiry) return null;
+        const d = new Date(r.expiry);
+        if (Number.isNaN(d.getTime())) return null;
+        const months = Math.round((d.getTime() - now) / (30.44 * 86400e3));
+        return {
+          proto: r.proto,
+          title: [r.proto, r.level].filter(Boolean).join(" "),
+          d, months,
+          expired: d.getTime() < now,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null)
+      .sort((a, b) => a.d.getTime() - b.d.getTime());
+  }, [rows]);
+
   const views = [
     { id: "summary", label: t("cm.tab_summary") },
     ...(hasScorecard ? [{ id: "scorecard", label: "Scorecard" }] : []),
     ...(timeline.length > 0 || isDemoSite ? [{ id: "milestones", label: t("cm.tab_milestones") }] : []),
+    ...(deadlines.length > 0 ? [{ id: "deadlines", label: t("cm.tab_deadlines") }] : []),
   ];
 
   return (
@@ -356,6 +379,47 @@ const CertificationsMobile = ({ siteId, siteName, certNames, isDemoSite, onBack 
               <b style={{ color: INK, fontWeight: 600 }}>{t("cm.reminder")}</b> · {t("cm.reminder_body")}
             </p>
           </div>
+        </>
+      )}
+
+      {/* ── SCADENZE (parità C1): rinnovi e audit per urgenza ── */}
+      {view === "deadlines" && (
+        <>
+          <div className="flex items-baseline justify-between px-6" style={{ marginTop: 16 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{t("cm.deadlines_t")}</span>
+            <span style={{ fontSize: 11, color: SUB }}>{t("cm.by_urgency")}</span>
+          </div>
+          <div className="px-6" style={{ marginTop: 4 }}>
+            {deadlines.map(x => {
+              // rosso = scaduta (palette: il rosso segnala problemi), ambra
+              // entro 6 mesi, teal oltre
+              const color = x.expired ? RED : x.months <= 6 ? AMBER : TEAL;
+              const when = x.expired
+                ? t("cm.expired_since").replace("{n}", String(Math.abs(x.months)))
+                : t("cm.in_months").replace("{n}", String(Math.max(0, x.months)));
+              return (
+                <button key={`${x.proto}-${x.d.getTime()}`} type="button"
+                  onClick={() => { hapticLight(); setMsProto(x.proto); setView("milestones"); }}
+                  className="w-full flex items-center gap-3 text-left"
+                  style={{ padding: "11px 0", borderBottom: `1px solid ${RULE}` }}>
+                  <span className="grid place-items-center shrink-0 bg-white" style={{ width: 38, height: 38, borderRadius: 11, boxShadow: "0 3px 10px rgba(5,20,22,.08)" }}>
+                    {LOGO[x.proto]
+                      ? <img src={LOGO[x.proto]} alt={x.proto} style={{ maxWidth: 28, maxHeight: 28, objectFit: "contain" }} />
+                      : <span style={{ fontSize: 10, fontWeight: 700, color: SUB }}>{x.proto.slice(0, 5)}</span>}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate" style={{ fontSize: 13.5, fontWeight: 600 }}>{x.title}</span>
+                    <span className="block" style={{ fontSize: 11.5, color: SUB }}>{t("cm.renewal_cert")}</span>
+                  </span>
+                  <span className="text-right shrink-0">
+                    <span className="block" style={{ fontSize: 13.5, fontWeight: 600, color }}>{nfMonth.format(x.d)}</span>
+                    <span className="block" style={{ fontSize: 11, color: x.expired || x.months <= 6 ? color : SUB }}>{when}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="px-6" style={{ fontSize: 11, color: "#9fb2b3", marginTop: 10, lineHeight: 1.5 }}>{t("cm.deadlines_note")}</p>
         </>
       )}
     </div>
