@@ -18,6 +18,8 @@ import ExplainSheet from "@/components/dashboard/ExplainSheet";
 import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, ProbeSheet, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
 import { HourHeatmap, LabelValueGrid, MonthCarpet, WeekBars, YearBars } from "./views";
+import { CarbonBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
+import { useEuiCompare, usePeriodsYear, useWeatherCorr } from "./useEnergyInsights";
 import {
   CO2_EMISSION_FACTOR, useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useWeekSeries, useYearSeries,
   type DashModule, type DaySeries, type EnergyCat, type MonthSeries, type WeekSeries, type YearSeries,
@@ -57,10 +59,13 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const [anchor, setAnchor] = useState(() => new Date());
   // metrica corrente del modulo (aria: co2…, acqua: flow…)
   const [airMetric, setAirMetric] = useState(module === "water" ? "flow" : "co2");
-  // Schede energia: le categorie reali più le serie DERIVATE che allineano i
-  // grafici desktop — CO₂ emessa (Carbon Footprint) e costo (× tariffa).
-  const [energyTab, setEnergyTab] = useState<EnergyCat | "co2e" | "cost">("power");
-  const energyCat: EnergyCat = energyTab === "co2e" || energyTab === "cost" ? "power" : energyTab;
+  // Schede energia: categorie reali + derivate (CO₂/costo) + gli
+  // APPROFONDIMENTI del PC (§10.1): Confronto · Meteo · Carbonio · Periodi.
+  type EnergyTab = EnergyCat | "co2e" | "cost" | "compare" | "weather" | "carbon" | "periods";
+  const [energyTab, setEnergyTab] = useState<EnergyTab>("power");
+  const INSIGHT_TABS = ["compare", "weather", "carbon", "periods"] as const;
+  const insightTab = module === "energy" && (INSIGHT_TABS as readonly string[]).includes(energyTab);
+  const energyCat: EnergyCat = (["power", "hvac", "lighting", "plugs"] as const).includes(energyTab as EnergyCat) ? (energyTab as EnergyCat) : "power";
   const [explainTab, setExplainTab] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   // back Android/gesto: chiude la dashboard e torna alla overview (§2.2)
@@ -122,6 +127,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const yearRaw = useYearSeries(module, safeSiteId, anchor.getFullYear(), timezone, isDemoSite, priceKwh, airMetric, energyCat, probeIds);
   const cats = useEnergyCats(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
   const avail = useSiteMetricsAvailable(module, module !== "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
+  // §10.1 — approfondimenti: le schede esistono solo se hanno dati
+  const eui = useEuiCompare(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), anchor.getMonth(), isDemoSite);
+  const wcorr = useWeatherCorr(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, monthKey, isDemoSite);
+  const periodsY = usePeriodsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite, priceKwh ?? (isDemoSite ? 0.19 : undefined));
 
   // ── Serie derivate (CO₂ emessa / costo): la stessa serie kWh del sito,
   // riscalata. Nessuna query in più; gli stessi numeri del Carbon Footprint
@@ -192,6 +201,15 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     const f = new Intl.DateTimeFormat(language, { month: "narrow" });
     return Array.from({ length: 12 }, (_, i) => f.format(new Date(2026, i, 1)));
   }, [language]);
+  const monthNamesLong = useMemo(() => {
+    const f = new Intl.DateTimeFormat(language, { month: "long" });
+    return Array.from({ length: 12 }, (_, i) => {
+      const n = f.format(new Date(2026, i, 1));
+      return n.charAt(0).toUpperCase() + n.slice(1);
+    });
+  }, [language]);
+  // vista della scheda Meteo (§10.1): Dispersione / Nel tempo
+  const [wxView, setWxView] = useState<"scatter" | "time">("scatter");
 
   const shift = (dir: 1 | -1) => {
     hapticLight();
@@ -335,6 +353,11 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ...(cats.data ?? ["power"] as EnergyCat[]).map(c => ({ id: c as string, label: CAT_LABEL[c] })),
         { id: "co2e", label: "CO₂" },
         ...(effPrice ? [{ id: "cost", label: t("md.metric_cost") }] : []),
+        /* §10.1: le schede approfondimento esistono solo coi loro dati */
+        ...(eui.data ? [{ id: "compare", label: t("md.tab_compare") }] : []),
+        ...(wcorr.data ? [{ id: "weather", label: t("md.tab_weather") }] : []),
+        { id: "carbon", label: t("md.tab_carbon") },
+        ...(period === "year" && periodsY.data ? [{ id: "periods", label: t("md.tab_periods") }] : []),
       ]
     : (module === "water" ? WATER_ORDER : AIR_ORDER)
         .filter(k => k === "iaq" ? (avail.data ?? []).includes("co2") : (avail.data ?? []).includes(k))
@@ -409,9 +432,22 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     <MetricTabs
       tabs={metricTabs}
       value={module === "energy" ? energyTab : airMetric}
-      onChange={id => { if (module === "energy") setEnergyTab(id as EnergyCat | "co2e" | "cost"); else setAirMetric(id); }}
+      onChange={id => {
+        if (module !== "energy") { setAirMetric(id); return; }
+        setEnergyTab(id as EnergyTab);
+        // §10.1: Confronto/Meteo/Carbonio ragionano per MESE, Periodi per ANNO
+        if (["compare", "weather", "carbon"].includes(id) && period !== "month") setPeriod("month");
+        if (id === "periods" && period !== "year") setPeriod("year");
+      }}
     />
   ) : null;
+  // cambiando orizzonte, una scheda approfondimento incompatibile torna a Potenza
+  useEffect(() => {
+    if (!insightTab) return;
+    if (energyTab === "periods" && period !== "year") setEnergyTab("power");
+    if (["compare", "weather", "carbon"].includes(energyTab) && period !== "month") setEnergyTab("power");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
   // ambra su SOGLIA (non su media) per barre e calendario di aria/acqua
   const overLimitFor = module !== "energy" ? (limit ?? undefined) : undefined;
 
@@ -457,7 +493,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
 
       {/* Il mese ha l'intestazione del mockup §6.3 («attività del robot»):
           titolo grande a sinistra con l'orologio, frecce a destra. */}
-      {period === "month" ? (
+      {period === "month" && !insightTab ? (
         <div className="px-6 mt-3 flex items-start justify-between">
           <div className="min-w-0">
             <div style={{ fontSize: 32, fontWeight: 600, color: INK, lineHeight: 1.1 }}>{pagerTitle}</div>
@@ -491,7 +527,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       )}
 
       {/* ── GIORNO ── */}
-      {period === "day" && (
+      {period === "day" && !insightTab && (
         <>
           {verdict && <VerdictLine color={verdict.color} verdict={verdict.word} summary={verdict.summary} onExplain={openExplain} />}
           {metricTabsEl}
@@ -582,7 +618,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       )}
 
       {/* ── SETTIMANA ── */}
-      {period === "week" && (
+      {period === "week" && !insightTab && (
         week.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
         : week.data ? (
           <>
@@ -658,7 +694,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       )}
 
       {/* ── MESE (riepilogo, §6.3) ── */}
-      {period === "month" && (
+      {period === "month" && !insightTab && (
         month.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
         : month.data ? (
           <>
@@ -720,7 +756,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       )}
 
       {/* ── ANNO (§6.4 — PROPOSTA da confermare col proprietario) ── */}
-      {period === "year" && (
+      {period === "year" && !insightTab && (
         yearData.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
         : yearData.data ? (
           <>
@@ -744,6 +780,147 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               })() : []),
               ...(yearData.data.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(yearData.data.costEur)}`, label: t("md.cost_est") }] : []),
             ].slice(0, 3)} />
+          </>
+        ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {/* ── APPROFONDIMENTI ENERGY (§10.1): Confronto · Meteo · Carbonio · Periodi ── */}
+      {insightTab && energyTab === "compare" && (
+        eui.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
+        : eui.data ? (
+          <>
+            {eui.data.vsPeersPct != null && (
+              <VerdictLine
+                color={eui.data.vsPeersPct > 0 ? AMBER : TEAL}
+                verdict={t(eui.data.vsPeersPct > 0 ? "md.above_peers" : "md.below_peers").replace("{p}", nf.format(Math.abs(eui.data.vsPeersPct)))}
+                summary={t("md.peers_n").replace("{n}", String(eui.data.peerCount))}
+                onExplain={() => setExplainTab("intensity")}
+              />
+            )}
+            {metricTabsEl}
+            <EuiCompareChart
+              s={eui.data} anchorMonth={anchor.getMonth()} monthLabels={monthHeads}
+              labels={{ site: t("md.site_lbl"), peers: t("md.peers_lbl"), band: t("md.band_lbl"), target: t("md.target_eui"), now: monthHeads[anchor.getMonth()] }}
+            />
+            <p className="text-center" style={{ fontSize: 11, color: SUB, marginTop: 6 }}>
+              {[eui.data.typology, eui.data.climateZone ? `${t("md.climate_zone")} ${eui.data.climateZone}` : null, t("md.same_period")].filter(Boolean).join(" · ")}
+            </p>
+            <SummaryRow items={[
+              ...(eui.data.siteNow != null ? [{ value: nf.format(eui.data.siteNow), label: `kWh/m² ${t("md.site_lbl")}` }] : []),
+              ...(eui.data.peerNow != null ? [{ value: nf.format(eui.data.peerNow), label: t("md.peers_avg") }] : []),
+              ...(eui.data.targetMonthly != null ? [{ value: nf.format(eui.data.targetMonthly), label: t("md.target_eui") }] : []),
+            ]} />
+          </>
+        ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {insightTab && energyTab === "weather" && (
+        wcorr.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
+        : wcorr.data ? (
+          <>
+            {wcorr.data.r2 != null && (
+              <VerdictLine
+                color={TEAL}
+                verdict={t("md.weather_weighs").replace("{p}", String(Math.round(wcorr.data.r2 * 100)))}
+                summary={t("md.weather_rest")}
+                onExplain={() => setExplainTab("power")}
+              />
+            )}
+            {metricTabsEl}
+            {wxView === "scatter"
+              ? <div className="px-6 mt-3"><WeatherScatter s={wcorr.data} todayKey={todayKey} fmt={v => nf0.format(v)} /></div>
+              : <div className="px-6 mt-3"><WeatherTimeline s={wcorr.data} /></div>}
+            <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
+              {wxView === "scatter" ? t("md.weather_axis") : t("md.weather_axis_time")}
+            </p>
+            <div className="flex justify-center gap-2 mt-3">
+              {(["scatter", "time"] as const).map(v => (
+                <button key={v} type="button" onClick={() => { hapticLight(); setWxView(v); }}
+                  className="rounded-full font-semibold"
+                  style={{ fontSize: 11.5, minHeight: 34, padding: "0 14px", color: wxView === v ? INK : SUB, background: wxView === v ? "#eef4f4" : "transparent" }}>
+                  {v === "scatter" ? t("md.scatter") : t("md.in_time")}
+                </button>
+              ))}
+            </div>
+            <SummaryRow items={[
+              ...(wcorr.data.r2 != null ? [{ value: `R² ${nf2.format(wcorr.data.r2)}`, label: t("md.temp_hum") }] : []),
+              ...(wcorr.data.kwhPerDegree != null && wcorr.data.kwhPerDegree > 0 ? [{ value: `+${nf0.format(wcorr.data.kwhPerDegree)} kWh`, label: t("md.per_degree") }] : []),
+              { value: String(wcorr.data.points.length), label: t("md.days_lbl") },
+            ]} />
+          </>
+        ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {insightTab && energyTab === "carbon" && (
+        yearData.isLoading || month.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
+        : yearData.data ? (
+          <>
+            {month.data?.totalKwh != null && (
+              <VerdictLine
+                color={TEAL}
+                verdict={`${nf0.format(Math.round(month.data.totalKwh * CO2_EMISSION_FACTOR))} kgCO₂e`}
+                summary={month.data.vsPrevPct != null ? `${month.data.vsPrevPct > 0 ? "+" : ""}${month.data.vsPrevPct}% ${t("md.vs_prev_month_days")}` : undefined}
+                onExplain={() => setExplainTab("power")}
+              />
+            )}
+            {metricTabsEl}
+            <CarbonBars
+              months={yearData.data.months.map(x => ({ m: x.m, kg: x.v != null ? Math.round(x.v * CO2_EMISSION_FACTOR) : null }))}
+              anchorMonth={anchor.getMonth()} monthLabels={monthHeads} fmt={v => nf0.format(v)}
+            />
+            <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
+              kgCO₂e · {t("md.ef_factor")}
+            </p>
+            {/* giorno/notte dal carpet del mese corrente (ore 8–20, fuso sito) */}
+            {month.data && (() => {
+              let dayKwh = 0, nightKwh = 0;
+              for (const row of month.data.hours) for (let h = 0; h < 24; h++) {
+                const v = row[h];
+                if (v == null) continue;
+                if (h >= 8 && h < 20) dayKwh += v; else nightKwh += v;
+              }
+              const tot = dayKwh + nightKwh;
+              if (tot <= 0) return null;
+              const dayPct = Math.round((dayKwh / tot) * 100);
+              return (
+                <>
+                  <DayNightBars
+                    day={{ pct: dayPct, kwh: dayKwh }} night={{ pct: 100 - dayPct, kwh: nightKwh }}
+                    labels={{ title: t("md.day_night"), sub: t("md.day_night_sub"), day: t("md.day_lbl"), night: t("md.night_lbl") }}
+                    fmtMwh={kwh => `${nf.format(kwh / 1000)} MWh`}
+                  />
+                  {month.data!.baseloadKw != null && (
+                    <p className="px-6" style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>
+                      {t("md.night_note").replace("{p}", String(100 - dayPct)).replace("{b}", nf.format(month.data!.baseloadKw))}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
+          </>
+        ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {insightTab && energyTab === "periods" && (
+        periodsY.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
+        : periodsY.data ? (
+          <>
+            <VerdictLine
+              color={TEAL}
+              verdict={`${nf.format(periodsY.data.totalKwh / 1000)} MWh`}
+              summary={[
+                periodsY.data.totalCost != null ? `€ ${nf0.format(periodsY.data.totalCost)}` : null,
+                periodsY.data.vsPrevYearPct != null ? `${periodsY.data.vsPrevYearPct > 0 ? "+" : ""}${periodsY.data.vsPrevYearPct}% vs ${anchor.getFullYear() - 1}` : null,
+              ].filter(Boolean).join(" · ") || undefined}
+              onExplain={() => setExplainTab("power")}
+            />
+            {metricTabsEl}
+            <PeriodsList
+              s={periodsY.data}
+              monthNames={monthNamesLong}
+              labels={{ inProgress: t("md.in_progress"), peak: t("md.peak_lbl"), avgPrice: t("md.avg_price"), vsPrevYear: `vs ${anchor.getFullYear() - 1}` }}
+              fmt0={v => nf0.format(v)}
+            />
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}

@@ -928,7 +928,10 @@ function demoYear(module: DashModule, airMetric: string, energyCat: EnergyCat = 
   const shape = [1.15, 1.1, 0.95, 0.85, 0.9, 1.05, 1.2, 1.18, 0.95, 0.9, 1.0, 1.12];
   const months: YearMonth[] = shape.map((k, i) => {
     if (i > nowM) return { m: i + 1, v: null };
-    const raw = module === "energy" ? 11600 * k * kCat : (cfg.base + cfg.amp * 0.38) * (0.9 + 0.2 * (k - 0.85));
+    // il mese corrente è parziale: coerente col riepilogo mese demo (3.800 kWh)
+    const raw = module === "energy"
+      ? (i === nowM ? 3800 : 11600 * k) * kCat
+      : (cfg.base + cfg.amp * 0.38) * (0.9 + 0.2 * (k - 0.85));
     return { m: i + 1, v: module === "energy" ? Math.round(raw) : isIaq ? co2ToScore(raw) : rnd(raw) };
   });
   const present = months.filter(x => x.v != null).map(x => x.v!) ;
