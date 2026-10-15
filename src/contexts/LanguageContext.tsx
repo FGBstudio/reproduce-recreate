@@ -737,7 +737,7 @@ const translations: Record<string, Record<Language, string>> = {
   'md.billed_lbl': { en: 'billed', it: 'fatturati', fr: 'facturés', es: 'facturados', zh: '账单电量' },
   'md.measured_lbl': { en: 'measured', it: 'misurati', fr: 'mesurés', es: 'medidos', zh: '实测电量' },
   'md.avg_cost': { en: 'average cost', it: 'costo medio', fr: 'coût moyen', es: 'costo medio', zh: '平均单价' },
-  'md.spent_lbl': { en: 'spent', it: 'spesi', fr: 'dépensés', es: 'gastados', zh: '支出' },
+  'md.spent_lbl': { en: 'spent (incl. charges)', it: 'spesi (con oneri)', fr: 'dépensés (charges incl.)', es: 'gastados (con cargos)', zh: '支出（含杂费）' },
   'md.contracted_power': { en: 'Contracted power {v} kW', it: 'Potenza impegnata {v} kW', fr: 'Puissance souscrite {v} kW', es: 'Potencia contratada {v} kW', zh: '合同功率 {v} kW' },
   'md.bill_peak': { en: 'bill peak {v} kW · {p}% headroom', it: 'picco da bolletta {v} kW · margine {p}%', fr: 'pointe facture {v} kW · marge {p} %', es: 'pico en factura {v} kW · margen {p}%', zh: '账单峰值 {v} kW · 余量 {p}%' },
   'md.upload_bill': { en: 'Upload bill · photo or PDF', it: 'Carica bolletta · foto o PDF', fr: 'Charger une facture · photo ou PDF', es: 'Cargar factura · foto o PDF', zh: '上传账单 · 拍照或 PDF' },

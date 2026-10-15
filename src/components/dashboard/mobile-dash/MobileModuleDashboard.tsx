@@ -24,6 +24,9 @@ import { BillsCompareChart, CarbonBars, DayNightBars, EuiCompareChart, PeriodsLi
 import { useBillsYear, useEuiCompare, usePeriodsYear, useWeatherCorr } from "./useEnergyInsights";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useSiteCurrency } from "@/hooks/useSiteCurrency";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import type { CurrencyCode } from "@/lib/currency";
 import {
   CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
   useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useRangeSeries, useWaterNight, useWeekSeries, useYearSeries,
@@ -151,6 +154,11 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const bills = useBillsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite);
   const [billSheetOpen, setBillSheetOpen] = useState(false);
   const queryClient = useQueryClient();
+  // valuta: gli importi delle bollette sono nella LORO valuta e si mostrano
+  // in quella del sito (stessi hook del modulo desktop) — niente € fisso
+  const siteCurrency = useSiteCurrency(safeSiteId);
+  const { format: fmtMoney } = useCurrency();
+  const billCur = (bills.data?.currency ?? "EUR") as CurrencyCode;
 
   // ── Serie derivate (CO₂ emessa / costo): la stessa serie kWh del sito,
   // riscalata. Nessuna query in più; gli stessi numeri del Carbon Footprint
@@ -1209,8 +1217,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                   />
                   <SummaryRow items={[
                     { value: nf.format(b.totalBilledKwh / 1000), label: `MWh ${t("md.billed_lbl")}` },
-                    ...(b.avgCostKwh != null ? [{ value: nf2.format(b.avgCostKwh), label: `€/kWh · ${t("md.avg_cost")}` }] : []),
-                    ...(b.totalSpentEur != null ? [{ value: `€ ${nf0.format(b.totalSpentEur)}`, label: t("md.spent_lbl") }] : []),
+                    ...(b.avgCostKwh != null ? [{ value: fmtMoney(b.avgCostKwh, billCur, siteCurrency, { maximumFractionDigits: 2 }), label: `/kWh · ${t("md.avg_cost")}` }] : []),
+                    ...(b.totalSpent != null ? [{ value: fmtMoney(b.totalSpent, billCur, siteCurrency, { maximumFractionDigits: 0 }), label: t("md.spent_lbl") }] : []),
                   ]} />
                   {/* potenza impegnata (soglia di contratto) vs picco da bolletta */}
                   {contractKw != null && (
