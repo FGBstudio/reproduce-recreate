@@ -37,6 +37,7 @@ import { EnergyDemoContent, AirDemoContent, WaterDemoContent } from "@/component
 import { getSupportedMetricsForDevices, isLeedMonitor, type AirMetric } from "@/lib/airMonitorType";
 import { OverviewSection } from "./OverviewSection";
 import MobileModuleDashboard from "./mobile-dash/MobileModuleDashboard";
+import CertificationsMobile from "./mobile-dash/CertificationsMobile";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
 import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp } from "@/lib/api";
@@ -3618,7 +3619,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Water in stile Dyson è una PROPOSTA (§5.6): etichettata nella barra
   // superiore della dashboard finché il proprietario non la consolida.
   const waterMobileDash = isMobile && activeDashboard === "water" && resolvedModuleConfig.water.enabled;
-  const isMobileModuleDash = energyMobileDash || airMobileDash || waterMobileDash;
+  // §10.4: su mobile le certificazioni hanno la vista dedicata (sintesi,
+  // scorecard, milestone) al posto della slide desktop
+  const certMobileDash = isMobile && activeDashboard === "certification" && hasCertifications;
+  const isMobileModuleDash = energyMobileDash || airMobileDash || waterMobileDash || certMobileDash;
 
   const nextSlide = () => {
     if (currentSlide < totalSlides - 1) {
@@ -4094,7 +4098,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         {/* Dashboard modulo mobile (brief §6): Energy/Aria a schermo intero.
             Copre tutto il main content (absolute inset-0 z-30); le slide
             desktop sotto non montano, salvo durante la generazione PDF. */}
-        {isMobileModuleDash && (
+        {certMobileDash && (
+          <CertificationsMobile
+            siteId={project.siteId}
+            siteName={project.name}
+            certNames={projectCertifications}
+            isDemoSite={!!demoProfile || !isSupabaseConfigured}
+            onBack={() => handleDashboardChange("overview")}
+          />
+        )}
+        {isMobileModuleDash && !certMobileDash && (
           <MobileModuleDashboard
             /* key: cambiando modulo si riparte da metrica e periodo puliti */
             key={activeDashboard}
@@ -6119,7 +6132,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             )}
             
             {/* CERTIFICATION DASHBOARDS (Fully Dynamic and High Contrast) */}
-            {activeDashboard === "certification" && hasCertifications && (() => {
+            {activeDashboard === "certification" && hasCertifications && !certMobileDash && (() => {
               const activeCertsCount = [leedCert, wellCert].filter(c => c && c.status === 'active').length;
               
               // --- 1. TIMELINE DI PROGETTO REALE (Dal Database) ---
