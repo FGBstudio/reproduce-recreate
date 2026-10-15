@@ -93,6 +93,68 @@ export const HourHeatmap = ({ s, onOpenDay, title, hint, weekdays, fmtCell }: {
   );
 };
 
+/** Carpet plot del mese (atlante §6 v2, «mappa del robot»): una colonna per
+    giorno (1–31), una riga per ora (0–24 dall'alto), colore più intenso =
+    valore più alto. Weekend segnati sotto, oggi contornato, futuri grigi.
+    Un tocco su una colonna apre quel giorno. */
+export const MonthCarpet = ({ s, onOpenDay, legendLess, legendMore, legendWeekend, overLimit }: {
+  s: MonthSeries; onOpenDay: (date: string) => void;
+  legendLess: string; legendMore: string; legendWeekend: string;
+  overLimit?: number;
+}) => {
+  const nDays = s.cells.length;
+  const W = 342, H = 150, GAP = 1;
+  const cw = (W - 14) / nDays;
+  const ch = H / 24;
+  return (
+    <div className="px-6 mt-4">
+      <svg viewBox={`0 0 ${W} ${H + 34}`} className="w-full block" style={{ touchAction: "pan-y" }}>
+        {/* etichette ore a sinistra */}
+        {[0, 6, 12, 18, 24].map(h => (
+          <text key={h} x={0} y={Math.min(H - 1, (h / 24) * H) + 3.5} fontSize="7.5" fill={AXIS}>{h}</text>
+        ))}
+        {s.cells.map((c, di) => {
+          const x = 14 + di * cw;
+          return (
+            <g key={c.date} onClick={() => { if (!c.future && c.v != null) { hapticLight(); onOpenDay(c.date); } }} style={{ cursor: c.future ? "default" : "pointer" }}>
+              {Array.from({ length: 24 }, (_, h) => {
+                const v = s.hours[di]?.[h];
+                const over = overLimit != null && v != null && v > overLimit;
+                const fill = c.future
+                  ? "rgba(159,178,179,.10)"
+                  : v == null
+                    ? "rgba(159,178,179,.14)"
+                    : over
+                      ? `rgba(217,154,43,${(0.35 + 0.6 * Math.min(1, v / (s.hoursMax || 1))).toFixed(2)})`
+                      : `rgba(10,143,145,${(0.08 + 0.85 * Math.min(1, v / (s.hoursMax || 1))).toFixed(2)})`;
+                return <rect key={h} x={x} y={(h / 24) * H} width={Math.max(0.5, cw - GAP)} height={ch - 0.6} rx={1} fill={fill} />;
+              })}
+              {/* oggi contornato */}
+              {c.today && <rect x={x - 0.5} y={0} width={cw - GAP + 1} height={H} rx={2} fill="none" stroke={TEAL} strokeWidth="1.3" />}
+              {/* numero del giorno (1, 5, 10, 15, 20, 25, 31) */}
+              {(c.day === 1 || c.day % 5 === 0 || c.day === nDays) && (
+                <text x={x + (cw - GAP) / 2} y={H + 11} fontSize="7.5" fill={c.future ? "rgba(159,178,179,.55)" : AXIS} textAnchor="middle">{c.day}</text>
+              )}
+              {/* tacca weekend sotto */}
+              {c.weekend && <rect x={x} y={H + 15} width={Math.max(0.5, cw - GAP)} height={2.5} rx={1} fill={c.future ? "rgba(159,178,179,.35)" : "#b9c9ca"} />}
+            </g>
+          );
+        })}
+        {/* legenda: meno ▓▓▓ più + weekend */}
+        <g transform={`translate(14, ${H + 27})`}>
+          <text x={0} y={4} fontSize="8" fill={SUB}>{legendLess}</text>
+          {[0.15, 0.35, 0.55, 0.75, 0.95].map((o, i) => (
+            <rect key={i} x={26 + i * 9} y={-2} width={7} height={7} rx={1.5} fill={`rgba(10,143,145,${o})`} />
+          ))}
+          <text x={76} y={4} fontSize="8" fill={SUB}>{legendMore}</text>
+          <rect x={126} y={0} width={10} height={2.5} rx={1} fill="#b9c9ca" />
+          <text x={140} y={4} fontSize="8" fill={SUB}>{legendWeekend}</text>
+        </g>
+      </svg>
+    </div>
+  );
+};
+
 export const MonthCalendar = ({ s, weekdays, onOpenDay, overLimit }: {
   s: MonthSeries; weekdays: string[]; onOpenDay: (date: string) => void;
   /** punto ambra per i giorni sopra la soglia della metrica */

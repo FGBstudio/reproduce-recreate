@@ -17,7 +17,7 @@ import { useBackDismiss } from "@/hooks/useBackDismiss";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
-import { HourHeatmap, LabelValueGrid, MonthCalendar, WeekBars, YearBars } from "./views";
+import { HourHeatmap, LabelValueGrid, MonthCarpet, WeekBars, YearBars } from "./views";
 import {
   CO2_EMISSION_FACTOR, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useWeekSeries, useYearSeries,
   type DashModule, type DaySeries, type EnergyCat, type MonthSeries, type WeekSeries, type YearSeries,
@@ -572,7 +572,14 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         : month.data ? (
           <>
             {metricTabsEl}
-            <MonthCalendar s={month.data} weekdays={weekdayHeads} overLimit={overLimitFor} onOpenDay={date => { setAnchor(new Date(`${date}T12:00:00`)); setPeriod("day"); }} />
+            {/* carpet plot giorni × ore (atlante §6 v2): si vedono insieme
+                orari di lavoro, weekend, notti col carico di base e anomalie */}
+            <MonthCarpet
+              s={month.data}
+              overLimit={overLimitFor}
+              legendLess={t("md.less")} legendMore={t("md.more")} legendWeekend={t("md.weekend")}
+              onOpenDay={date => { setAnchor(new Date(`${date}T12:00:00`)); setPeriod("day"); }}
+            />
             {month.data.totalKwh != null && (
               /* mockup §6.3: etichetta in evidenza, VALORE in grigio */
               <p className="text-center mt-4" style={{ fontSize: 14, color: INK, fontWeight: 600 }}>

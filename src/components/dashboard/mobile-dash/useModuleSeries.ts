@@ -88,10 +88,13 @@ export interface WeekSeries {
   unit: string;
   isDemo: boolean;
 }
-export interface MonthDayCell { day: number; date: string; v: number | null; future: boolean; today: boolean }
+export interface MonthDayCell { day: number; date: string; v: number | null; future: boolean; today: boolean; weekend: boolean }
 export interface MonthSeries {
   cells: MonthDayCell[];       // 1..n del mese
   maxV: number;
+  /** carpet plot (atlante §6 v2): hours[giorno-1][ora] = valore orario */
+  hours: Array<Array<number | null>>;
+  hoursMax: number;
   totalKwh?: number;
   costEur?: number;
   vsPrevPct?: number;
@@ -240,12 +243,26 @@ function demoMonth(module: DashModule, airMetric: string, energyCat: EnergyCat =
             const raw = (cfg.base + cfg.amp * 0.38) * weekendK * (1 + sinAmp * Math.sin(day));
             return isIaq ? co2ToScore(raw) : Math.round(raw * dp) / dp;
           })();
-    return { day, date, v, future, today: day === now.getDate() };
+    return { day, date, v, future, today: day === now.getDate(), weekend: wd === 0 || wd === 6 };
   });
   const present = cells.filter(c => c.v != null);
   const demoPeak = [...present].sort((a, b) => (b.v! - a.v!))[0];
+  // carpet plot demo: profilo diurno coerente con demoDay, scalato sul giorno
+  const flatH = isLevelMetric(module, airMetric);
+  const hours: Array<Array<number | null>> = cells.map(c => {
+    if (c.v == null) return Array(24).fill(null);
+    return Array.from({ length: 24 }, (_, h) => {
+      const shape = module === "energy"
+        ? (c.weekend ? 0.35 : 1) * (0.3 + Math.exp(-((h - 13) ** 2) / 28))
+        : flatH ? 1 + 0.04 * Math.sin(h / 3)
+        : 0.55 + 0.75 * Math.exp(-((h - 15) ** 2) / 30);
+      return Math.round(c.v! * shape * dp) / dp;
+    });
+  });
+  const hoursMax = Math.max(...hours.flat().filter((v): v is number => v != null), 1);
   return {
     cells, maxV: Math.max(...present.map(c => c.v!), 1),
+    hours, hoursMax,
     totalKwh: module === "energy" ? Math.round(3800 * kCat) : undefined,
     costEur: module === "energy" ? Math.round(720 * kCat) : undefined,
     vsPrevPct: module === "energy" ? -6 : undefined,
@@ -683,12 +700,61 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
       const cells: MonthDayCell[] = Array.from({ length: nDays }, (_, i) => {
         const day = i + 1;
         const date = `${monthKey}-${String(day).padStart(2, "0")}`;
+        const wd = new Date(`${date}T12:00:00`).getDay();
         return {
           day, date,
           v: vals.has(date) ? (module === "energy" ? Math.round(vals.get(date)!) : vals.get(date)!) : null,
-          future: date > todayKey, today: date === todayKey,
+          future: date > todayKey, today: date === todayKey, weekend: wd === 0 || wd === 6,
         };
       });
+
+      // ── carpet plot (atlante §6 v2): tutte le ore del mese ──
+      const hours: Array<Array<number | null>> = Array.from({ length: nDays }, () => Array(24).fill(null));
+      let hoursMax = 0;
+      {
+        const fromUtc = new Date(new Date(`${first}T00:00:00`).getTime() - 26 * 3600e3).toISOString();
+        const toUtc = new Date(new Date(`${last}T00:00:00`).getTime() + 50 * 3600e3).toISOString();
+        const put = (iso: string, v: number, mode: "sum" | "avgCount", counts?: Array<Array<number>>) => {
+          const k = dayKeyInTz(new Date(iso), tz);
+          if (!k.startsWith(monthKey)) return;
+          const di = Number(k.slice(8, 10)) - 1;
+          if (di < 0 || di >= nDays) return;
+          const h = hourInTz(iso, tz);
+          if (mode === "sum") hours[di][h] = (hours[di][h] || 0) + v;
+          else { hours[di][h] = (hours[di][h] || 0) + v; counts![di][h]++; }
+        };
+        if (module === "energy") {
+          const ids = (await deviceSets(siteId))[energyCat];
+          const { data: hr } = await supabase!.from("energy_hourly")
+            .select("ts_hour, metric, value_avg, value_sum")
+            .in("device_id", ids.slice(0, 50))
+            .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
+            .in("metric", ["energy.power_kw", "energy.active_energy", "energy.active_import_kwh"]);
+          for (const r of (hr || []) as unknown as HourRow[]) {
+            const v = r.metric === "energy.power_kw" ? r.value_avg : (r.value_sum != null && Number(r.value_sum) <= 50000 ? r.value_sum : null);
+            if (v == null) continue;
+            put(r.ts_hour, Number(v), "sum");
+          }
+        } else {
+          const counts: Array<Array<number>> = Array.from({ length: nDays }, () => Array(24).fill(0));
+          const { data: hr } = await supabase!.from("telemetry_hourly")
+            .select("ts_hour, metric, value_avg").eq("site_id", siteId)
+            .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
+            .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+          for (const r of (hr || []) as unknown as HourRow[]) {
+            if (r.value_avg == null) continue;
+            put(r.ts_hour, Number(r.value_avg), "avgCount", counts);
+          }
+          const rndH = roundFor(module, airMetric);
+          for (let d2 = 0; d2 < nDays; d2++) for (let h2 = 0; h2 < 24; h2++) {
+            if (counts[d2][h2] > 0) {
+              const mean = hours[d2][h2]! / counts[d2][h2];
+              hours[d2][h2] = isIaq ? co2ToScore(mean) : rndH(mean);
+            }
+          }
+        }
+        for (const row of hours) for (const v of row) if (v != null && v > hoursMax) hoursMax = v;
+      }
       const present = cells.filter(c => c.v != null) as Array<MonthDayCell & { v: number }>;
       const maxV = Math.max(...present.map(c => c.v));
       const totalKwh = module === "energy" ? Math.round(present.reduce((a, c) => a + c.v, 0)) : undefined;
@@ -705,6 +771,7 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
         : undefined;
       return {
         cells, maxV,
+        hours, hoursMax: hoursMax || 1,
         totalKwh,
         costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
         vsPrevPct,
