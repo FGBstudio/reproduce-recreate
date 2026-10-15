@@ -1597,6 +1597,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const co2MultiSeries = useMemo(() => {
     const series = buildSeriesByMetric("iaq.co2", 1000);
     if (series && series.length > 0) return series;
+    // §10.5: niente curve inventate sui siti reali — un buco resta un buco
+    if (!demoProfile) return [];
     return co2HistoryData.map((pt, i) => ({
       time: pt.time,
       'Main Zone': Math.round(pt.co2 + (seededRandom(i * 17) - 0.5) * 40),
@@ -1607,6 +1609,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const tvocMultiSeries = useMemo(() => {
     const series = buildSeriesByMetric("iaq.voc", 500);
     if (series && series.length > 0) return series;
+    if (!demoProfile) return [];
     return tvocHistoryData.map((pt, i) => ({
       time: pt.time,
       'Main Zone': Math.round(pt.tvoc + (seededRandom(i * 13) - 0.5) * 30),
@@ -1629,6 +1632,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
     const series = Array.from(byTime.values());
     if (series.length > 0) return series;
+    if (!demoProfile) return [];
     return tempHumidityData.map((pt) => ({
       time: pt.time,
       'Temperature (°C)': pt.temp,
@@ -1651,6 +1655,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
     const series = Array.from(byTime.values());
     if (series.length > 0) return series;
+    if (!demoProfile) return [];
     return coO3Data.map((pt) => ({
       time: pt.time,
       'CO (ppm)': pt.co,
@@ -1661,6 +1666,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const pm25MultiSeries = useMemo(() => {
     const series = buildSeriesByMetric('iaq.pm25', 25);
     if (series && series.length > 0) return series;
+    if (!demoProfile) return [];
     return pm25Data.map(pt => ({
       time: pt.day,
       'Indoor PM2.5': pt.indoor,
@@ -1672,6 +1678,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   const pm10MultiSeries = useMemo(() => {
     const series = buildSeriesByMetric('iaq.pm10', 50);
     if (series && series.length > 0) return series;
+    if (!demoProfile) return [];
     return pm10Data.map(pt => ({
       time: pt.day,
       'Indoor PM10': pt.indoor,
@@ -4525,7 +4532,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                       <div ref={alertsRef} className="bg-foreground/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-lg font-bold text-gray-800">{t('pd.site_alerts')}</h3>
-                          <ExportButtons chartRef={alertsRef} data={alertData} filename="site-alerts" />
+                          {/* §10.5: export = ciò che si vede — gli alert REALI,
+                              non l'array fisso di zeri */}
+                          <ExportButtons chartRef={alertsRef} data={(pdAlertStatus.alerts || []).map(a => ({
+                            severity: a.severity, metric: a.metric, message: a.message,
+                            value: a.currentValue, threshold: a.threshold, device: a.deviceName ?? "", timestamp: a.timestamp ?? "",
+                          }))} filename="site-alerts" />
                         </div>
                         <div className="flex-1 min-h-0 relative lg:overflow-hidden">
                           {/* Su mobile il contenuto fluisce ad altezza naturale (la slide
@@ -4668,7 +4680,14 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                             </div>
                             <span>High</span>
                           </div>
-                          <ExportButtons chartRef={heatmapRef} data={[]} filename="energy-heatmap" />
+                          {/* §10.5: la heatmap esporta le proprie celle, non un CSV vuoto */}
+                          <ExportButtons chartRef={heatmapRef} data={heatmapGrid.cols.flatMap(col =>
+                            heatmapGrid.rows.map(row => ({
+                              [heatmapGrid.isYearView ? "day" : "hour"]: row,
+                              date: col.key,
+                              kwh: heatmapGrid.valueMap.get(`${row}_${col.key}`) ?? "",
+                            }))
+                          )} filename="energy-heatmap" />
                         </div>
                       </div>
 
@@ -5294,7 +5313,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                                 selectedIds={selectedAirDeviceIds}
                                 onChange={setSelectedAirDeviceIds}
                               />
-                              <ExportButtons chartRef={airQualityRef} data={airQualityData} filename="air-quality" />
+                              {/* §10.5: export = le medie REALI mostrate, non
+                                  i tre valori statici dell'anagrafica */}
+                              <ExportButtons chartRef={airQualityRef} data={Object.entries(activeAirMetrics).map(([metric, value]) => ({ metric, value }))} filename="air-quality" />
                             </div>
                           </div>
 

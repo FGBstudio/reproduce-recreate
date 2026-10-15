@@ -22,6 +22,7 @@ import { getDemoProfile } from "@/lib/data/demoSiteMocks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OverviewMobileView } from "./OverviewMobileView";
 import { useWaterFacade } from "./mobile-dash/useModuleSeries";
+import { useSensorHealth } from "@/hooks/useSensorHealth";
 
 const seededRandom = (seed: number) => {
   const x = Math.sin(seed) * 10000;
@@ -1024,6 +1025,9 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   /* Facciata Water §10.3 (solo mobile): riassunto del contatore. Il hook è
      chiamato sempre (Rules of Hooks), abilitato solo quando serve. */
   const waterFacadeDemo = !certSiteId && !!project?.siteId; // sito vetrina (id non-UUID)
+  /* Trust layer §10.5 (solo mobile): affidabilità sensori nella schermata
+     «Alert e sensori». Hook sempre chiamato, siteId undefined = inattivo. */
+  const sensorHealth = useSensorHealth(isMobile ? certSiteId : undefined);
   const { data: waterFacade } = useWaterFacade(
     certSiteId ?? project?.siteId,
     project?.timezone || "UTC",
@@ -1122,11 +1126,27 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         alerts={{
           criticalCount: alertStatus.criticalCount,
           warningCount: alertStatus.warningCount,
+          infoCount: alertStatus.infoCount,
           list: (alertStatus.alerts || []).map((a: ThresholdAlert) => ({
-            title: a.deviceName ? `${a.deviceName}: ${a.message}` : a.message,
+            title: a.message,
+            // sottoriga §10.5: modulo · dispositivo · da quanto
+            module: a.metric?.startsWith('energy') || a.metric?.includes('power') ? 'Energy'
+              : a.metric?.startsWith('water') || a.metric?.includes('leak') ? 'Water' : 'Air',
+            device: a.deviceName ?? undefined,
+            ago: a.timestamp ? (() => {
+              const min = Math.max(0, Math.round((Date.now() - new Date(a.timestamp).getTime()) / 60000));
+              return min < 60 ? `${min} min` : min < 2880 ? `${Math.round(min / 60)} h` : `${Math.round(min / 1440)} gg`;
+            })() : undefined,
             severity: a.severity,
           })),
         }}
+        sensorHealth={certSiteId ? {
+          score: Math.round(sensorHealth.averageTrustScore),
+          offline: sensorHealth.offlineCount,
+          flatline: sensorHealth.flatliningCount,
+          flapping: sensorHealth.flappingCount,
+          offlineNames: sensorHealth.sensors.filter(s => s.is_offline).map(s => s.device_name || s.sensor_id).slice(0, 3),
+        } : undefined}
         notInstalled={nothingMonitored}
         certCount={certAchievedCount}
         certTopLevel={certTopLevel}

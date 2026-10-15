@@ -70,7 +70,9 @@ interface OverviewMobileViewProps {
     todayLiters?: number; typicalLiters?: number; nightMin?: number;
     peakLmin?: number; pressureBar?: number; weekM3?: number; isDemo: boolean;
   };
-  alerts: { criticalCount: number; warningCount: number; list: Array<{ title: string; ago?: string; severity?: string }> };
+  alerts: { criticalCount: number; warningCount: number; infoCount?: number; list: Array<{ title: string; module?: string; device?: string; ago?: string; severity?: string }> };
+  /** Trust layer §10.5: affidabilità sensori (schermata «Alert e sensori») */
+  sensorHealth?: { score: number; offline: number; flatline: number; flapping: number; offlineNames: string[] };
   /** Store senza dispositivi: hero con parole giuste al posto di 0/100 */
   notInstalled?: boolean;
   /** Certificazioni edificio ottenute (pill Award) */
@@ -469,7 +471,7 @@ const ModuleScreen = ({
 
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, outdoorHumidity, periodLabel, overall, energy, air, water, moduleConfig,
-  power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, waterFacade, alerts, notInstalled, certCount = 0,
+  power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, waterFacade, alerts, sensorHealth, notInstalled, certCount = 0,
   verdictHeadline, isRealData, onNavigate, certifications, certTopLevel, certDetails,
 }: OverviewMobileViewProps) => {
   const { t, language } = useLanguage();
@@ -871,32 +873,74 @@ export const OverviewMobileView = ({
         />
       )}
 
-      {/* ── 5 · ALERTS (il radar del fingerprint e' stato tolto: non era
-             utile — rev 15/09, allineato al desktop) ── */}
-      <section data-screen className="h-full snap-start snap-always shrink-0 flex flex-col items-center text-center text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b]">
-        <AlertTriangle className="w-8 h-8 opacity-80 mb-2" aria-hidden="true" />
-        <h4 className="m-0 text-[11px] font-bold tracking-[0.3em] opacity-75">
-          {t("ovm.alerts_open").replace("{n}", nf0.format(alerts.criticalCount + alerts.warningCount))}
-        </h4>
-        <div className="w-full max-w-[270px] mx-auto text-left text-[12.5px] mt-4 flex-1 min-h-0 overflow-y-auto no-scrollbar">
+      {/* ── 5 · ALERT E SENSORI (§10.5): gravità + lista, poi il Trust layer
+             del PC — spiega al cliente perché un grafico ha un buco ── */}
+      <section data-screen className="h-full snap-start snap-always shrink-0 flex flex-col text-white px-6 pt-12 pb-16 bg-gradient-to-b from-[#016368] to-[#01474b] overflow-y-auto no-scrollbar">
+        <div className="flex items-center gap-2 justify-center">
+          <AlertTriangle className="w-6 h-6 opacity-80" aria-hidden="true" />
+          <h4 className="m-0 text-[11px] font-bold tracking-[0.3em] opacity-75 uppercase">{t("ovm.alerts_sensors")}</h4>
+        </div>
+
+        {/* conteggi per gravità */}
+        <div className="grid grid-cols-3 gap-3 text-center mt-5 w-full max-w-[290px] mx-auto">
+          {[
+            { n: alerts.criticalCount, label: t("ovm.sev_critical"), hot: alerts.criticalCount > 0 },
+            { n: alerts.warningCount, label: t("ovm.sev_medium"), warn: alerts.warningCount > 0 },
+            { n: alerts.infoCount ?? 0, label: t("ovm.sev_low") },
+          ].map((x, i) => (
+            <div key={i}>
+              <div className={`text-[24px] font-bold tabular-nums ${x.hot ? "text-[#f9cace]" : x.warn ? "text-[#f2b84b]" : ""}`}>{nf0.format(x.n)}</div>
+              <div className="text-[10.5px] opacity-70 tracking-wide">{x.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="w-full max-w-[290px] mx-auto text-left text-[12.5px] mt-4">
           {alerts.list.length === 0 ? (
-            <div className="opacity-70 text-center py-4 text-[12px]">{t("ovm.no_alerts")}</div>
+            <div className="opacity-70 text-center py-3 text-[12px]">{t("ovm.no_alerts")}</div>
           ) : (
             (showAllAlerts ? alerts.list : alerts.list.slice(0, 3)).map((a, i) => (
-              <div key={i} className="flex justify-between gap-2.5 py-2 border-b border-white/15">
-                <span className={a.severity === "critical" ? "text-[#f9cace]" : undefined}>{a.title}</span>
-                {a.ago && <b className="opacity-65 font-normal shrink-0">{a.ago}</b>}
+              <div key={i} className="py-2 border-b border-white/15">
+                <span className={`block ${a.severity === "critical" ? "text-[#f9cace]" : ""}`}>{a.title}</span>
+                <span className="block text-[11px] opacity-65 mt-0.5">
+                  {[a.module, a.device, a.ago ? `${t("ovm.since")} ${a.ago}` : null].filter(Boolean).join(" · ")}
+                </span>
               </div>
             ))
           )}
+          {alerts.list.length > 3 && !showAllAlerts && (
+            <button type="button" onClick={() => setShowAllAlerts(true)}
+              className="w-full text-center py-2.5 font-bold text-[11px] tracking-[0.14em] uppercase opacity-85" style={{ minHeight: 44 }}>
+              {t("ovm.cta_alerts")}
+            </button>
+          )}
         </div>
 
-        {/* Bug §5.1: portava alla dashboard Energy. La "vista alert" è questa
-            schermata: la CTA espande la lista completa in loco e sparisce
-            quando non c'è altro da mostrare. */}
-        {alerts.list.length > 3 && !showAllAlerts && (
-          <div className="mt-auto w-full flex justify-center pt-3">
-            <CtaGlass onClick={() => setShowAllAlerts(true)}>{t("ovm.cta_alerts")}</CtaGlass>
+        {/* Trust layer (§10.5): affidabilità dei sensori */}
+        {sensorHealth && (
+          <div className="w-full max-w-[290px] mx-auto mt-6 pt-4 border-t border-white/20">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[12px] font-bold tracking-[0.18em] uppercase opacity-80">{t("ovm.sensor_trust")}</span>
+              <span className="text-[22px] font-bold tabular-nums">{nf0.format(sensorHealth.score)}<em className="not-italic text-[12px] opacity-70 font-normal">/100</em></span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center mt-3">
+              {[
+                { n: sensorHealth.offline, label: t("ovm.offline_lbl"), warn: sensorHealth.offline > 0 },
+                { n: sensorHealth.flatline, label: t("ovm.flatline_lbl"), warn: sensorHealth.flatline > 0 },
+                { n: sensorHealth.flapping, label: t("ovm.flapping_lbl") },
+              ].map((x, i) => (
+                <div key={i}>
+                  <div className={`text-[20px] font-bold tabular-nums ${x.warn ? "text-[#f2b84b]" : ""}`}>{nf0.format(x.n)}</div>
+                  <div className="text-[10.5px] opacity-70">{x.label}</div>
+                </div>
+              ))}
+            </div>
+            {/* i dati del sensore offline MANCANO dai grafici, non vengono stimati */}
+            {sensorHealth.offline > 0 && sensorHealth.offlineNames.length > 0 && (
+              <p className="text-[11.5px] opacity-80 mt-3 leading-relaxed">
+                {t("ovm.offline_note").replace("{names}", sensorHealth.offlineNames.join(", "))}
+              </p>
+            )}
           </div>
         )}
       </section>
