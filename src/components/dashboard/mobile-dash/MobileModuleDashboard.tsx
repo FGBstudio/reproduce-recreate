@@ -19,9 +19,10 @@ import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, Pro
 import TimeSeriesChart from "./TimeSeriesChart";
 import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
 import BillUploadSheet from "./BillUploadSheet";
+import BillDetail from "./BillDetail";
 import { HourHeatmap, LabelValueGrid, MonthCarpet, RangeBars, WeekBars, YearBars } from "./views";
 import { BillsCompareChart, CarbonBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
-import { useBillsYear, useEuiCompare, usePeriodsYear, useWeatherCorr } from "./useEnergyInsights";
+import { useBillsYear, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem } from "./useEnergyInsights";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSiteCurrency } from "@/hooks/useSiteCurrency";
@@ -153,6 +154,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // §10.6 — Bollette (decisione owner 15/10): fatturato vs misurato per anno
   const bills = useBillsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite);
   const [billSheetOpen, setBillSheetOpen] = useState(false);
+  const [selBill, setSelBill] = useState<BillItem | null>(null);
   const queryClient = useQueryClient();
   // valuta: gli importi delle bollette sono nella LORO valuta e si mostrano
   // in quella del sito (stessi hook del modulo desktop) — niente € fisso
@@ -1237,6 +1239,59 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               ) : (
                 <p className="text-center py-10 px-8" style={{ color: SUB, fontSize: 13 }}>{t("md.bills_none")}</p>
               )}
+
+              {/* Lista dell'anno (= lista + recent bills del PC): periodo,
+                  azienda, totale, scarto per bolletta; badge sugli stati */}
+              {b.items.length > 0 && (
+                <>
+                  <div className="flex items-baseline justify-between px-6" style={{ marginTop: 22 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600 }}>{t("md.year_bills")}</span>
+                    <span style={{ fontSize: 11, color: SUB }}>{t("md.tap_detail")}</span>
+                  </div>
+                  {b.items.map(it => {
+                    const done = it.status === "completed";
+                    const refD = it.periodStart ?? it.uploadedAt;
+                    const m = refD ? Number(refD.slice(5, 7)) : NaN;
+                    const rowTitle = Number.isFinite(m) ? monthNamesLong[m - 1] : it.fileName;
+                    const range = it.periodStart && it.periodEnd
+                      ? `${dfShortR.format(new Date(`${it.periodStart.slice(0, 10)}T12:00:00`))} – ${dfShortR.format(new Date(`${it.periodEnd.slice(0, 10)}T12:00:00`))}`
+                      : null;
+                    const sub2 = done
+                      ? [it.company, range, it.kwh != null ? `${nf0.format(it.kwh)} kWh` : null].filter(Boolean).join(" · ")
+                      : [it.company, t("md.uploaded_on").replace("{d}", it.uploadedAt ? dfShortR.format(new Date(`${it.uploadedAt.slice(0, 10)}T12:00:00`)) : "—")].filter(Boolean).join(" · ");
+                    return (
+                      <button key={it.id} type="button" className="w-full flex items-center gap-3 text-left"
+                        onClick={() => { hapticLight(); setSelBill(it); }}
+                        style={{ padding: "11px 24px", minHeight: 56 }}>
+                        <span className="grid place-items-center shrink-0 rounded-xl" style={{ width: 34, height: 34, background: "#e4efef", fontSize: 15 }} aria-hidden>
+                          {done ? "🧾" : it.status === "error" ? "⚠️" : "⏳"}
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-center gap-2" style={{ fontSize: 13.5, fontWeight: 600 }}>
+                            {rowTitle}
+                            {!done && (
+                              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", borderRadius: 999, padding: "2px 8px", background: it.status === "error" ? "#f9e4ea" : "#e8eef9", color: it.status === "error" ? "#a62c4f" : "#3b5fa0" }}>
+                                {t(it.status === "error" ? "md.st_error" : "md.st_analyzing")}
+                              </span>
+                            )}
+                          </span>
+                          <span className="block truncate" style={{ fontSize: 11.5, color: SUB }}>{sub2}</span>
+                        </span>
+                        <span className="text-right shrink-0">
+                          <span className="block tabular-nums" style={{ fontSize: 14, fontWeight: 600, color: done ? INK : SUB }}>
+                            {done && it.totalAmount != null ? fmtMoney(it.totalAmount, (it.currency ?? billCur) as CurrencyCode, siteCurrency, { maximumFractionDigits: 0 }) : "—"}
+                          </span>
+                          {done && it.devPct != null && (
+                            <span className="block tabular-nums" style={{ fontSize: 11, color: Math.abs(it.devPct) > 5 ? "#b97a14" : TEAL }}>
+                              {it.devPct > 0 ? "+" : ""}{nf.format(it.devPct)}% {t("md.vs_meas_short")}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
               {/* CTA: il vantaggio del mobile è la fotocamera (§10.6) */}
               <button type="button"
                 onClick={() => {
@@ -1251,6 +1306,18 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             </>
           );
         })() : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {/* Dettaglio bolletta (parità PC: le 5 card in una schermata) */}
+      {module === "energy" && (
+        <BillDetail
+          bill={selBill}
+          siteName={siteName}
+          isDemo={bills.data?.isDemo ?? false}
+          contractKw={limit ?? (bills.data?.isDemo ? 25 : undefined)}
+          fmtAmt={(v, f) => (v == null ? "—" : fmtMoney(v, (selBill?.currency ?? billCur) as CurrencyCode, siteCurrency, f === 4 ? { minimumFractionDigits: 2, maximumFractionDigits: 4 } : { maximumFractionDigits: f ?? 0 }))}
+          onClose={() => setSelBill(null)}
+        />
       )}
 
       {/* Foglio «Carica bolletta» (§10.6) — solo siti reali */}
