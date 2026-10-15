@@ -33,12 +33,19 @@ const BillUploadSheet = ({ open, siteId, onClose, onUploaded }: {
 
   const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) { setFile(f); setErr(null); }
+    // limite del PC: 10 MB, verificato PRIMA di caricare
+    if (f && f.size > 10 * 1024 * 1024) {
+      setErr(t("md.file_too_big").replace("{s}", (f.size / 1048576).toFixed(1)));
+    } else if (f) {
+      setFile(f); setErr(null);
+    }
     e.target.value = "";
   };
 
   const upload = async () => {
     if (!file || !siteId || !supabase || busy) return;
+    // fornitore obbligatorio come sul PC (max 100 caratteri)
+    if (!company.trim()) { setErr(t("md.company_required")); return; }
     hapticLight();
     setBusy(true); setErr(null);
     try {
@@ -49,7 +56,7 @@ const BillUploadSheet = ({ open, siteId, onClose, onUploaded }: {
       const { data: bill, error: insErr } = await supabase.from("bills").insert({
         site_id: siteId,
         uploaded_by: user?.id ?? null,
-        company_name: company.trim() || "—",
+        company_name: company.trim().slice(0, 100),
         file_name: file.name,
         file_path: filePath,
         status: "pending",
@@ -96,7 +103,9 @@ const BillUploadSheet = ({ open, siteId, onClose, onUploaded }: {
             {srcBtn(t("md.pick_pdf"), FileText, () => pdfRef.current?.click(), !!file && file.type === "application/pdf")}
           </div>
           {file && (
-            <p className="truncate" style={{ fontSize: 12, color: SUB, margin: "8px 0 0" }}>{file.name}</p>
+            <p className="truncate" style={{ fontSize: 12, color: SUB, margin: "8px 0 0" }}>
+              {file.name} · {(file.size / 1048576).toFixed(2)} MB <span style={{ color: "#9fb2b3" }}>({t("md.max10")})</span>
+            </p>
           )}
           <input
             type="text" value={company} onChange={e => setCompany(e.target.value)}

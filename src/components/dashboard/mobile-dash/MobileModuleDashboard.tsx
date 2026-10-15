@@ -36,7 +36,7 @@ import {
 import { co2Level, scoreToLevel } from "@/lib/airQuality";
 import { isValidUUID } from "@/lib/utils";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 interface Props {
   module: DashModule;
@@ -161,6 +161,23 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const siteCurrency = useSiteCurrency(safeSiteId);
   const { format: fmtMoney } = useCurrency();
   const billCur = (bills.data?.currency ?? "EUR") as CurrencyCode;
+  // azioni del PC sul dettaglio (solo siti reali): Rianalizza ed Elimina
+  const retryBill = async (b: BillItem) => {
+    if (!supabase) return;
+    await supabase.from("bills").update({ status: "pending" }).eq("id", b.id);
+    await supabase.functions.invoke("analyze-bill", { body: { billId: b.id, filePath: b.filePath } }).catch(() => undefined);
+    queryClient.invalidateQueries({ queryKey: ["mdash-bills"] });
+    toast.success(t("md.retry_started"));
+  };
+  const deleteBill = async (b: BillItem) => {
+    if (!supabase) return;
+    // prima il file dallo storage (come il PC), poi la riga
+    if (b.filePath) await supabase.storage.from("bills").remove([b.filePath]).catch(() => undefined);
+    const { error } = await supabase.from("bills").delete().eq("id", b.id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["mdash-bills"] });
+    toast.success(t("md.bill_deleted"));
+  };
 
   // ── Serie derivate (CO₂ emessa / costo): la stessa serie kWh del sito,
   // riscalata. Nessuna query in più; gli stessi numeri del Carbon Footprint
@@ -1317,6 +1334,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           contractKw={limit ?? (bills.data?.isDemo ? 25 : undefined)}
           fmtAmt={(v, f) => (v == null ? "—" : fmtMoney(v, (selBill?.currency ?? billCur) as CurrencyCode, siteCurrency, f === 4 ? { minimumFractionDigits: 2, maximumFractionDigits: 4 } : { maximumFractionDigits: f ?? 0 }))}
           onClose={() => setSelBill(null)}
+          onRetry={!isDemoSite && safeSiteId ? retryBill : undefined}
+          onDelete={!isDemoSite && safeSiteId ? deleteBill : undefined}
         />
       )}
 

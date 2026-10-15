@@ -583,5 +583,8 @@ export function useBillsYear(siteId: string | undefined, year: number, isDemoSit
     },
     enabled: !!year,
     staleTime: 5 * 60 * 1000,
+    // con una bolletta in analisi la lista si aggiorna da sola ogni 30 s
+    // (l'equivalente del bottone «Aggiorna» del PC, senza bottone)
+    refetchInterval: query => (((query.state.data as BillsYear | null)?.pendingCount ?? 0) > 0 ? 30_000 : false),
   });
 }

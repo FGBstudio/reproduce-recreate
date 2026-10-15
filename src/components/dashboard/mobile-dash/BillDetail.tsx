@@ -6,7 +6,7 @@
  * confronto col MISURATO nel periodo esatto della bolletta.
  * Stati pending/analyzing/error onesti: niente grafici inventati.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
@@ -15,7 +15,7 @@ import type { BillItem } from "./useEnergyInsights";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-const BillDetail = ({ bill, siteName, isDemo, contractKw, fmtAmt, onClose }: {
+const BillDetail = ({ bill, siteName, isDemo, contractKw, fmtAmt, onClose, onRetry, onDelete }: {
   bill: BillItem | null;
   siteName: string;
   isDemo: boolean;
@@ -24,9 +24,17 @@ const BillDetail = ({ bill, siteName, isDemo, contractKw, fmtAmt, onClose }: {
   /** importo nella valuta del sito (maxFrac: 0 per i totali, 4 per €/kWh) */
   fmtAmt: (v: number | null | undefined, maxFrac?: number) => string;
   onClose: () => void;
+  /** rilancia analyze-bill (solo stato error) — assente in demo */
+  onRetry?: (b: BillItem) => Promise<void>;
+  /** elimina bolletta + file (doppia conferma qui) — assente in demo */
+  onDelete?: (b: BillItem) => Promise<void>;
 }) => {
   const { t, language } = useLanguage();
   useBackDismiss(!!bill, onClose);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // cambiando bolletta la conferma di cancellazione riparte da zero
+  useEffect(() => { setConfirmDel(false); setBusy(false); }, [bill?.id]);
   const nf0 = useMemo(() => new Intl.NumberFormat(language, { maximumFractionDigits: 0 }), [language]);
   const nf1 = useMemo(() => new Intl.NumberFormat(language, { maximumFractionDigits: 1 }), [language]);
   const nf3 = useMemo(() => new Intl.NumberFormat(language, { minimumFractionDigits: 3, maximumFractionDigits: 3 }), [language]);
@@ -192,6 +200,34 @@ const BillDetail = ({ bill, siteName, isDemo, contractKw, fmtAmt, onClose }: {
             </div>
           )}
         </>
+      )}
+
+      {/* Azioni del PC: Rianalizza (solo su errore) ed Elimina con doppia
+          conferma — Elimina cancella anche il file dallo storage. In demo
+          i handler non vengono passati e la riga non esiste. */}
+      {(onDelete || (failed && onRetry)) && (
+        <div className="flex gap-3 mx-6" style={{ marginTop: 28 }}>
+          {failed && onRetry && (
+            <button type="button" disabled={busy}
+              onClick={async () => { setBusy(true); try { await onRetry(b); onClose(); } finally { setBusy(false); } }}
+              className="flex-1 rounded-full font-bold uppercase"
+              style={{ minHeight: 44, fontSize: 11.5, letterSpacing: "0.08em", color: TEAL, border: "1.4px solid #bfe0e1", background: "none" }}>
+              {t("md.retry_lbl")}
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" disabled={busy}
+              onClick={async () => {
+                if (!confirmDel) { setConfirmDel(true); return; }
+                setBusy(true);
+                try { await onDelete(b); onClose(); } finally { setBusy(false); }
+              }}
+              className="flex-1 rounded-full font-bold uppercase"
+              style={{ minHeight: 44, fontSize: 11.5, letterSpacing: "0.08em", color: "#fff0f3", background: confirmDel ? RED : "transparent", border: confirmDel ? "none" : "1.4px solid #f3d2db", ...(confirmDel ? {} : { color: RED }) }}>
+              {busy ? "…" : confirmDel ? t("md.confirm_delete") : t("md.delete_lbl")}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
