@@ -79,7 +79,17 @@ serve(async (req) => {
     }
     const base64 = btoa(binary);
 
-    console.log(`Analyzing bill ${billId}, file size: ${arrayBuffer.byteLength} bytes`);
+    // Mobile uploads can be PHOTOS of the bill (camera), not just PDFs:
+    // the data-URI mime must match the real file or the model rejects it.
+    const ext = String(filePath).split(".").pop()?.toLowerCase();
+    const mimeType =
+      ext === "png" ? "image/png"
+      : ext === "webp" ? "image/webp"
+      : ext === "heic" || ext === "heif" ? "image/heic"
+      : ext === "jpg" || ext === "jpeg" ? "image/jpeg"
+      : "application/pdf";
+
+    console.log(`Analyzing bill ${billId}, file size: ${arrayBuffer.byteLength} bytes, type: ${mimeType}`);
 
     // Call AI Gateway with tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -103,12 +113,12 @@ The billing_period_start and billing_period_end are critical - always try to fin
             content: [
               {
                 type: "text",
-                text: "Analyze this energy bill PDF and extract all relevant data. Extract: billing period dates, energy consumption (kWh), energy cost per kWh, total energy cost, peak power (kW), off-peak consumption, peak consumption, reactive energy (kVArh), power factor, fixed charges, taxes, total amount, and currency. Also extract any additional noteworthy data.",
+                text: "Analyze this energy bill (PDF or photo) and extract all relevant data. Extract: billing period dates, energy consumption (kWh), energy cost per kWh, total energy cost, peak power (kW), off-peak consumption, peak consumption, reactive energy (kVArh), power factor, fixed charges, taxes, total amount, and currency. Also extract any additional noteworthy data.",
               },
               {
                 type: "image_url",
                 image_url: {
-                  url: `data:application/pdf;base64,${base64}`,
+                  url: `data:${mimeType};base64,${base64}`,
                 },
               },
             ],

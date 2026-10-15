@@ -316,3 +316,117 @@ export function usePeriodsYear(siteId: string | undefined, year: number, isDemoS
     staleTime: 10 * 60 * 1000,
   });
 }
+
+/* ── Bollette (§10.6, decisione owner 15/10: entra nell'app) ──────────
+   Le tabelle bills/bill_data sono il solo modulo PC senza mock: qui si
+   aggregano per mese i kWh FATTURATI dell'anno; i kWh MISURATI arrivano
+   dalla YearSeries già caricata dal container (stessa fonte energy_daily
+   del resto della dashboard, confronto nel grafico). ── */
+export interface BillsYear {
+  /** kWh fatturati per mese (indice 0 = gennaio; null = nessuna bolletta) */
+  months: Array<{ m: number; billed: number | null }>;
+  count: number;              // bollette ANALIZZATE con periodo nell'anno
+  pendingCount: number;       // caricate ma non ancora analizzate (tutto il sito)
+  totalBilledKwh: number;
+  avgCostKwh?: number;        // Σ costo energia / Σ kWh (pesata), fallback media
+  totalSpentEur?: number;     // Σ total_amount
+  maxPeakKw?: number;         // massima potenza di picco letta dalle bollette
+  isDemo: boolean;
+}
+
+interface BillRow { id: string; status: string }
+interface BillDataRow {
+  bill_id: string;
+  billing_period_start: string | null;
+  billing_period_end: string | null;
+  energy_consumption_kwh: number | null;
+  energy_cost_per_kwh: number | null;
+  total_amount: number | null;
+  peak_power_kw: number | null;
+}
+
+function demoBills(year: number): BillsYear {
+  // coerente con demoYear energy: misurato = 11600 × shape, bollette
+  // gen–set con scarto deterministico ±1% (media ≈ 0,8%)
+  const shape = [1.15, 1.1, 0.95, 0.85, 0.9, 1.05, 1.2, 1.18, 0.95, 0.9, 1.0, 1.12];
+  const dev = [0.006, -0.009, 0.012, 0.004, -0.007, 0.01, 0.008, -0.005, 0.011];
+  const nowM = new Date().getMonth();
+  const nBills = Math.min(9, nowM); // il mese in corso non è ancora fatturato
+  const months = shape.map((k, i) => ({
+    m: i + 1,
+    billed: year === new Date().getFullYear() && i < nBills ? Math.round(11600 * k * (1 + dev[i % dev.length])) : null,
+  }));
+  const total = months.reduce((a, x) => a + (x.billed ?? 0), 0);
+  return {
+    months,
+    count: months.filter(x => x.billed != null).length,
+    pendingCount: 0,
+    totalBilledKwh: total,
+    avgCostKwh: total > 0 ? 0.19 : undefined,
+    totalSpentEur: total > 0 ? Math.round(total * 0.19) : undefined,
+    maxPeakKw: total > 0 ? 23.2 : undefined,
+    isDemo: true,
+  };
+}
+
+export function useBillsYear(siteId: string | undefined, year: number, isDemoSite: boolean) {
+  return useQuery<BillsYear | null>({
+    queryKey: ["mdash-bills", siteId, year],
+    queryFn: async (): Promise<BillsYear | null> => {
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        return isDemoSite ? demoBills(year) : null;
+      }
+      const { data: billRows } = await supabase!.from("bills")
+        .select("id, status").eq("site_id", siteId);
+      const bills = (billRows || []) as unknown as BillRow[];
+      const pendingCount = bills.filter(b => b.status === "pending" || b.status === "analyzing").length;
+      const completedIds = bills.filter(b => b.status === "completed").map(b => b.id);
+      const empty: BillsYear = {
+        months: Array.from({ length: 12 }, (_, i) => ({ m: i + 1, billed: null })),
+        count: 0, pendingCount, totalBilledKwh: 0, isDemo: false,
+      };
+      if (completedIds.length === 0) return empty;
+      const { data: bdRows } = await supabase!.from("bill_data")
+        .select("bill_id, billing_period_start, billing_period_end, energy_consumption_kwh, energy_cost_per_kwh, total_amount, peak_power_kw")
+        .in("bill_id", completedIds.slice(0, 200));
+      // una bolletta appartiene all'anno (e al mese) del suo periodo di
+      // fatturazione — come la vista mensile del modulo desktop
+      const inYear = ((bdRows || []) as unknown as BillDataRow[]).filter(r => {
+        const dte = r.billing_period_start || r.billing_period_end;
+        return dte != null && dte.startsWith(String(year));
+      });
+      if (inYear.length === 0) return empty;
+      const byMonth = new Map<number, number>();
+      let spent = 0, spentKwh = 0, costSum = 0, costN = 0, maxPeak = 0;
+      for (const r of inYear) {
+        const dte = (r.billing_period_start || r.billing_period_end)!;
+        const m = Number(dte.slice(5, 7));
+        if (r.energy_consumption_kwh != null) byMonth.set(m, (byMonth.get(m) || 0) + Number(r.energy_consumption_kwh));
+        if (r.total_amount != null) {
+          spent += Number(r.total_amount);
+          if (r.energy_consumption_kwh != null) spentKwh += Number(r.energy_consumption_kwh);
+        }
+        if (r.energy_cost_per_kwh != null) { costSum += Number(r.energy_cost_per_kwh); costN++; }
+        if (r.peak_power_kw != null) maxPeak = Math.max(maxPeak, Number(r.peak_power_kw));
+      }
+      const months = Array.from({ length: 12 }, (_, i) => ({
+        m: i + 1,
+        billed: byMonth.has(i + 1) ? Math.round(byMonth.get(i + 1)!) : null,
+      }));
+      const total = months.reduce((a, x) => a + (x.billed ?? 0), 0);
+      const avgCost = spent > 0 && spentKwh > 0 ? spent / spentKwh : costN > 0 ? costSum / costN : undefined;
+      return {
+        months,
+        count: inYear.length,
+        pendingCount,
+        totalBilledKwh: total,
+        avgCostKwh: avgCost != null ? Math.round(avgCost * 1000) / 1000 : undefined,
+        totalSpentEur: spent > 0 ? Math.round(spent) : undefined,
+        maxPeakKw: maxPeak > 0 ? Math.round(maxPeak * 10) / 10 : undefined,
+        isDemo: false,
+      };
+    },
+    enabled: !!year,
+    staleTime: 5 * 60 * 1000,
+  });
+}

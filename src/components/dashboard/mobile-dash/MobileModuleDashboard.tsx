@@ -18,9 +18,12 @@ import ExplainSheet from "@/components/dashboard/ExplainSheet";
 import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, ProbeSheet, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
 import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
+import BillUploadSheet from "./BillUploadSheet";
 import { HourHeatmap, LabelValueGrid, MonthCarpet, RangeBars, WeekBars, YearBars } from "./views";
-import { CarbonBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
-import { useEuiCompare, usePeriodsYear, useWeatherCorr } from "./useEnergyInsights";
+import { BillsCompareChart, CarbonBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
+import { useBillsYear, useEuiCompare, usePeriodsYear, useWeatherCorr } from "./useEnergyInsights";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
   useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useRangeSeries, useWaterNight, useWeekSeries, useYearSeries,
@@ -70,9 +73,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const queryMetric = waterDerived ? "flow" : airMetric;
   // Schede energia: categorie reali + derivate (CO₂/costo) + gli
   // APPROFONDIMENTI del PC (§10.1): Confronto · Meteo · Carbonio · Periodi.
-  type EnergyTab = EnergyCat | "co2e" | "cost" | "compare" | "weather" | "carbon" | "periods";
+  type EnergyTab = EnergyCat | "co2e" | "cost" | "compare" | "weather" | "carbon" | "periods" | "bills";
   const [energyTab, setEnergyTab] = useState<EnergyTab>("power");
-  const INSIGHT_TABS = ["compare", "weather", "carbon", "periods"] as const;
+  const INSIGHT_TABS = ["compare", "weather", "carbon", "periods", "bills"] as const;
   const insightTab = module === "energy" && (INSIGHT_TABS as readonly string[]).includes(energyTab);
   const energyCat: EnergyCat = (["power", "hvac", "lighting", "plugs"] as const).includes(energyTab as EnergyCat) ? (energyTab as EnergyCat) : "power";
   const [explainTab, setExplainTab] = useState<string | null>(null);
@@ -144,6 +147,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const eui = useEuiCompare(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), anchor.getMonth(), isDemoSite);
   const wcorr = useWeatherCorr(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, monthKey, isDemoSite);
   const periodsY = usePeriodsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite, priceKwh ?? (isDemoSite ? 0.19 : undefined));
+  // §10.6 — Bollette (decisione owner 15/10): fatturato vs misurato per anno
+  const bills = useBillsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite);
+  const [billSheetOpen, setBillSheetOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // ── Serie derivate (CO₂ emessa / costo): la stessa serie kWh del sito,
   // riscalata. Nessuna query in più; gli stessi numeri del Carbon Footprint
@@ -345,8 +352,14 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     : period === "week" ? t("md.week_n").replace("{n}", String(isoWeek(anchor)))
     : period === "month"
       ? `${dfRange.format(new Date(anchor.getFullYear(), anchor.getMonth(), 1))} – ${dfRange.format(anchor)} ${anchor.getFullYear()}`
-      // Anno = proposta §6.4: etichettata finché il proprietario non conferma
-      : t("md.proposal");
+      // Bollette (§10.6): «9 bollette caricate», con le non ancora analizzate
+      : module === "energy" && energyTab === "bills"
+        ? bills.data
+          ? t("md.bills_n").replace("{n}", String(bills.data.count))
+            + (bills.data.pendingCount > 0 ? ` · ${t("md.bills_analyzing_n").replace("{n}", String(bills.data.pendingCount))}` : "")
+          : "…"
+        // Anno = proposta §6.4: etichettata finché il proprietario non conferma
+        : t("md.proposal");
 
   // ── verdetto del giorno ──
   const d = day.data;
@@ -484,6 +497,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ...(wcorr.data ? [{ id: "weather", label: t("md.tab_weather") }] : []),
         { id: "carbon", label: t("md.tab_carbon") },
         ...(period === "year" && periodsY.data ? [{ id: "periods", label: t("md.tab_periods") }] : []),
+        /* §10.6 Bollette: la scheda esiste se il sito può averne (è anche
+           il punto d'ingresso del PRIMO caricamento, quindi anche a zero) */
+        ...(bills.data ? [{ id: "bills", label: t("md.tab_bills") }] : []),
       ]
     : (module === "water" ? WATER_ORDER : AIR_ORDER)
         .filter(k => {
@@ -568,14 +584,15 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         setEnergyTab(id as EnergyTab);
         // §10.1: Confronto/Meteo/Carbonio ragionano per MESE, Periodi per ANNO
         if (["compare", "weather", "carbon"].includes(id) && period !== "month") setPeriod("month");
-        if (id === "periods" && period !== "year") setPeriod("year");
+        // §10.6: le Bollette ragionano per ANNO (‹ 2026 ›)
+        if (["periods", "bills"].includes(id) && period !== "year") setPeriod("year");
       }}
     />
   ) : null;
   // cambiando orizzonte, una scheda approfondimento incompatibile torna a Potenza
   useEffect(() => {
     if (!insightTab) return;
-    if (energyTab === "periods" && period !== "year") setEnergyTab("power");
+    if (["periods", "bills"].includes(energyTab) && period !== "year") setEnergyTab("power");
     if (["compare", "weather", "carbon"].includes(energyTab) && period !== "month") setEnergyTab("power");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
@@ -600,7 +617,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="text-center min-w-0 flex-1">
-          <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{period === "month" ? summaryLabel : moduleLabel}</span>
+          <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{insightTab && energyTab === "bills" ? t("md.bills_title") : period === "month" ? summaryLabel : moduleLabel}</span>
           <span className="truncate" style={{ fontSize: 13, color: SUB, marginLeft: 6 }}>{siteName}</span>
           {(d?.isDemo || week.data?.isDemo || month.data?.isDemo || yearData.data?.isDemo || rangeData?.isDemo) && (
             <span className="align-middle" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "#b45309", background: "rgba(217,154,43,.15)", borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>DEMO</span>
@@ -1146,6 +1163,99 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             />
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {/* ── BOLLETTE (§10.6): fatturato vs misurato, per anno ── */}
+      {insightTab && energyTab === "bills" && (
+        bills.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
+        : bills.data ? (() => {
+          const b = bills.data!;
+          const measured = yearData.data?.months ?? [];
+          // scarto per i mesi che hanno ENTRAMBI i numeri (bolletta e contatori)
+          const devs = b.months
+            .map((x, i) => (x.billed != null && measured[i]?.v != null && measured[i].v! > 0
+              ? ((x.billed - measured[i].v!) / measured[i].v!) * 100 : null))
+            .filter((v): v is number => v != null);
+          const avgDev = devs.length ? Math.round((devs.reduce((a, v) => a + Math.abs(v), 0) / devs.length) * 10) / 10 : null;
+          const merged = b.months.map((x, i) => ({ m: x.m, billed: x.billed, measured: measured[i]?.v ?? null }));
+          // potenza impegnata: la soglia di contratto del sito (in demo è il
+          // 25 kW delle serie vetrina, lo stesso del grafico Giorno)
+          const contractKw = limit ?? (b.isDemo ? 25 : undefined);
+          const headroom = contractKw != null && b.maxPeakKw != null && contractKw > 0
+            ? Math.round((1 - b.maxPeakKw / contractKw) * 100) : null;
+          return (
+            <>
+              {b.count > 0 && (
+                avgDev != null ? (
+                  <VerdictLine
+                    color={avgDev > 5 ? AMBER : TEAL}
+                    verdict={avgDev <= 2 ? t("md.bills_match") : t("md.bills_gap").replace("{p}", nf.format(avgDev))}
+                    summary={t("md.bills_avg_dev").replace("{p}", nf.format(avgDev))}
+                  />
+                ) : (
+                  // bollette senza contatori sovrapponibili: si leggono i totali
+                  <VerdictLine color={TEAL} verdict={`${nf.format(b.totalBilledKwh / 1000)} MWh`} summary={t("md.billed_lbl")} />
+                )
+              )}
+              {metricTabsEl}
+              {b.count > 0 ? (
+                <>
+                  <BillsCompareChart
+                    months={merged}
+                    monthLabels={monthHeads}
+                    labels={{ billed: t("md.billed_lbl"), measured: t("md.measured_lbl") }}
+                    onOpenMonth={m => { setAnchor(new Date(anchor.getFullYear(), m - 1, 1)); setEnergyTab("power"); setPeriod("month"); }}
+                    fmt={v => nf0.format(v)}
+                  />
+                  <SummaryRow items={[
+                    { value: nf.format(b.totalBilledKwh / 1000), label: `MWh ${t("md.billed_lbl")}` },
+                    ...(b.avgCostKwh != null ? [{ value: nf2.format(b.avgCostKwh), label: `€/kWh · ${t("md.avg_cost")}` }] : []),
+                    ...(b.totalSpentEur != null ? [{ value: `€ ${nf0.format(b.totalSpentEur)}`, label: t("md.spent_lbl") }] : []),
+                  ]} />
+                  {/* potenza impegnata (soglia di contratto) vs picco da bolletta */}
+                  {contractKw != null && (
+                    <div className="px-6 mt-4">
+                      <p style={{ fontSize: 12.5, fontWeight: 500, color: INK, margin: 0 }}>
+                        {t("md.contracted_power").replace("{v}", nf0.format(contractKw))}
+                        {b.maxPeakKw != null && headroom != null && (
+                          <span style={{ fontWeight: 400, color: headroom < 10 ? "#b97a14" : SUB, marginLeft: 6 }}>
+                            {t("md.bill_peak").replace("{v}", nf.format(b.maxPeakKw)).replace("{p}", String(headroom))}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-center py-10 px-8" style={{ color: SUB, fontSize: 13 }}>{t("md.bills_none")}</p>
+              )}
+              {/* CTA: il vantaggio del mobile è la fotocamera (§10.6) */}
+              <button type="button"
+                onClick={() => {
+                  hapticLight();
+                  if (isDemoSite || !safeSiteId) { toast.info(t("md.bills_demo_note")); return; }
+                  setBillSheetOpen(true);
+                }}
+                className="mx-auto mt-5 font-bold uppercase"
+                style={{ fontSize: 12, letterSpacing: "0.14em", color: TEAL, minHeight: 44 }}>
+                + {t("md.upload_bill")}
+              </button>
+            </>
+          );
+        })() : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
+      {/* Foglio «Carica bolletta» (§10.6) — solo siti reali */}
+      {module === "energy" && (
+        <BillUploadSheet
+          open={billSheetOpen}
+          siteId={safeSiteId}
+          onClose={() => setBillSheetOpen(false)}
+          onUploaded={() => {
+            queryClient.invalidateQueries({ queryKey: ["mdash-bills"] });
+            toast.success(t("md.bill_uploaded"));
+          }}
+        />
       )}
 
       {/* Foglio «Periodo» (§10.6): scorciatoie + intervallo personalizzato */}

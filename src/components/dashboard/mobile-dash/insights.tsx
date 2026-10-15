@@ -170,6 +170,59 @@ export const CarbonBars = ({ months, anchorMonth, monthLabels, fmt }: {
   );
 };
 
+/* ── Bollette (§10.6): per ogni mese la coppia fatturato | misurato.
+   Fatturato = ardesia scura, misurato = teal (il dato dei NOSTRI
+   contatori, lo stesso della vista Anno). Tap sul mese → vista Mese. ── */
+export const BillsCompareChart = ({ months, monthLabels, labels, onOpenMonth, fmt }: {
+  months: Array<{ m: number; billed: number | null; measured: number | null }>;
+  monthLabels: string[];
+  labels: { billed: string; measured: string };
+  onOpenMonth?: (m: number) => void;
+  fmt: (v: number) => string;
+}) => {
+  const H = 150;
+  const maxV = Math.max(...months.flatMap(x => [x.billed ?? 0, x.measured ?? 0]), 1);
+  const BILLED = "#3c5a5e";
+  const [sel, setSel] = useState<number | null>(null);
+  const hOf = (v: number | null) => (v != null ? Math.max(4, (v / maxV) * H) : 0);
+  return (
+    <div className="px-6 mt-3">
+      <div className="relative" style={{ height: H + 22 }}>
+        <div className="absolute inset-0 flex items-end justify-between">
+          {months.map((x, i) => (
+            <button key={x.m} type="button"
+              onClick={() => {
+                if (x.billed == null && x.measured == null) return;
+                hapticLight();
+                if (sel === i) { onOpenMonth?.(x.m); return; } // secondo tap: apre il mese
+                setSel(i);
+              }}
+              className="flex flex-col items-center justify-end" style={{ width: 25, height: H + 22 }}>
+              <span className="flex items-end" style={{ gap: 2, height: H }}>
+                <span aria-hidden style={{ width: 7, height: hOf(x.billed), borderRadius: 3.5, background: x.billed == null ? "transparent" : BILLED, opacity: sel == null || sel === i ? 1 : 0.35 }} />
+                <span aria-hidden style={{ width: 7, height: hOf(x.measured), borderRadius: 3.5, background: x.measured == null ? "transparent" : TEAL, opacity: sel == null || sel === i ? 1 : 0.35 }} />
+              </span>
+              <span style={{ fontSize: 10, color: sel === i ? INK : AXIS, fontWeight: sel === i ? 700 : 400, marginTop: 5 }}>{monthLabels[i]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* mese selezionato: i due numeri a confronto (un tap; il secondo apre il mese) */}
+      {sel != null && (months[sel].billed != null || months[sel].measured != null) && (
+        <p className="text-center tabular-nums" style={{ fontSize: 11, color: SUB, margin: "4px 0 0" }}>
+          {months[sel].billed != null ? `${fmt(months[sel].billed!)} ${labels.billed}` : ""}
+          {months[sel].billed != null && months[sel].measured != null ? " · " : ""}
+          {months[sel].measured != null ? `${fmt(months[sel].measured!)} ${labels.measured}` : ""}
+        </p>
+      )}
+      <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: sel != null ? 2 : 6 }}>
+        <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: BILLED, marginRight: 4 }} />kWh {labels.billed}
+        <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: TEAL, margin: "0 4px 0 12px" }} />kWh {labels.measured}
+      </p>
+    </div>
+  );
+};
+
 /* ── Giorno / notte: due barre orizzontali (al posto di anello + gauge) ── */
 export const DayNightBars = ({ day, night, labels, fmtMwh }: {
   day: { pct: number; kwh: number }; night: { pct: number; kwh: number };
