@@ -170,12 +170,21 @@ export const CauseTrack = (props:
     QUALI schede metriche esistono — niente «slide fantasma». */
 export interface ProbeRow {
   id: string; label: string; family: "WELL" | "LEED" | null; metricsCount: number; offlineHours?: number;
+  /** Building overview (parità A1): valori correnti per metrica */
+  values?: Array<{ key: string; v: number }>;
+  lastSeen?: number;
 }
-export const ProbeSheet = ({ open, probes, selected, labels, onApply, onClose }: {
+export const ProbeSheet = ({ open, probes, selected, labels, metricLabels, levelFor, onPickMetric, onApply, onClose }: {
   open: boolean;
   probes: ProbeRow[];
   selected: string[] | null;          // null = tutte
-  labels: { title: string; all: string; metrics: string; offlineFor: string; note: string; apply: string };
+  labels: { title: string; all: string; metrics: string; offlineFor: string; note: string; apply: string; lastAt: string };
+  /** etichetta corta per metrica (CO₂, PM2.5, Temp…) */
+  metricLabels: Record<string, string>;
+  /** semaforo Optimal/Moderate/Poor del Building overview PC */
+  levelFor: (key: string, v: number) => "ok" | "warn" | "crit";
+  /** tap su un valore: filtra su quella sonda e apre quella metrica */
+  onPickMetric?: (probeId: string, key: string) => void;
   onApply: (ids: string[] | null) => void;
   onClose: () => void;
 }) => {
@@ -209,18 +218,46 @@ export const ProbeSheet = ({ open, probes, selected, labels, onApply, onClose }:
           </button>
           {probes.map(p => {
             const on = isAll || (sel ?? []).includes(p.id);
+            const off = p.offlineHours != null;
             return (
-              <button key={p.id} type="button" onClick={() => toggle(p.id)} disabled={p.offlineHours != null && probes.length === 1}
-                className="w-full flex items-center gap-3 text-left" style={{ minHeight: 52, borderBottom: `1px solid ${RULE}`, opacity: p.offlineHours != null ? 0.55 : 1 }}>
-                <span aria-hidden style={{ width: 18, color: TEAL, fontWeight: 700 }}>{on ? "✓" : ""}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate" style={{ fontSize: 14.5, color: INK }}>{p.label}</span>
-                  <span className="block" style={{ fontSize: 11.5, color: SUB }}>
-                    {p.family ?? "—"} · {p.metricsCount} {labels.metrics}
-                    {p.offlineHours != null && ` · ${labels.offlineFor.replace("{h}", String(p.offlineHours))}`}
+              <div key={p.id} style={{ borderBottom: `1px solid ${RULE}`, opacity: off ? 0.55 : 1 }}>
+                <button type="button" onClick={() => toggle(p.id)} disabled={off && probes.length === 1}
+                  className="w-full flex items-center gap-3 text-left" style={{ minHeight: 52 }}>
+                  <span aria-hidden style={{ width: 18, color: TEAL, fontWeight: 700 }}>{on ? "✓" : ""}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate" style={{ fontSize: 14.5, color: INK }}>{p.label}</span>
+                    <span className="block" style={{ fontSize: 11.5, color: SUB }}>
+                      {p.family ?? "—"} · {p.metricsCount} {labels.metrics}
+                      {off && ` · ${labels.offlineFor.replace("{h}", String(p.offlineHours))}`}
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+                {/* Building overview del PC (parità A1): i valori di ADESSO di
+                    ogni metrica misurata, col semaforo; tap = quel grafico.
+                    Sonda offline: niente valori spacciati per attuali. */}
+                {!off && p.values && p.values.length > 0 && (
+                  <div className="grid grid-cols-4" style={{ gap: "8px 6px", padding: "0 0 12px 18px" }}>
+                    {p.values.map(x => {
+                      const lv = levelFor(x.key, x.v);
+                      return (
+                        <button key={x.key} type="button" className="text-left"
+                          onClick={() => { if (onPickMetric) { hapticLight(); onPickMetric(p.id, x.key); } }}>
+                          <span className="block" style={{ fontSize: 10.5, color: SUB }}>{metricLabels[x.key] ?? x.key}</span>
+                          <span className="flex items-center gap-1 tabular-nums" style={{ fontSize: 13, fontWeight: 600, color: INK }}>
+                            <span aria-hidden className="rounded-full shrink-0" style={{ width: 6, height: 6, background: lv === "crit" ? RED : lv === "warn" ? AMBER : "#2aa198" }} />
+                            {x.v}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {off && p.lastSeen != null && (
+                  <p style={{ fontSize: 11, color: SUB, margin: "0 0 10px 18px" }}>
+                    {labels.lastAt.replace("{t}", new Date(p.lastSeen).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}
+                  </p>
+                )}
+              </div>
             );
           })}
           <p style={{ fontSize: 12, color: SUB, margin: "10px 0 12px", lineHeight: 1.5 }}>{labels.note}</p>

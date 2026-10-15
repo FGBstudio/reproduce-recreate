@@ -407,14 +407,38 @@ export interface AirProbe {
   family: "WELL" | "LEED" | null;
   metricsCount: number;
   offlineHours?: number;       // presente solo se la sonda è offline (>2h)
+  /** Building overview del PC: valore corrente per ogni metrica misurata */
+  values?: Array<{ key: string; v: number }>;
+  /** ultimo segnale (epoch ms) — per «ultimi valori alle HH:MM» */
+  lastSeen?: number;
 }
+
+const PROBE_VAL_ORDER = ["co2", "tvoc", "pm25", "pm10", "co", "o3", "temp", "humidity"];
 
 export function useAirProbes(siteId: string | undefined, isDemoSite: boolean) {
   return useQuery<AirProbe[]>({
     queryKey: ["mdash-probes", siteId],
     queryFn: async () => {
       if (isDemoSite || !isSupabaseConfigured || !siteId) {
-        return isDemoSite ? [{ id: "demo-air", label: "Open space", family: "WELL" as const, metricsCount: 8 }] : [];
+        // due sonde vetrina: una WELL sana e una LEED al limite, per mostrare
+        // semafori e riduzione delle schede (§10.2) anche in demo
+        return isDemoSite ? [
+          {
+            id: "demo-air", label: "Open space", family: "WELL" as const, metricsCount: 8,
+            values: [
+              { key: "co2", v: 612 }, { key: "tvoc", v: 142 }, { key: "pm25", v: 6 }, { key: "pm10", v: 11 },
+              { key: "co", v: 0.4 }, { key: "o3", v: 21 }, { key: "temp", v: 22.4 }, { key: "humidity", v: 48 },
+            ],
+            lastSeen: Date.now(),
+          },
+          {
+            id: "demo-air-2", label: "Magazzino", family: "LEED" as const, metricsCount: 4,
+            values: [
+              { key: "co2", v: 1045 }, { key: "tvoc", v: 228 }, { key: "temp", v: 19.8 }, { key: "humidity", v: 63 },
+            ],
+            lastSeen: Date.now(),
+          },
+        ] : [];
       }
       const { data } = await supabase!.from("devices")
         .select("id, device_id, name, model, location, device_type")
@@ -422,23 +446,42 @@ export function useAirProbes(siteId: string | undefined, isDemoSite: boolean) {
         .eq("device_type", "air_quality");
       const rows = (data || []) as unknown as Array<{ id: string; device_id?: string; name?: string | null; model?: string | null; location?: string | null }>;
       if (rows.length === 0) return [];
-      // ultimo segnale per device da telemetry_latest (offline se >2h)
+      // ultimo segnale E ultimi valori per metrica da telemetry_latest
+      // (la stessa fonte del Building overview del PC)
       const { data: latest } = await supabase!.from("telemetry_latest")
-        .select("device_id, ts").in("device_id", rows.map(r => r.id)).limit(500);
+        .select("device_id, metric, value, ts").in("device_id", rows.map(r => r.id)).limit(1000);
+      const aliasToKey = new Map<string, string>();
+      for (const [k, def] of Object.entries(AIR_METRICS)) {
+        if (k === "iaq") continue;
+        for (const id of def.ids) aliasToKey.set(id, k);
+      }
       const lastTs = new Map<string, number>();
-      for (const r of (latest || []) as unknown as Array<{ device_id: string; ts: string }>) {
+      const valByProbe = new Map<string, Map<string, { v: number; t: number }>>();
+      for (const r of (latest || []) as unknown as Array<{ device_id: string; metric: string; value: number | null; ts: string }>) {
         const t = new Date(r.ts).getTime();
         if (!lastTs.has(r.device_id) || t > lastTs.get(r.device_id)!) lastTs.set(r.device_id, t);
+        const key = aliasToKey.get(r.metric);
+        if (!key || r.value == null) continue;
+        const m = valByProbe.get(r.device_id) ?? new Map();
+        const prev = m.get(key);
+        if (!prev || t > prev.t) m.set(key, { v: Number(r.value), t });
+        valByProbe.set(r.device_id, m);
       }
       return rows.map(r => {
         const family = getMonitorFamilyLabel(r);
         const ageH = lastTs.has(r.id) ? (Date.now() - lastTs.get(r.id)!) / 3600e3 : undefined;
+        const vm = valByProbe.get(r.id);
         return {
           id: r.id,
           label: r.location || r.name || r.device_id || r.id,
           family,
           metricsCount: family === "LEED" ? 4 : 8,
           offlineHours: ageH != null && ageH > 2 ? Math.floor(ageH) : undefined,
+          values: vm && vm.size > 0
+            ? [...vm.entries()].map(([key, e]) => ({ key, v: Math.round(e.v * 100) / 100 }))
+                .sort((a, b) => PROBE_VAL_ORDER.indexOf(a.key) - PROBE_VAL_ORDER.indexOf(b.key))
+            : undefined,
+          lastSeen: lastTs.get(r.id),
         };
       });
     },

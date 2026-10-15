@@ -1475,6 +1475,26 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             offlineFor: t("md.offline_for"),
             note: t("md.probes_note"),
             apply: t("md.apply"),
+            lastAt: t("md.last_at"),
+          }}
+          metricLabels={AIR_LABEL}
+          /* semaforo del Building overview PC: soglie del sito, con i limiti
+             fissi del desktop come riserva (CO₂ 1000 · TVOC 500 · WHO 25/50
+             · CO 9 · O₃ 100) — temp/umidità solo da site_thresholds */
+          levelFor={(key, v) => {
+            const FALLBACK: Record<string, number> = { co2: 1000, tvoc: 500, pm25: 25, pm10: 50, co: 9, o3: 100 };
+            const lim = AIR_LIMIT[key];
+            const l = lim?.l ?? FALLBACK[key];
+            if (l == null) return "ok";
+            if (lim?.l2 != null && v >= lim.l2) return "crit";
+            return v >= l ? "warn" : "ok";
+          }}
+          /* tap su un valore = dal dato al grafico: filtra su quella sonda
+             e apre quella metrica */
+          onPickMetric={(probeId, key) => {
+            setProbeSel([probeId]);
+            setAirMetric(key);
+            setProbeSheetOpen(false);
           }}
           onApply={setProbeSel}
           onClose={() => setProbeSheetOpen(false)}

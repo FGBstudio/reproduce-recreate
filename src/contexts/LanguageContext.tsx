@@ -795,6 +795,8 @@ const translations: Record<string, Record<Language, string>> = {
   'md.live_now': { en: 'Right now', it: 'In questo momento', fr: 'En ce moment', es: 'Ahora mismo', zh: '当前功率' },
   'md.live_upd': { en: 'updated {t}', it: 'aggiornato {t}', fr: 'mis à jour {t}', es: 'actualizado {t}', zh: '更新于 {t}' },
   'md.live_stale': { en: 'no new data since {t}', it: 'dati fermi dalle {t}', fr: 'aucune donnée depuis {t}', es: 'sin datos desde las {t}', zh: '自 {t} 起无新数据' },
+  // Parità A1 — valori per sonda nel foglio Sonde
+  'md.last_at': { en: 'last values at {t} — excluded from charts, never estimated', it: 'ultimi valori alle {t} — esclusa dai grafici, non stimata', fr: 'dernières valeurs à {t} — exclue des graphiques, jamais estimée', es: 'últimos valores a las {t} — excluida de los gráficos, nunca estimada', zh: '最后数据于 {t} — 已从图表排除，绝不估算' },
   'md.partial': { en: 'Partial data', it: 'Dati parziali', fr: 'Données partielles', es: 'Datos parciales', zh: '数据不完整' },
   'md.partial_sub': { en: '{t} without data, verdict suspended', it: '{t} senza dati, giudizio sospeso', fr: '{t} sans données, verdict suspendu', es: '{t} sin datos, juicio suspendido', zh: '{t} 无数据，暂不评级' },
   'md.no_data_range': { en: 'no data {a} – {b}', it: 'nessun dato {a} – {b}', fr: 'aucune donnée {a} – {b}', es: 'sin datos {a} – {b}', zh: '无数据 {a} – {b}' },
