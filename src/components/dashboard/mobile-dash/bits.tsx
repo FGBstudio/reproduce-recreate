@@ -17,9 +17,9 @@ export const TEAL = "#0a8f91";
 export const AMBER = "#d99a2b";
 export const RED = "#cf4a6e";
 
-export type Period = "day" | "week" | "month" | "year";
+export type Period = "day" | "week" | "month" | "year" | "range";
 
-export const PeriodSegment = ({ value, onChange, labels }: { value: Period; onChange: (p: Period) => void; labels: Record<Period, string> }) => (
+export const PeriodSegment = ({ value, onChange, labels }: { value: Period; onChange: (p: Period) => void; labels: Partial<Record<Period, string>> }) => (
   <div className="flex rounded-full p-1 mx-auto" style={{ background: "#eef4f4", width: "fit-content" }}>
     {(Object.keys(labels) as Period[]).map(p => (
       <button
@@ -40,17 +40,19 @@ export const PeriodSegment = ({ value, onChange, labels }: { value: Period; onCh
   </div>
 );
 
-export const PeriodPager = ({ title, subtitle, onPrev, onNext, nextDisabled, titleSize = 30 }: {
+export const PeriodPager = ({ title, subtitle, onPrev, onNext, nextDisabled, titleSize = 30, onTitleTap }: {
   title: string; subtitle?: string; onPrev: () => void; onNext: () => void; nextDisabled?: boolean; titleSize?: number;
+  /** §10.6: un tocco sul titolo apre il foglio del periodo personalizzato */
+  onTitleTap?: () => void;
 }) => (
   <div className="flex items-center justify-center gap-2 mt-3">
     <button type="button" onClick={onPrev} aria-label="‹" className="grid place-items-center" style={{ width: 44, height: 44, color: SUB }}>
       <ChevronLeft className="w-5 h-5" />
     </button>
-    <div className="text-center" style={{ minWidth: 190, maxWidth: 270 }}>
+    <button type="button" onClick={onTitleTap} disabled={!onTitleTap} className="text-center" style={{ minWidth: 190, maxWidth: 270 }}>
       <div style={{ fontSize: titleSize, fontWeight: 600, color: INK, lineHeight: 1.1 }}>{title}</div>
       {subtitle && <div style={{ fontSize: 12, color: SUB, marginTop: 2 }}>{subtitle}</div>}
-    </div>
+    </button>
     <button type="button" onClick={onNext} aria-label="›" disabled={nextDisabled} className="grid place-items-center" style={{ width: 44, height: 44, color: nextDisabled ? RULE : SUB }}>
       <ChevronRight className="w-5 h-5" />
     </button>

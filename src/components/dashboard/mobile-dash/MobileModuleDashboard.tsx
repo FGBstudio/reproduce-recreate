@@ -17,12 +17,13 @@ import { useBackDismiss } from "@/hooks/useBackDismiss";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, ProbeSheet, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
-import { HourHeatmap, LabelValueGrid, MonthCarpet, WeekBars, YearBars } from "./views";
+import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
+import { HourHeatmap, LabelValueGrid, MonthCarpet, RangeBars, WeekBars, YearBars } from "./views";
 import { CarbonBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
 import { useEuiCompare, usePeriodsYear, useWeatherCorr } from "./useEnergyInsights";
 import {
   CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
-  useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useWaterNight, useWeekSeries, useYearSeries,
+  useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useRangeSeries, useWaterNight, useWeekSeries, useYearSeries,
   type DashModule, type DaySeries, type EnergyCat, type MonthSeries, type WeekSeries, type YearSeries,
 } from "./useModuleSeries";
 import { co2Level, scoreToLevel } from "@/lib/airQuality";
@@ -58,6 +59,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const { t, language } = useLanguage();
   const [period, setPeriod] = useState<Period>("day");
   const [anchor, setAnchor] = useState(() => new Date());
+  // §10.6 — foglio «Periodo» (tocco sul titolo) + intervallo personalizzato
+  const [periodSheetOpen, setPeriodSheetOpen] = useState(false);
+  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
   // metrica corrente del modulo (aria: co2…, acqua: flow…).
   // Per l'acqua «volume» e «notte» sono VISTE DERIVATE della portata
   // (§10.3): la query gira sempre su water.flow_rate.
@@ -130,6 +134,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const weekRaw = useWeekSeries(module, safeSiteId, mondayKey, timezone, isDemoSite, priceKwh, queryMetric, energyCat, probeIds);
   const monthRaw = useMonthSeries(module, safeSiteId, monthKey, timezone, isDemoSite, priceKwh, queryMetric, energyCat, probeIds);
   const yearRaw = useYearSeries(module, safeSiteId, anchor.getFullYear(), timezone, isDemoSite, priceKwh, queryMetric, energyCat, probeIds);
+  const rangeRaw = useRangeSeries(module, safeSiteId,
+    period === "range" && customRange ? customRange.from : null,
+    period === "range" && customRange ? customRange.to : null,
+    isDemoSite, priceKwh, queryMetric, energyCat, probeIds);
   const cats = useEnergyCats(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
   const avail = useSiteMetricsAvailable(module, module !== "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
   // §10.1 — approfondimenti: le schede esistono solo se hanno dati
@@ -228,6 +236,21 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const week = { ...weekRaw, data: scaleWaterDays(scaleDays(weekRaw.data)) };
   const month = { ...monthRaw, data: scaleWaterDays(scaleDays(monthRaw.data)) };
   const yearData = { ...yearRaw, data: scaleWaterDays(scaleDays(yearRaw.data)) };
+  // §10.6 — l'intervallo personalizzato eredita le stesse derivazioni:
+  // CO₂/costo (energia) e volume (acqua, media giornaliera × 1440)
+  const rangeData = (() => {
+    const s = rangeRaw.data;
+    if (!s) return s;
+    if (module === "energy" && DERIVED) {
+      const r = (v: number) => Math.round(v * DERIVED.f);
+      return { ...s, days: s.days.map(x => ({ ...x, v: x.v == null ? null : r(x.v) })), avg: s.avg != null ? r(s.avg) : undefined, unit: DERIVED.unit };
+    }
+    if (module === "water" && airMetric === "volume") {
+      const r = (v: number) => Math.round(v * 1440);
+      return { ...s, days: s.days.map(x => ({ ...x, v: x.v == null ? null : r(x.v) })), avg: s.avg != null ? r(s.avg) : undefined, unit: "L" };
+    }
+    return s;
+  })();
 
   // §10.3 — regola perdite: 3 notti con flusso 01–05 sopra 0,5 L/min.
   // In demo, il sito vetrina è «sano»; la variante in perdita si vede
@@ -263,8 +286,20 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // vista della scheda Meteo (§10.1): Dispersione / Nel tempo
   const [wxView, setWxView] = useState<"scatter" | "time">("scatter");
 
+  const rangeSpanDays = customRange
+    ? Math.round((new Date(`${customRange.to}T12:00:00`).getTime() - new Date(`${customRange.from}T12:00:00`).getTime()) / 86400e3) + 1
+    : 0;
   const shift = (dir: 1 | -1) => {
     hapticLight();
+    // §10.6: le frecce spostano l'intervallo personalizzato della sua durata
+    if (period === "range") {
+      if (!customRange) return;
+      const mv = (k: string) => { const x = new Date(`${k}T12:00:00`); x.setDate(x.getDate() + dir * rangeSpanDays); return keyOf(x); };
+      const from = mv(customRange.from), to = mv(customRange.to);
+      if (dir === 1 && from > todayKey) return;
+      setCustomRange({ from, to: to > todayKey ? todayKey : to });
+      return;
+    }
     const d = new Date(anchor);
     if (period === "day") d.setDate(d.getDate() + dir);
     else if (period === "week") d.setDate(d.getDate() + dir * 7);
@@ -276,10 +311,25 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const nextDisabled = period === "day" ? dateKey >= todayKey
     : period === "week" ? keyOf(new Date(mondayOf(anchor).getTime() + 7 * 86400e3)) > todayKey
     : period === "month" ? monthKey >= todayKey.slice(0, 7)
+    : period === "range" ? (customRange ? customRange.to >= todayKey : true)
     : anchor.getFullYear() >= new Date().getFullYear();
 
+  // §10.6 — scorciatoie e intervallo dal foglio «Periodo»
+  const applyPeriodChoice = (c: PeriodChoice) => {
+    if (c.kind === "month") { setAnchor(new Date()); setPeriod("month"); return; }
+    if (c.kind === "year") { setAnchor(new Date()); setPeriod("year"); return; }
+    if (c.kind === "last30") {
+      const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 29);
+      setCustomRange({ from: keyOf(from), to: keyOf(to) }); setPeriod("range"); return;
+    }
+    setCustomRange({ from: c.from, to: c.to }); setPeriod("range");
+  };
+
   // ── intestazioni del pager ──
-  const pagerTitle = period === "day"
+  const dfShortR = useMemo(() => new Intl.DateTimeFormat(language, { day: "numeric", month: "short" }), [language]);
+  const pagerTitle = period === "range"
+    ? (customRange ? `${dfShortR.format(new Date(`${customRange.from}T12:00:00`))} – ${dfShortR.format(new Date(`${customRange.to}T12:00:00`))}` : "—")
+    : period === "day"
     ? (dateKey === todayKey ? t("md.today") : dfRange.format(anchor))
     : period === "week"
       ? (() => {
@@ -290,7 +340,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       : period === "month"
         ? dfMonth.format(anchor).replace(/^./, c => c.toUpperCase())
         : String(anchor.getFullYear());
-  const pagerSub = period === "day" ? dfWeekday.format(anchor)
+  const pagerSub = period === "range" ? `${rangeSpanDays} ${t("md.days_lbl")}`
+    : period === "day" ? dfWeekday.format(anchor)
     : period === "week" ? t("md.week_n").replace("{n}", String(isoWeek(anchor)))
     : period === "month"
       ? `${dfRange.format(new Date(anchor.getFullYear(), anchor.getMonth(), 1))} – ${dfRange.format(anchor)} ${anchor.getFullYear()}`
@@ -455,6 +506,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     if (period === "day") return d?.points.map(p => ({ hour: p.h, value: p.v }));
     if (period === "week") return week.data?.days.map(x => ({ date: x.date, value: x.v }));
     if (period === "month") return month.data?.cells.map(c => ({ date: c.date, value: c.v }));
+    if (period === "range") return rangeData?.days.map(x => ({ date: x.date, value: x.v }));
     return yearData.data?.months.map(x => ({ month: x.m, value: x.v }));
   };
   // PNG del grafico Giorno (§6.1.1): l'SVG serializzato su canvas 2×
@@ -550,7 +602,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         <div className="text-center min-w-0 flex-1">
           <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{period === "month" ? summaryLabel : moduleLabel}</span>
           <span className="truncate" style={{ fontSize: 13, color: SUB, marginLeft: 6 }}>{siteName}</span>
-          {(d?.isDemo || week.data?.isDemo || month.data?.isDemo || yearData.data?.isDemo) && (
+          {(d?.isDemo || week.data?.isDemo || month.data?.isDemo || yearData.data?.isDemo || rangeData?.isDemo) && (
             <span className="align-middle" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "#b45309", background: "rgba(217,154,43,.15)", borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>DEMO</span>
           )}
           {/* la dashboard Water è una PROPOSTA (§5.6): etichettata finché
@@ -574,13 +626,13 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           titolo grande a sinistra con l'orologio, frecce a destra. */}
       {period === "month" && !insightTab ? (
         <div className="px-6 mt-3 flex items-start justify-between">
-          <div className="min-w-0">
+          <button type="button" className="min-w-0 text-left" onClick={() => { hapticLight(); setPeriodSheetOpen(true); }}>
             <div style={{ fontSize: 32, fontWeight: 600, color: INK, lineHeight: 1.1 }}>{pagerTitle}</div>
             <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: SUB, marginTop: 4 }}>
               <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden />
               {pagerSub}
             </div>
-          </div>
+          </button>
           <div className="flex shrink-0 -mr-2">
             <button type="button" onClick={() => shift(-1)} aria-label="‹" className="grid place-items-center" style={{ width: 44, height: 44, color: SUB }}>
               <ChevronLeft className="w-5 h-5" />
@@ -591,7 +643,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           </div>
         </div>
       ) : (
-        <PeriodPager title={pagerTitle} subtitle={pagerSub} onPrev={() => shift(-1)} onNext={() => shift(1)} nextDisabled={nextDisabled} titleSize={period === "week" ? 23 : 30} />
+        <PeriodPager title={pagerTitle} subtitle={pagerSub} onPrev={() => shift(-1)} onNext={() => shift(1)} nextDisabled={nextDisabled}
+          titleSize={period === "week" || period === "range" ? 23 : 30}
+          onTitleTap={() => { hapticLight(); setPeriodSheetOpen(true); }} />
       )}
 
       {/* §10.2: il selettore sonde del PC diventa una riga toccabile */}
@@ -900,6 +954,59 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
 
+      {/* ── INTERVALLO PERSONALIZZATO (§10.6): barre giornaliere fra due date ── */}
+      {period === "range" && !insightTab && (
+        rangeRaw.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
+        : rangeData ? (
+          <>
+            {(() => {
+              const s = rangeData;
+              if (module === "energy" && s.totalKwh != null) {
+                const total = DERIVED ? `${nf0.format(Math.round(s.totalKwh * DERIVED.f))} ${DERIVED.unit}`
+                  : s.totalKwh >= 1000 ? `${nf.format(s.totalKwh / 1000)} MWh` : `${nf0.format(s.totalKwh)} kWh`;
+                return <VerdictLine color={TEAL} verdict={total} summary={s.costEur != null && energyTab !== "cost" ? `€ ${nf0.format(s.costEur)}` : undefined} onExplain={openExplain} />;
+              }
+              if (s.avg == null) return null;
+              if (module === "air" && (airMetric === "co2" || airMetric === "iaq")) {
+                const lvl = airMetric === "co2" ? co2Level(s.avg) : scoreToLevel(s.avg);
+                const color = lvl === "POOR" ? RED : lvl === "MODERATE" ? AMBER : TEAL;
+                return <VerdictLine color={color} verdict={t(AIR_V[lvl])} summary={airMetric === "co2" ? `${nf0.format(s.avg)} ${s.unit}` : `${nf0.format(s.avg)} / 100`} onExplain={openExplain} />;
+              }
+              if (limit != null) {
+                const overDays = s.days.filter(x => x.v != null && x.v > limit).length;
+                const okWord = module === "water" || ["temp", "humidity"].includes(airMetric) ? t("md.v_in_range") : t(AIR_V.GOOD);
+                return overDays > 0
+                  ? <VerdictLine color={AMBER} verdict={t("ovm.v_attention")} summary={`${nf0.format(overDays)} ${t("md.days_over")}`} onExplain={openExplain} />
+                  : <VerdictLine color={TEAL} verdict={okWord} summary={`${fmtV(s.avg)} ${s.unit}`} onExplain={openExplain} />;
+              }
+              return <VerdictLine color={TEAL} verdict={`${fmtV(s.avg)} ${s.unit}`} onExplain={openExplain} />;
+            })()}
+            {metricTabsEl}
+            <RangeBars
+              days={rangeData.days}
+              onOpenDay={date => { setAnchor(new Date(`${date}T12:00:00`)); setPeriod("day"); }}
+              fmt={v => `${fmtV(v)}${rangeData!.unit ? ` ${rangeData!.unit}` : ""}`}
+            />
+            <SummaryRow items={[
+              ...(module === "energy" && rangeData.totalKwh != null ? [{
+                value: DERIVED ? `${nf0.format(Math.round(rangeData.totalKwh * DERIVED.f))} ${DERIVED.unit}`
+                  : rangeData.totalKwh >= 1000 ? `${nf.format(rangeData.totalKwh / 1000)} MWh` : `${nf0.format(rangeData.totalKwh)} kWh`,
+                label: t("md.period_lbl"),
+              }] : []),
+              ...(rangeData.avg != null ? [{
+                value: rangeData.unit ? `${fmtV(rangeData.avg)} ${rangeData.unit}` : `${nf0.format(rangeData.avg)}/100`,
+                label: module === "energy" ? `${t("md.avg")} / ${t("md.day").toLowerCase()}` : t("md.avg"),
+              }] : []),
+              ...(module !== "energy" && limit != null ? (() => {
+                const overDays = rangeData!.days.filter(x => x.v != null && x.v! > limit).length;
+                return overDays > 0 ? [{ value: String(overDays), label: t("md.days_over") }] : [];
+              })() : []),
+              ...(rangeData.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(rangeData.costEur)}`, label: t("md.cost_est") }] : []),
+            ].slice(0, 3)} />
+          </>
+        ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      )}
+
       {/* ── APPROFONDIMENTI ENERGY (§10.1): Confronto · Meteo · Carbonio · Periodi ── */}
       {insightTab && energyTab === "compare" && (
         eui.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
@@ -1040,6 +1147,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
+
+      {/* Foglio «Periodo» (§10.6): scorciatoie + intervallo personalizzato */}
+      <PeriodSheet open={periodSheetOpen} onApply={applyPeriodChoice} onClose={() => setPeriodSheetOpen(false)} />
 
       {/* Foglio selettore sonde (§10.2) */}
       {module === "air" && (

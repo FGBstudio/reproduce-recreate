@@ -1053,6 +1053,96 @@ export function useMonthSeries(module: DashModule, siteId: string | undefined, m
   });
 }
 
+/* ── Intervallo personalizzato (§10.6): valori giornalieri fra due date
+   (max 92 giorni), stessa pipeline della settimana. ── */
+export interface RangeSeries {
+  days: Array<{ date: string; v: number | null }>;
+  totalKwh?: number;
+  avg?: number;
+  costEur?: number;
+  unit: string;
+  isDemo: boolean;
+}
+
+export function useRangeSeries(module: DashModule, siteId: string | undefined, fromKey: string | null, toKey: string | null, isDemoSite: boolean, priceKwh?: number, airMetric: string = "co2", energyCat: EnergyCat = "power", probeIds?: string[]) {
+  return useQuery<RangeSeries | null>({
+    queryKey: ["mdash-range", module, siteId, fromKey, toKey, airMetric, energyCat, probeIds?.join(",") ?? ""],
+    queryFn: async (): Promise<RangeSeries | null> => {
+      if (!fromKey || !toKey) return null;
+      const isIaq = module === "air" && airMetric === "iaq";
+      const rnd = roundFor(module, airMetric);
+      const nDays = Math.min(92, Math.round((new Date(`${toKey}T12:00:00`).getTime() - new Date(`${fromKey}T12:00:00`).getTime()) / 86400e3) + 1);
+      const keys = Array.from({ length: nDays }, (_, i) => {
+        const d = new Date(`${fromKey}T12:00:00`); d.setDate(d.getDate() + i);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      });
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        if (!isDemoSite) return null;
+        const cfg = demoCfgFor(module, airMetric);
+        const kCat = DEMO_CAT_FACTOR[energyCat];
+        const days = keys.map((date, i) => {
+          const wd = new Date(`${date}T12:00:00`).getDay();
+          const v = module === "energy"
+            ? Math.round((wd === 0 || wd === 6 ? 110 : 390 + 60 * Math.sin(i)) * kCat)
+            : (() => { const raw = (cfg.base + cfg.amp * 0.38) * (wd === 0 || wd === 6 ? 0.62 : 1); return isIaq ? co2ToScore(raw) : rnd(raw); })();
+          return { date, v };
+        });
+        const tot = module === "energy" ? days.reduce((a, x) => a + (x.v ?? 0), 0) : undefined;
+        const vals = days.map(x => x.v).filter((v): v is number => v != null);
+        return {
+          days, totalKwh: tot,
+          avg: vals.length ? rnd(vals.reduce((a, b) => a + b, 0) / vals.length) : undefined,
+          costEur: tot != null ? Math.round(tot * 0.19) : undefined,
+          unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
+          isDemo: true,
+        };
+      }
+      const vals = new Map<string, number>();
+      if (module === "energy") {
+        const ids = (await deviceSets(siteId))[energyCat];
+        if (ids.length === 0) return null;
+        const { data } = await supabase!.from("energy_daily")
+          .select("ts_day, value_sum").in("device_id", ids.slice(0, 50))
+          .gte("ts_day", fromKey).lte("ts_day", toKey)
+          .in("metric", ["energy.active_energy", "energy.active_import_kwh"]);
+        for (const r of (data || []) as unknown as DayRow[]) {
+          if (r.value_sum == null || Number(r.value_sum) > 50000) continue;
+          vals.set(r.ts_day, (vals.get(r.ts_day) || 0) + Number(r.value_sum));
+        }
+      } else {
+        let qr = supabase!.from("telemetry_daily")
+          .select("ts_day, metric, value_avg").eq("site_id", siteId)
+          .gte("ts_day", fromKey).lte("ts_day", toKey)
+          .in("metric", (metricsFor(module)[isIaq ? "co2" : airMetric] ?? AIR_METRICS.co2).ids);
+        if (probeIds && probeIds.length > 0) qr = qr.in("device_id", probeIds.slice(0, 50));
+        const { data } = await qr;
+        const agg = new Map<string, { s: number; n: number }>();
+        for (const r of (data || []) as unknown as DayRow[]) {
+          if (r.value_avg == null) continue;
+          const e = agg.get(r.ts_day) || { s: 0, n: 0 };
+          e.s += Number(r.value_avg); e.n++;
+          agg.set(r.ts_day, e);
+        }
+        for (const [k, e] of agg) vals.set(k, isIaq ? co2ToScore(e.s / e.n) : rnd(e.s / e.n));
+      }
+      if (vals.size === 0) return null;
+      const days = keys.map(date => ({ date, v: vals.has(date) ? (module === "energy" ? Math.round(vals.get(date)!) : vals.get(date)!) : null }));
+      const present = days.map(x => x.v).filter((v): v is number => v != null);
+      const totalKwh = module === "energy" ? Math.round(present.reduce((a, b) => a + b, 0)) : undefined;
+      return {
+        days,
+        totalKwh,
+        avg: present.length ? rnd(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
+        costEur: totalKwh != null && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
+        unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
+        isDemo: false,
+      };
+    },
+    enabled: !!fromKey && !!toKey,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 /* ── Vista «Anno» (§6.4 — PROPOSTA, non mockuppata: 12 barre per mese).
    Energy: somma mensile da energy_daily; Air: media mensile della metrica. ── */
 export interface YearMonth { m: number; v: number | null }

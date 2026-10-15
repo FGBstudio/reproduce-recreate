@@ -248,6 +248,49 @@ export const YearBars = ({ s, monthLabels, onOpenMonth, avgLabel, fmt }: {
   );
 };
 
+/** Intervallo personalizzato (§10.6): una barra sottile per giorno. */
+export const RangeBars = ({ days, onOpenDay, fmt }: {
+  days: Array<{ date: string; v: number | null }>;
+  onOpenDay: (date: string) => void;
+  fmt: (v: number) => string;
+}) => {
+  const max = Math.max(...days.map(d => d.v ?? 0), 1);
+  const H = 150;
+  const n = days.length;
+  const showEvery = n > 14 ? Math.ceil(n / 7) : 1;
+  return (
+    <div className="px-6 mt-4">
+      <div className="flex items-end justify-between" style={{ height: H + 24, gap: n > 40 ? 1 : 2 }}>
+        {days.map((d, i) => {
+          const wd = new Date(`${d.date}T12:00:00`).getDay();
+          const weekend = wd === 0 || wd === 6;
+          const h = d.v != null ? Math.max(5, (d.v / max) * H) : 0;
+          return (
+            <button key={d.date} type="button" className="flex flex-col items-center justify-end min-w-0 flex-1"
+              onClick={() => { if (d.v != null) { hapticLight(); onOpenDay(d.date); } }} style={{ height: H + 24 }}>
+              <span aria-hidden style={{
+                width: "100%", maxWidth: 12, height: h, borderRadius: 6,
+                background: d.v == null ? "transparent" : weekend ? "#dfe7e8" : "#9fd3d6",
+              }} />
+              <span className="tabular-nums" style={{ fontSize: 8.5, color: AXIS, marginTop: 4, visibility: i % showEvery === 0 ? "visible" : "hidden" }}>
+                {Number(d.date.slice(8, 10))}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {(() => {
+        const top = [...days].filter(d => d.v != null).sort((a, b) => b.v! - a.v!)[0];
+        return top ? (
+          <p className="text-center mt-1" style={{ fontSize: 11, color: SUB }}>
+            {top.date.slice(8, 10)}/{top.date.slice(5, 7)} · {fmt(top.v!)}
+          </p>
+        ) : null;
+      })()}
+    </div>
+  );
+};
+
 export const LabelValueGrid = ({ items }: { items: Array<{ label: string; value: string }> }) => (
   <div className="px-6 mt-4">
     <div className="grid grid-cols-2">
