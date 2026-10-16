@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud, ArrowLeft } from "lucide-react";
 import { hapticLight } from "@/lib/native";
+import type { DeviceFamily, SiteDeviceGroup } from "@/hooks/useSiteDevices";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 
@@ -85,6 +86,8 @@ interface OverviewMobileViewProps {
   onNavigate?: (tab: string) => void;
   /** chiude il dettaglio sito e torna alla mappa (16/10) */
   onExit?: () => void;
+  /** dispositivi installati, per la rotazione nell'hero (§5.2) */
+  deviceGroups?: SiteDeviceGroup[];
   /** Certificazioni attive del sito (LEED, BREEAM, ...): sezione grigia dedicata */
   certifications?: string[];
   /** Dettaglio certificazioni ottenute (livelli, punti, rinnovo — §5.4) */
@@ -345,6 +348,73 @@ const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onC
   </button>
 );
 
+/**
+ * Hero (§5.2): il dispositivo a rotazione fra quelli DAVVERO installati.
+ * Un frame ogni 5 s con dissolvenza e micro-scala — abbastanza lento da
+ * leggere l'etichetta, abbastanza vivo da notarlo. Con un solo gruppo non
+ * ruota; senza dispositivi non esiste. `prefers-reduced-motion`: resta
+ * fermo sul primo.
+ */
+const DeviceRotator = ({ groups, installedLabel, onPick }: {
+  groups: SiteDeviceGroup[];
+  installedLabel: (n: number) => string;
+  onPick?: (family: DeviceFamily) => void;
+}) => {
+  const [i, setI] = useState(0);
+  const [shown, setShown] = useState(true);
+  const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  useEffect(() => {
+    if (groups.length < 2 || reduce) return;
+    const id = setInterval(() => {
+      setShown(false);
+      setTimeout(() => {
+        setI(v => (v + 1) % groups.length);
+        setShown(true);
+      }, 420);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [groups.length, reduce]);
+  if (groups.length === 0) return null;
+  const g = groups[Math.min(i, groups.length - 1)];
+  return (
+    <button
+      type="button"
+      onClick={() => { hapticLight(); onPick?.(g.family); }}
+      className="absolute flex flex-col items-center"
+      /* sotto la riga meteo, all'altezza del giudizio: «più piccolo, così
+         non compete con il giudizio» (atlante §5.2) */
+      style={{ right: 10, top: "calc(var(--sat, 0px) + 116px)", width: 104, zIndex: 4 }}
+      aria-label={`${g.label} · ${installedLabel(g.count)}`}
+    >
+      <img
+        src={g.img} alt="" aria-hidden
+        className="object-contain"
+        style={{
+          height: 86, maxWidth: 96,
+          opacity: shown ? 1 : 0,
+          transform: shown ? "scale(1)" : "scale(.94)",
+          transition: reduce ? undefined : "opacity .42s ease, transform .42s cubic-bezier(.2,.7,.2,1)",
+        }}
+      />
+      <span
+        className="block"
+        aria-hidden
+        style={{ width: 62, height: 10, background: "radial-gradient(ellipse at center, rgba(0,0,0,.22) 0%, rgba(0,0,0,0) 68%)", marginTop: -4, opacity: shown ? 1 : 0, transition: reduce ? undefined : "opacity .42s ease" }}
+      />
+      <span
+        style={{
+          fontSize: 9.5, lineHeight: 1.25, marginTop: 3, color: "rgba(255,255,255,.88)",
+          opacity: shown ? 1 : 0, transition: reduce ? undefined : "opacity .42s ease",
+        }}
+      >
+        <b style={{ fontWeight: 700 }}>{g.label}</b>
+        <br />
+        {installedLabel(g.count)}
+      </span>
+    </button>
+  );
+};
+
 /** Sezione a piena altezza: fascia esterna + edificio col contenuto del modulo. */
 const ModuleScreen = ({
   city, outdoorTemp, outdoorExtra, outdoorLabel, icon, label, verdict, scoreLine,
@@ -401,16 +471,19 @@ const ModuleScreen = ({
                 il contenuto dedicato (loghi cert), poi il valore live grande. */}
             <div className="my-auto py-2 w-full flex flex-col items-center">
               {deviceImg && (
+                /* il render respira (6 s, fermo con prefers-reduced-motion)
+                   e l'ombra si stringe quando sale: l'immagine statica
+                   sembrava un ritaglio incollato */
                 <div className="flex flex-col items-center" aria-hidden="true">
                   <img
                     src={deviceImg}
                     alt=""
                     loading="lazy"
-                    className="object-contain"
+                    className="object-contain animate-hw-float motion-reduce:animate-none"
                     style={{ height: "clamp(72px, 14svh, 120px)", maxWidth: 190 }}
                   />
                   <span
-                    className="block -mt-1"
+                    className="block -mt-1 animate-hw-shadow motion-reduce:animate-none"
                     style={{ width: 104, height: 14, background: "radial-gradient(ellipse at center, rgba(0,0,0,.18) 0%, rgba(0,0,0,0) 68%)" }}
                   />
                 </div>
@@ -475,7 +548,7 @@ const ModuleScreen = ({
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, outdoorHumidity, periodLabel, overall, energy, air, water, moduleConfig,
   power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, waterFacade, alerts, sensorHealth, notInstalled, certCount = 0,
-  verdictHeadline, isRealData, onNavigate, onExit, certifications, certTopLevel, certDetails,
+  verdictHeadline, isRealData, onNavigate, onExit, deviceGroups, certifications, certTopLevel, certDetails,
 }: OverviewMobileViewProps) => {
   const { t, language } = useLanguage();
   // Numeri localizzati (brief §2.3): «12,4» in it/fr/es, «12.4» in en
@@ -622,6 +695,15 @@ export const OverviewMobileView = ({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
+        )}
+        {/* §5.2: il dispositivo a rotazione, piccolo, a destra — non
+            compete col giudizio e dice cosa è installato davvero */}
+        {deviceGroups && deviceGroups.length > 0 && (
+          <DeviceRotator
+            groups={deviceGroups}
+            installedLabel={n => tn("ovm.installed_n", n)}
+            onPick={family => onNavigate?.(family)}
+          />
         )}
         <div className="font-bold text-[19px] tracking-wide" style={{ marginLeft: onExit ? 44 : 0 }}>{siteName}</div>
         <div className="text-[11px] opacity-80 tracking-[0.08em] flex items-center gap-1.5 mt-0.5">

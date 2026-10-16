@@ -23,6 +23,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { OverviewMobileView } from "./OverviewMobileView";
 import { useWaterFacade } from "./mobile-dash/useModuleSeries";
 import { useSensorHealth } from "@/hooks/useSensorHealth";
+import { useSiteDevices } from "@/hooks/useSiteDevices";
 
 const seededRandom = (seed: number) => {
   const x = Math.sin(seed) * 10000;
@@ -1030,6 +1031,8 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
   /* Trust layer §10.5 (solo mobile): affidabilità sensori nella schermata
      «Alert e sensori». Hook sempre chiamato, siteId undefined = inattivo. */
   const sensorHealth = useSensorHealth(isMobile ? certSiteId : undefined);
+  /** hardware installato per la rotazione nell'hero mobile (§5.2) */
+  const deviceGroups = useSiteDevices(isMobile ? (certSiteId ?? project?.siteId) : undefined);
   const { data: waterFacade } = useWaterFacade(
     certSiteId ?? project?.siteId,
     project?.timezone || "UTC",
@@ -1160,6 +1163,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         isRealData={liveData.isRealData || powerLatest.isRealData}
         onNavigate={onNavigate}
         onExit={onExit}
+        deviceGroups={deviceGroups.data}
         certifications={certifications}
       />
     );

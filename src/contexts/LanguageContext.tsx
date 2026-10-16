@@ -800,6 +800,8 @@ const translations: Record<string, Record<Language, string>> = {
   'md.vs_prev_year': { en: 'vs previous year', it: 'vs anno precedente', fr: 'vs année préc.', es: 'vs año anterior', zh: '对比去年' },
   'md.peak_month': { en: 'peak month', it: 'mese di picco', fr: 'mois de pointe', es: 'mes pico', zh: '峰值月份' },
   'ovm.back_to_map': { en: 'Back to the map', it: 'Torna alla mappa', fr: 'Retour à la carte', es: 'Volver al mapa', zh: '返回地图' },
+  /* italiano senza flessione maschile/femminile: «1 unità / 4 unità» */
+  'ovm.installed_n': { en: '{n} installed', it: '{n} unità', fr: '{n} unité{s}', es: '{n} unidad{s_es}', zh: '已安装 {n} 台' },
   'md.building_overview': { en: 'Building overview', it: "Quadro dell'edificio", fr: "Vue d'ensemble du bâtiment", es: 'Resumen del edificio', zh: '建筑概览' },
   // Parità E2 — blocco real-time «In questo momento»
   'md.live_now': { en: 'Right now', it: 'In questo momento', fr: 'En ce moment', es: 'Ahora mismo', zh: '当前功率' },

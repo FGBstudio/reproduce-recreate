@@ -389,6 +389,20 @@ body {
     to { transform: scaleY(1); }
   }
 
+  /* Render hardware nelle facciate mobile: un respiro lentissimo, così il
+     dispositivo non sembra un ritaglio incollato. L'ombra a terra si
+     stringe quando sale, come un oggetto vero. */
+  @keyframes hw-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes hw-shadow {
+    0%, 100% { transform: scaleX(1); opacity: .85; }
+    50% { transform: scaleX(.86); opacity: .6; }
+  }
+  .animate-hw-float { animation: hw-float 6s ease-in-out infinite; }
+  .animate-hw-shadow { animation: hw-shadow 6s ease-in-out infinite; }
+
   .animate-pulse-ring {
     animation: pulse-ring 2s infinite;
   }
