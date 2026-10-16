@@ -20,7 +20,7 @@ import TimeSeriesChart from "./TimeSeriesChart";
 import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
 import BillUploadSheet from "./BillUploadSheet";
 import BillDetail from "./BillDetail";
-import { HourHeatmap, LabelValueGrid, MonthCarpet, RangeBars, WeekBars, YearBars } from "./views";
+import { HourHeatmap, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars } from "./views";
 import { BillsCompareChart, CarbonBars, CategoryBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
 import { useBillsYear, useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem } from "./useEnergyInsights";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1017,6 +1017,18 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         : month.data ? (
           <>
             {metricTabsEl}
+            {/* una barra per giorno, sopra il carpet e con la stessa
+                geometria: il totale del giorno e, sotto, come si distribuisce
+                nelle ore */}
+            <MonthBars
+              s={month.data}
+              overLimit={overLimitFor}
+              fmt={fmtV}
+              peakLabel={month.data.peak
+                ? `${t("md.peak_lbl")} · ${dfRange.format(new Date(`${month.data.peak.date}T12:00:00`))} · ${fmtV(month.data.peak.v)}${month.data.unit ? ` ${month.data.unit}` : ""}`
+                : undefined}
+              onOpenDay={date => { setAnchor(new Date(`${date}T12:00:00`)); setPeriod("day"); }}
+            />
             {/* carpet plot giorni × ore (atlante §6 v2): si vedono insieme
                 orari di lavoro, weekend, notti col carico di base e anomalie */}
             <MonthCarpet

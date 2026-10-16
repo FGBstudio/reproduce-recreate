@@ -97,6 +97,48 @@ export const HourHeatmap = ({ s, onOpenDay, title, hint, weekdays, fmtCell }: {
     giorno (1–31), una riga per ora (0–24 dall'alto), colore più intenso =
     valore più alto. Weekend segnati sotto, oggi contornato, futuri grigi.
     Un tocco su una colonna apre quel giorno. */
+/** Barre giornaliere del mese: una barra per giorno, STESSA geometria del
+ *  carpet che sta sotto (ogni barra è esattamente sopra la sua colonna).
+ *  Weekend attenuati, oggi contornato, futuri assenti; tap → vista Giorno. */
+export const MonthBars = ({ s, onOpenDay, overLimit, fmt, peakLabel }: {
+  s: MonthSeries; onOpenDay: (date: string) => void;
+  overLimit?: number;
+  fmt: (v: number) => string;
+  /** didascalia del giorno di picco, già formattata dal chiamante */
+  peakLabel?: string;
+}) => {
+  const nDays = s.cells.length;
+  const W = 342, H = 108, GAP = 1;
+  const cw = (W - 14) / nDays;
+  const maxV = Math.max(...s.cells.map(c => c.v ?? 0), 1);
+  return (
+    <div className="px-6 mt-4">
+      <svg viewBox={`0 0 ${W} ${H + 14}`} className="w-full block" style={{ touchAction: "pan-y" }}>
+        {s.cells.map((c, di) => {
+          const x = 14 + di * cw;
+          if (c.v == null) return null;
+          const h = Math.max(2, (c.v / maxV) * H);
+          const over = overLimit != null && c.v > overLimit;
+          return (
+            <g key={c.date} onClick={() => { hapticLight(); onOpenDay(c.date); }} style={{ cursor: "pointer" }}>
+              {/* area toccabile a tutta altezza */}
+              <rect x={x} y={0} width={Math.max(0.5, cw - GAP)} height={H} fill="transparent" />
+              <rect
+                x={x} y={H - h} width={Math.max(0.5, cw - GAP)} height={h}
+                rx={Math.min(2, (cw - GAP) / 2)}
+                fill={over ? AMBER : c.weekend ? "#cfe0e1" : c.today ? TEAL : "#9fd3d6"}
+              />
+            </g>
+          );
+        })}
+        {/* linea di base, allineata all'asse del carpet */}
+        <rect x={14} y={H} width={W - 14} height={0.7} fill={RULE} />
+      </svg>
+      {peakLabel && <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: -2 }}>{peakLabel}</p>}
+    </div>
+  );
+};
+
 export const MonthCarpet = ({ s, onOpenDay, legendLess, legendMore, legendWeekend, overLimit }: {
   s: MonthSeries; onOpenDay: (date: string) => void;
   legendLess: string; legendMore: string; legendWeekend: string;
