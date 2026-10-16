@@ -18,16 +18,10 @@ import ExplainSheet from "@/components/dashboard/ExplainSheet";
 import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, ProbeSheet, SummaryRow, TimeAxisBand, VerdictLine, CauseTrack, ExportMenu, type Period } from "./bits";
 import TimeSeriesChart from "./TimeSeriesChart";
 import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
-import BillUploadSheet from "./BillUploadSheet";
-import BillDetail from "./BillDetail";
+import BillsMobile from "./BillsMobile";
 import { HourHeatmap, HourStrip, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars, YearCarpet } from "./views";
-import { BillsCompareChart, CarbonBars, CategoryBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
-import { useBillsYear, useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem, type WxScale } from "./useEnergyInsights";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useSiteCurrency } from "@/hooks/useSiteCurrency";
-import { useCurrency } from "@/contexts/CurrencyContext";
-import type { CurrencyCode } from "@/lib/currency";
+import { CarbonBars, CategoryBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
+import { useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type WxScale } from "./useEnergyInsights";
 import {
   CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
   useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useRangeSeries, useWaterNight, useWeekSeries, useYearSeries,
@@ -37,7 +31,7 @@ import { co2Level, scoreToLevel } from "@/lib/airQuality";
 import { isValidUUID } from "@/lib/utils";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 interface Props {
   module: DashModule;
@@ -78,9 +72,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const queryMetric = waterDerived ? "flow" : airMetric;
   // Schede energia: categorie reali + derivate (CO₂/costo) + gli
   // APPROFONDIMENTI del PC (§10.1): Confronto · Meteo · Carbonio · Periodi.
-  type EnergyTab = EnergyCat | "co2e" | "cost" | "compare" | "weather" | "carbon" | "periods" | "bills";
+  type EnergyTab = EnergyCat | "co2e" | "cost" | "compare" | "weather" | "carbon" | "periods";
   const [energyTab, setEnergyTab] = useState<EnergyTab>("power");
-  const INSIGHT_TABS = ["compare", "weather", "carbon", "periods", "bills"] as const;
+  const INSIGHT_TABS = ["compare", "weather", "carbon", "periods"] as const;
   const insightTab = module === "energy" && (INSIGHT_TABS as readonly string[]).includes(energyTab);
   const energyCat: EnergyCat = (["power", "hvac", "lighting", "plugs"] as const).includes(energyTab as EnergyCat) ? (energyTab as EnergyCat) : "power";
   const [explainTab, setExplainTab] = useState<string | null>(null);
@@ -167,8 +161,6 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     : capToday(`${anchor.getFullYear()}-12-31`);
   const wcorr = useWeatherCorr(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, wxFrom, wxTo, wxScale, isDemoSite, timezone);
   const periodsY = usePeriodsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite, priceKwh ?? (isDemoSite ? 0.19 : undefined));
-  // §10.6 — Bollette (decisione owner 15/10): fatturato vs misurato per anno
-  const bills = useBillsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite);
   // Parità E1 — ripartizione per categoria del periodo (solo scheda Potenza,
   // orizzonti Giorno e Mese: il breakdown del PC calato dove si legge il totale)
   const splitOn = module === "energy" && energyTab === "power" && !insightTab && period !== "range";
@@ -185,31 +177,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // (energy_latest, 30 s, regola dei 2 giorni) su Giorno = oggi
   const liveOn = module === "energy" && energyTab === "power" && !insightTab && period === "day" && dateKey === todayKey;
   const live = useEnergyPowerByCategory(liveOn && !isDemoSite ? safeSiteId : undefined);
-  const [billSheetOpen, setBillSheetOpen] = useState(false);
-  const [selBill, setSelBill] = useState<BillItem | null>(null);
-  const queryClient = useQueryClient();
-  // valuta: gli importi delle bollette sono nella LORO valuta e si mostrano
-  // in quella del sito (stessi hook del modulo desktop) — niente € fisso
-  const siteCurrency = useSiteCurrency(safeSiteId);
-  const { format: fmtMoney } = useCurrency();
-  const billCur = (bills.data?.currency ?? "EUR") as CurrencyCode;
-  // azioni del PC sul dettaglio (solo siti reali): Rianalizza ed Elimina
-  const retryBill = async (b: BillItem) => {
-    if (!supabase) return;
-    await supabase.from("bills").update({ status: "pending" }).eq("id", b.id);
-    await supabase.functions.invoke("analyze-bill", { body: { billId: b.id, filePath: b.filePath } }).catch(() => undefined);
-    queryClient.invalidateQueries({ queryKey: ["mdash-bills"] });
-    toast.success(t("md.retry_started"));
-  };
-  const deleteBill = async (b: BillItem) => {
-    if (!supabase) return;
-    // prima il file dallo storage (come il PC), poi la riga
-    if (b.filePath) await supabase.storage.from("bills").remove([b.filePath]).catch(() => undefined);
-    const { error } = await supabase.from("bills").delete().eq("id", b.id);
-    if (error) { toast.error(error.message); return; }
-    queryClient.invalidateQueries({ queryKey: ["mdash-bills"] });
-    toast.success(t("md.bill_deleted"));
-  };
+  // §10.6 — Bollette: schermata a parte, aperta dal footer (16/10)
+  const [billsOpen, setBillsOpen] = useState(false);
 
   // ── Serie derivate (CO₂ emessa / costo): la stessa serie kWh del sito,
   // riscalata. Nessuna query in più; gli stessi numeri del Carbon Footprint
@@ -365,7 +334,6 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     if (wxScale === "hour") return pts.map(p => `${p.label}`);
     if (wxScale === "month") return pts.map(p => monthHeads[Number(p.label) - 1] ?? p.label);
     return pts.map(p => (p.key.length >= 10 ? `${Number(p.key.slice(8, 10))}/${p.key.slice(5, 7)}` : p.label));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wcorr.data, wxScale, monthHeads]);
 
   const rangeSpanDays = customRange
@@ -427,14 +395,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     : period === "week" ? t("md.week_n").replace("{n}", String(isoWeek(anchor)))
     : period === "month"
       ? `${dfRange.format(new Date(anchor.getFullYear(), anchor.getMonth(), 1))} – ${dfRange.format(anchor)} ${anchor.getFullYear()}`
-      // Bollette (§10.6): «9 bollette caricate», con le non ancora analizzate
-      : module === "energy" && energyTab === "bills"
-        ? bills.data
-          ? t("md.bills_n").replace("{n}", String(bills.data.count))
-            + (bills.data.pendingCount > 0 ? ` · ${t("md.bills_analyzing_n").replace("{n}", String(bills.data.pendingCount))}` : "")
-          : "…"
-        // Anno = proposta §6.4: etichettata finché il proprietario non conferma
-        : t("md.proposal");
+      // Anno = proposta §6.4: etichettata finché il proprietario non conferma
+      : t("md.proposal");
 
   // ── verdetto del giorno ──
   const d = day.data;
@@ -574,9 +536,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ...(wcorr.data ? [{ id: "weather", label: t("md.tab_weather") }] : []),
         { id: "carbon", label: t("md.tab_carbon") },
         ...(period === "year" && periodsY.data ? [{ id: "periods", label: t("md.tab_periods") }] : []),
-        /* §10.6 Bollette: la scheda esiste se il sito può averne (è anche
-           il punto d'ingresso del PRIMO caricamento, quindi anche a zero) */
-        ...(bills.data ? [{ id: "bills", label: t("md.tab_bills") }] : []),
+        /* 16/10: le Bollette NON sono più una scheda dei grafici — hanno la
+           loro schermata, raggiunta dal footer */
       ]
     : (module === "water" ? WATER_ORDER : AIR_ORDER)
         .filter(k => {
@@ -640,7 +601,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     ...(period === "day" ? [{ label: "PNG", onClick: exportPng }] : []),
     { label: "CSV", onClick: () => { const rows = exportData() || []; download(`${module}-${dateKey}.csv`, Object.keys(rows[0] || { x: 1 }).join(",") + "\n" + rows.map(r => Object.values(r).join(",")).join("\n"), "text/csv"); } },
     { label: "JSON", onClick: () => download(`${module}-${dateKey}.json`, JSON.stringify(exportData() || [], null, 1), "application/json") },
-    ...(onExportPdf ? [{ label: "PDF", onClick: onExportPdf }] : []),
+    /* il PDF non sta più qui per l'energia: è nel footer di ogni vista */
+    ...(onExportPdf && module !== "energy" ? [{ label: "PDF", onClick: onExportPdf }] : []),
   ];
 
   const summaryLabel = module === "energy" ? t("md.summary_energy") : module === "water" ? t("md.summary_water") : t("md.summary_air");
@@ -667,7 +629,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // (Meteo e Carbonio invece esistono ovunque e restano selezionate)
   useEffect(() => {
     if (!insightTab) return;
-    if (["periods", "bills"].includes(energyTab) && period !== "year") setEnergyTab("power");
+    if (energyTab === "periods" && period !== "year") setEnergyTab("power");
     if (energyTab === "compare" && period !== "month" && period !== "year") setEnergyTab("power");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
@@ -753,7 +715,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="text-center min-w-0 flex-1">
-          <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{insightTab && energyTab === "bills" ? t("md.bills_title") : period === "month" ? summaryLabel : moduleLabel}</span>
+          <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{period === "month" ? summaryLabel : moduleLabel}</span>
           <span className="truncate" style={{ fontSize: 13, color: SUB, marginLeft: 6 }}>{siteName}</span>
           {(d?.isDemo || week.data?.isDemo || month.data?.isDemo || yearData.data?.isDemo || rangeData?.isDemo) && (
             <span className="align-middle" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "#b45309", background: "rgba(217,154,43,.15)", borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>DEMO</span>
@@ -1129,7 +1091,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               }] : []),
               ...(month.data.baseloadKw != null ? [{ label: t("md.baseload"), value: `${nf.format(month.data.baseloadKw)} kW` }] : []),
             ]} />
-            {onExportPdf && (
+            {/* per l'energia il PDF è nel footer comune a tutte le viste */}
+            {onExportPdf && module !== "energy" && (
               <button type="button" onClick={onExportPdf} className="mx-auto mt-5 font-bold uppercase"
                 style={{ fontSize: 12, letterSpacing: "0.14em", color: TEAL, minHeight: 44 }}>
                 {t("md.export_pdf")}
@@ -1387,163 +1350,36 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
 
-      {/* ── BOLLETTE (§10.6): fatturato vs misurato, per anno ── */}
-      {insightTab && energyTab === "bills" && (
-        bills.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
-        : bills.data ? (() => {
-          const b = bills.data!;
-          const measured = yearData.data?.months ?? [];
-          // scarto per i mesi che hanno ENTRAMBI i numeri (bolletta e contatori)
-          const devs = b.months
-            .map((x, i) => (x.billed != null && measured[i]?.v != null && measured[i].v! > 0
-              ? ((x.billed - measured[i].v!) / measured[i].v!) * 100 : null))
-            .filter((v): v is number => v != null);
-          const avgDev = devs.length ? Math.round((devs.reduce((a, v) => a + Math.abs(v), 0) / devs.length) * 10) / 10 : null;
-          const merged = b.months.map((x, i) => ({ m: x.m, billed: x.billed, measured: measured[i]?.v ?? null }));
-          // potenza impegnata: la soglia di contratto del sito (in demo è il
-          // 25 kW delle serie vetrina, lo stesso del grafico Giorno)
-          const contractKw = limit ?? (b.isDemo ? 25 : undefined);
-          const headroom = contractKw != null && b.maxPeakKw != null && contractKw > 0
-            ? Math.round((1 - b.maxPeakKw / contractKw) * 100) : null;
-          return (
-            <>
-              {b.count > 0 && (
-                avgDev != null ? (
-                  <VerdictLine
-                    color={avgDev > 5 ? AMBER : TEAL}
-                    verdict={avgDev <= 2 ? t("md.bills_match") : t("md.bills_gap").replace("{p}", nf.format(avgDev))}
-                    summary={t("md.bills_avg_dev").replace("{p}", nf.format(avgDev))}
-                  />
-                ) : (
-                  // bollette senza contatori sovrapponibili: si leggono i totali
-                  <VerdictLine color={TEAL} verdict={`${nf.format(b.totalBilledKwh / 1000)} MWh`} summary={t("md.billed_lbl")} />
-                )
-              )}
-              {metricTabsEl}
-              {b.count > 0 ? (
-                <>
-                  <BillsCompareChart
-                    months={merged}
-                    monthLabels={monthHeads}
-                    labels={{ billed: t("md.billed_lbl"), measured: t("md.measured_lbl") }}
-                    onOpenMonth={m => { setAnchor(new Date(anchor.getFullYear(), m - 1, 1)); setEnergyTab("power"); setPeriod("month"); }}
-                    fmt={v => nf0.format(v)}
-                  />
-                  <SummaryRow items={[
-                    { value: nf.format(b.totalBilledKwh / 1000), label: `MWh ${t("md.billed_lbl")}` },
-                    ...(b.avgCostKwh != null ? [{ value: fmtMoney(b.avgCostKwh, billCur, siteCurrency, { maximumFractionDigits: 2 }), label: `/kWh · ${t("md.avg_cost")}` }] : []),
-                    ...(b.totalSpent != null ? [{ value: fmtMoney(b.totalSpent, billCur, siteCurrency, { maximumFractionDigits: 0 }), label: t("md.spent_lbl") }] : []),
-                  ]} />
-                  {/* potenza impegnata (soglia di contratto) vs picco da bolletta */}
-                  {contractKw != null && (
-                    <div className="px-6 mt-4">
-                      <p style={{ fontSize: 12.5, fontWeight: 500, color: INK, margin: 0 }}>
-                        {t("md.contracted_power").replace("{v}", nf0.format(contractKw))}
-                        {b.maxPeakKw != null && headroom != null && (
-                          <span style={{ fontWeight: 400, color: headroom < 10 ? "#b97a14" : SUB, marginLeft: 6 }}>
-                            {t("md.bill_peak").replace("{v}", nf.format(b.maxPeakKw)).replace("{p}", String(headroom))}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-center py-10 px-8" style={{ color: SUB, fontSize: 13 }}>{t("md.bills_none")}</p>
-              )}
-
-              {/* Lista dell'anno (= lista + recent bills del PC): periodo,
-                  azienda, totale, scarto per bolletta; badge sugli stati */}
-              {b.items.length > 0 && (
-                <>
-                  <div className="flex items-baseline justify-between px-6" style={{ marginTop: 22 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 600 }}>{t("md.year_bills")}</span>
-                    <span style={{ fontSize: 11, color: SUB }}>{t("md.tap_detail")}</span>
-                  </div>
-                  {b.items.map(it => {
-                    const done = it.status === "completed";
-                    const refD = it.periodStart ?? it.uploadedAt;
-                    const m = refD ? Number(refD.slice(5, 7)) : NaN;
-                    const rowTitle = Number.isFinite(m) ? monthNamesLong[m - 1] : it.fileName;
-                    const range = it.periodStart && it.periodEnd
-                      ? `${dfShortR.format(new Date(`${it.periodStart.slice(0, 10)}T12:00:00`))} – ${dfShortR.format(new Date(`${it.periodEnd.slice(0, 10)}T12:00:00`))}`
-                      : null;
-                    const sub2 = done
-                      ? [it.company, range, it.kwh != null ? `${nf0.format(it.kwh)} kWh` : null].filter(Boolean).join(" · ")
-                      : [it.company, t("md.uploaded_on").replace("{d}", it.uploadedAt ? dfShortR.format(new Date(`${it.uploadedAt.slice(0, 10)}T12:00:00`)) : "—")].filter(Boolean).join(" · ");
-                    return (
-                      <button key={it.id} type="button" className="w-full flex items-center gap-3 text-left"
-                        onClick={() => { hapticLight(); setSelBill(it); }}
-                        style={{ padding: "11px 24px", minHeight: 56 }}>
-                        <span className="grid place-items-center shrink-0 rounded-xl" style={{ width: 34, height: 34, background: "#e4efef", fontSize: 15 }} aria-hidden>
-                          {done ? "🧾" : it.status === "error" ? "⚠️" : "⏳"}
-                        </span>
-                        <span className="flex-1 min-w-0">
-                          <span className="flex items-center gap-2" style={{ fontSize: 13.5, fontWeight: 600 }}>
-                            {rowTitle}
-                            {!done && (
-                              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", borderRadius: 999, padding: "2px 8px", background: it.status === "error" ? "#f9e4ea" : "#e8eef9", color: it.status === "error" ? "#a62c4f" : "#3b5fa0" }}>
-                                {t(it.status === "error" ? "md.st_error" : "md.st_analyzing")}
-                              </span>
-                            )}
-                          </span>
-                          <span className="block truncate" style={{ fontSize: 11.5, color: SUB }}>{sub2}</span>
-                        </span>
-                        <span className="text-right shrink-0">
-                          <span className="block tabular-nums" style={{ fontSize: 14, fontWeight: 600, color: done ? INK : SUB }}>
-                            {done && it.totalAmount != null ? fmtMoney(it.totalAmount, (it.currency ?? billCur) as CurrencyCode, siteCurrency, { maximumFractionDigits: 0 }) : "—"}
-                          </span>
-                          {done && it.devPct != null && (
-                            <span className="block tabular-nums" style={{ fontSize: 11, color: Math.abs(it.devPct) > 5 ? "#b97a14" : TEAL }}>
-                              {it.devPct > 0 ? "+" : ""}{nf.format(it.devPct)}% {t("md.vs_meas_short")}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </>
-              )}
-              {/* CTA: il vantaggio del mobile è la fotocamera (§10.6) */}
-              <button type="button"
-                onClick={() => {
-                  hapticLight();
-                  if (isDemoSite || !safeSiteId) { toast.info(t("md.bills_demo_note")); return; }
-                  setBillSheetOpen(true);
-                }}
-                className="mx-auto mt-5 font-bold uppercase"
-                style={{ fontSize: 12, letterSpacing: "0.14em", color: TEAL, minHeight: 44 }}>
-                + {t("md.upload_bill")}
-              </button>
-            </>
-          );
-        })() : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
+      {/* ── Azioni in fondo a OGNI vista (decisione owner 16/10): le
+             Bollette hanno una schermata propria, il report PDF è qui ── */}
+      {module === "energy" && (
+        <div className="flex gap-3 px-6" style={{ marginTop: 28 }}>
+          <button type="button" onClick={() => { hapticLight(); setBillsOpen(true); }}
+            className="flex-1 rounded-full font-bold uppercase"
+            style={{ minHeight: 46, fontSize: 11.5, letterSpacing: "0.1em", color: TEAL, border: `1.4px solid #bfe0e1`, background: "none" }}>
+            {t("md.tab_bills")}
+          </button>
+          {onExportPdf && (
+            <button type="button" onClick={() => { hapticLight(); onExportPdf(); }}
+              className="flex-1 rounded-full font-bold uppercase"
+              style={{ minHeight: 46, fontSize: 11.5, letterSpacing: "0.1em", color: TEAL, border: `1.4px solid #bfe0e1`, background: "none" }}>
+              {t("md.export_pdf")}
+            </button>
+          )}
+        </div>
       )}
 
-      {/* Dettaglio bolletta (parità PC: le 5 card in una schermata) */}
-      {module === "energy" && (
-        <BillDetail
-          bill={selBill}
-          siteName={siteName}
-          isDemo={bills.data?.isDemo ?? false}
-          contractKw={limit ?? (bills.data?.isDemo ? 25 : undefined)}
-          fmtAmt={(v, f) => (v == null ? "—" : fmtMoney(v, (selBill?.currency ?? billCur) as CurrencyCode, siteCurrency, f === 4 ? { minimumFractionDigits: 2, maximumFractionDigits: 4 } : { maximumFractionDigits: f ?? 0 }))}
-          onClose={() => setSelBill(null)}
-          onRetry={!isDemoSite && safeSiteId ? retryBill : undefined}
-          onDelete={!isDemoSite && safeSiteId ? deleteBill : undefined}
-        />
-      )}
-
-      {/* Foglio «Carica bolletta» (§10.6) — solo siti reali */}
-      {module === "energy" && (
-        <BillUploadSheet
-          open={billSheetOpen}
+      {/* Schermata Bollette (fuori dalla navigazione dei grafici) */}
+      {module === "energy" && billsOpen && (
+        <BillsMobile
           siteId={safeSiteId}
-          onClose={() => setBillSheetOpen(false)}
-          onUploaded={() => {
-            queryClient.invalidateQueries({ queryKey: ["mdash-bills"] });
-            toast.success(t("md.bill_uploaded"));
-          }}
+          demoId={siteId}
+          siteName={siteName}
+          timezone={timezone}
+          isDemoSite={isDemoSite}
+          contractKw={limit}
+          priceKwh={priceKwh}
+          onBack={() => setBillsOpen(false)}
         />
       )}
 
