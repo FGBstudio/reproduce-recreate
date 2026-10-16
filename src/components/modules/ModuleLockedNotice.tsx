@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Lock, Mail, ExternalLink, MessageCircle } from 'lucide-react';
+import { Lock, Mail, ExternalLink, MessageCircle, Zap, Wind, Droplets, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ModuleConfig, ModuleType } from '@/lib/types/admin';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,10 +10,10 @@ interface ModuleLockedNoticeProps {
   children?: ReactNode;
 }
 
-const moduleIcons: Partial<Record<ModuleType, string>> = {
-  energy: '⚡',
-  air: '🌬️',
-  water: '💧',
+const moduleIcons: Partial<Record<ModuleType, LucideIcon>> = {
+  energy: Zap,
+  air: Wind,
+  water: Droplets,
 };
 
 const moduleLabels: Record<string, Partial<Record<ModuleType, string>>> = {
@@ -85,7 +85,10 @@ export const ModuleLockedNotice = ({ module, config, children }: ModuleLockedNot
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">{moduleIcons[module]}</span>
+            {(() => {
+              const ModuleIcon = moduleIcons[module];
+              return ModuleIcon ? <ModuleIcon className="w-[18px] h-[18px] text-amber-700 shrink-0" aria-hidden /> : null;
+            })()}
             <h3 className="text-base md:text-lg font-semibold text-amber-800">
               {title}
             </h3>

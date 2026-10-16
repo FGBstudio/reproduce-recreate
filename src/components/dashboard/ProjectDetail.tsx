@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, ReactNode, useCallback, TouchEvent, useEffect, Fragment, Children } from "react";
 import { hapticLight } from "@/lib/native";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt, Info } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Wind, Thermometer, Droplet, Droplets, Award, Lightbulb, Cloud, Image, FileJson, FileSpreadsheet, Maximize2, X, Building2, Tag, FileText, Loader2, LayoutDashboard, Activity, Gauge, Sparkles, Settings, Zap, Receipt, Info, AlertTriangle } from "lucide-react";
 // MODIFICA 1: Import aggiornati per supportare dati reali
 import { Project, getHoldingById } from "@/lib/data"; // Rimossa getBrandById statica
 import { useAllBrands } from "@/hooks/useRealTimeData"; // Aggiunto hook dati reali
@@ -4184,7 +4184,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               <span>{timeRange.bucket === '1d' ? t('pd.daily_energy_kwh') : t('pd.avg_power_kw')}</span>
                               {isSimulationMode && hasOnlyGeneralMeters && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-teal-500/10 to-purple-500/10 border border-teal-500/20 text-[9px] font-semibold text-teal-700 dark:text-teal-300">
-                                  <span>✨ {t('pd.virtual_split_info')} ({siteTypology.toUpperCase()}, {siteClimateZone})</span>
+                                  <Sparkles className="w-2.5 h-2.5 shrink-0" aria-hidden />
+                                  <span>{t('pd.virtual_split_info')} ({siteTypology.toUpperCase()}, {siteClimateZone})</span>
                                 </span>
                               )}
                             </p>
@@ -4513,7 +4514,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               {energyAlertCount > 0 && (
                                 <>
                                   <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{t('pd.anomalies')}</p>
-                                  <div className="mt-1 md:mt-2 text-[11px] md:text-xs text-red-500 font-medium">{t('pd.attention')}</div>
+                                  <div className="mt-1 md:mt-2 flex items-center gap-1 text-[11px] md:text-xs text-red-500 font-medium"><AlertTriangle className="w-3 h-3 shrink-0" aria-hidden />{t('pd.attention')}</div>
                                 </>
                               )}
                             </>
@@ -5946,7 +5947,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                               {waterAlertCount > 0 && (
                                 <>
                                   <p className="text-xs text-muted-foreground mt-1">{language === 'it' ? 'zone con anomalie' : 'zones with anomalies'}</p>
-                                  <div className="mt-2 text-xs text-red-500 font-medium">⚠️ {language === 'it' ? 'Richiede attenzione' : 'Requires attention'}</div>
+                                  <div className="mt-2 flex items-center gap-1 text-xs text-red-500 font-medium"><AlertTriangle className="w-3 h-3 shrink-0" aria-hidden />{language === 'it' ? 'Richiede attenzione' : 'Requires attention'}</div>
                                 </>
                               )}
                             </>

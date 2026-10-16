@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
+import { Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
@@ -45,7 +46,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md p-8">
           <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🔒</span>
+            <Lock className="w-7 h-7 text-destructive" aria-hidden />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Accesso Negato</h1>
           <p className="text-muted-foreground mb-6">

@@ -5,7 +5,7 @@
  * Palette §1.5 (dashboard chiara).
  */
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, MoreHorizontal, Moon, Sun } from "lucide-react";
+import { ChevronLeft, ChevronRight, MoreHorizontal, Moon, Sun, Check } from "lucide-react";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { hapticLight } from "@/lib/native";
 
@@ -213,7 +213,7 @@ export const ProbeSheet = ({ open, probes, selected, labels, metricLabels, level
         <div className="px-6 pt-1">
           <button type="button" onClick={() => { hapticLight(); setSel(null); }}
             className="w-full flex items-center gap-3 text-left" style={{ minHeight: 48, borderBottom: `1px solid ${RULE}` }}>
-            <span aria-hidden style={{ width: 18, color: TEAL, fontWeight: 700 }}>{isAll ? "✓" : ""}</span>
+            <span aria-hidden className="shrink-0" style={{ width: 18 }}>{isAll && <Check size={16} strokeWidth={2.6} color={TEAL} />}</span>
             <span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{labels.all.replace("{n}", String(probes.length))}</span>
           </button>
           {probes.map(p => {
@@ -223,7 +223,7 @@ export const ProbeSheet = ({ open, probes, selected, labels, metricLabels, level
               <div key={p.id} style={{ borderBottom: `1px solid ${RULE}`, opacity: off ? 0.55 : 1 }}>
                 <button type="button" onClick={() => toggle(p.id)} disabled={off && probes.length === 1}
                   className="w-full flex items-center gap-3 text-left" style={{ minHeight: 52 }}>
-                  <span aria-hidden style={{ width: 18, color: TEAL, fontWeight: 700 }}>{on ? "✓" : ""}</span>
+                  <span aria-hidden className="shrink-0" style={{ width: 18 }}>{on && <Check size={16} strokeWidth={2.6} color={TEAL} />}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate" style={{ fontSize: 14.5, color: INK }}>{p.label}</span>
                     <span className="block" style={{ fontSize: 11.5, color: SUB }}>

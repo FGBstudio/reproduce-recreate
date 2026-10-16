@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { usePortfolioEnergyTrend, usePortfolioAirTrend, useWeatherMonthly } from "@/hooks/usePortfolioTrends";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind} from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind, Droplets, AlertTriangle, Activity} from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { useWrapped } from "@/components/wrapped/WrappedContext";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -1236,7 +1236,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     {overviewKpis && energyPoints.total > 0 && (
                       <div className="text-[10px] text-muted-foreground/70 mt-0.5">
                         {energyPoints.online} online
-                        {energyPoints.offline > 0 && <span className="text-yellow-500"> · {energyPoints.offline} ⚠ offline</span>}
+                        {energyPoints.offline > 0 && <span className="text-yellow-500 inline-flex items-center gap-0.5"> · {energyPoints.offline} <AlertTriangle className="w-2.5 h-2.5" aria-hidden /> offline</span>}
                         {energyPoints.pipeline > 0 && ` · ${energyPoints.pipeline} pipeline`}
                       </div>
                     )}
@@ -1280,7 +1280,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                     {overviewKpis && airPoints.total > 0 && (
                       <div className="text-[10px] text-muted-foreground/70 mt-0.5">
                         {airPoints.online} online
-                        {airPoints.offline > 0 && <span className="text-yellow-500"> · {airPoints.offline} ⚠ offline</span>}
+                        {airPoints.offline > 0 && <span className="text-yellow-500 inline-flex items-center gap-0.5"> · {airPoints.offline} <AlertTriangle className="w-2.5 h-2.5" aria-hidden /> offline</span>}
                         {airPoints.pipeline > 0 && ` · ${airPoints.pipeline} pipeline`}
                       </div>
                     )}
@@ -1833,7 +1833,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   {!filterEnergy && <span />}
                   {filterAir && <span className="flex justify-center"><Wind className="w-4 h-4 text-muted-foreground" /></span>}
                   {!filterAir && <span />}
-                  <span className="text-lg text-muted-foreground uppercase text-center">⚠️</span>
+                  <span className="flex justify-center"><AlertTriangle className="w-4 h-4 text-muted-foreground" aria-label={t('brand.active_alerts')} /></span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="space-y-1">
@@ -1918,8 +1918,10 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                               {site.city} · {site.region}
                               {/* Contesto delle aspettative: cosa e' monitorato qui */}
                               {site.state !== 'not_installed' && (
-                                <span className="ml-1.5 opacity-70">
-                                  {[site.capabilities.energy && '⚡', site.capabilities.air && '☁', site.capabilities.water && '💧'].filter(Boolean).join(' ')}
+                                <span className="ml-1.5 inline-flex items-center gap-1 align-[-2px] opacity-70">
+                                  {site.capabilities.energy && <Zap className="w-3 h-3" aria-hidden />}
+                                  {site.capabilities.air && <Wind className="w-3 h-3" aria-hidden />}
+                                  {site.capabilities.water && <Droplets className="w-3 h-3" aria-hidden />}
                                 </span>
                               )}
                             </p>
@@ -2067,7 +2069,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               {/* Health Matrix (mobile list format) */}
               {showHealthMatrix && (
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-3">🏥 {t('brand.system_health_short')}</h4>
+                  <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3"><Activity className="w-4 h-4 shrink-0" aria-hidden />{t('brand.system_health_short')}</h4>
                   <div className="space-y-1.5">
                     {healthMatrixData.map((site, i) => (
                       <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-foreground/5 border border-foreground/5">
@@ -2076,7 +2078,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         <div className="flex items-center gap-1">
                           {filterEnergy && <div className={`w-5 h-5 rounded ${healthStatusColors[site.energy.status]} flex items-center justify-center`}><Zap className="w-3 h-3 text-foreground" /></div>}
                           {filterAir && <div className={`w-5 h-5 rounded ${healthStatusColors[site.air.status]} flex items-center justify-center`}><Wind className="w-3 h-3 text-foreground" /></div>}
-                          <div className={`w-5 h-5 rounded ${healthStatusColors[site.alerts.status]} flex items-center justify-center`}><span className="text-[8px] font-bold text-foreground">⚠</span></div>
+                          <div className={`w-5 h-5 rounded ${healthStatusColors[site.alerts.status]} flex items-center justify-center`}><AlertTriangle className="w-3 h-3 text-foreground" aria-hidden /></div>
                         </div>
                       </div>
                     ))}
@@ -2086,7 +2088,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
 
               {/* Store Directory */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3">🏢 {t('brand.site_directory')} ({storeDirectory.length})</h4>
+                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3"><Building2 className="w-4 h-4 shrink-0" aria-hidden />{t('brand.site_directory')} ({storeDirectory.length})</h4>
                 <div className="space-y-1">
                   {storeDirectory.map((site, i) => {
                     const meta = DIR_STATE_META[site.state];

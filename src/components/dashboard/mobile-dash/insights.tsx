@@ -5,7 +5,7 @@
  * niente animazioni (§6.6), palette chiara §1.5.
  */
 import { useState } from "react";
-import { Moon, Sun, type LucideIcon } from "lucide-react";
+import { Moon, Sun, Sparkles, type LucideIcon } from "lucide-react";
 import { AMBER, AXIS, INK, RULE, SUB, TEAL } from "./bits";
 import type { EuiCompare, PeriodsYear, WeatherCorr } from "./useEnergyInsights";
 import { hapticLight } from "@/lib/native";
@@ -200,7 +200,7 @@ export const CarbonBars = ({ months, anchorMonth, monthLabels, fmt }: {
 /* ── Ripartizione per categoria (parità E1 = donut Breakdown del PC):
    barre orizzontali ordinate col kWh e la quota; tap su una barra apre
    la scheda di quella categoria. Il Virtual Split arriva già dichiarato
-   dal hook (badge ✨ + nota a carico del chiamante). ── */
+   dal hook (badge Sparkles + nota a carico del chiamante). ── */
 export const CategoryBars = ({ title, badge, note, rows, onPick }: {
   title: string;
   badge?: string;                 // «RIPARTIZIONE SIMULATA» quando serve
@@ -216,8 +216,8 @@ export const CategoryBars = ({ title, badge, note, rows, onPick }: {
       <div className="flex items-baseline justify-between gap-2">
         <span style={{ fontSize: 12.5, fontWeight: 600, color: INK }}>{title}</span>
         {badge && (
-          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", color: "#6b5a9e", background: "#ece7f7", borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap" }}>
-            ✨ {badge}
+          <span className="inline-flex items-center gap-1" style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", color: "#6b5a9e", background: "#ece7f7", borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap" }}>
+            <Sparkles size={10} strokeWidth={2.2} aria-hidden />{badge}
           </span>
         )}
       </div>

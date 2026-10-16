@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { hapticLight } from "@/lib/native";
-import { Zap, Wind, Droplets, Building2, Tag } from "lucide-react";
+import { Zap, Wind, Droplets, Building2, Tag, Globe } from "lucide-react";
 import { MonitoringType } from "@/lib/data";
 import { useAllHoldings, useAllBrands, useAllProjects } from "@/hooks/useRealTimeData";
 import { useUserScope } from "@/hooks/useUserScope";
@@ -158,7 +158,9 @@ const RegionNav = ({
                   : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
               }`}
             >
-              {btn.code === "GLOBAL" ? "🌍" : btn.label.slice(0, 2).toUpperCase()}
+              {btn.code === "GLOBAL"
+                ? <Globe className="w-[15px] h-[15px] mx-auto" aria-label={btn.label} />
+                : btn.label.slice(0, 2).toUpperCase()}
             </button>
           ))}
         </div>

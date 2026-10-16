@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ArrowUpRight, ArrowRight, Trophy } from "lucide-react";
+import { ChevronDown, ArrowUpRight, ArrowRight, Trophy, Sparkle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { useUserScope } from "@/hooks/useUserScope";
@@ -780,7 +780,7 @@ const PostLoginOnboarding: React.FC<Props> = ({ onComplete }) => {
                           <ul style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 5 }}>
                             {h.points.map(p => (
                               <li key={p} className="flex items-center gap-2" style={{ fontSize: 13.5, color: SUB }}>
-                                <span aria-hidden style={{ color: TEAL, fontSize: 11 }}>✦</span>{p}
+                                <Sparkle size={11} strokeWidth={2.4} color={TEAL} className="shrink-0" aria-hidden />{p}
                               </li>
                             ))}
                           </ul>

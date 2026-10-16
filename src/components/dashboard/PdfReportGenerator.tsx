@@ -537,7 +537,7 @@ export const generatePdfReport = async ({
   // ================================================================
   if (aiDiagnosis) {
     addPage();
-    drawHeader(isIt ? "📋 Sintesi Esecutiva e Piano d'Azione" : "📋 Executive Summary & Action Plan", 1);
+    drawHeader(isIt ? "Sintesi Esecutiva e Piano d'Azione" : "Executive Summary & Action Plan", 1);
     drawSeparator();
 
     // AI Badge
@@ -562,7 +562,7 @@ export const generatePdfReport = async ({
       doc.setFontSize(9);
       doc.setTextColor(...COLORS.text);
       doc.setFont("FuturaLT", "bold");
-      const correlationTitle = isIt ? '🌍 Correlazione Energia – Carbon Footprint' : '🌍 Energy – Carbon Footprint Correlation';
+      const correlationTitle = isIt ? 'Correlazione Energia – Carbon Footprint' : 'Energy – Carbon Footprint Correlation';
       doc.text(correlationTitle, margin + 5, yPos + 7);
       doc.setFont("FuturaLT", "normal");
       doc.setFontSize(8);

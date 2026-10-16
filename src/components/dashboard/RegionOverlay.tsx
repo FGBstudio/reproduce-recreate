@@ -6,7 +6,7 @@ import { useAllProjects } from "@/hooks/useRealTimeData";
 import { useRegionEnergyIntensity } from "@/hooks/useRegionEnergyIntensity";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ChevronDown, ChevronUp, Circle, Info, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Circle, Info, Sparkles, CheckCircle2 } from "lucide-react";
 import { useWrapped } from "@/components/wrapped/WrappedContext";
 import { useAdminData } from "@/contexts/AdminDataContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -502,7 +502,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
                       </div>
                     ) : (
                       <div className="p-6 text-xs text-emerald-400 text-center flex flex-col items-center gap-1">
-                        <span>✓</span>
+                        <CheckCircle2 className="w-4 h-4" aria-hidden />
                         <span>{t('region.no_active_alerts')}</span>
                       </div>
                     )}
@@ -715,7 +715,7 @@ const RegionOverlay = ({ currentRegion, visible = true, activeFilters = ['energy
             ))}
             {mobileDrawerContent === 'alerts' && siteAlertsList.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-emerald-400">
-                <span className="text-lg mb-1">✓</span>
+                <CheckCircle2 className="w-5 h-5 mb-1" aria-hidden />
                 <span className="text-xs">{t('region.no_active_alerts')}</span>
               </div>
             )}
