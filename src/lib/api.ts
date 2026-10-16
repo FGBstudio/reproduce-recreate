@@ -213,6 +213,66 @@ export interface ApiTimeseriesResponse {
   };
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   SEMANTICA ENERGETICA — come si ricavano i kWh da un punto timeseries.
+
+   Un bucket porta due famiglie di metriche, con unità diverse:
+     ENERGIA  (energy.active_energy, *_kwh): value_sum È GIÀ l'energia del bucket.
+     POTENZA  (energy.power_kw, energy.hvac_kw, …): l'energia è la potenza
+              MEDIA per la durata del bucket, cioè value_avg × bucketHours.
+
+   Su una metrica di potenza value_sum è la somma dei campioni istantanei:
+   usarla come kWh gonfia il totale del numero di campioni nel bucket — su
+   telemetria al minuto fino a ~60×. value_avg invece è corretto su OGNI
+   percorso, sia dalle tabelle hourly/daily sia dall'aggregazione lato client
+   di aggregateRaw (dove value_sum = somma grezza dei campioni).
+   ───────────────────────────────────────────────────────────────────────── */
+
+/** true per le metriche che misurano direttamente energia (kWh). */
+export const isEnergyKwhMetric = (metric: string): boolean => {
+  const m = normalizeMetric(metric || '');
+  return m.includes('active_energy') || m.includes('kwh');
+};
+
+/** kWh di un singolo punto, rispettando l'unità della sua metrica. */
+export const pointToKwh = (p: ApiTimeseriesPoint, bucketHours: number): number | null => {
+  const pick = isEnergyKwhMetric(p.metric)
+    ? (p.value_sum ?? p.value)
+    : (p.value_avg ?? p.value);
+  const n = Number(pick);
+  if (pick == null || !Number.isFinite(n)) return null;
+  return isEnergyKwhMetric(p.metric) ? n : n * bucketHours;
+};
+
+/**
+ * Totale in kWh di una serie, a prova di doppio conteggio: quando lo stesso
+ * dispositivo riporta nello stesso bucket sia l'energia sia la potenza vince
+ * l'energia, che è la misura diretta, e la potenza viene ignorata.
+ */
+export const sumPointsAsKwh = (
+  points: ApiTimeseriesPoint[] | undefined | null,
+  bucketHours: number,
+  accept?: (p: ApiTimeseriesPoint) => boolean,
+): number => {
+  if (!Array.isArray(points) || points.length === 0) return 0;
+
+  const slots = new Map<string, { direct: number | null; derived: number | null }>();
+  for (const p of points) {
+    if (accept && !accept(p)) continue;
+    const kwh = pointToKwh(p, bucketHours);
+    if (kwh == null) continue;
+    const key = `${p.device_id}|${p.ts_bucket ?? p.ts ?? p.ts_hour ?? p.ts_day ?? ''}`;
+    const slot = slots.get(key) ?? { direct: null, derived: null };
+    if (isEnergyKwhMetric(p.metric)) slot.direct = (slot.direct ?? 0) + kwh;
+    else slot.derived = (slot.derived ?? 0) + kwh;
+    slots.set(key, slot);
+  }
+
+  let total = 0;
+  for (const slot of slots.values()) total += slot.direct ?? slot.derived ?? 0;
+  return total;
+};
+
 export interface ApiSite {
   id: string;
   brand_id: string;

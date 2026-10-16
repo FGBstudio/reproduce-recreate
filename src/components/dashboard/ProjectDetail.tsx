@@ -40,7 +40,7 @@ import MobileModuleDashboard from "./mobile-dash/MobileModuleDashboard";
 import CertificationsMobile from "./mobile-dash/CertificationsMobile";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
-import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp } from "@/lib/api";
+import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp, sumPointsAsKwh } from "@/lib/api";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { co2Level } from "@/lib/airQuality";
 import { SITE_MATERIAL_SKIN } from "@/lib/siteTheme";
@@ -2373,14 +2373,15 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
     let totalKWh = 0;
     if (Array.isArray(data) && data.length > 0) {
-      const generalData = data.filter(d => {
+      // sumPointsAsKwh converte ogni punto secondo l'unità della sua metrica:
+      // value_sum per i kWh, value_avg × ore del bucket per i kW.
+      totalKWh = sumPointsAsKwh(data, bucketHours, (d) => {
         if (deviceMap && deviceMap.size > 0) {
           const info = deviceMap.get(d.device_id);
-          return info && info.category === 'general';
+          return !!info && info.category === 'general';
         }
         return d.metric === 'energy.active_energy' || d.metric === 'energy.power_kw';
       });
-      totalKWh = generalData.reduce((acc, curr) => acc + Number(curr.value_sum ?? curr.value ?? 0), 0);
     } else if (energyConsumptionData && energyConsumptionData.length > 0) {
       totalKWh = energyConsumptionData.reduce((acc, curr) => {
         return acc + ((curr.HVAC || 0) + (curr.Lighting || 0) + (curr.Plugs || 0)) * bucketHours;
@@ -2396,15 +2397,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     let totalKWh = 0;
 
     if (Array.isArray(data) && data.length > 0) {
-      for (const curr of data) {
+      // Stessa conversione del kWh/m²: l'unità della metrica decide il campo,
+      // e un dispositivo che riporta sia kWh sia kW non viene contato due volte.
+      totalKWh = sumPointsAsKwh(data, bucketHours, (curr) => {
         const info = deviceMap.get(curr.device_id);
-        const isGeneral = (info && info.category === 'general') ||
+        return (!!info && info.category === 'general') ||
           (!info && (curr.metric === 'energy.power_kw' || curr.metric === 'energy.active_energy'));
-        if (!isGeneral) continue;
-        const kwh = Number(curr.value_sum ?? curr.value ?? 0);
-        if (!kwh) continue;
-        totalKWh += kwh;
-      }
+      });
     } else if (energyConsumptionData && energyConsumptionData.length > 0) {
       totalKWh = energyConsumptionData.reduce((acc, curr) => {
         return acc + ((curr.HVAC || 0) + (curr.Lighting || 0) + (curr.Plugs || 0)) * bucketHours;
@@ -2417,7 +2416,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       totalKwh: totalKWh,
       pricePerKwh: livePrice
     };
-  }, [energyTimeseriesResp, liveEnergyPriceEur, energyConsumptionData, bucketHours]);
+  }, [energyTimeseriesResp, liveEnergyPriceEur, energyConsumptionData, bucketHours, deviceMap]);
 
   const estimatedPricePerKwhDisplay = useMemo(() => {
     if (!estimatedCostData) return null;
