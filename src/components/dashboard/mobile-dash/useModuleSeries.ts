@@ -91,6 +91,10 @@ export interface WeekSeries {
   totalKwh?: number;
   topDay?: string;
   costEur?: number;
+  /** vs settimana precedente, a parità di giorni trascorsi */
+  vsPrevPct?: number;
+  /** carico di base: giorno più basso / 24 h (kW medi a negozio chiuso) */
+  baseloadKw?: number;
   unit: string;
   isDemo: boolean;
 }
@@ -235,6 +239,8 @@ function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = 
     heat, heatMax: 100,
     totalKwh: module === "energy" ? Math.round(2290 * kCat) : undefined,
     topDay: days[2].date,
+    vsPrevPct: module === "energy" ? 3 : undefined,
+    baseloadKw: module === "energy" ? Math.round((Math.min(...vals) / 24) * 10) / 10 : undefined,
     costEur: module === "energy" ? Math.round(430 * kCat) : undefined,
     unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
   };
@@ -882,6 +888,7 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
 
       let heatRows: Array<{ ts: string; v: number }> = [];
       let daySums = new Map<string, number>();
+      const prevWeekSums = new Map<string, number>();
 
       const isIaq = module === "air" && airMetric === "iaq";
       if (module === "energy") {
@@ -891,12 +898,20 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
           supabase!.from("energy_hourly").select("ts_hour, metric, value_avg, value_sum")
             .in("device_id", ids.slice(0, 50)).gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
             .in("metric", ["energy.power_kw", "energy.active_energy", "energy.active_import_kwh"]),
+          /* dalla settimana PRECEDENTE in poi: gli stessi kWh giornalieri
+             servono anche al confronto «vs settimana precedente» */
           supabase!.from("energy_daily").select("ts_day, value_sum")
-            .in("device_id", ids.slice(0, 50)).gte("ts_day", mondayKey).lte("ts_day", endKey)
+            .in("device_id", ids.slice(0, 50))
+            .gte("ts_day", new Date(start.getTime() - 7 * 86400e3).toISOString().slice(0, 10))
+            .lte("ts_day", endKey)
             .in("metric", ["energy.active_energy", "energy.active_import_kwh"]),
         ]);
         for (const r of (dd || []) as unknown as DayRow[]) {
           if (r.value_sum == null || Number(r.value_sum) > 50000) continue;
+          if (r.ts_day < mondayKey) {
+            prevWeekSums.set(r.ts_day, (prevWeekSums.get(r.ts_day) || 0) + Number(r.value_sum));
+            continue;
+          }
           daySums.set(r.ts_day, (daySums.get(r.ts_day) || 0) + Number(r.value_sum));
         }
         const agg = new Map<string, number>();
@@ -955,10 +970,24 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
       const weekdayAvg = weekdayVals.length ? rndW(weekdayVals.reduce((a, b) => a + b, 0) / weekdayVals.length) : undefined;
       const totalKwh = module === "energy" ? Math.round([...daySums.values()].reduce((a, b) => a + b, 0)) : undefined;
       const top = days.filter(d => d.v != null).sort((a, b) => (b.v! - a.v!))[0];
+      // vs settimana precedente, a parità di giorni trascorsi (come il mese)
+      let vsPrevPct: number | undefined;
+      if (module === "energy" && totalKwh && prevWeekSums.size > 0) {
+        const nDone = days.filter(dd2 => dd2.v != null).length;
+        const prevSame = [...prevWeekSums.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+          .slice(0, nDone).reduce((a, [, v]) => a + v, 0);
+        if (prevSame > 0) vsPrevPct = Math.round(((totalKwh - prevSame) / prevSame) * 100);
+      }
+      // carico di base: il giorno più basso / 24 h, stessa stima del mese
+      const dayVals = days.map(x => x.v).filter((v): v is number => v != null);
+      const baseloadKw = module === "energy" && dayVals.length >= 3
+        ? Math.round((Math.min(...dayVals) / 24) * 10) / 10
+        : undefined;
       return {
         days, weekdayAvg, heat, heatMax,
         totalKwh, topDay: top?.date,
         costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
+        vsPrevPct, baseloadKw,
         unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit, isDemo: false,
       };
     },

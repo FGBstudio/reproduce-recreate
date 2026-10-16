@@ -6,7 +6,8 @@
  * oggi cerchiato, futuro in grigio; sintesi e griglia 2×2.
  */
 import { useState } from "react";
-import { AMBER, AXIS, INK, RULE, SUB, TEAL } from "./bits";
+import type { LucideIcon } from "lucide-react";
+import { AMBER, AXIS, INK, RED, RULE, SUB, TEAL } from "./bits";
 
 /* Scala dell'intensità (decisione owner 16/10): CINQUE passi di teal, dal
    molto chiaro al scuro al crescere del consumo. Niente rosso: in palette
@@ -453,6 +454,55 @@ export const RangeBars = ({ days, onOpenDay, fmt }: {
     </div>
   );
 };
+
+/** Building overview (parità col PC): tutte le metriche misurate adesso,
+ *  due per riga, con icona, valore e una barra che dice dove sta il valore
+ *  rispetto alla soglia. Tap su una scheda → quel grafico. */
+export const BuildingOverview = ({ title, hint, rows, onPick }: {
+  title: string;
+  hint: string;
+  rows: Array<{
+    key: string; label: string; value: string; unit?: string;
+    /** 0–1 rispetto alla soglia; assente = nessuna soglia nota */
+    pct?: number;
+    level: "ok" | "warn" | "crit";
+    Icon: LucideIcon;
+  }>;
+  onPick?: (key: string) => void;
+}) => (
+  <div className="px-6" style={{ marginTop: 22 }}>
+    <div className="flex items-baseline justify-between mb-2.5">
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: INK }}>{title}</span>
+      <span style={{ fontSize: 11, color: SUB }}>{hint}</span>
+    </div>
+    <div className="grid grid-cols-2" style={{ gap: 10 }}>
+      {rows.map(r => {
+        const color = r.level === "crit" ? RED : r.level === "warn" ? AMBER : TEAL;
+        return (
+          <button key={r.key} type="button"
+            onClick={() => { if (onPick) { hapticLight(); onPick(r.key); } }}
+            className="text-left rounded-2xl"
+            style={{ background: "#f4f9f9", padding: "11px 12px 12px", minHeight: 76 }}>
+            <span className="flex items-center" style={{ gap: 6 }}>
+              <r.Icon className="w-3.5 h-3.5 shrink-0" style={{ color }} aria-hidden />
+              <span className="truncate" style={{ fontSize: 11, color: SUB }}>{r.label}</span>
+            </span>
+            <span className="flex items-baseline" style={{ gap: 3, marginTop: 3 }}>
+              <span className="tabular-nums" style={{ fontSize: 19, fontWeight: 600, color: INK, lineHeight: 1.1 }}>{r.value}</span>
+              {r.unit && <span style={{ fontSize: 10.5, color: SUB }}>{r.unit}</span>}
+            </span>
+            {/* barra solo con una soglia nota: niente scale inventate */}
+            {r.pct != null && (
+              <span className="block rounded-full overflow-hidden" style={{ height: 4, background: "#e4eded", marginTop: 8 }} aria-hidden>
+                <span className="block h-full rounded-full" style={{ width: `${Math.max(3, Math.min(100, r.pct * 100))}%`, background: color }} />
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
 
 export const LabelValueGrid = ({ items }: { items: Array<{ label: string; value: string }> }) => (
   <div className="px-6 mt-4">

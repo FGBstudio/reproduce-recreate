@@ -10,7 +10,7 @@
  * dell'energia arrivano con il loader per categoria (v2).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Clock, CloudFog, Droplets, Flame, FlaskConical, Sun, Thermometer, Wind, type LucideIcon } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { hapticLight } from "@/lib/native";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
@@ -19,11 +19,11 @@ import { AMBER, INK, RED, SUB, TEAL, MetricTabs, PeriodPager, PeriodSegment, Pro
 import TimeSeriesChart from "./TimeSeriesChart";
 import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
 import BillsMobile from "./BillsMobile";
-import { HourHeatmap, HourStrip, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars, YearCarpet } from "./views";
+import { BuildingOverview, HourHeatmap, HourStrip, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars, YearCarpet } from "./views";
 import { CategoryBars, DayNightRings, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
 import { useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type WxScale } from "./useEnergyInsights";
 import {
-  CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
+  AIR_METRICS, CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
   useAirProbes, useSiteMetricsAvailable, useDaySeries, useEnergyCats, useMonthSeries, useRangeSeries, useWaterNight, useWeekSeries, useYearSeries,
   type DashModule, type DaySeries, type EnergyCat, type MonthSeries, type WeekSeries, type YearSeries,
 } from "./useModuleSeries";
@@ -541,7 +541,6 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
            orizzonte non hanno senso semplicemente non compaiono. */
         ...(eui.data && (period === "month" || period === "year") ? [{ id: "compare", label: t("md.tab_compare") }] : []),
         ...(wcorr.data ? [{ id: "weather", label: t("md.tab_weather") }] : []),
-        { id: "carbon", label: t("md.tab_carbon") },
         ...(period === "year" && periodsY.data ? [{ id: "periods", label: t("md.tab_periods") }] : []),
         /* 16/10: le Bollette NON sono più una scheda dei grafici — hanno la
            loro schermata, raggiunta dal footer */
@@ -561,6 +560,17 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selAllLeed, avail.data, module]);
+
+  /* Il costo è SEMPRE quello di tutto il periodo mostrato (kWh del periodo ×
+     tariffa), mai della potenza istantanea: l'etichetta lo dice (16/10). */
+  const periodWord = period === "day" ? t("md.today_lbl")
+    : period === "week" ? t("md.this_week")
+    : period === "month" ? t("md.this_month")
+    : period === "year" ? t("md.this_year")
+    : t("md.period_lbl");
+  const costLabel = `${t("md.cost_est")} · ${periodWord}`;
+  /** versione corta per le tre colonne strette del riepilogo */
+  const costLabelShort = `${t("md.cost_short")} · ${periodWord}`;
 
   // ── esportazioni (menu «⋯», §6.1.1) ──
   const exportData = () => {
@@ -714,6 +724,60 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       day={dayNight.day} night={dayNight.night}
       labels={{ title: t("md.day_night"), sub: t("md.day_night_sub"), day: t("md.day_lbl"), night: t("md.night_lbl") }}
       fmt={v => (v >= 1000 ? `${nf.format(v / 1000)} MWh` : `${nf0.format(v)} ${DERIVED ? DERIVED.unit : "kWh"}`)}
+    />
+  ) : null;
+
+  /* Building overview (16/10): la tabella per sonda del PC qui diventa una
+     griglia 2×N dei valori di ADESSO, media delle sonde selezionate, con la
+     barra rispetto alla soglia. Fonte: telemetry_latest via useAirProbes. */
+  const AIR_ICON: Record<string, LucideIcon> = {
+    co2: Wind, tvoc: FlaskConical, pm25: CloudFog, pm10: CloudFog,
+    co: Flame, o3: Sun, temp: Thermometer, humidity: Droplets,
+  };
+  const levelOf = (key: string, v: number): "ok" | "warn" | "crit" => {
+    const FALLBACK: Record<string, number> = { co2: 1000, tvoc: 500, pm25: 25, pm10: 50, co: 9, o3: 100 };
+    const lim = AIR_LIMIT[key];
+    const l = lim?.l ?? FALLBACK[key];
+    if (l == null) return "ok";
+    if (lim?.l2 != null && v >= lim.l2) return "crit";
+    return v >= l ? "warn" : "ok";
+  };
+  const buildingRows = useMemo(() => {
+    if (module !== "air") return [];
+    const agg = new Map<string, { s: number; n: number }>();
+    for (const p of selProbes) {
+      if (p.offlineHours != null) continue; // sonda muta: non entra nella media
+      for (const x of p.values ?? []) {
+        const e = agg.get(x.key) || { s: 0, n: 0 };
+        e.s += x.v; e.n++;
+        agg.set(x.key, e);
+      }
+    }
+    const FALLBACK: Record<string, number> = { co2: 1000, tvoc: 500, pm25: 25, pm10: 50, co: 9, o3: 100 };
+    return AIR_ORDER.filter(k => k !== "iaq" && agg.has(k)).map(k => {
+      const e = agg.get(k)!;
+      const v = e.s / e.n;
+      const l = AIR_LIMIT[k]?.l ?? FALLBACK[k];
+      const unit = AIR_METRICS[k]?.unit ?? "";
+      return {
+        key: k,
+        label: AIR_LABEL[k] ?? k,
+        value: k === "co" ? nf2.format(v) : k === "temp" ? nf.format(v) : nf0.format(v),
+        unit,
+        pct: l != null && l > 0 ? v / l : undefined,
+        level: levelOf(k, v),
+        Icon: AIR_ICON[k] ?? Wind,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [module, selProbes, thresholds, co2LimitPpm, language]);
+
+  const buildingEl = module === "air" && buildingRows.length > 1 ? (
+    <BuildingOverview
+      title={t("md.building_overview")}
+      hint={t("md.now")}
+      rows={buildingRows}
+      onPick={key => setAirMetric(key)}
     />
   ) : null;
 
@@ -899,7 +963,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                   label: t("md.today_lbl"),
                 }] : []),
                 ...(module === "energy" && d.vsTypicalPct != null ? [{ value: `${d.vsTypicalPct > 0 ? "+" : ""}${d.vsTypicalPct}%`, label: t("md.vs_typical").replace("{d}", new Intl.DateTimeFormat(language, { weekday: "long" }).format(anchor)) }] : []),
-                ...(module === "energy" && d.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(d.costEur)}`, label: t("md.cost_est") }] : []),
+                ...(module === "energy" && d.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(d.costEur)}`, label: costLabelShort }] : []),
                 /* §10.2 PM interno/esterno: tre colonne dedicate */
                 ...(module === "air" && d.outdoor && d.avg != null ? (() => {
                   const outVals = d.outdoor!.filter((v): v is number => v != null);
@@ -971,6 +1035,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 hint={t("md.tap_hour")}
                 fmt={fmtV}
               />
+              {buildingEl}
               {/* parità E1: da dove viene il consumo di oggi */}
               {splitEl(d.totalKwh)}
               {dayNightEl}
@@ -1059,11 +1124,31 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 ),
                 label: t("md.top_day"),
               }] : []),
-              ...(week.data.costEur != null ? [{ value: `€ ${nf0.format(week.data.costEur)}`, label: t("md.cost_est") }] : []),
+              ...(week.data.costEur != null ? [{ value: `€ ${nf0.format(week.data.costEur)}`, label: costLabelShort }] : []),
             ].slice(0, 3)} />
+            {buildingEl}
             {/* stessa ripartizione di Giorno e Mese, sull'intervallo della settimana */}
             {splitEl(week.data.totalKwh)}
             {dayNightEl}
+            {/* stessi KPI del mese, alla scala della settimana (16/10) */}
+            {module === "energy" && (
+              <LabelValueGrid items={[
+                ...(esplit.data?.areaM2 != null && week.data.totalKwh != null ? [{
+                  label: `kWh/m² · ${nf0.format(esplit.data.areaM2)} m²`,
+                  value: nf.format(week.data.totalKwh / esplit.data.areaM2),
+                }] : []),
+                ...(week.data.vsPrevPct != null ? [{ label: t("md.vs_prev_week"), value: `${week.data.vsPrevPct > 0 ? "+" : ""}${week.data.vsPrevPct}%` }] : []),
+                ...(week.data.topDay ? [{
+                  label: `${t("md.peak_lbl")} · ${new Intl.DateTimeFormat(language, { weekday: "long" }).format(
+                    week.data.topDay.startsWith("demo") ? anchor : new Date(`${week.data.topDay}T12:00:00`))}`,
+                  value: (() => {
+                    const v = week.data!.days.find(x => x.date === week.data!.topDay)?.v;
+                    return v != null ? `${fmtV(v)}${week.data!.unit ? ` ${week.data!.unit}` : ""}` : "—";
+                  })(),
+                }] : []),
+                ...(week.data.baseloadKw != null ? [{ label: t("md.baseload"), value: `${nf.format(week.data.baseloadKw)} kW` }] : []),
+              ]} />
+            )}
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
@@ -1117,6 +1202,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 </p>
               );
             })()}
+            {buildingEl}
             {/* parità E1: da dove viene il consumo del mese */}
             {splitEl(month.data.totalKwh)}
             {dayNightEl}
@@ -1126,7 +1212,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 label: `kWh/m² · ${nf0.format(esplit.data.areaM2)} m²`,
                 value: nf.format(month.data.totalKwh / esplit.data.areaM2),
               }] : []),
-              ...(month.data.costEur != null && energyTab !== "cost" ? [{ label: t("md.cost_est"), value: `€ ${nf0.format(month.data.costEur)}` }] : []),
+              ...(month.data.costEur != null && energyTab !== "cost" ? [{ label: costLabel, value: `€ ${nf0.format(month.data.costEur)}` }] : []),
               ...(month.data.vsPrevPct != null ? [{ label: t("md.vs_prev_month"), value: `${month.data.vsPrevPct > 0 ? "+" : ""}${month.data.vsPrevPct}%` }] : []),
               /* aria/acqua con soglia: quanti giorni del mese l'hanno superata */
               ...(module !== "energy" && limit != null ? (() => {
@@ -1184,10 +1270,29 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 const overMonths = yearData.data!.months.filter(x => x.v != null && x.v > limit).length;
                 return overMonths > 0 ? [{ value: String(overMonths), label: t("md.months_over") }] : [];
               })() : []),
-              ...(yearData.data.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(yearData.data.costEur)}`, label: t("md.cost_est") }] : []),
+              ...(yearData.data.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(yearData.data.costEur)}`, label: costLabelShort }] : []),
             ].slice(0, 3)} />
+            {buildingEl}
             {/* stessa ripartizione degli altri orizzonti, sull'anno */}
             {splitEl(yearData.data.totalKwh)}
+            {/* stessi KPI del mese, alla scala dell'anno (16/10) */}
+            {module === "energy" && (() => {
+              const topM = [...yearData.data!.months].filter(x => x.v != null).sort((a, b) => b.v! - a.v!)[0];
+              return (
+                <LabelValueGrid items={[
+                  ...(esplit.data?.areaM2 != null && yearData.data!.totalKwh != null ? [{
+                    label: `kWh/m² · ${nf0.format(esplit.data.areaM2)} m²`,
+                    value: nf.format(yearData.data!.totalKwh / esplit.data.areaM2),
+                  }] : []),
+                  ...(periodsY.data?.vsPrevYearPct != null ? [{
+                    label: t("md.vs_prev_year"),
+                    value: `${periodsY.data.vsPrevYearPct > 0 ? "+" : ""}${periodsY.data.vsPrevYearPct}%`,
+                  }] : []),
+                  ...(topM ? [{ label: `${t("md.peak_month")} · ${monthNamesLong[topM.m - 1]}`, value: `${nf.format(topM.v! / 1000)} MWh` }] : []),
+                  ...(yearData.data!.avg != null ? [{ label: t("md.monthly_avg").replace("{v}", "").trim(), value: `${nf0.format(yearData.data!.avg)}${yearData.data!.unit ? ` ${yearData.data!.unit}` : ""}` }] : []),
+                ]} />
+              );
+            })()}
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
@@ -1239,7 +1344,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 const overDays = rangeData!.days.filter(x => x.v != null && x.v! > limit).length;
                 return overDays > 0 ? [{ value: String(overDays), label: t("md.days_over") }] : [];
               })() : []),
-              ...(rangeData.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(rangeData.costEur)}`, label: t("md.cost_est") }] : []),
+              ...(rangeData.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(rangeData.costEur)}`, label: costLabelShort }] : []),
             ].slice(0, 3)} />
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>

@@ -17,7 +17,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud } from "lucide-react";
+import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud, ArrowLeft } from "lucide-react";
+import { hapticLight } from "@/lib/native";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 
@@ -82,6 +83,8 @@ interface OverviewMobileViewProps {
   certTopLevel?: string | null;
   isRealData: boolean;
   onNavigate?: (tab: string) => void;
+  /** chiude il dettaglio sito e torna alla mappa (16/10) */
+  onExit?: () => void;
   /** Certificazioni attive del sito (LEED, BREEAM, ...): sezione grigia dedicata */
   certifications?: string[];
   /** Dettaglio certificazioni ottenute (livelli, punti, rinnovo — §5.4) */
@@ -472,7 +475,7 @@ const ModuleScreen = ({
 export const OverviewMobileView = ({
   siteName, city, outdoorTemp, outdoorHumidity, periodLabel, overall, energy, air, water, moduleConfig,
   power, energyAvgKw, energyLimitKw, airMetrics, waterFlow, waterFacade, alerts, sensorHealth, notInstalled, certCount = 0,
-  verdictHeadline, isRealData, onNavigate, certifications, certTopLevel, certDetails,
+  verdictHeadline, isRealData, onNavigate, onExit, certifications, certTopLevel, certDetails,
 }: OverviewMobileViewProps) => {
   const { t, language } = useLanguage();
   // Numeri localizzati (brief §2.3): «12,4» in it/fr/es, «12.4» in en
@@ -603,8 +606,24 @@ export const OverviewMobileView = ({
         style={{ background: `linear-gradient(180deg, ${heroTone.c1} 0%, ${heroTone.c2} 26%, #0a0f11 52%, #050809 100%)` }}
       >
         {/* intestazione: nome sito + condizioni (niente Live/Online/Month,
-            brief §5.2 — il periodo resta nella barra comandi in basso) */}
-        <div className="font-bold text-[19px] tracking-wide">{siteName}</div>
+            brief §5.2 — il periodo resta nella barra comandi in basso).
+            16/10: il ritorno alla mappa era affidato al solo gesto di
+            sistema; nel browser non esiste, quindi c'è una freccia. */}
+        {onExit && (
+          <button
+            type="button"
+            onClick={() => { hapticLight(); onExit(); }}
+            aria-label={t("ovm.back_to_map")}
+            className="absolute grid place-items-center rounded-full"
+            style={{
+              top: "calc(var(--sat, 0px) + 8px)", left: 10, width: 40, height: 40,
+              background: "rgba(255,255,255,.14)", backdropFilter: "blur(6px)", color: "#fff", zIndex: 5,
+            }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+        <div className="font-bold text-[19px] tracking-wide" style={{ marginLeft: onExit ? 44 : 0 }}>{siteName}</div>
         <div className="text-[11px] opacity-80 tracking-[0.08em] flex items-center gap-1.5 mt-0.5">
           <Cloud className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           <span>{(city || "").toUpperCase()}</span>

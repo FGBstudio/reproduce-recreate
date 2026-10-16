@@ -4157,6 +4157,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
                   airAverages={activeAirMetrics}
                   energyAverages={energyPeriodAverages}
                   onNavigate={(tab) => setActiveDashboard(tab as DashboardType)}
+                  onExit={onClose}
                   benchmarkMatrix={benchmarkMatrix}
                   certifications={projectCertifications}
                   outdoorTempC={outdoorTemp}

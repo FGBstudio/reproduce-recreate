@@ -54,6 +54,8 @@ interface OverviewSectionProps {
   airAverages?: Record<string, number>;
   energyAverages?: any;
   onNavigate?: (tab: string) => void;
+  /** chiude il dettaglio sito (freccia della vista mobile, 16/10) */
+  onExit?: () => void;
   benchmarkMatrix?: any[];
   /** Nomi delle certificazioni attive (per la sezione mobile) */
   certifications?: string[];
@@ -913,7 +915,7 @@ const WaterCard = ({ status, enabled, onClick, liveData, isFlipped, onToggleFlip
 // ─────────────────────────────────────────────
 // MAIN COMPONENT EXPORT
 // ─────────────────────────────────────────────
-export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, benchmarkMatrix, certifications, outdoorTempC, outdoorHumidityPct }: OverviewSectionProps) => {
+export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, airAverages, energyAverages, onNavigate, onExit, benchmarkMatrix, certifications, outdoorTempC, outdoorHumidityPct }: OverviewSectionProps) => {
   const { t, language } = useLanguage();
   const isMobile = useIsMobile();
 
@@ -1157,6 +1159,7 @@ export const OverviewSection = ({ project, moduleConfig, timePeriod, dateRange, 
         verdictHeadline={verdict.headline}
         isRealData={liveData.isRealData || powerLatest.isRealData}
         onNavigate={onNavigate}
+        onExit={onExit}
         certifications={certifications}
       />
     );
