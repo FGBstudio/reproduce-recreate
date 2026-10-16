@@ -650,7 +650,6 @@ export const OverviewMobileView = ({
       air: moduleConfig.air.enabled && air.score > 0 ? Math.max(0.1, Math.min(1, (100 - air.score) / 70)) : 0.18,
       water: 0.3,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [power?.total, energyAvgKw, energyLimitKw, air.score, moduleConfig.air.enabled]);
 
   // Tono dell'hero secondo il giudizio; il motivo prende l'icona del modulo
