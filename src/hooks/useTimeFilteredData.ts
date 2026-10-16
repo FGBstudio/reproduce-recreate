@@ -20,7 +20,7 @@ import {
 import { it, enUS } from "date-fns/locale";
 import { useLanguage, type Language } from "@/contexts/LanguageContext";
 import { getDateLocale } from "@/lib/dateLocale";
-import { useEnergyTimeseries, useWeatherTimeseries } from "../lib/api";
+import { useEnergyTimeseries, useWeatherTimeseries, pointToKwh, isEnergyKwhMetric } from "../lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -214,19 +214,35 @@ export const useEnergyWeatherAnalysis = (
       return map.get(ts)!;
     };
 
-    // Process energy: sum value_sum (kWh) across devices per bucket
-    // For hourly tables: kWh ≈ kW * 1 (1 hour bucket) → value_avg is in kW, so kWh = value_avg * 1
-    // For daily tables: value_sum contains total kWh
+    // L'unità della metrica decide il campo da leggere: value_sum porta kWh
+    // solo per le metriche di energia, mentre su una metrica di potenza è la
+    // somma dei campioni istantanei e l'energia va ricavata da value_avg per
+    // le ore del bucket. Se lo stesso dispositivo riporta entrambe nello
+    // stesso bucket vince la misura diretta, così non si conta due volte.
     if (energyRows && energyRows.length > 0) {
+      const bucketHours = useDaily ? 24 : 1;
+      const slots = new Map<string, { ts: string; direct: number | null; derived: number | null }>();
+
       for (const row of energyRows) {
-        const ts = row[tsCol];
-        if (!ts) continue;
-        const entry = getEntry(ts);
-        // Prefer value_sum for kWh; fallback to value_avg (kW) * bucket_hours
-        const kWh = row.value_sum != null ? Number(row.value_sum) 
-          : row.value_avg != null ? Number(row.value_avg) * (useDaily ? 24 : 1) 
-          : 0;
-        entry.energy += kWh;
+        const rawTs = row[tsCol];
+        if (!rawTs) continue;
+        const kWh = pointToKwh({
+          device_id: row.device_id,
+          metric: row.metric,
+          value_avg: row.value_avg ?? undefined,
+          value_sum: row.value_sum ?? undefined,
+        }, bucketHours);
+        if (kWh == null) continue;
+
+        const key = `${normTs(rawTs)}|${row.device_id}`;
+        const slot = slots.get(key) ?? { ts: rawTs, direct: null, derived: null };
+        if (isEnergyKwhMetric(row.metric)) slot.direct = (slot.direct ?? 0) + kWh;
+        else slot.derived = (slot.derived ?? 0) + kWh;
+        slots.set(key, slot);
+      }
+
+      for (const slot of slots.values()) {
+        getEntry(slot.ts).energy += slot.direct ?? slot.derived ?? 0;
       }
     }
 
