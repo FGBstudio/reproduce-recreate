@@ -10,7 +10,7 @@
  * dell'energia arrivano con il loader per categoria (v2).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Clock, CloudFog, Droplets, Flame, FlaskConical, Sun, Thermometer, Wind, type LucideIcon } from "lucide-react";
+import { AirVent, ArrowLeft, ChevronLeft, ChevronRight, Clock, CloudFog, Droplets, Flame, FlaskConical, Lightbulb, MoreHorizontal, PlugZap, Sun, Thermometer, Wind, type LucideIcon } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { hapticLight } from "@/lib/native";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
@@ -689,6 +689,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const CAT_SPLIT_LABEL: Record<string, string> = {
     hvac: "HVAC", lighting: t("md.metric_lights"), plugs: t("md.metric_plugs"), other: t("md.cat_other"),
   };
+  /* icona per circuito: si riconosce la riga prima di leggerla */
+  const CAT_ICON: Record<string, LucideIcon> = {
+    hvac: AirVent, lighting: Lightbulb, plugs: PlugZap, other: MoreHorizontal,
+  };
   /* Anelli giorno/notte (24-Hour Energy Cycle del PC): ore 8–20 nel fuso del
      sito. Servono dati ORARI — ci sono nel giorno (punti), nella settimana
      (heat 7×24) e nel mese (carpet); l'anno ha solo i totali giornalieri,
@@ -792,6 +796,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         rows={s.shares.map(sh => ({
           id: sh.cat,
           label: CAT_SPLIT_LABEL[sh.cat],
+          Icon: CAT_ICON[sh.cat],
           pct: sh.pct,
           kwh: Math.round((totalKwh * sh.pct) / 100),
           // tap → scheda della categoria, solo se quella scheda esiste davvero
@@ -1003,32 +1008,33 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                 ...(module !== "energy" && !d.outdoor && d.overLimitMinutes ? [{ value: `${Math.floor(d.overLimitMinutes / 60)}h ${pad(d.overLimitMinutes % 60)}m`, label: t("md.over_time") }] : []),
                 ...(module === "air" && d.hvacStrip ? [{ value: String(d.hvacStrip.reduce((a, on, i) => a + (i > 0 && !on && d.hvacStrip![i - 1] ? 1 : 0), 0)), label: t("md.hvac_pauses") }] : []),
               ].slice(0, 3)} />
-              {/* parità E2: il «Power Consumption» real-time del PC — kW di
-                  adesso, totale e per categoria, con freschezza dichiarata */}
+              {/* parità E2: il «Power Consumption» real-time del PC. Solo il
+                  valore di adesso: la ripartizione per categoria sta una
+                  volta sola, in «Da dove viene il consumo» (16/10) */}
               {liveModel && (
-                <div className="mx-6 rounded-2xl" style={{ marginTop: 20, border: "1px solid #eaf0f0", padding: "14px 16px" }}>
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="mx-6 rounded-2xl relative overflow-hidden" style={{ marginTop: 20, border: "1px solid #eaf0f0", padding: "14px 16px" }}>
+                  {/* alone che respira: si vede che il numero è vivo */}
+                  {liveModel.fresh && (
+                    <span
+                      aria-hidden
+                      className="absolute animate-fx-glow motion-reduce:animate-none"
+                      style={{
+                        left: -28, top: 2, width: 190, height: 110, borderRadius: "50%",
+                        background: "radial-gradient(circle, rgba(10,143,145,.16) 0%, rgba(10,143,145,0) 68%)",
+                      }}
+                    />
+                  )}
+                  <div className="relative flex items-center gap-2 flex-wrap">
                     <span aria-hidden className="rounded-full shrink-0" style={{ width: 8, height: 8, background: liveModel.fresh ? TEAL : "#9fb2b3", boxShadow: liveModel.fresh ? "0 0 0 4px rgba(10,143,145,.15)" : undefined }} />
                     <span style={{ fontSize: 12.5, fontWeight: 600 }}>{t("md.live_now")}</span>
                     <span style={{ fontSize: 11, color: SUB }}>
                       {t(liveModel.fresh ? "md.live_upd" : "md.live_stale").replace("{t}", hhmm.format(liveModel.ts))}
                     </span>
                   </div>
-                  <div className="flex items-baseline gap-1.5" style={{ marginTop: 2 }}>
+                  <div className="relative flex items-baseline gap-1.5" style={{ marginTop: 2 }}>
                     <span className="tabular-nums" style={{ fontSize: 30, fontWeight: 600 }}>{nf.format(liveModel.total)}</span>
                     <span style={{ fontSize: 14, color: SUB }}>kW</span>
                   </div>
-                  {/* lo split live esiste solo coi contatori di categoria VERI:
-                      il Virtual Split vale per i kWh, non per l'istantaneo */}
-                  {liveModel.rows.length > 1 && liveModel.rows.map((x, i) => (
-                    <div key={x.id} className="flex items-center gap-2.5" style={{ marginTop: i === 0 ? 8 : 7, fontSize: 12 }}>
-                      <span className="truncate text-left" style={{ width: 64, flex: "none" }}>{CAT_SPLIT_LABEL[x.id]}</span>
-                      <span className="flex-1 rounded-full" style={{ height: 12, background: "#eef4f4", position: "relative" }} aria-hidden>
-                        <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, (x.kw / liveModel.total) * 100)}%`, background: [TEAL, "#5fb6b8", "#9fd3d6", "#d9e6e6"][i % 4] }} />
-                      </span>
-                      <span className="text-right tabular-nums" style={{ width: 70, flex: "none", color: SUB }}>{nf.format(x.kw)} kW</span>
-                    </div>
-                  ))}
                 </div>
               )}
               {buildingEl}

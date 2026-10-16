@@ -5,7 +5,7 @@
  * niente animazioni (§6.6), palette chiara §1.5.
  */
 import { useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, type LucideIcon } from "lucide-react";
 import { AMBER, AXIS, INK, RULE, SUB, TEAL } from "./bits";
 import type { EuiCompare, PeriodsYear, WeatherCorr } from "./useEnergyInsights";
 import { hapticLight } from "@/lib/native";
@@ -205,7 +205,7 @@ export const CategoryBars = ({ title, badge, note, rows, onPick }: {
   title: string;
   badge?: string;                 // «RIPARTIZIONE SIMULATA» quando serve
   note?: string;
-  rows: Array<{ id: string; label: string; pct: number; kwh?: number; pickable?: boolean }>;
+  rows: Array<{ id: string; label: string; pct: number; kwh?: number; pickable?: boolean; Icon?: LucideIcon }>;
   onPick?: (id: string) => void;
 }) => {
   const COLORS = [TEAL, "#5fb6b8", "#9fd3d6", "#d9e6e6"];
@@ -225,7 +225,11 @@ export const CategoryBars = ({ title, badge, note, rows, onPick }: {
         <button key={r.id} type="button" disabled={!r.pickable || !onPick}
           onClick={() => { if (r.pickable && onPick) { hapticLight(); onPick(r.id); } }}
           className="w-full flex items-center gap-2.5" style={{ marginTop: 9, fontSize: 12, minHeight: 24 }}>
-          <span className="text-left truncate" style={{ width: 64, flex: "none", color: INK }}>{r.label}</span>
+          <span className="flex items-center gap-1.5 text-left" style={{ width: 74, flex: "none", color: INK }}>
+            {/* l'ultima tinta è troppo chiara per un'icona: lì si usa il grigio */}
+            {r.Icon && <r.Icon className="w-3.5 h-3.5 shrink-0" style={{ color: i < 3 ? COLORS[i] : SUB }} aria-hidden />}
+            <span className="truncate">{r.label}</span>
+          </span>
           <span className="flex-1 rounded-full" style={{ height: 14, background: "#eef4f4", position: "relative" }} aria-hidden>
             <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, r.pct)}%`, background: COLORS[i % COLORS.length] }} />
           </span>

@@ -427,6 +427,12 @@ body {
     from { transform: translateX(0); }
     to   { transform: translateX(-100px); }
   }
+  /* alone del valore live: respira piano, non lampeggia */
+  @keyframes fx-glow {
+    0%, 100% { opacity: .55; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.06); }
+  }
+  .animate-fx-glow   { animation: fx-glow 3.2s ease-in-out infinite; }
   .animate-fx-spark  { animation: fx-spark 2.4s ease-in-out infinite; }
   .animate-fx-ring   { animation: fx-ring 2.4s ease-out infinite; }
   .animate-fx-packet { animation: fx-packet 2.4s linear infinite; }
