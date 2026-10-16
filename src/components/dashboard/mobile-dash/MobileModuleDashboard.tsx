@@ -207,7 +207,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     if (!s || !DERIVED) return s;
     const r0 = (v: number) => Math.round(v * DERIVED.f);
     const out = { ...s, unit: DERIVED.unit } as T;
-    if ("days" in out) {
+    /* discriminante: `heat` è solo della settimana — `days` ora esiste
+       anche nella serie annuale (carpet), non distingue più nulla */
+    if ("heat" in out) {
       (out as WeekSeries).days = (s as WeekSeries).days.map(x => ({ ...x, v: x.v == null ? null : r0(x.v) }));
       (out as WeekSeries).weekdayAvg = (s as WeekSeries).weekdayAvg != null ? r0((s as WeekSeries).weekdayAvg!) : undefined;
       (out as WeekSeries).heat = (s as WeekSeries).heat.map(row => row.map(v => (v == null ? null : v * DERIVED.f)));
@@ -250,7 +252,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     if (!s || !(module === "water" && airMetric === "volume")) return s;
     const r = (v: number) => Math.round(v * 1440);
     const out = { ...s, unit: "L" } as T;
-    if ("days" in out) {
+    if ("heat" in out) {
       (out as WeekSeries).days = (s as WeekSeries).days.map(x => ({ ...x, v: x.v == null ? null : r(x.v) }));
       (out as WeekSeries).weekdayAvg = (s as WeekSeries).weekdayAvg != null ? r((s as WeekSeries).weekdayAvg!) : undefined;
       (out as WeekSeries).heat = (s as WeekSeries).heat.map(row => row.map(v => (v == null ? null : v * 60)));
