@@ -156,11 +156,16 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const bills = useBillsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite);
   // Parità E1 — ripartizione per categoria del periodo (solo scheda Potenza,
   // orizzonti Giorno e Mese: il breakdown del PC calato dove si legge il totale)
-  const splitOn = module === "energy" && energyTab === "power" && !insightTab && (period === "day" || period === "month");
-  const splitFrom = period === "day" ? dateKey : `${monthKey}-01`;
+  const splitOn = module === "energy" && energyTab === "power" && !insightTab && period !== "range";
+  const capToday = (k: string) => (k > todayKey ? todayKey : k);
+  const splitFrom = period === "day" ? dateKey
+    : period === "week" ? mondayKey
+    : period === "month" ? `${monthKey}-01`
+    : `${anchor.getFullYear()}-01-01`;
   const splitTo = period === "day" ? dateKey
-    : monthKey === todayKey.slice(0, 7) ? todayKey
-    : keyOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
+    : period === "week" ? capToday(keyOf(new Date(mondayOf(anchor).getTime() + 6 * 86400e3)))
+    : period === "month" ? capToday(keyOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0)))
+    : capToday(`${anchor.getFullYear()}-12-31`);
   const esplit = useEnergySplit(splitOn ? (isDemoSite ? siteId : safeSiteId) : undefined, splitFrom, splitTo, isDemoSite && splitOn);
   // Parità E2 — «In questo momento»: il Power Consumption real-time del PC
   // (energy_latest, 30 s, regola dei 2 giorni) su Giorno = oggi
@@ -1021,6 +1026,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               }] : []),
               ...(week.data.costEur != null ? [{ value: `€ ${nf0.format(week.data.costEur)}`, label: t("md.cost_est") }] : []),
             ].slice(0, 3)} />
+            {/* stessa ripartizione di Giorno e Mese, sull'intervallo della settimana */}
+            {splitEl(week.data.totalKwh)}
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
@@ -1141,6 +1148,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               })() : []),
               ...(yearData.data.costEur != null && energyTab !== "cost" ? [{ value: `€ ${nf0.format(yearData.data.costEur)}`, label: t("md.cost_est") }] : []),
             ].slice(0, 3)} />
+            {/* stessa ripartizione degli altri orizzonti, sull'anno */}
+            {splitEl(yearData.data.totalKwh)}
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
