@@ -23,6 +23,9 @@ interface FxProps {
 
 const clamp01 = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.3);
 
+/** fulmine in una scatola 24×24 */
+const BOLT = "M13.2 2.4 L5 13.8 h5.4 l-1 7.8 L18 10.2 h-5.4 l0.6-7.8 z";
+
 /* ── ENERGIA ─────────────────────────────────────────────────────────
    Tre tracce che convergono nel dispositivo. Ogni traccia ha una linea
    di base spenta e un pacchetto luminoso che la percorre: più sale il
@@ -57,6 +60,14 @@ export const EnergyCircuitFx = ({ level, light }: FxProps) => {
           </linearGradient>
           <rect x="-20" y="-20" width="240" height="170" fill="url(#fx-energy-grad)" />
         </mask>
+        {/* bloom: la luce sfonda oltre il tratto, come su uno schermo */}
+        <filter id="fx-bloom" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="2.4" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
       <g mask="url(#fx-energy-fade)">
         {traces.map((tr, i) => (
@@ -73,15 +84,15 @@ export const EnergyCircuitFx = ({ level, light }: FxProps) => {
                 animationDelay: `${(tr.delay - 0.1).toFixed(2)}s`,
               }}
             />
-            {/* pacchetto di luce */}
+            {/* pacchetto di luce, col bloom */}
             <path
               d={tr.d} fill="none" stroke={`${ink}1)`} strokeWidth="2.6" strokeLinecap="round"
               className="animate-fx-packet motion-reduce:animate-none"
+              filter="url(#fx-bloom)"
               style={{
                 strokeDasharray: "20 354",
                 animationDuration: `${dur.toFixed(2)}s`,
                 animationDelay: `${tr.delay.toFixed(2)}s`,
-                filter: light ? "drop-shadow(0 0 3px rgba(1,71,75,.5))" : "drop-shadow(0 0 6px rgba(255,255,255,.9))",
               }}
             />
           </g>
@@ -89,16 +100,81 @@ export const EnergyCircuitFx = ({ level, light }: FxProps) => {
         {/* il punto in cui la corrente entra nel dispositivo */}
         {nodes.map((n, i) => (
           <circle
-            key={`n${i}`} cx={n.x} cy={n.y} r="2.6" fill={`${ink}.85)`}
+            key={`n${i}`} cx={n.x} cy={n.y} r="2.6" fill={`${ink}.9)`}
             className="animate-fx-spark motion-reduce:animate-none"
+            filter="url(#fx-bloom)"
             style={{
               animationDuration: `${dur.toFixed(2)}s`,
               animationDelay: `${(traces[i].delay + dur * 0.45).toFixed(2)}s`,
-              filter: light ? undefined : "drop-shadow(0 0 5px rgba(255,255,255,.9))",
             }}
           />
         ))}
       </g>
+    </svg>
+  );
+};
+
+/**
+ * Il fulmine: ciò che tutta quella corrente diventa. Va montato DOPO il
+ * render del dispositivo, così resta davanti e non ci finisce dietro.
+ * Contorno sempre visibile, pieno che scocca al ritmo dei pacchetti.
+ */
+export const EnergyBoltFx = ({ level, light }: FxProps) => {
+  const k = clamp01(level);
+  const ink = light ? "rgba(1,71,75," : "rgba(255,255,255,";
+  const dur = (3.4 - 2.3 * k) / 2;
+  return (
+    <svg
+      viewBox="0 0 24 24" aria-hidden
+      style={{ position: "absolute", width: "26%", maxWidth: 46, top: "16%", right: "12%", overflow: "visible", pointerEvents: "none" }}
+    >
+      <defs>
+        <filter id="fx-bolt-bloom" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="1.1" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <path
+        d={BOLT} fill="none" stroke={`${ink}.45)`} strokeWidth="1"
+        strokeLinejoin="round" strokeLinecap="round"
+      />
+      <path
+        d={BOLT} fill={`${ink}1)`}
+        className="animate-fx-spark motion-reduce:animate-none"
+        filter="url(#fx-bolt-bloom)"
+        style={{ animationDuration: `${dur.toFixed(2)}s`, transformOrigin: "12px 12px" }}
+      />
+    </svg>
+  );
+};
+
+/* ── ACQUA ───────────────────────────────────────────────────────────
+   Onde concentriche che si allargano dal contatore e svaniscono: il
+   gesto dell'acqua che scorre, senza promettere una portata. */
+export const WaterRippleFx = ({ level, light }: FxProps) => {
+  const k = clamp01(level);
+  const ink = light ? "1,71,75" : "255,255,255";
+  const dur = 4.4 - 1.8 * k;
+  return (
+    <svg
+      viewBox="0 0 200 120" aria-hidden
+      style={{ position: "absolute", width: "130%", top: "18%", left: "-15%", overflow: "visible", pointerEvents: "none" }}
+    >
+      {[0, 1, 2].map(i => (
+        <ellipse
+          key={i} cx="100" cy="76" rx="26" ry="9"
+          fill="none" stroke={`rgba(${ink},.5)`} strokeWidth="1.5"
+          className="animate-fx-ring motion-reduce:animate-none"
+          style={{
+            transformOrigin: "100px 76px",
+            animationDuration: `${dur.toFixed(2)}s`,
+            animationDelay: `${(i * dur) / 3}s`,
+          }}
+        />
+      ))}
     </svg>
   );
 };

@@ -20,7 +20,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud, ArrowLeft } from "lucide-react";
 import { hapticLight } from "@/lib/native";
 import type { DeviceFamily, SiteDeviceGroup } from "@/hooks/useSiteDevices";
-import { AirRibbonFx, EnergyCircuitFx } from "./DeviceFx";
+import { AirRibbonFx, EnergyBoltFx, EnergyCircuitFx, WaterRippleFx } from "./DeviceFx";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 
@@ -356,9 +356,11 @@ const CtaGlass = ({ children, onClick, light }: { children: React.ReactNode; onC
  * ruota; senza dispositivi non esiste. `prefers-reduced-motion`: resta
  * fermo sul primo.
  */
-const DeviceRotator = ({ groups, installedLabel, onPick }: {
+const DeviceRotator = ({ groups, installedLabel, fxLevels, onPick }: {
   groups: SiteDeviceGroup[];
   installedLabel: (n: number) => string;
+  /** intensità per famiglia, dalla telemetria viva (0…1) */
+  fxLevels?: Partial<Record<DeviceFamily, number>>;
   onPick?: (family: DeviceFamily) => void;
 }) => {
   const [i, setI] = useState(0);
@@ -389,16 +391,26 @@ const DeviceRotator = ({ groups, installedLabel, onPick }: {
         style={{ width: 186 }}
         aria-label={`${g.label} · ${installedLabel(g.count)}`}
       >
-        <img
-          src={g.img} alt="" aria-hidden
-          className="object-contain min-h-0"
-          style={{
-            flex: "1 1 auto", width: "100%", maxHeight: "100%",
-            opacity: shown ? 1 : 0,
-            transform: shown ? "scale(1)" : "scale(.94)",
-            transition: fade,
-          }}
-        />
+        {/* il dispositivo arriva già «al lavoro»: la stessa animazione
+            della sua facciata, dietro al render (16/10) */}
+        <span
+          className="relative flex items-center justify-center min-h-0"
+          style={{ flex: "1 1 auto", width: "100%", opacity: shown ? 1 : 0, transition: fade }}
+        >
+          {g.family === "energy" && <EnergyCircuitFx level={fxLevels?.energy ?? 0.3} />}
+          {g.family === "air" && <AirRibbonFx level={fxLevels?.air ?? 0.25} />}
+          {g.family === "water" && <WaterRippleFx level={fxLevels?.water ?? 0.3} />}
+          <img
+            src={g.img} alt="" aria-hidden
+            className="object-contain max-h-full relative"
+            style={{
+              maxWidth: "100%",
+              transform: shown ? "scale(1)" : "scale(.94)",
+              transition: fade,
+            }}
+          />
+          {g.family === "energy" && <EnergyBoltFx level={fxLevels?.energy ?? 0.3} />}
+        </span>
         <span
           className="block shrink-0" aria-hidden
           style={{ width: 104, height: 14, background: "radial-gradient(ellipse at center, rgba(0,0,0,.26) 0%, rgba(0,0,0,0) 68%)", marginTop: -4, opacity: shown ? 1 : 0, transition: fade }}
@@ -488,6 +500,8 @@ const ModuleScreen = ({
                     className="object-contain animate-hw-float motion-reduce:animate-none"
                     style={{ height: "clamp(72px, 14svh, 120px)", maxWidth: 190, position: "relative" }}
                   />
+                  {/* il fulmine sta DAVANTI al dispositivo, non dietro */}
+                  {deviceFx === "energy" && <EnergyBoltFx level={fxLevel ?? 0.3} light={light} />}
                   <span
                     className="block -mt-1 animate-hw-shadow motion-reduce:animate-none"
                     style={{ width: 104, height: 14, background: "radial-gradient(ellipse at center, rgba(0,0,0,.18) 0%, rgba(0,0,0,0) 68%)" }}
@@ -625,6 +639,20 @@ export const OverviewMobileView = ({
     { key: "water", icon: Droplet, score: water.score, enabled: moduleConfig.water.enabled, level: water.level, state: stateOf(moduleConfig.water.enabled, water.level) },
   ];
 
+  /* intensità delle animazioni, dalla telemetria viva: i pacchetti di
+     corrente corrono col carico, i nastri d'aria si calmano quando l'IAQ
+     è alto. Usate sia nelle facciate sia nell'hero. */
+  const fxLevels = useMemo(() => {
+    const kw = power?.total ?? energyAvgKw;
+    const lim = energyLimitKw || 25;
+    return {
+      energy: typeof kw === "number" && kw > 0 ? Math.max(0.12, Math.min(1, kw / lim)) : 0.12,
+      air: moduleConfig.air.enabled && air.score > 0 ? Math.max(0.1, Math.min(1, (100 - air.score) / 70)) : 0.18,
+      water: 0.3,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [power?.total, energyAvgKw, energyLimitKw, air.score, moduleConfig.air.enabled]);
+
   // Tono dell'hero secondo il giudizio; il motivo prende l'icona del modulo
   // attivo che pesa di piu (score piu basso) — brief §5.2.
   const heroTone = HERO_TONES[notInstalled ? "NO_DATA" : overall.level] ?? HERO_TONES.GOOD;
@@ -732,6 +760,7 @@ export const OverviewMobileView = ({
           <DeviceRotator
             groups={deviceGroups}
             installedLabel={n => tn("ovm.installed_n", n)}
+            fxLevels={fxLevels}
             onPick={family => onNavigate?.(family)}
           />
         )}
@@ -815,13 +844,8 @@ export const OverviewMobileView = ({
         outdoorExtra={typeof outdoorHumidity === "number" ? `${t("ovm.rh")} ${nf0.format(outdoorHumidity)}%` : undefined}
         deviceImg="/intro/hw-greeny.webp"
         deviceFx="energy"
-        /* i pacchetti corrono col carico vero: kW di adesso (o media del
-           periodo) sul limite di contratto; senza dati restano al minimo */
-        fxLevel={(() => {
-          const kw = power?.total ?? energyAvgKw;
-          const lim = energyLimitKw || 25;
-          return typeof kw === "number" && kw > 0 ? Math.max(0.12, Math.min(1, kw / lim)) : 0.12;
-        })()}
+        /* i pacchetti corrono col carico vero (vedi fxLevels) */
+        fxLevel={fxLevels.energy}
         icon={Zap} label={t("ovm.energy")}
         buildingClass={energy.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#028084] to-[#016368]"}
         light={energy.level === "OK" ? true : undefined}
@@ -869,9 +893,8 @@ export const OverviewMobileView = ({
            (weather_data) non lo fornisce — non si inventa (§8.3) */
         deviceImg="/intro/hw-clair.webp"
         deviceFx="air"
-        /* aria buona = flusso lento e disteso; più il punteggio scende,
-           più i nastri si muovono (IAQ 100 → calmo, 0 → agitato) */
-        fxLevel={moduleConfig.air.enabled && air.score > 0 ? Math.max(0.1, Math.min(1, (100 - air.score) / 70)) : 0.18}
+        /* aria buona = flusso lento e disteso (vedi fxLevels) */
+        fxLevel={fxLevels.air}
         icon={Wind} label={t("ovm.air")}
         buildingClass={air.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"}
         ink={air.level === "OK" ? FAIR.ink : undefined}
