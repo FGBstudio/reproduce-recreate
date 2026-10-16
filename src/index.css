@@ -415,15 +415,22 @@ body {
     0%   { transform: scale(.6); opacity: .45; }
     100% { transform: scale(1.9); opacity: 0; }
   }
-  @keyframes fx-flow {
-    0%   { opacity: 0; transform: translateX(-26px); }
-    18%  { opacity: .9; }
-    78%  { opacity: .9; }
-    100% { opacity: 0; transform: translateX(30px); }
+  /* pacchetto di luce lungo una traccia di circuito: il tratteggio
+     scorre sul percorso (dasharray impostato dal componente) */
+  @keyframes fx-packet {
+    from { stroke-dashoffset: 374; }
+    to   { stroke-dashoffset: 0; }
   }
-  .animate-fx-spark { animation: fx-spark 2.4s ease-in-out infinite; }
-  .animate-fx-ring  { animation: fx-ring 2.4s ease-out infinite; }
-  .animate-fx-flow  { animation: fx-flow 3.6s ease-in-out infinite; }
+  /* nastro d'aria: trasla di ESATTAMENTE un periodo d'onda (100), così
+     il ciclo si richiude senza giunture */
+  @keyframes fx-drift {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-100px); }
+  }
+  .animate-fx-spark  { animation: fx-spark 2.4s ease-in-out infinite; }
+  .animate-fx-ring   { animation: fx-ring 2.4s ease-out infinite; }
+  .animate-fx-packet { animation: fx-packet 2.4s linear infinite; }
+  .animate-fx-drift  { animation: fx-drift 12s linear infinite; }
 
   .animate-pulse-ring {
     animation: pulse-ring 2s infinite;

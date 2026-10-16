@@ -20,6 +20,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud, ArrowLeft } from "lucide-react";
 import { hapticLight } from "@/lib/native";
 import type { DeviceFamily, SiteDeviceGroup } from "@/hooks/useSiteDevices";
+import { AirRibbonFx, EnergyCircuitFx } from "./DeviceFx";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 
@@ -378,31 +379,34 @@ const DeviceRotator = ({ groups, installedLabel, onPick }: {
   const g = groups[Math.min(i, groups.length - 1)];
   const fade = reduce ? undefined : "opacity .42s ease, transform .42s cubic-bezier(.2,.7,.2,1)";
   return (
-    <div className="w-full flex justify-end" style={{ marginTop: 18 }}>
+    /* riempie la fascia libera fra la scala del punteggio e la riga dei
+       moduli, con un 10% d'aria sopra e sotto (16/10) */
+    <div className="flex-1 min-h-0 w-full flex items-center justify-end" style={{ paddingTop: "10%", paddingBottom: "10%" }}>
       <button
         type="button"
         onClick={() => { hapticLight(); onPick?.(g.family); }}
-        className="flex flex-col items-center"
-        style={{ width: 150 }}
+        className="h-full flex flex-col items-center justify-center"
+        style={{ width: 186 }}
         aria-label={`${g.label} · ${installedLabel(g.count)}`}
       >
         <img
           src={g.img} alt="" aria-hidden
-          className="object-contain"
+          className="object-contain min-h-0"
           style={{
-            height: 128, maxWidth: 142,
+            flex: "1 1 auto", width: "100%", maxHeight: "100%",
             opacity: shown ? 1 : 0,
             transform: shown ? "scale(1)" : "scale(.94)",
             transition: fade,
           }}
         />
         <span
-          className="block" aria-hidden
-          style={{ width: 92, height: 13, background: "radial-gradient(ellipse at center, rgba(0,0,0,.26) 0%, rgba(0,0,0,0) 68%)", marginTop: -6, opacity: shown ? 1 : 0, transition: fade }}
+          className="block shrink-0" aria-hidden
+          style={{ width: 104, height: 14, background: "radial-gradient(ellipse at center, rgba(0,0,0,.26) 0%, rgba(0,0,0,0) 68%)", marginTop: -4, opacity: shown ? 1 : 0, transition: fade }}
         />
         <span
+          className="shrink-0"
           style={{
-            fontSize: 11, lineHeight: 1.3, marginTop: 5, color: "rgba(255,255,255,.9)",
+            fontSize: 12, lineHeight: 1.3, marginTop: 8, color: "rgba(255,255,255,.92)",
             opacity: shown ? 1 : 0, transition: fade,
           }}
         >
@@ -419,7 +423,7 @@ const DeviceRotator = ({ groups, installedLabel, onPick }: {
 const ModuleScreen = ({
   city, outdoorTemp, outdoorExtra, outdoorLabel, icon, label, verdict, scoreLine,
   values, limitRatio, big, bigUnit, bigColor, rows, meters, ctaLabel, onCta, light, buildingClass, pitch,
-  centerContent, onExplain, explainLabel, ink, deviceImg, deviceFx,
+  centerContent, onExplain, explainLabel, ink, deviceImg, deviceFx, fxLevel,
 }: any) => (
   <section data-screen className="h-full snap-start snap-always flex flex-col shrink-0">
     <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} outdoorLabel={outdoorLabel} />
@@ -475,42 +479,8 @@ const ModuleScreen = ({
                    e l'ombra si stringe quando sale; sopra, il movimento che
                    dice COSA misura: scarica per l'energia, flusso per l'aria */
                 <div className="relative flex flex-col items-center" aria-hidden="true">
-                  {deviceFx === "energy" && (
-                    <>
-                      <span
-                        className="absolute rounded-full animate-fx-ring motion-reduce:animate-none"
-                        style={{ width: 92, height: 92, top: "26%", border: `2px solid ${light ? "rgba(1,71,75,.5)" : "rgba(255,255,255,.55)"}` }}
-                      />
-                      <Zap
-                        className="absolute animate-fx-spark motion-reduce:animate-none"
-                        style={{
-                          width: 26, height: 26, top: "14%", right: "16%",
-                          color: light ? "#01474b" : "#ffffff",
-                          filter: light ? undefined : "drop-shadow(0 0 7px rgba(255,255,255,.65))",
-                        }}
-                        fill="currentColor"
-                      />
-                    </>
-                  )}
-                  {deviceFx === "air" && (
-                    <svg
-                      className="absolute" viewBox="0 0 160 70"
-                      style={{ width: 176, top: "30%", overflow: "visible" }}
-                    >
-                      {[0, 1, 2].map(i => (
-                        <path
-                          key={i}
-                          d={`M2 ${16 + i * 19} q 26 -11 52 0 t 52 0 t 52 0`}
-                          fill="none"
-                          stroke={light ? "rgba(1,71,75,.42)" : "rgba(255,255,255,.62)"}
-                          strokeWidth={i === 1 ? 2 : 1.4}
-                          strokeLinecap="round"
-                          className="animate-fx-flow motion-reduce:animate-none"
-                          style={{ animationDelay: `${i * 0.55}s` }}
-                        />
-                      ))}
-                    </svg>
-                  )}
+                  {deviceFx === "energy" && <EnergyCircuitFx level={fxLevel ?? 0.3} light={light} />}
+                  {deviceFx === "air" && <AirRibbonFx level={fxLevel ?? 0.3} light={light} />}
                   <img
                     src={deviceImg}
                     alt=""
@@ -845,6 +815,13 @@ export const OverviewMobileView = ({
         outdoorExtra={typeof outdoorHumidity === "number" ? `${t("ovm.rh")} ${nf0.format(outdoorHumidity)}%` : undefined}
         deviceImg="/intro/hw-greeny.webp"
         deviceFx="energy"
+        /* i pacchetti corrono col carico vero: kW di adesso (o media del
+           periodo) sul limite di contratto; senza dati restano al minimo */
+        fxLevel={(() => {
+          const kw = power?.total ?? energyAvgKw;
+          const lim = energyLimitKw || 25;
+          return typeof kw === "number" && kw > 0 ? Math.max(0.12, Math.min(1, kw / lim)) : 0.12;
+        })()}
         icon={Zap} label={t("ovm.energy")}
         buildingClass={energy.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#028084] to-[#016368]"}
         light={energy.level === "OK" ? true : undefined}
@@ -892,6 +869,9 @@ export const OverviewMobileView = ({
            (weather_data) non lo fornisce — non si inventa (§8.3) */
         deviceImg="/intro/hw-clair.webp"
         deviceFx="air"
+        /* aria buona = flusso lento e disteso; più il punteggio scende,
+           più i nastri si muovono (IAQ 100 → calmo, 0 → agitato) */
+        fxLevel={moduleConfig.air.enabled && air.score > 0 ? Math.max(0.1, Math.min(1, (100 - air.score) / 70)) : 0.18}
         icon={Wind} label={t("ovm.air")}
         buildingClass={air.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"}
         ink={air.level === "OK" ? FAIR.ink : undefined}
