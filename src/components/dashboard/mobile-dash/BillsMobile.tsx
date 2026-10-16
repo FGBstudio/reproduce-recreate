@@ -8,7 +8,7 @@
  * per bolletta (le 5 card desktop) e caricamento da fotocamera o PDF.
  */
 import { useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Receipt, AlertTriangle, Hourglass } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -198,8 +198,15 @@ const BillsMobile = ({ siteId, demoId, siteName, timezone, isDemoSite, contractK
                   <button key={it.id} type="button" className="w-full flex items-center gap-3 text-left"
                     onClick={() => { hapticLight(); setSelBill(it); }}
                     style={{ padding: "11px 24px", minHeight: 56 }}>
-                    <span className="grid place-items-center shrink-0 rounded-xl" style={{ width: 34, height: 34, background: "#e4efef", fontSize: 15 }} aria-hidden>
-                      {done ? "🧾" : it.status === "error" ? "⚠️" : "⏳"}
+                    {/* Icone da lucide-react come in tutto il prodotto: le emoji
+                        cambiano disegno da un sistema all'altro e non seguono
+                        la palette. Rosso solo sull'errore, che e' un problema. */}
+                    <span className="grid place-items-center shrink-0 rounded-xl" style={{ width: 34, height: 34, background: it.status === "error" ? "#f9e4ea" : "#e4efef" }} aria-hidden>
+                      {done
+                        ? <Receipt size={17} strokeWidth={1.8} color="#016368" />
+                        : it.status === "error"
+                          ? <AlertTriangle size={17} strokeWidth={1.8} color="#931841" />
+                          : <Hourglass size={17} strokeWidth={1.8} color={SUB} />}
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="flex items-center gap-2" style={{ fontSize: 13.5, fontWeight: 600 }}>
