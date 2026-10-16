@@ -931,14 +931,20 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                   – – {t("md.typical_of").replace("{d}", new Intl.DateTimeFormat(language, { weekday: "long" }).format(anchor))}
                 </p>
               )}
-              {/* la causa (§6.1.8): temperatura esterna per l'energia,
-                  HVAC acceso/spento per la CO₂ — stesso asse X */}
-              {module === "energy" && d.outdoorTemp && (() => {
-                const vals = d.outdoorTemp.filter((v): v is number => v != null);
-                const range = vals.length ? `${nf0.format(Math.min(...vals))}° → ${nf0.format(Math.max(...vals))}°` : undefined;
-                return <CauseTrack variant="line" series={d.outdoorTemp} label={t("md.outdoor_temp")} note={range} />;
-              })()}
+              {/* la causa (§6.1.8): HVAC acceso/spento per la CO₂, stesso
+                  asse X. La traccia della temperatura esterna è stata
+                  tolta (16/10): la scheda Meteo la mostra meglio, qui al
+                  suo posto va la heatmap delle ore. */}
               {d.hvacStrip && <CauseTrack variant="onOff" strip={d.hvacStrip} label={t("md.hvac")} note={t("md.hvac_note")} />}
+              {/* il blocco «pattern» del giorno, dove stava la temperatura */}
+              <HourStrip
+                points={d.points}
+                unit={d.unit}
+                overLimit={overLimitFor}
+                title={module === "energy" ? t("md.hour_load") : t("md.hour_pattern")}
+                hint={t("md.tap_hour")}
+                fmt={fmtV}
+              />
               {/* §10.3: la regola perdite scritta per esteso, leggibile */}
               {module === "water" && airMetric === "night" && (
                 <div className="px-6 mt-3">
@@ -1025,16 +1031,6 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                   ))}
                 </div>
               )}
-              {/* stesso blocco «pattern» degli altri orizzonti, alla scala
-                  del giorno: una cella per ora (decisione owner 16/10) */}
-              <HourStrip
-                points={d.points}
-                unit={d.unit}
-                overLimit={overLimitFor}
-                title={module === "energy" ? t("md.hour_load") : t("md.hour_pattern")}
-                hint={t("md.tap_hour")}
-                fmt={fmtV}
-              />
               {buildingEl}
               {/* parità E1: da dove viene il consumo di oggi */}
               {splitEl(d.totalKwh)}
