@@ -699,7 +699,11 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   return (
     <div
       ref={rootRef}
-      className="absolute inset-0 z-30 flex flex-col overflow-y-auto no-scrollbar"
+      /* NON usare `flex flex-col` qui: i blocchi figli senza `shrink-0`
+         venivano COMPRESSI a zero quando il contenuto supera lo schermo —
+         nel riepilogo del mese la riga delle schede metrica finiva alta 0px
+         e la heatmap ci passava sopra. Blocco verticale normale. */
+      className="absolute inset-0 z-30 overflow-y-auto no-scrollbar"
       style={{
         background: "linear-gradient(180deg, #f6fafa 0%, #ffffff 30%)",
         color: INK,
