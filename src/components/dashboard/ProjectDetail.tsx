@@ -21,8 +21,7 @@ import { TimePeriodSelector, TimePeriod } from "./TimePeriodSelector";
 import { 
   DateRange, 
   useEnergyData, 
-  useDeviceData, 
-  useCO2Data, 
+  useDeviceData,
   useWaterData,
   useEnergyWeatherAnalysis,
   getPeriodLabel 
@@ -1349,7 +1348,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
   // Always call hooks unconditionally to comply with React rules
   const mockEnergyData = useEnergyData(timePeriod, dateRange);
   const filteredDeviceData = useDeviceData(timePeriod, dateRange);
-  const filteredCO2Data = useCO2Data(timePeriod, dateRange);
   const filteredWaterData = useWaterData(timePeriod, dateRange);
   const periodLabel = getPeriodLabel(timePeriod, dateRange, language);
   
@@ -3486,6 +3484,93 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return { backgroundColor: '#f0f2f5' };
   }, [project, customBgUrl]);
 
+  /* ─────────────────────────────────────────────────────────────────────────
+     SERIE REALI PER IL REPORT PDF
+
+     Il report e' un documento che finisce in mano al cliente, quindi vale la
+     regola d'oro senza sconti: se la misura non esiste la tabella non c'e'.
+
+     Prima di qui le tabelle aria del PDF arrivavano da tre costanti scritte
+     a mano in questo file — le stesse dodici righe di CO2, gli stessi valori
+     di temperatura, gli stessi sette giorni di particolato per OGNI sito e
+     OGNI periodo. Ora si leggono da airTimeseriesResp, che e' la stessa
+     fonte dei grafici a schermo (e per i siti vetrina porta la loro serie
+     dimostrativa, quindi la demo continua a produrre un report completo).
+
+     Forma compatta: una riga per bucket con la media tra le sonde, non una
+     colonna per dispositivo — in una tabella A4 sarebbe illeggibile.
+     ───────────────────────────────────────────────────────────────────────── */
+  const buildPdfSeries = useCallback(
+    (cols: Array<{ key: string; metric: string }>) => {
+      const points = airTimeseriesResp?.data ?? [];
+      if (points.length === 0) return [] as Record<string, unknown>[];
+
+      const siteTz = resolveTimezone(siteTimezone);
+      const wanted = new Map(cols.map((c) => [c.metric, c.key]));
+
+      // label bucket -> colonna -> { somma, conteggio }
+      const acc = new Map<string, Record<string, { sum: number; n: number }>>();
+      const order: string[] = [];
+
+      for (const p of points) {
+        const col = wanted.get(p.metric);
+        if (!col) continue;
+        const v = Number(p.value_avg ?? p.value);
+        if (!Number.isFinite(v)) continue;
+
+        const label = formatChartLabel(new Date(p.ts_bucket), timeRange.bucket, siteTz, timePeriod as any);
+        if (!acc.has(label)) { acc.set(label, {}); order.push(label); }
+        const row = acc.get(label)!;
+        if (!row[col]) row[col] = { sum: 0, n: 0 };
+        row[col].sum += v;
+        row[col].n += 1;
+      }
+
+      if (order.length === 0) return [] as Record<string, unknown>[];
+
+      return order.map((label) => {
+        const row = acc.get(label)!;
+        const out: Record<string, unknown> = { time: label };
+        for (const c of cols) {
+          const cell = row[c.key];
+          // Niente zeri di comodo: una cella senza misura resta vuota
+          out[c.key] = cell && cell.n > 0 ? Number((cell.sum / cell.n).toFixed(1)) : null;
+        }
+        return out;
+      }).filter((row) => cols.some((c) => row[c.key] != null));
+    },
+    [airTimeseriesResp, siteTimezone, timeRange.bucket, timePeriod]
+  );
+
+  const pdfCo2Series = useMemo(
+    () => buildPdfSeries([{ key: 'co2', metric: 'iaq.co2' }, { key: 'tvoc', metric: 'iaq.voc' }]),
+    [buildPdfSeries]
+  );
+  const pdfTempHumiditySeries = useMemo(
+    () => buildPdfSeries([{ key: 'temp', metric: 'env.temperature' }, { key: 'humidity', metric: 'env.humidity' }]),
+    [buildPdfSeries]
+  );
+  const pdfParticulateSeries = useMemo(
+    () => buildPdfSeries([{ key: 'pm25', metric: 'iaq.pm25' }, { key: 'pm10', metric: 'iaq.pm10' }]),
+    [buildPdfSeries]
+  );
+
+  /* La CO2 dell'energia e' una derivazione, non una misura: nasce dai kWh
+     reali per il fattore di rete. Prima arrivava da useCO2Data, un
+     generatore con seed che produceva numeri plausibili e scollegati dal
+     consumo mostrato due pagine prima. */
+  const pdfEnergyCo2Series = useMemo(() => {
+    if (!Array.isArray(filteredEnergyData) || filteredEnergyData.length === 0) return [];
+    return (filteredEnergyData as Array<Record<string, unknown>>).map((row) => {
+      const kwh = Number(row.value ?? row.kwh ?? row.actual ?? 0);
+      return {
+        label: String(row.label ?? row.time ?? ''),
+        kwh: Number.isFinite(kwh) ? Number(kwh.toFixed(1)) : null,
+        co2: Number.isFinite(kwh) ? Number((kwh * CO2_EMISSION_FACTOR).toFixed(1)) : null,
+      };
+    }).filter((r) => r.co2 != null);
+  }, [filteredEnergyData]);
+
   // PDF Export handler (dichiarato PRIMA dell'early-return: gli hook devono
   // essere chiamati nello stesso ordine a ogni render - Rules of Hooks)
   const handleExportPdf = useCallback(async () => {
@@ -3563,17 +3648,23 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           energy: {
             consumption: filteredEnergyData as unknown as Record<string, unknown>[],
             devices: devicesDataForReport, // Passing the correctly summed device categories flat array
-            co2: filteredCO2Data as unknown as Record<string, unknown>[],
+            co2: pdfEnergyCo2Series as unknown as Record<string, unknown>[],
           },
+          // Il desktop non legge nessuna telemetria idrica reale: finche' non
+          // c'e' una fonte, le tabelle acqua del report restano vuote e il
+          // documento dichiara perche'. I dati che stavano qui — consumi con
+          // seed casuale, pH/torbidita'/cloro fissi e sei zone di perdita
+          // inventate, nomi e orari compresi — non possono finire in mano a
+          // un cliente.
           water: {
-            consumption: filteredWaterData as Record<string, unknown>[],
-            quality: waterQualityData as Record<string, unknown>[],
-            leaks: waterLeaksData as Record<string, unknown>[],
+            consumption: [],
+            quality: [],
+            leaks: [],
           },
           airQuality: {
-            co2History: co2HistoryData as Record<string, unknown>[],
-            tempHumidity: tempHumidityData as Record<string, unknown>[],
-            particulates: pm25Data as Record<string, unknown>[],
+            co2History: pdfCo2Series,
+            tempHumidity: pdfTempHumiditySeries,
+            particulates: pdfParticulateSeries,
           },
         },
         chartRefs: {
@@ -3594,15 +3685,11 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     timePeriod, 
     dateRange, 
     resolvedModuleConfig, 
-    filteredEnergyData, 
-    filteredDeviceData, 
-    filteredCO2Data, 
-    filteredWaterData, 
-    waterQualityData, 
-    waterLeaksData, 
-    co2HistoryData, 
-    tempHumidityData, 
-    pm25Data, 
+    filteredEnergyData,
+    pdfEnergyCo2Series,
+    pdfCo2Series,
+    pdfTempHumiditySeries,
+    pdfParticulateSeries,
     isGeneratingPdf,
     activeAirMetrics,
     language,

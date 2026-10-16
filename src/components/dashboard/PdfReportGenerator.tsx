@@ -261,10 +261,13 @@ export const generatePdfReport = async ({
   ]);
 
   // --- COMPUTED METRICS ---
+  // Nessun ripiego inventato: se la somma reale e' zero il report dice zero.
+  // Prima qui c'era `|| (project.data.total * 30)`, che moltiplicava il dato
+  // istantaneo per trenta giorni e lo presentava come consumo del periodo.
   const totalEnergyKwh = precalculatedTotals?.totalEnergyKwh !== undefined
     ? precalculatedTotals.totalEnergyKwh
     : (moduleConfig.energy.enabled
-        ? data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0) || (project.data.total * 30)
+        ? data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0)
         : 0);
   const totalCo2Kg = precalculatedTotals?.totalCo2Kg !== undefined
     ? precalculatedTotals.totalCo2Kg
@@ -303,6 +306,23 @@ export const generatePdfReport = async ({
     doc.setLineWidth(0.5);
     doc.line(margin, yPos, pageWidth - margin, yPos);
     yPos += 5;
+  };
+
+  /**
+   * Il posto di una tabella che non ha dati.
+   *
+   * Un report che arriva al cliente non puo' riempire un buco con numeri
+   * verosimili: se la misura non c'e' il documento lo dice, e dice anche
+   * perche'. Senza questo blocco un'intestazione restava sospesa sul vuoto
+   * e si leggeva come un errore di generazione.
+   */
+  const drawNoData = (reason?: string) => {
+    checkPageBreak(14);
+    doc.setFontSize(9.5);
+    doc.setTextColor(...COLORS.secondary);
+    doc.setFont("FuturaLT", "normal");
+    doc.text(reason ? `${t.noData} — ${reason}` : t.noData, margin, yPos);
+    yPos += 9;
   };
 
   const drawKeyValue = (key: string, value: string) => {
@@ -692,6 +712,8 @@ export const generatePdfReport = async ({
         return String(val ?? '–');
       }));
       renderTable(headers, rows, COLORS.accent);
+    } else {
+      drawNoData(t.noDataReasons.period);
     }
 
     checkPageBreak(60);
@@ -704,6 +726,9 @@ export const generatePdfReport = async ({
         return String(val ?? '–');
       }));
       renderTable(keys, rows, COLORS.accent);
+    } else {
+      // pH, torbidita' e cloro non sono misurati da nessun contatore installato
+      drawNoData(t.noDataReasons.noSensors);
     }
 
     checkPageBreak(60);
@@ -717,6 +742,9 @@ export const generatePdfReport = async ({
         String(row.detected || "–"),
       ]);
       renderTable(headers, rows, COLORS.warning);
+    } else {
+      // Il perimetro idrico non ha contatori per zona: nessuna perdita per zona
+      drawNoData(t.noDataReasons.noSensors);
     }
   }
 
@@ -739,6 +767,8 @@ export const generatePdfReport = async ({
         return String(val ?? '–');
       }));
       renderTable(keys, rows, COLORS.success);
+    } else {
+      drawNoData(t.noDataReasons.period);
     }
 
     checkPageBreak(60);
@@ -751,6 +781,8 @@ export const generatePdfReport = async ({
         return String(val ?? '–');
       }));
       renderTable(keys, rows, COLORS.primary);
+    } else {
+      drawNoData(t.noDataReasons.period);
     }
 
     checkPageBreak(60);
@@ -763,6 +795,9 @@ export const generatePdfReport = async ({
         return String(val ?? '–');
       }));
       renderTable(keys, rows, COLORS.warning);
+    } else {
+      // Il particolato lo misurano solo le sonde WELL, non le LEED
+      drawNoData(t.noDataReasons.noSensors);
     }
   }
 
@@ -910,7 +945,7 @@ async function generateAiDiagnosis(
   try {
     const totalConsumption = totalEnergyKwh !== undefined
       ? totalEnergyKwh
-      : (data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0) || (project.data.total * 30));
+      : data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0);
     const calculatedCo2 = totalConsumption * CO2_EMISSION_FACTOR_KG_KWH;
 
     const energyPayload = moduleConfig.energy.enabled ? {
@@ -922,11 +957,14 @@ async function generateAiDiagnosis(
       co2Total: data.energy.co2.reduce((s, r) => s + extractNum(r, 'value', 'CO2 (kg)', 'CO₂ (kg)', 'co2'), 0) || calculatedCo2,
     } : null;
 
-    const waterPayload = moduleConfig.water.enabled ? {
-      totalConsumption: data.water.consumption.reduce((s, r) => s + extractNum(r, 'value', 'consumption'), 0),
+    // avgPh e avgTurbidity erano due costanti, 7.2 e 0.8: la diagnosi AI ne
+    // ricavava frasi sulla qualita' dell'acqua di un sito dove nessuno le ha
+    // mai misurate. Si passa solo cio' che e' stato misurato davvero, e il
+    // payload resta nullo se non c'e' nulla da dire.
+    const waterTotal = data.water.consumption.reduce((s, r) => s + extractNum(r, 'value', 'consumption'), 0);
+    const waterPayload = moduleConfig.water.enabled && data.water.consumption.length > 0 ? {
+      totalConsumption: waterTotal,
       leaksDetected: data.water.leaks.filter(l => l['status'] !== 'ok').length,
-      avgPh: 7.2,
-      avgTurbidity: 0.8,
     } : null;
 
     const airPayload = moduleConfig.air.enabled ? {
