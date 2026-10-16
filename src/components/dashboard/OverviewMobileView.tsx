@@ -397,7 +397,8 @@ const DeviceRotator = ({ groups, installedLabel, fxLevels, onPick }: {
           className="relative flex items-center justify-center min-h-0"
           style={{ flex: "1 1 auto", width: "100%", opacity: shown ? 1 : 0, transition: fade }}
         >
-          {g.family === "energy" && <EnergyCircuitFx level={fxLevels?.energy ?? 0.3} />}
+          {/* qui l'energia è detta dal solo fulmine: le tracce di circuito
+              restano sulla facciata Energy, dove hanno spazio (16/10) */}
           {g.family === "air" && <AirRibbonFx level={fxLevels?.air ?? 0.25} />}
           {g.family === "water" && <WaterRippleFx level={fxLevels?.water ?? 0.3} />}
           <img
