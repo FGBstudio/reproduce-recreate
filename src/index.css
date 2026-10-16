@@ -403,6 +403,28 @@ body {
   .animate-hw-float { animation: hw-float 6s ease-in-out infinite; }
   .animate-hw-shadow { animation: hw-shadow 6s ease-in-out infinite; }
 
+  /* Cosa sta misurando il dispositivo, detto col movimento:
+     ENERGIA = una scarica che si carica e scocca;
+     ARIA    = l'aria che attraversa la sonda. */
+  @keyframes fx-spark {
+    0%, 100% { opacity: .22; transform: scale(.9); }
+    42%      { opacity: 1;   transform: scale(1.08); }
+    56%      { opacity: .45; transform: scale(1); }
+  }
+  @keyframes fx-ring {
+    0%   { transform: scale(.6); opacity: .45; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+  @keyframes fx-flow {
+    0%   { opacity: 0; transform: translateX(-26px); }
+    18%  { opacity: .9; }
+    78%  { opacity: .9; }
+    100% { opacity: 0; transform: translateX(30px); }
+  }
+  .animate-fx-spark { animation: fx-spark 2.4s ease-in-out infinite; }
+  .animate-fx-ring  { animation: fx-ring 2.4s ease-out infinite; }
+  .animate-fx-flow  { animation: fx-flow 3.6s ease-in-out infinite; }
+
   .animate-pulse-ring {
     animation: pulse-ring 2s infinite;
   }

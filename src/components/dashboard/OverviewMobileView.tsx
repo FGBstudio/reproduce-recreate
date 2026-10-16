@@ -376,42 +376,42 @@ const DeviceRotator = ({ groups, installedLabel, onPick }: {
   }, [groups.length, reduce]);
   if (groups.length === 0) return null;
   const g = groups[Math.min(i, groups.length - 1)];
+  const fade = reduce ? undefined : "opacity .42s ease, transform .42s cubic-bezier(.2,.7,.2,1)";
   return (
-    <button
-      type="button"
-      onClick={() => { hapticLight(); onPick?.(g.family); }}
-      className="absolute flex flex-col items-center"
-      /* sotto la riga meteo, all'altezza del giudizio: «più piccolo, così
-         non compete con il giudizio» (atlante §5.2) */
-      style={{ right: 10, top: "calc(var(--sat, 0px) + 116px)", width: 104, zIndex: 4 }}
-      aria-label={`${g.label} · ${installedLabel(g.count)}`}
-    >
-      <img
-        src={g.img} alt="" aria-hidden
-        className="object-contain"
-        style={{
-          height: 86, maxWidth: 96,
-          opacity: shown ? 1 : 0,
-          transform: shown ? "scale(1)" : "scale(.94)",
-          transition: reduce ? undefined : "opacity .42s ease, transform .42s cubic-bezier(.2,.7,.2,1)",
-        }}
-      />
-      <span
-        className="block"
-        aria-hidden
-        style={{ width: 62, height: 10, background: "radial-gradient(ellipse at center, rgba(0,0,0,.22) 0%, rgba(0,0,0,0) 68%)", marginTop: -4, opacity: shown ? 1 : 0, transition: reduce ? undefined : "opacity .42s ease" }}
-      />
-      <span
-        style={{
-          fontSize: 9.5, lineHeight: 1.25, marginTop: 3, color: "rgba(255,255,255,.88)",
-          opacity: shown ? 1 : 0, transition: reduce ? undefined : "opacity .42s ease",
-        }}
+    <div className="w-full flex justify-end" style={{ marginTop: 18 }}>
+      <button
+        type="button"
+        onClick={() => { hapticLight(); onPick?.(g.family); }}
+        className="flex flex-col items-center"
+        style={{ width: 150 }}
+        aria-label={`${g.label} · ${installedLabel(g.count)}`}
       >
-        <b style={{ fontWeight: 700 }}>{g.label}</b>
-        <br />
-        {installedLabel(g.count)}
-      </span>
-    </button>
+        <img
+          src={g.img} alt="" aria-hidden
+          className="object-contain"
+          style={{
+            height: 128, maxWidth: 142,
+            opacity: shown ? 1 : 0,
+            transform: shown ? "scale(1)" : "scale(.94)",
+            transition: fade,
+          }}
+        />
+        <span
+          className="block" aria-hidden
+          style={{ width: 92, height: 13, background: "radial-gradient(ellipse at center, rgba(0,0,0,.26) 0%, rgba(0,0,0,0) 68%)", marginTop: -6, opacity: shown ? 1 : 0, transition: fade }}
+        />
+        <span
+          style={{
+            fontSize: 11, lineHeight: 1.3, marginTop: 5, color: "rgba(255,255,255,.9)",
+            opacity: shown ? 1 : 0, transition: fade,
+          }}
+        >
+          <b style={{ fontWeight: 700 }}>{g.label}</b>
+          <br />
+          <span style={{ opacity: .8 }}>{installedLabel(g.count)}</span>
+        </span>
+      </button>
+    </div>
   );
 };
 
@@ -419,7 +419,7 @@ const DeviceRotator = ({ groups, installedLabel, onPick }: {
 const ModuleScreen = ({
   city, outdoorTemp, outdoorExtra, outdoorLabel, icon, label, verdict, scoreLine,
   values, limitRatio, big, bigUnit, bigColor, rows, meters, ctaLabel, onCta, light, buildingClass, pitch,
-  centerContent, onExplain, explainLabel, ink, deviceImg,
+  centerContent, onExplain, explainLabel, ink, deviceImg, deviceFx,
 }: any) => (
   <section data-screen className="h-full snap-start snap-always flex flex-col shrink-0">
     <Outdoor city={city} temp={outdoorTemp} extra={outdoorExtra} outdoorLabel={outdoorLabel} />
@@ -472,15 +472,51 @@ const ModuleScreen = ({
             <div className="my-auto py-2 w-full flex flex-col items-center">
               {deviceImg && (
                 /* il render respira (6 s, fermo con prefers-reduced-motion)
-                   e l'ombra si stringe quando sale: l'immagine statica
-                   sembrava un ritaglio incollato */
-                <div className="flex flex-col items-center" aria-hidden="true">
+                   e l'ombra si stringe quando sale; sopra, il movimento che
+                   dice COSA misura: scarica per l'energia, flusso per l'aria */
+                <div className="relative flex flex-col items-center" aria-hidden="true">
+                  {deviceFx === "energy" && (
+                    <>
+                      <span
+                        className="absolute rounded-full animate-fx-ring motion-reduce:animate-none"
+                        style={{ width: 92, height: 92, top: "26%", border: `2px solid ${light ? "rgba(1,71,75,.5)" : "rgba(255,255,255,.55)"}` }}
+                      />
+                      <Zap
+                        className="absolute animate-fx-spark motion-reduce:animate-none"
+                        style={{
+                          width: 26, height: 26, top: "14%", right: "16%",
+                          color: light ? "#01474b" : "#ffffff",
+                          filter: light ? undefined : "drop-shadow(0 0 7px rgba(255,255,255,.65))",
+                        }}
+                        fill="currentColor"
+                      />
+                    </>
+                  )}
+                  {deviceFx === "air" && (
+                    <svg
+                      className="absolute" viewBox="0 0 160 70"
+                      style={{ width: 176, top: "30%", overflow: "visible" }}
+                    >
+                      {[0, 1, 2].map(i => (
+                        <path
+                          key={i}
+                          d={`M2 ${16 + i * 19} q 26 -11 52 0 t 52 0 t 52 0`}
+                          fill="none"
+                          stroke={light ? "rgba(1,71,75,.42)" : "rgba(255,255,255,.62)"}
+                          strokeWidth={i === 1 ? 2 : 1.4}
+                          strokeLinecap="round"
+                          className="animate-fx-flow motion-reduce:animate-none"
+                          style={{ animationDelay: `${i * 0.55}s` }}
+                        />
+                      ))}
+                    </svg>
+                  )}
                   <img
                     src={deviceImg}
                     alt=""
                     loading="lazy"
                     className="object-contain animate-hw-float motion-reduce:animate-none"
-                    style={{ height: "clamp(72px, 14svh, 120px)", maxWidth: 190 }}
+                    style={{ height: "clamp(72px, 14svh, 120px)", maxWidth: 190, position: "relative" }}
                   />
                   <span
                     className="block -mt-1 animate-hw-shadow motion-reduce:animate-none"
@@ -696,15 +732,6 @@ export const OverviewMobileView = ({
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
-        {/* §5.2: il dispositivo a rotazione, piccolo, a destra — non
-            compete col giudizio e dice cosa è installato davvero */}
-        {deviceGroups && deviceGroups.length > 0 && (
-          <DeviceRotator
-            groups={deviceGroups}
-            installedLabel={n => tn("ovm.installed_n", n)}
-            onPick={family => onNavigate?.(family)}
-          />
-        )}
         <div className="font-bold text-[19px] tracking-wide" style={{ marginLeft: onExit ? 44 : 0 }}>{siteName}</div>
         <div className="text-[11px] opacity-80 tracking-[0.08em] flex items-center gap-1.5 mt-0.5">
           <Cloud className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -728,6 +755,16 @@ export const OverviewMobileView = ({
         </div>
 
         {!notInstalled && <TickScale value={overall.score} acc={heroTone.acc} />}
+
+        {/* §5.2: il dispositivo a rotazione — nella fascia centrale a
+            destra, sotto la scala del punteggio, dove c'è aria */}
+        {deviceGroups && deviceGroups.length > 0 && (
+          <DeviceRotator
+            groups={deviceGroups}
+            installedLabel={n => tn("ovm.installed_n", n)}
+            onPick={family => onNavigate?.(family)}
+          />
+        )}
 
         {/* 2 · sotto-sezioni: moduli + alert, stati §5.3 */}
         <div className="mt-auto pt-5 border-t border-white/10 flex items-start justify-between gap-2">
@@ -807,6 +844,7 @@ export const OverviewMobileView = ({
            per l'energia l'umidità relativa (clima → carico HVAC) */
         outdoorExtra={typeof outdoorHumidity === "number" ? `${t("ovm.rh")} ${nf0.format(outdoorHumidity)}%` : undefined}
         deviceImg="/intro/hw-greeny.webp"
+        deviceFx="energy"
         icon={Zap} label={t("ovm.energy")}
         buildingClass={energy.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#028084] to-[#016368]"}
         light={energy.level === "OK" ? true : undefined}
@@ -853,6 +891,7 @@ export const OverviewMobileView = ({
         /* §5.4.1 prevede qui la pill con l'AQI esterno: il provider meteo
            (weather_data) non lo fornisce — non si inventa (§8.3) */
         deviceImg="/intro/hw-clair.webp"
+        deviceFx="air"
         icon={Wind} label={t("ovm.air")}
         buildingClass={air.level === "OK" ? FAIR.buildingClass : "bg-gradient-to-b from-[#b7e0e3] to-[#9fd5d9]"}
         ink={air.level === "OK" ? FAIR.ink : undefined}

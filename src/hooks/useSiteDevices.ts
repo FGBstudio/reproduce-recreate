@@ -12,7 +12,8 @@ export type DeviceFamily = 'energy' | 'air' | 'water';
 
 export interface SiteDeviceGroup {
   family: DeviceFamily;
-  /** nome commerciale FGB + modello di targa, es. «Clair LEED» */
+  /** nome commerciale FGB + che cosa misura, es. «Greeny Energy».
+   *  Niente sigla di modello (16/10: «non serve il MSCHN»). */
   label: string;
   count: number;
   /** render ufficiale in public/intro */
@@ -27,22 +28,18 @@ const FAMILY_OF: Record<string, DeviceFamily> = {
 };
 /** nomi commerciali dei prodotti FGB (i render si chiamano come loro) */
 const BRAND: Record<DeviceFamily, { name: string; img: string }> = {
-  energy: { name: 'Greeny', img: '/intro/hw-greeny.webp' },
-  air: { name: 'Clair', img: '/intro/hw-clair.webp' },
+  energy: { name: 'Greeny Energy', img: '/intro/hw-greeny.webp' },
+  air: { name: 'Clair Air quality', img: '/intro/hw-clair.webp' },
   water: { name: 'Water meter', img: '/intro/hw-water.webp' },
 };
-/** «WEEL» è il refuso con cui WELL è scritto in metà delle righe */
-const normModel = (m: string | null): string => {
-  const s = (m || '').trim();
-  if (!s || /^virtual$/i.test(s)) return '';
-  return /^weel$/i.test(s) ? 'WELL' : s.toUpperCase() === s ? s : s;
-};
+/** i device «Virtual» non sono hardware installato e non si contano */
+const isVirtual = (m: string | null) => /^virtual$/i.test((m || '').trim());
 
 /** Sito vetrina: hardware dimostrativo, coerente col resto della demo. */
 const DEMO_GROUPS: SiteDeviceGroup[] = [
-  { family: 'air', label: 'Clair WELL', count: 4, img: BRAND.air.img },
-  { family: 'energy', label: 'Greeny PAN12', count: 9, img: BRAND.energy.img },
-  { family: 'water', label: 'Water meter', count: 1, img: BRAND.water.img },
+  { family: 'energy', label: BRAND.energy.name, count: 15, img: BRAND.energy.img },
+  { family: 'air', label: BRAND.air.name, count: 4, img: BRAND.air.img },
+  { family: 'water', label: BRAND.water.name, count: 1, img: BRAND.water.img },
 ];
 
 export function useSiteDevices(siteId: string | undefined | null) {
@@ -58,20 +55,18 @@ export function useSiteDevices(siteId: string | undefined | null) {
         .select('device_type, model')
         .eq('site_id', siteId as string);
       const rows = (data || []) as unknown as Array<{ device_type: string | null; model: string | null }>;
-      const by = new Map<string, SiteDeviceGroup>();
+      // un gruppo per FAMIGLIA (non per modello): «Greeny Energy · 15»,
+      // non «Greeny PAN12 · 9» e «Greeny MSCHN · 6»
+      const by = new Map<DeviceFamily, SiteDeviceGroup>();
       for (const r of rows) {
         const family = FAMILY_OF[r.device_type || ''];
-        if (!family) continue;
-        const model = normModel(r.model);
-        const brand = BRAND[family];
-        const label = model ? `${brand.name} ${model}` : brand.name;
-        const key = `${family}|${label}`;
-        const cur = by.get(key);
+        if (!family || isVirtual(r.model)) continue;
+        const cur = by.get(family);
         if (cur) cur.count++;
-        else by.set(key, { family, label, count: 1, img: brand.img });
+        else by.set(family, { family, label: BRAND[family].name, count: 1, img: BRAND[family].img });
       }
-      // i gruppi più numerosi per primi, al massimo quattro frame
-      return [...by.values()].sort((a, b) => b.count - a.count).slice(0, 4);
+      // i gruppi più numerosi per primi
+      return [...by.values()].sort((a, b) => b.count - a.count);
     },
   });
 }
