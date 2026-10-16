@@ -20,7 +20,7 @@ import TimeSeriesChart from "./TimeSeriesChart";
 import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
 import BillsMobile from "./BillsMobile";
 import { HourHeatmap, HourStrip, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars, YearCarpet } from "./views";
-import { CarbonBars, CategoryBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
+import { CategoryBars, DayNightRings, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
 import { useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type WxScale } from "./useEnergyInsights";
 import {
   CO2_EMISSION_FACTOR, LEAK_LMIN, LEAK_NIGHTS, NIGHT_FROM, NIGHT_TO,
@@ -72,9 +72,9 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const queryMetric = waterDerived ? "flow" : airMetric;
   // Schede energia: categorie reali + derivate (CO₂/costo) + gli
   // APPROFONDIMENTI del PC (§10.1): Confronto · Meteo · Carbonio · Periodi.
-  type EnergyTab = EnergyCat | "co2e" | "cost" | "compare" | "weather" | "carbon" | "periods";
+  type EnergyTab = EnergyCat | "cost" | "carbon" | "compare" | "weather" | "periods";
   const [energyTab, setEnergyTab] = useState<EnergyTab>("power");
-  const INSIGHT_TABS = ["compare", "weather", "carbon", "periods"] as const;
+  const INSIGHT_TABS = ["compare", "weather", "periods"] as const;
   const insightTab = module === "energy" && (INSIGHT_TABS as readonly string[]).includes(energyTab);
   const energyCat: EnergyCat = (["power", "hvac", "lighting", "plugs"] as const).includes(energyTab as EnergyCat) ? (energyTab as EnergyCat) : "power";
   const [explainTab, setExplainTab] = useState<string | null>(null);
@@ -185,7 +185,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   // e del costo stimato desktop (EF 0.233 kg/kWh, tariffa del sito). ──
   // in demo la tariffa non c'è: si usa quella delle serie demo (0,19 €/kWh)
   const effPrice = priceKwh ?? (isDemoSite ? 0.19 : undefined);
-  const DERIVED = energyTab === "co2e"
+  /* 16/10: una sola voce per le emissioni. «Carbonio» È la serie riscalata
+     per il fattore di emissione (prima erano due schede, CO₂ e Carbonio,
+     che dicevano la stessa cosa) e vive su ogni orizzonte come le altre. */
+  const DERIVED = energyTab === "carbon"
     ? { f: CO2_EMISSION_FACTOR, unit: "kg" }
     : energyTab === "cost" && effPrice
       ? { f: effPrice, unit: "€" }
@@ -397,8 +400,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     : period === "week" ? t("md.week_n").replace("{n}", String(isoWeek(anchor)))
     : period === "month"
       ? `${dfRange.format(new Date(anchor.getFullYear(), anchor.getMonth(), 1))} – ${dfRange.format(anchor)} ${anchor.getFullYear()}`
-      // Anno = proposta §6.4: etichettata finché il proprietario non conferma
-      : t("md.proposal");
+      // anno: l'intervallo coperto, come fa il mese (16/10: via «proposta»)
+      : `${dfRange.format(new Date(anchor.getFullYear(), 0, 1))} – ${dfRange.format(
+          anchor.getFullYear() === new Date().getFullYear() ? new Date() : new Date(anchor.getFullYear(), 11, 31),
+        )} ${anchor.getFullYear()}`;
 
   // ── verdetto del giorno ──
   const d = day.data;
@@ -529,8 +534,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const metricTabs = module === "energy"
     ? [
         ...(cats.data ?? ["power"] as EnergyCat[]).map(c => ({ id: c as string, label: CAT_LABEL[c] })),
-        { id: "co2e", label: "CO₂" },
         ...(effPrice ? [{ id: "cost", label: t("md.metric_cost") }] : []),
+        { id: "carbon", label: t("md.tab_carbon") },
         /* §10.1: le schede approfondimento esistono solo coi loro dati.
            16/10: nessuna scheda cambia più il periodo — quelle che a un
            orizzonte non hanno senso semplicemente non compaiono. */
@@ -674,6 +679,44 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const CAT_SPLIT_LABEL: Record<string, string> = {
     hvac: "HVAC", lighting: t("md.metric_lights"), plugs: t("md.metric_plugs"), other: t("md.cat_other"),
   };
+  /* Anelli giorno/notte (24-Hour Energy Cycle del PC): ore 8–20 nel fuso del
+     sito. Servono dati ORARI — ci sono nel giorno (punti), nella settimana
+     (heat 7×24) e nel mese (carpet); l'anno ha solo i totali giornalieri,
+     quindi lì gli anelli non compaiono invece di stimarli. */
+  const dayNight = (() => {
+    if (module !== "energy" || insightTab) return null;
+    const add = (acc: { d: number; n: number }, h: number, v: number | null | undefined) => {
+      if (v == null) return acc;
+      if (h >= 8 && h < 20) acc.d += v; else acc.n += v;
+      return acc;
+    };
+    let acc = { d: 0, n: 0 };
+    if (period === "day" && d) {
+      for (const p of d.points) acc = add(acc, p.h, p.v);
+    } else if (period === "week" && week.data) {
+      for (const row of week.data.heat) for (let h = 0; h < 24; h++) acc = add(acc, h, row[h]);
+    } else if (period === "month" && month.data) {
+      for (const row of month.data.hours) for (let h = 0; h < 24; h++) acc = add(acc, h, row[h]);
+    } else return null;
+    const tot = acc.d + acc.n;
+    if (tot <= 0) return null;
+    const dayPct = Math.round((acc.d / tot) * 100);
+    /* le percentuali vengono dalla FORMA oraria, i kWh dal totale della
+       vista: così i due anelli sommano sempre al numero del riepilogo */
+    const totalOfView = (period === "day" ? d?.totalKwh : period === "week" ? week.data?.totalKwh : month.data?.totalKwh) ?? tot;
+    return {
+      day: { pct: dayPct, kwh: Math.round((totalOfView * dayPct) / 100) },
+      night: { pct: 100 - dayPct, kwh: Math.round((totalOfView * (100 - dayPct)) / 100) },
+    };
+  })();
+  const dayNightEl = dayNight ? (
+    <DayNightRings
+      day={dayNight.day} night={dayNight.night}
+      labels={{ title: t("md.day_night"), sub: t("md.day_night_sub"), day: t("md.day_lbl"), night: t("md.night_lbl") }}
+      fmt={v => (v >= 1000 ? `${nf.format(v / 1000)} MWh` : `${nf0.format(v)} ${DERIVED ? DERIVED.unit : "kWh"}`)}
+    />
+  ) : null;
+
   const splitEl = (totalKwh?: number) => {
     const s = esplit.data;
     if (!splitOn || !s || s.shares.length === 0 || totalKwh == null || totalKwh <= 0) return null;
@@ -717,7 +760,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="text-center min-w-0 flex-1">
-          <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{period === "month" ? summaryLabel : moduleLabel}</span>
+          {/* stesso titolo su tutti gli orizzonti (16/10) */}
+          <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{moduleLabel}</span>
           <span className="truncate" style={{ fontSize: 13, color: SUB, marginLeft: 6 }}>{siteName}</span>
           {(d?.isDemo || week.data?.isDemo || month.data?.isDemo || yearData.data?.isDemo || rangeData?.isDemo) && (
             <span className="align-middle" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "#b45309", background: "rgba(217,154,43,.15)", borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>DEMO</span>
@@ -929,6 +973,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               />
               {/* parità E1: da dove viene il consumo di oggi */}
               {splitEl(d.totalKwh)}
+              {dayNightEl}
             </>
           ) : (
             <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
@@ -1018,6 +1063,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             ].slice(0, 3)} />
             {/* stessa ripartizione di Giorno e Mese, sull'intervallo della settimana */}
             {splitEl(week.data.totalKwh)}
+            {dayNightEl}
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}
@@ -1051,7 +1097,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             {month.data.totalKwh != null && (
               /* mockup §6.3: etichetta in evidenza, VALORE in grigio */
               <p className="text-center mt-4" style={{ fontSize: 14, color: INK, fontWeight: 600 }}>
-                {energyTab === "co2e" ? t("md.co2_emitted") : energyTab === "cost" ? t("md.cost_est_cap") : t("md.month_total")}{" "}
+                {energyTab === "carbon" ? t("md.co2_emitted") : energyTab === "cost" ? t("md.cost_est_cap") : t("md.month_total")}{" "}
                 <span className="tabular-nums" style={{ color: SUB, fontWeight: 400 }}>
                   {DERIVED ? `${nf0.format(Math.round(month.data.totalKwh * DERIVED.f))} ${DERIVED.unit}` : `${nf.format(month.data.totalKwh / 1000)} MWh`}
                 </span>
@@ -1073,6 +1119,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             })()}
             {/* parità E1: da dove viene il consumo del mese */}
             {splitEl(month.data.totalKwh)}
+            {dayNightEl}
             <LabelValueGrid items={[
               /* parità E1: kWh/m² col m² VERO del sito (mai l'850 di default PC) */
               ...(energyTab === "power" && esplit.data?.areaM2 != null && month.data.totalKwh != null ? [{
@@ -1274,56 +1321,6 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               ...(wcorr.data.kwhPerDegree != null && wcorr.data.kwhPerDegree > 0 ? [{ value: `+${nf0.format(wcorr.data.kwhPerDegree)} kWh`, label: t("md.per_degree") }] : []),
               { value: String(wcorr.data.points.length), label: t(wxScale === "hour" ? "md.hours_lbl" : wxScale === "month" ? "md.months_lbl2" : "md.days_lbl") },
             ]} />
-          </>
-        ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
-      )}
-
-      {insightTab && energyTab === "carbon" && (
-        yearData.isLoading || month.isLoading ? <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>…</p>
-        : yearData.data ? (
-          <>
-            {month.data?.totalKwh != null && (
-              <VerdictLine
-                color={TEAL}
-                verdict={`${nf0.format(Math.round(month.data.totalKwh * CO2_EMISSION_FACTOR))} kgCO₂e`}
-                summary={month.data.vsPrevPct != null ? `${month.data.vsPrevPct > 0 ? "+" : ""}${month.data.vsPrevPct}% ${t("md.vs_prev_month_days")}` : undefined}
-                onExplain={() => setExplainTab("power")}
-              />
-            )}
-            {metricTabsEl}
-            <CarbonBars
-              months={yearData.data.months.map(x => ({ m: x.m, kg: x.v != null ? Math.round(x.v * CO2_EMISSION_FACTOR) : null }))}
-              anchorMonth={anchor.getMonth()} monthLabels={monthHeads} fmt={v => nf0.format(v)}
-            />
-            <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
-              kgCO₂e · {t("md.ef_factor")}
-            </p>
-            {/* giorno/notte dal carpet del mese corrente (ore 8–20, fuso sito) */}
-            {month.data && (() => {
-              let dayKwh = 0, nightKwh = 0;
-              for (const row of month.data.hours) for (let h = 0; h < 24; h++) {
-                const v = row[h];
-                if (v == null) continue;
-                if (h >= 8 && h < 20) dayKwh += v; else nightKwh += v;
-              }
-              const tot = dayKwh + nightKwh;
-              if (tot <= 0) return null;
-              const dayPct = Math.round((dayKwh / tot) * 100);
-              return (
-                <>
-                  <DayNightBars
-                    day={{ pct: dayPct, kwh: dayKwh }} night={{ pct: 100 - dayPct, kwh: nightKwh }}
-                    labels={{ title: t("md.day_night"), sub: t("md.day_night_sub"), day: t("md.day_lbl"), night: t("md.night_lbl") }}
-                    fmtMwh={kwh => `${nf.format(kwh / 1000)} MWh`}
-                  />
-                  {month.data!.baseloadKw != null && (
-                    <p className="px-6" style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>
-                      {t("md.night_note").replace("{p}", String(100 - dayPct)).replace("{b}", nf.format(month.data!.baseloadKw))}
-                    </p>
-                  )}
-                </>
-              );
-            })()}
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
       )}

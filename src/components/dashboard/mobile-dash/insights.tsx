@@ -5,6 +5,7 @@
  * niente animazioni (§6.6), palette chiara §1.5.
  */
 import { useState } from "react";
+import { Moon, Sun } from "lucide-react";
 import { AMBER, AXIS, INK, RULE, SUB, TEAL } from "./bits";
 import type { EuiCompare, PeriodsYear, WeatherCorr } from "./useEnergyInsights";
 import { hapticLight } from "@/lib/native";
@@ -79,13 +80,25 @@ export const WeatherScatter = ({ s, todayKey, fmt }: { s: WeatherCorr; todayKey:
   const kMin = Math.min(...kwhs) * 0.85;
   const x = (t: number) => PL + ((t - tMin) / (tMax - tMin || 1)) * (W - PL - PR);
   const y = (k: number) => PT + (1 - (k - kMin) / (kMax - kMin || 1)) * (H - PT - PB);
-  // retta di tendenza sul modello CDD18: piatta fino a 18°, poi sale
+  // retta di tendenza sul modello CDD18: piatta fino a 18°, poi sale.
+  // La pendenza si stima SUI PUNTI MOSTRATI (minimi quadrati su CDD18), così
+  // la retta è nelle unità del grafico a ogni scala — ore, giorni o mesi;
+  // il numero in alto resta quello della finestra robusta del modello.
   const base = (() => {
     const under = s.points.filter(p => p.temp <= 18);
     const src = under.length >= 3 ? under : s.points;
     return src.reduce((a, p) => a + p.value, 0) / src.length;
   })();
-  const slope = s.kwhPerDegree ?? 0;
+  const slope = (() => {
+    const pts = s.points.map(p => ({ x: Math.max(0, p.temp - 18), y: p.value })).filter(p => p.x > 0);
+    if (pts.length < 3) return s.fitWindow == null ? (s.kwhPerDegree ?? 0) : 0;
+    const n = pts.length;
+    const mx = pts.reduce((a, p) => a + p.x, 0) / n;
+    const my = pts.reduce((a, p) => a + p.y, 0) / n;
+    let num = 0, den = 0;
+    for (const p of pts) { num += (p.x - mx) * (p.y - my); den += (p.x - mx) ** 2; }
+    return den > 0 ? Math.max(0, num / den) : 0;
+  })();
   const trend = `M${x(tMin)},${y(base)} L${x(18)},${y(base)} L${x(tMax)},${y(base + slope * (tMax - 18))}`;
   const ticks = [];
   for (let tt = tMin; tt <= tMax; tt += 5) ticks.push(tt);
@@ -97,10 +110,7 @@ export const WeatherScatter = ({ s, todayKey, fmt }: { s: WeatherCorr; todayKey:
           <text x={W - PR + 9} y={y(gv) + 3} fontSize="8.5" fill={AXIS}>{fmt(gv)}</text>
         </g>
       ))}
-      {/* la retta del modello si disegna solo se è stato stimato SU QUESTI
-          punti: alla scala oraria (modello sul mese, kWh/°C) sarebbe fuori
-          unità e fuori scala */}
-      {slope > 0 && s.fitWindow == null && <path d={trend} fill="none" stroke="#8aa3a5" strokeWidth="1.5" strokeDasharray="5 3" />}
+      {slope > 0 && <path d={trend} fill="none" stroke="#8aa3a5" strokeWidth="1.5" strokeDasharray="5 3" />}
       {s.points.map((p, i) => {
         const isToday = p.key === todayKey || p.key.slice(0, 10) === todayKey;
         return (
@@ -278,6 +288,50 @@ export const BillsCompareChart = ({ months, monthLabels, labels, onOpenMonth, fm
         <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: BILLED, marginRight: 4 }} />kWh {labels.billed}
         <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: TEAL, margin: "0 4px 0 12px" }} />kWh {labels.measured}
       </p>
+    </div>
+  );
+};
+
+/* ── Giorno / notte: i due anelli del desktop (24-Hour Energy Cycle), in
+   palette FGB — giorno teal, notte ardesia. Giorno = ore 8–20 nel fuso
+   del sito, come sul PC. ── */
+export const DayNightRings = ({ day, night, labels, fmt }: {
+  day: { pct: number; kwh: number }; night: { pct: number; kwh: number };
+  labels: { title: string; sub: string; day: string; night: string };
+  fmt: (kwh: number) => string;
+}) => {
+  const R = 28, C = 2 * Math.PI * R; // 175.9, come il desktop
+  const ring = (pct: number, color: string, icon: "sun" | "moon", label: string, value: string) => (
+    <div className="flex flex-col items-center" style={{ gap: 6 }}>
+      <div className="flex items-center" style={{ gap: 4 }}>
+        {icon === "sun"
+          ? <Sun className="w-3.5 h-3.5" style={{ color: AMBER }} aria-hidden />
+          : <Moon className="w-3.5 h-3.5" style={{ color: "#3c5a5e" }} aria-hidden />}
+        <span className="uppercase" style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", color: SUB }}>{label}</span>
+      </div>
+      <div className="relative" style={{ width: 64, height: 64 }}>
+        <svg width="64" height="64" style={{ transform: "rotate(-90deg)" }} aria-hidden>
+          <circle cx="32" cy="32" r={R} stroke="#eef4f4" strokeWidth="5" fill="none" />
+          <circle cx="32" cy="32" r={R} stroke={color} strokeWidth="5" fill="none"
+            strokeDasharray={C} strokeDashoffset={C - (Math.max(0, Math.min(100, pct)) / 100) * C} strokeLinecap="round" />
+        </svg>
+        <div className="absolute inset-0 grid place-items-center">
+          <span className="tabular-nums" style={{ fontSize: 14, fontWeight: 700, color: INK }}>{pct}%</span>
+        </div>
+      </div>
+      <span className="tabular-nums" style={{ fontSize: 11, color: SUB }}>{value}</span>
+    </div>
+  );
+  return (
+    <div className="px-6" style={{ marginTop: 22 }}>
+      <div className="flex items-baseline gap-2">
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: INK }}>{labels.title}</span>
+        <span style={{ fontSize: 11, color: SUB }}>{labels.sub}</span>
+      </div>
+      <div className="flex justify-around" style={{ marginTop: 10 }}>
+        {ring(day.pct, TEAL, "sun", labels.day, fmt(day.kwh))}
+        {ring(night.pct, "#3c5a5e", "moon", labels.night, fmt(night.kwh))}
+      </div>
     </div>
   );
 };

@@ -7,6 +7,19 @@
  */
 import { useState } from "react";
 import { AMBER, AXIS, INK, RULE, SUB, TEAL } from "./bits";
+
+/* Scala dell'intensità (decisione owner 16/10): CINQUE passi di teal, dal
+   molto chiaro al scuro al crescere del consumo. Niente rosso: in palette
+   il rosso segnala un problema, e consumare molto non è di per sé un
+   problema. L'ambra resta per i superamenti di soglia (aria e acqua). */
+export const HEAT_STEPS = ["#dcecec", "#b7dedf", "#7fc8ca", "#3aa8aa", "#016368"];
+export const heatStep = (v: number | null | undefined, max: number): string | null => {
+  if (v == null) return null;
+  const r = Math.max(0, Math.min(1, v / (max || 1)));
+  // quintili sulla scala del massimo: 0–20% … 80–100%
+  return HEAT_STEPS[Math.min(4, Math.floor(r * 5))];
+};
+const EMPTY_CELL = "rgba(159,178,179,.12)";
 import type { MonthSeries, WeekSeries, YearSeries } from "./useModuleSeries";
 import { hapticLight } from "@/lib/native";
 
@@ -83,7 +96,7 @@ export const HourHeatmap = ({ s, onOpenDay, title, hint, weekdays, fmtCell }: {
                 onClick={() => { if (v != null) { hapticLight(); setCell(c => c && c.di === di && c.hi === hi ? null : { di, hi, v }); } }}
                 style={{
                   height: 10, borderRadius: 3,
-                  background: v == null ? "transparent" : `rgba(10,143,145,${(0.06 + 0.8 * Math.min(1, v / (s.heatMax || 1))).toFixed(2)})`,
+                  background: v == null ? "transparent" : heatStep(v, s.heatMax)!,
                   border: v == null ? `1px solid ${RULE}` : cell && cell.di === di && cell.hi === hi ? `1px solid ${INK}` : undefined,
                 }} />
             ))}
@@ -133,7 +146,7 @@ export const HourStrip = ({ points, unit, overLimit, title, hint, fmt }: {
               onClick={() => { if (p.v != null) { hapticLight(); setSel(sel === i ? null : i); } }}
               style={{
                 height: 30, borderRadius: 3,
-                background: p.v == null ? "rgba(159,178,179,.14)" : over ? `rgba(217,154,43,${(0.35 + 0.6 * Math.min(1, p.v / maxV)).toFixed(2)})` : `rgba(10,143,145,${a.toFixed(2)})`,
+                background: p.v == null ? EMPTY_CELL : over ? `rgba(217,154,43,${(0.35 + 0.6 * Math.min(1, p.v / maxV)).toFixed(2)})` : heatStep(p.v, maxV)!,
                 outline: sel === i ? `1.5px solid ${TEAL}` : "none",
                 outlineOffset: 1,
               }} />
@@ -175,7 +188,7 @@ export const YearCarpet = ({ s, year, monthLabels, onOpenDay, overLimit, legendL
                   ? "rgba(159,178,179,.10)"
                   : over
                     ? `rgba(217,154,43,${(0.35 + 0.6 * Math.min(1, v / max)).toFixed(2)})`
-                    : `rgba(10,143,145,${(0.08 + 0.85 * Math.min(1, v / max)).toFixed(2)})`;
+                    : heatStep(v, max)!;
                 return (
                   <rect key={di} x={x} y={di * rh} width={Math.max(0.5, cw - GAP)} height={rh - 0.5} rx={1} fill={fill}
                     onClick={() => {
@@ -192,8 +205,8 @@ export const YearCarpet = ({ s, year, monthLabels, onOpenDay, overLimit, legendL
         })}
         <g transform={`translate(14, ${H + 24})`}>
           <text x={0} y={4} fontSize="8" fill={SUB}>{legendLess}</text>
-          {[0.15, 0.35, 0.55, 0.75, 0.95].map((o, i) => (
-            <rect key={i} x={26 + i * 9} y={-2} width={7} height={7} rx={1.5} fill={`rgba(10,143,145,${o})`} />
+          {HEAT_STEPS.map((c2, i) => (
+            <rect key={i} x={26 + i * 9} y={-2} width={7} height={7} rx={1.5} fill={c2} />
           ))}
           <text x={76} y={4} fontSize="8" fill={SUB}>{legendMore}</text>
         </g>
@@ -213,25 +226,28 @@ export const MonthBars = ({ s, onOpenDay, overLimit, fmt, peakLabel }: {
   peakLabel?: string;
 }) => {
   const nDays = s.cells.length;
-  const W = 342, H = 108, GAP = 1;
+  const W = 342, H = 112;
   const cw = (W - 14) / nDays;
+  /* barra più stretta della colonna e centrata: resta allineata al carpet
+     sotto, ma con aria intorno invece di un blocco continuo */
+  const bw = Math.max(2.5, cw * 0.56);
   const maxV = Math.max(...s.cells.map(c => c.v ?? 0), 1);
   return (
     <div className="px-6 mt-4">
       <svg viewBox={`0 0 ${W} ${H + 14}`} className="w-full block" style={{ touchAction: "pan-y" }}>
         {s.cells.map((c, di) => {
-          const x = 14 + di * cw;
+          const x = 14 + di * cw + (cw - bw) / 2;
           if (c.v == null) return null;
-          const h = Math.max(2, (c.v / maxV) * H);
+          const h = Math.max(bw, (c.v / maxV) * H); // mai più corta del suo diametro
           const over = overLimit != null && c.v > overLimit;
           return (
             <g key={c.date} onClick={() => { hapticLight(); onOpenDay(c.date); }} style={{ cursor: "pointer" }}>
-              {/* area toccabile a tutta altezza */}
-              <rect x={x} y={0} width={Math.max(0.5, cw - GAP)} height={H} fill="transparent" />
+              {/* area toccabile a tutta altezza e tutta colonna */}
+              <rect x={14 + di * cw} y={0} width={cw} height={H} fill="transparent" />
               <rect
-                x={x} y={H - h} width={Math.max(0.5, cw - GAP)} height={h}
-                rx={Math.min(2, (cw - GAP) / 2)}
-                fill={over ? AMBER : c.weekend ? "#cfe0e1" : c.today ? TEAL : "#9fd3d6"}
+                x={x} y={H - h} width={bw} height={h}
+                rx={bw / 2}
+                fill={over ? AMBER : c.weekend ? "#dfeced" : c.today ? TEAL : "#9fd3d6"}
               />
             </g>
           );
@@ -270,10 +286,10 @@ export const MonthCarpet = ({ s, onOpenDay, legendLess, legendMore, legendWeeken
                 const fill = c.future
                   ? "rgba(159,178,179,.10)"
                   : v == null
-                    ? "rgba(159,178,179,.14)"
+                    ? EMPTY_CELL
                     : over
                       ? `rgba(217,154,43,${(0.35 + 0.6 * Math.min(1, v / (s.hoursMax || 1))).toFixed(2)})`
-                      : `rgba(10,143,145,${(0.08 + 0.85 * Math.min(1, v / (s.hoursMax || 1))).toFixed(2)})`;
+                      : heatStep(v, s.hoursMax)!;
                 return <rect key={h} x={x} y={(h / 24) * H} width={Math.max(0.5, cw - GAP)} height={ch - 0.6} rx={1} fill={fill} />;
               })}
               {/* oggi contornato */}
@@ -290,8 +306,8 @@ export const MonthCarpet = ({ s, onOpenDay, legendLess, legendMore, legendWeeken
         {/* legenda: meno ▓▓▓ più + weekend */}
         <g transform={`translate(14, ${H + 27})`}>
           <text x={0} y={4} fontSize="8" fill={SUB}>{legendLess}</text>
-          {[0.15, 0.35, 0.55, 0.75, 0.95].map((o, i) => (
-            <rect key={i} x={26 + i * 9} y={-2} width={7} height={7} rx={1.5} fill={`rgba(10,143,145,${o})`} />
+          {HEAT_STEPS.map((c2, i) => (
+            <rect key={i} x={26 + i * 9} y={-2} width={7} height={7} rx={1.5} fill={c2} />
           ))}
           <text x={76} y={4} fontSize="8" fill={SUB}>{legendMore}</text>
           <rect x={126} y={0} width={10} height={2.5} rx={1} fill="#b9c9ca" />
