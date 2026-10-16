@@ -137,66 +137,205 @@ export function useEuiCompare(siteId: string | undefined, year: number, anchorMo
 }
 
 /* ── Meteo (consumo vs temperatura, §10.1) ─────────────────────────── */
+/** Scala dei punti mostrati: ore del giorno · giorni · mesi dell'anno. */
+export type WxScale = "hour" | "day" | "month";
+
 export interface WeatherCorr {
-  /** un punto per giorno del mese */
-  points: Array<{ day: string; kwh: number; temp: number; hum?: number }>;
+  /** un punto per ora / giorno / mese, secondo la scala */
+  points: Array<{ key: string; label: string; value: number; temp: number; hum?: number }>;
+  scale: WxScale;
   r2?: number;                 // R² multivariato (CDD18 + umidità), come il PC
   kwhPerDegree?: number;       // kWh in più per °C sopra 18°
+  /** finestra su cui è calcolata la regressione, se diversa dai punti mostrati */
+  fitWindow?: string;
+  valueUnit: string;           // kW alla scala oraria, kWh altrove
   isDemo: boolean;
 }
 
-function demoWeatherCorr(): WeatherCorr {
-  const points = Array.from({ length: 31 }, (_, i) => {
+const MONTH_TEMP = [6, 8, 12, 16, 21, 26, 29, 28, 23, 17, 11, 7];
+
+function demoWeatherCorr(scale: WxScale, fromKey: string, toKey: string): WeatherCorr {
+  if (scale === "hour") {
+    const points = Array.from({ length: 24 }, (_, h) => ({
+      key: String(h), label: String(h),
+      value: Math.round((6 + 10 * Math.exp(-((h - 13) ** 2) / 28)) * 10) / 10,
+      temp: Math.round((14 + 11 * Math.max(0, Math.sin(((h - 6) / 24) * Math.PI))) * 10) / 10,
+      hum: 52 - h % 7,
+    }));
+    return { points, scale, r2: 0.38, kwhPerDegree: 14, fitWindow: "month", valueUnit: "kW", isDemo: true };
+  }
+  if (scale === "month") {
+    const nowM = new Date().getMonth();
+    const shape = [1.15, 1.1, 0.95, 0.85, 0.9, 1.05, 1.2, 1.18, 0.95, 0.9, 1.0, 1.12];
+    const points = shape.slice(0, nowM + 1).map((k, i) => ({
+      key: String(i + 1), label: String(i + 1),
+      value: Math.round((i === nowM ? 3800 : 11600 * k)),
+      temp: MONTH_TEMP[i], hum: 55 + (i % 5) * 3,
+    }));
+    return { points, scale, r2: 0.44, kwhPerDegree: 14, valueUnit: "kWh", isDemo: true };
+  }
+  const n = Math.min(62, Math.max(1, Math.round((new Date(`${toKey}T12:00:00`).getTime() - new Date(`${fromKey}T12:00:00`).getTime()) / 86400e3) + 1));
+  const points = Array.from({ length: n }, (_, i) => {
+    const d = new Date(`${fromKey}T12:00:00`); d.setDate(d.getDate() + i);
+    const wd = d.getDay();
     const temp = 14 + 12 * Math.abs(Math.sin(i / 5)) + (i % 3);
-    const kwh = 330 + Math.max(0, temp - 18) * 14 + 18 * Math.sin(i * 1.3);
-    return { day: `demo-${i + 1}`, kwh: Math.round(kwh), temp: Math.round(temp * 10) / 10, hum: 45 + (i % 20) };
+    const value = wd === 0 || wd === 6 ? 110 : Math.round(330 + Math.max(0, temp - 18) * 14 + 18 * Math.sin(i * 1.3));
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { key, label: String(d.getDate()), value, temp: Math.round(temp * 10) / 10, hum: 45 + (i % 20) };
   });
-  return { points, r2: 0.38, kwhPerDegree: 14, isDemo: true };
+  return { points, scale, r2: 0.38, kwhPerDegree: 14, valueUnit: "kWh", isDemo: true };
 }
 
-export function useWeatherCorr(siteId: string | undefined, monthKey: string, isDemoSite: boolean) {
+/** media oraria del meteo in un intervallo, aggregata per giorno. */
+async function wxByDay(siteId: string, first: string, last: string) {
+  const { data } = await supabase!.from("weather_data")
+    .select("timestamp, temperature_c, humidity_percent")
+    .eq("site_id", siteId)
+    .gte("timestamp", `${first}T00:00:00`).lte("timestamp", `${last}T23:59:59`)
+    .limit(1000);
+  const by = new Map<string, { t: number; h: number; n: number }>();
+  for (const r of (data || []) as unknown as Array<{ timestamp: string; temperature_c: number | null; humidity_percent: number | null }>) {
+    if (r.temperature_c == null) continue;
+    const k = r.timestamp.slice(0, 10);
+    const e = by.get(k) || { t: 0, h: 0, n: 0 };
+    e.t += Number(r.temperature_c); e.h += Number(r.humidity_percent ?? 0); e.n++;
+    by.set(k, e);
+  }
+  return by;
+}
+
+/** punti giornalieri (kWh + meteo) di un intervallo — base del modello. */
+async function dailyWxPoints(siteId: string, first: string, last: string) {
+  const [daily, wx] = await Promise.all([dailyKwh(siteId, first, last), wxByDay(siteId, first, last)]);
+  const out: Array<{ key: string; label: string; value: number; temp: number; hum?: number }> = [];
+  for (const [day, kwh] of [...daily.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const w = wx.get(day);
+    if (!w || w.n === 0) continue;
+    out.push({
+      key: day, label: String(Number(day.slice(8, 10))),
+      value: Math.round(kwh), temp: Math.round((w.t / w.n) * 10) / 10, hum: Math.round(w.h / w.n),
+    });
+  }
+  return out;
+}
+
+/**
+ * Correlazione consumo/meteo su QUALSIASI orizzonte (decisione owner 16/10:
+ * la scheda non cambia più il periodo sotto le dita).
+ * - hour  → le 24 ore del giorno (kW + °C orari); la regressione resta sui
+ *           giorni del mese, perché 24 ore autocorrelate non fanno un modello:
+ *           `fitWindow` lo dichiara a chi legge;
+ * - day   → un punto per giorno dell'intervallo (settimana o mese);
+ * - month → un punto per mese dell'anno, modello sui giorni (più robusto);
+ *           il meteo si legge mese per mese per restare sotto il limite di
+ *           righe di PostgREST (≈744 ore al mese) e non troncare le medie.
+ */
+export function useWeatherCorr(
+  siteId: string | undefined,
+  fromKey: string,
+  toKey: string,
+  scale: WxScale,
+  isDemoSite: boolean,
+  tz = "UTC",
+) {
   return useQuery<WeatherCorr | null>({
-    queryKey: ["mdash-wcorr", siteId, monthKey],
+    queryKey: ["mdash-wcorr", siteId, fromKey, toKey, scale],
     queryFn: async (): Promise<WeatherCorr | null> => {
-      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoWeatherCorr() : null;
-      const [y, m] = monthKey.split("-").map(Number);
-      const nDays = new Date(y, m, 0).getDate();
-      const first = `${monthKey}-01`, last = `${monthKey}-${String(nDays).padStart(2, "0")}`;
-      const daily = await dailyKwh(siteId, first, last);
-      if (daily.size < 7) return null; // troppo pochi giorni per una tendenza
-      const { data: wx } = await supabase!.from("weather_data")
-        .select("timestamp, temperature_c, humidity_percent")
-        .eq("site_id", siteId)
-        .gte("timestamp", `${first}T00:00:00`).lte("timestamp", `${last}T23:59:59`);
-      const byDay = new Map<string, { t: number; h: number; n: number }>();
-      for (const r of (wx || []) as unknown as Array<{ timestamp: string; temperature_c: number | null; humidity_percent: number | null }>) {
-        if (r.temperature_c == null) continue;
-        const k = r.timestamp.slice(0, 10);
-        const e = byDay.get(k) || { t: 0, h: 0, n: 0 };
-        e.t += Number(r.temperature_c); e.h += Number(r.humidity_percent ?? 0); e.n++;
-        byDay.set(k, e);
+      if (isDemoSite || !isSupabaseConfigured || !siteId) {
+        return isDemoSite ? demoWeatherCorr(scale, fromKey, toKey) : null;
       }
-      const points: WeatherCorr["points"] = [];
-      for (const [day, kwh] of daily) {
-        const w = byDay.get(day);
-        if (!w || w.n === 0) continue;
-        points.push({ day, kwh: Math.round(kwh), temp: Math.round((w.t / w.n) * 10) / 10, hum: Math.round(w.h / w.n) });
+
+      if (scale === "hour") {
+        const ids = await generalIds(siteId);
+        if (ids.length === 0) return null;
+        const fromUtc = new Date(new Date(`${fromKey}T00:00:00`).getTime() - 26 * 3600e3).toISOString();
+        const toUtc = new Date(new Date(`${fromKey}T00:00:00`).getTime() + 50 * 3600e3).toISOString();
+        const [{ data: hr }, { data: wx }] = await Promise.all([
+          supabase!.from("energy_hourly")
+            .select("ts_hour, metric, value_avg, value_sum").in("device_id", ids.slice(0, 50))
+            .gte("ts_hour", fromUtc).lte("ts_hour", toUtc)
+            .in("metric", ["energy.power_kw", "energy.active_energy", "energy.active_import_kwh"]),
+          supabase!.from("weather_data")
+            .select("timestamp, temperature_c, humidity_percent").eq("site_id", siteId)
+            .gte("timestamp", fromUtc).lte("timestamp", toUtc).limit(200),
+        ]);
+        const hourKey = (iso: string) => new Date(iso).toLocaleString("sv-SE", { timeZone: tz }).slice(0, 13);
+        const byHour = new Map<string, number>();
+        for (const r of (hr || []) as unknown as Array<{ ts_hour: string; metric: string; value_avg: number | null; value_sum: number | null }>) {
+          const v = r.metric === "energy.power_kw" ? r.value_avg : (r.value_sum != null && Number(r.value_sum) <= 50000 ? r.value_sum : null);
+          if (v == null) continue;
+          const k = hourKey(r.ts_hour);
+          if (!k.startsWith(fromKey)) continue;
+          byHour.set(k, (byHour.get(k) || 0) + Number(v));
+        }
+        const wxHour = new Map<string, { t: number; h: number; n: number }>();
+        for (const r of (wx || []) as unknown as Array<{ timestamp: string; temperature_c: number | null; humidity_percent: number | null }>) {
+          if (r.temperature_c == null) continue;
+          const k = hourKey(r.timestamp);
+          if (!k.startsWith(fromKey)) continue;
+          const e = wxHour.get(k) || { t: 0, h: 0, n: 0 };
+          e.t += Number(r.temperature_c); e.h += Number(r.humidity_percent ?? 0); e.n++;
+          wxHour.set(k, e);
+        }
+        const points = [...byHour.entries()]
+          .filter(([k]) => wxHour.has(k))
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([k, v]) => {
+            const w = wxHour.get(k)!;
+            const h = Number(k.slice(11, 13));
+            return { key: k, label: String(h), value: Math.round(v * 10) / 10, temp: Math.round((w.t / w.n) * 10) / 10, hum: Math.round(w.h / w.n) };
+          });
+        if (points.length < 6) return null;
+        // modello sui giorni del mese che contiene la giornata
+        const monthKey = fromKey.slice(0, 7);
+        const nDays = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)), 0).getDate();
+        const fit = await dailyWxPoints(siteId, `${monthKey}-01`, `${monthKey}-${String(nDays).padStart(2, "0")}`);
+        const { r2, slope } = fit.length >= 5 ? fitCddModel(fit) : { r2: undefined, slope: undefined };
+        return { points, scale, r2, kwhPerDegree: slope, fitWindow: "month", valueUnit: "kW", isDemo: false };
       }
-      if (points.length < 7) return null;
+
+      if (scale === "month") {
+        const year = Number(fromKey.slice(0, 4));
+        const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
+        const perMonth = await Promise.all(months.map(mk => {
+          const nd = new Date(year, Number(mk.slice(5, 7)), 0).getDate();
+          return dailyWxPoints(siteId, `${mk}-01`, `${mk}-${String(nd).padStart(2, "0")}`);
+        }));
+        const all = perMonth.flat();
+        if (all.length < 10) return null;
+        const points = perMonth
+          .map((days, i) => {
+            if (days.length === 0) return null;
+            return {
+              key: `${year}-${String(i + 1).padStart(2, "0")}`,
+              label: String(i + 1),
+              value: Math.round(days.reduce((a, p) => a + p.value, 0)),
+              temp: Math.round((days.reduce((a, p) => a + p.temp, 0) / days.length) * 10) / 10,
+              hum: Math.round(days.reduce((a, p) => a + (p.hum ?? 0), 0) / days.length),
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => x != null);
+        if (points.length < 3) return null;
+        const { r2, slope } = fitCddModel(all);
+        return { points, scale, r2, kwhPerDegree: slope, fitWindow: "year", valueUnit: "kWh", isDemo: false };
+      }
+
+      const points = await dailyWxPoints(siteId, fromKey, toKey);
+      if (points.length < 5) return null;
       const { r2, slope } = fitCddModel(points);
-      return { points, r2, kwhPerDegree: slope, isDemo: false };
+      return { points, scale, r2, kwhPerDegree: slope, valueUnit: "kWh", isDemo: false };
     },
-    enabled: !!monthKey,
+    enabled: !!fromKey && !!toKey,
     staleTime: 10 * 60 * 1000,
   });
 }
 
-/** OLS multivariato kwh ~ CDD18 + umidità (stesso spirito del PC: client-side). */
-export function fitCddModel(points: Array<{ kwh: number; temp: number; hum?: number }>): { r2?: number; slope?: number } {
+/** OLS multivariato valore ~ CDD18 + umidità (stesso spirito del PC: client-side). */
+export function fitCddModel(points: Array<{ value: number; temp: number; hum?: number }>): { r2?: number; slope?: number } {
   const n = points.length;
   if (n < 5) return {};
   const X = points.map(p => [1, Math.max(0, p.temp - 18), p.hum ?? 0]);
-  const Y = points.map(p => p.kwh);
+  const Y = points.map(p => p.value);
   // normal equations 3×3: (XᵀX)β = XᵀY
   const XtX = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
   const XtY = [0, 0, 0];

@@ -72,7 +72,7 @@ export const EuiCompareChart = ({ s, anchorMonth, monthLabels, labels }: {
 export const WeatherScatter = ({ s, todayKey, fmt }: { s: WeatherCorr; todayKey: string; fmt: (v: number) => string }) => {
   const H = 190, PT = 14, PB = 22, PL = 8, PR = 40;
   const temps = s.points.map(p => p.temp);
-  const kwhs = s.points.map(p => p.kwh);
+  const kwhs = s.points.map(p => p.value);
   const tMin = Math.floor(Math.min(...temps) / 5) * 5;
   const tMax = Math.ceil(Math.max(...temps) / 5) * 5;
   const kMax = Math.max(...kwhs) * 1.1;
@@ -83,7 +83,7 @@ export const WeatherScatter = ({ s, todayKey, fmt }: { s: WeatherCorr; todayKey:
   const base = (() => {
     const under = s.points.filter(p => p.temp <= 18);
     const src = under.length >= 3 ? under : s.points;
-    return src.reduce((a, p) => a + p.kwh, 0) / src.length;
+    return src.reduce((a, p) => a + p.value, 0) / src.length;
   })();
   const slope = s.kwhPerDegree ?? 0;
   const trend = `M${x(tMin)},${y(base)} L${x(18)},${y(base)} L${x(tMax)},${y(base + slope * (tMax - 18))}`;
@@ -97,11 +97,14 @@ export const WeatherScatter = ({ s, todayKey, fmt }: { s: WeatherCorr; todayKey:
           <text x={W - PR + 9} y={y(gv) + 3} fontSize="8.5" fill={AXIS}>{fmt(gv)}</text>
         </g>
       ))}
-      {slope > 0 && <path d={trend} fill="none" stroke="#8aa3a5" strokeWidth="1.5" strokeDasharray="5 3" />}
+      {/* la retta del modello si disegna solo se è stato stimato SU QUESTI
+          punti: alla scala oraria (modello sul mese, kWh/°C) sarebbe fuori
+          unità e fuori scala */}
+      {slope > 0 && s.fitWindow == null && <path d={trend} fill="none" stroke="#8aa3a5" strokeWidth="1.5" strokeDasharray="5 3" />}
       {s.points.map((p, i) => {
-        const isToday = p.day === todayKey;
+        const isToday = p.key === todayKey || p.key.slice(0, 10) === todayKey;
         return (
-          <circle key={i} cx={x(p.temp)} cy={y(p.kwh)} r={isToday ? 4.5 : 3}
+          <circle key={i} cx={x(p.temp)} cy={y(p.value)} r={isToday ? 4.5 : 3}
             fill={isToday ? TEAL : "rgba(10,143,145,.38)"}
             stroke={isToday ? "#fff" : "none"} strokeWidth={isToday ? 1.5 : 0} />
         );
@@ -114,26 +117,40 @@ export const WeatherScatter = ({ s, todayKey, fmt }: { s: WeatherCorr; todayKey:
 };
 
 /* ── Meteo «Nel tempo»: kWh come barre leggere + temperatura come linea ── */
-export const WeatherTimeline = ({ s }: { s: WeatherCorr }) => {
-  const H = 190, PT = 14, PB = 20;
+export const WeatherTimeline = ({ s, axisLabels }: {
+  s: WeatherCorr;
+  /** etichette dell'asse X già formattate dal chiamante (date, ore, mesi) */
+  axisLabels?: string[];
+}) => {
+  const H = 190, PT = 14, PB = 22;
   const n = s.points.length;
-  const kMax = Math.max(...s.points.map(p => p.kwh)) * 1.1;
+  const kMax = Math.max(...s.points.map(p => p.value)) * 1.1;
   const tVals = s.points.map(p => p.temp);
   const tMin = Math.min(...tVals), tMax = Math.max(...tVals);
   const x = (i: number) => 8 + (i / Math.max(1, n - 1)) * (W - 16);
   const yK = (k: number) => PT + (1 - k / kMax) * (H - PT - PB);
   const yT = (tv: number) => PT + 8 + (1 - (tv - tMin) / (tMax - tMin || 1)) * (H - PT - PB - 40);
-  const bw = Math.max(2, (W - 16) / n - 2);
+  // con pochi punti le barre non devono diventare lastre né sbordare
+  const bw = Math.min(30, Math.max(2, (W - 16) / n - 2));
   let tpath = "";
   s.points.forEach((p, i) => { tpath += `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${yT(p.temp).toFixed(1)} `; });
+  // con pochi punti si etichetta ogni passo, con molti si dirada
+  const labels = axisLabels ?? s.points.map(p => p.label);
+  const every = n <= 8 ? 1 : n <= 16 ? 2 : Math.ceil(n / 7);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full block">
       {s.points.map((p, i) => (
-        <rect key={i} x={x(i) - bw / 2} y={yK(p.kwh)} width={bw} height={H - PB - yK(p.kwh)} rx={1.5} fill="rgba(10,143,145,.30)" />
+        <rect key={i} x={x(i) - bw / 2} y={yK(p.value)} width={bw} height={H - PB - yK(p.value)} rx={1.5} fill="rgba(10,143,145,.30)" />
       ))}
       <path d={tpath} fill="none" stroke="#8aa3a5" strokeWidth="1.6" strokeLinejoin="round" />
-      <text x={8} y={H - 5} fontSize="8.5" fill={AXIS}>1</text>
-      <text x={W - 8} y={H - 5} fontSize="8.5" fill={AXIS} textAnchor="end">{n}</text>
+      {/* estremi della temperatura, così la linea grigia si legge */}
+      <text x={W - 2} y={yT(tMax) - 4} fontSize="8.5" fill="#8aa3a5" textAnchor="end">{Math.round(tMax)}°</text>
+      <text x={W - 2} y={yT(tMin) + 10} fontSize="8.5" fill="#8aa3a5" textAnchor="end">{Math.round(tMin)}°</text>
+      {labels.map((lb, i) => (
+        i % every === 0 || i === n - 1
+          ? <text key={i} x={x(i)} y={H - 5} fontSize="8.5" fill={AXIS} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}>{lb}</text>
+          : null
+      ))}
     </svg>
   );
 };

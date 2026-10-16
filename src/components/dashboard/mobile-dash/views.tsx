@@ -43,6 +43,10 @@ export const WeekBars = ({ s, onOpenDay, avgLabel, fmt, weekdays, overLimit }: {
                   background: d.v == null ? "transparent" : over ? AMBER : isWeekend ? "#dfe7e8" : "#9fd3d6",
                 }} />
                 <span style={{ fontSize: 11, color: AXIS, marginTop: 5 }}>{weekdays?.[i] ?? d.label}</span>
+                {/* data sotto l'iniziale: «quale» lunedì si sta guardando */}
+                {!d.date.startsWith("demo") && (
+                  <span className="tabular-nums" style={{ fontSize: 9, color: "#b9c9ca", marginTop: 1 }}>{Number(d.date.slice(8, 10))}</span>
+                )}
               </button>
             );
           })}

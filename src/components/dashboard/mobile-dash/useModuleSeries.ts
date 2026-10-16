@@ -204,7 +204,7 @@ function demoDay(module: DashModule, airMetric: string, energyCat: EnergyCat = "
     isDemo: true,
   };
 }
-function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = "power"): WeekSeries {
+function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = "power", mondayKey?: string): WeekSeries {
   const isIaq = module === "air" && airMetric === "iaq";
   const cfg = demoCfgFor(module, airMetric);
   const kCat = DEMO_CAT_FACTOR[energyCat];
@@ -222,12 +222,19 @@ function demoWeek(module: DashModule, airMetric: string, energyCat: EnergyCat = 
     const open = h >= 7 && h <= 20 && d < 5;
     return open ? Math.round(40 + 60 * Math.exp(-((h - 13) ** 2) / 30)) : Math.round(8 + (d >= 5 ? 4 : 0));
   }));
+  // date VERE della settimana àncora: l'asse mostra i giorni del mese e
+  // il tap su una barra apre quel giorno
+  const days = ["L", "M", "M", "G", "V", "S", "D"].map((label, i) => {
+    if (!mondayKey) return { label, date: `demo-${i}`, v: vals[i] };
+    const d = new Date(`${mondayKey}T12:00:00`); d.setDate(d.getDate() + i);
+    return { label, date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`, v: vals[i] };
+  });
   return {
-    days: ["L", "M", "M", "G", "V", "S", "D"].map((label, i) => ({ label, date: `demo-${i}`, v: vals[i] })),
+    days,
     weekdayAvg: Math.round((vals.slice(0, 5).reduce((a, b) => a + b, 0) / 5) * dp) / dp,
     heat, heatMax: 100,
     totalKwh: module === "energy" ? Math.round(2290 * kCat) : undefined,
-    topDay: "demo-2",
+    topDay: days[2].date,
     costEur: module === "energy" ? Math.round(430 * kCat) : undefined,
     unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit, isDemo: true,
   };
@@ -866,7 +873,7 @@ export function useWeekSeries(module: DashModule, siteId: string | undefined, mo
   return useQuery<WeekSeries | null>({
     queryKey: ["mdash-week", module, siteId, mondayKey, airMetric, energyCat, probeIds?.join(",") ?? ""],
     queryFn: async (): Promise<WeekSeries | null> => {
-      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoWeek(module, airMetric, energyCat) : null;
+      if (isDemoSite || !isSupabaseConfigured || !siteId) return isDemoSite ? demoWeek(module, airMetric, energyCat, mondayKey) : null;
       const start = new Date(`${mondayKey}T00:00:00`);
       const endKey = new Date(start.getTime() + 6 * 86400e3).toISOString().slice(0, 10);
       const fromUtc = new Date(start.getTime() - 26 * 3600e3).toISOString();

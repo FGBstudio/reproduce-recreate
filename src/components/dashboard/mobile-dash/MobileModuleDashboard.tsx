@@ -22,7 +22,7 @@ import BillUploadSheet from "./BillUploadSheet";
 import BillDetail from "./BillDetail";
 import { HourHeatmap, HourStrip, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars, YearCarpet } from "./views";
 import { BillsCompareChart, CarbonBars, CategoryBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
-import { useBillsYear, useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem } from "./useEnergyInsights";
+import { useBillsYear, useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem, type WxScale } from "./useEnergyInsights";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSiteCurrency } from "@/hooks/useSiteCurrency";
@@ -89,6 +89,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   useBackDismiss(true, onBack);
 
   const todayKey = keyOf(new Date());
+  /** non chiedere al DB giorni futuri: ogni intervallo si ferma a oggi */
+  const capToday = (k: string) => (k > todayKey ? todayKey : k);
   const dateKey = keyOf(anchor);
   const mondayKey = keyOf(mondayOf(anchor));
   const monthKey = dateKey.slice(0, 7);
@@ -150,14 +152,26 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const avail = useSiteMetricsAvailable(module, module !== "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, isDemoSite);
   // §10.1 — approfondimenti: le schede esistono solo se hanno dati
   const eui = useEuiCompare(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), anchor.getMonth(), isDemoSite);
-  const wcorr = useWeatherCorr(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, monthKey, isDemoSite);
+  // §10.1 + 16/10 — il meteo segue l'orizzonte scelto, non lo cambia più:
+  // ore nel Giorno, giorni in Settimana/Mese/Intervallo, mesi nell'Anno
+  const wxScale: WxScale = period === "day" ? "hour" : period === "year" ? "month" : "day";
+  const wxFrom = period === "day" ? dateKey
+    : period === "week" ? mondayKey
+    : period === "month" ? `${monthKey}-01`
+    : period === "range" ? (customRange?.from ?? todayKey)
+    : `${anchor.getFullYear()}-01-01`;
+  const wxTo = period === "day" ? dateKey
+    : period === "week" ? capToday(keyOf(new Date(mondayOf(anchor).getTime() + 6 * 86400e3)))
+    : period === "month" ? capToday(keyOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0)))
+    : period === "range" ? (customRange?.to ?? todayKey)
+    : capToday(`${anchor.getFullYear()}-12-31`);
+  const wcorr = useWeatherCorr(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, wxFrom, wxTo, wxScale, isDemoSite, timezone);
   const periodsY = usePeriodsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite, priceKwh ?? (isDemoSite ? 0.19 : undefined));
   // §10.6 — Bollette (decisione owner 15/10): fatturato vs misurato per anno
   const bills = useBillsYear(module === "energy" ? (isDemoSite ? siteId : safeSiteId) : undefined, anchor.getFullYear(), isDemoSite);
   // Parità E1 — ripartizione per categoria del periodo (solo scheda Potenza,
   // orizzonti Giorno e Mese: il breakdown del PC calato dove si legge il totale)
   const splitOn = module === "energy" && energyTab === "power" && !insightTab && period !== "range";
-  const capToday = (k: string) => (k > todayKey ? todayKey : k);
   const splitFrom = period === "day" ? dateKey
     : period === "week" ? mondayKey
     : period === "month" ? `${monthKey}-01`
@@ -340,7 +354,19 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     });
   }, [language]);
   // vista della scheda Meteo (§10.1): Dispersione / Nel tempo
-  const [wxView, setWxView] = useState<"scatter" | "time">("scatter");
+  const [wxView, setWxView] = useState<"scatter" | "time" | null>(null);
+  // default per scala: le ore di una giornata e i pochi giorni di una
+  // settimana si leggono «nel tempo»; mese e anno nella dispersione.
+  // La scelta esplicita dell'utente vince sempre.
+  const wxEffective: "scatter" | "time" = wxView
+    ?? (wxScale === "day" && (wcorr.data?.points.length ?? 0) >= 10 ? "scatter" : "time");
+  const wxAxisLabels = useMemo(() => {
+    const pts = wcorr.data?.points ?? [];
+    if (wxScale === "hour") return pts.map(p => `${p.label}`);
+    if (wxScale === "month") return pts.map(p => monthHeads[Number(p.label) - 1] ?? p.label);
+    return pts.map(p => (p.key.length >= 10 ? `${Number(p.key.slice(8, 10))}/${p.key.slice(5, 7)}` : p.label));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wcorr.data, wxScale, monthHeads]);
 
   const rangeSpanDays = customRange
     ? Math.round((new Date(`${customRange.to}T12:00:00`).getTime() - new Date(`${customRange.from}T12:00:00`).getTime()) / 86400e3) + 1
@@ -541,8 +567,10 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         ...(cats.data ?? ["power"] as EnergyCat[]).map(c => ({ id: c as string, label: CAT_LABEL[c] })),
         { id: "co2e", label: "CO₂" },
         ...(effPrice ? [{ id: "cost", label: t("md.metric_cost") }] : []),
-        /* §10.1: le schede approfondimento esistono solo coi loro dati */
-        ...(eui.data ? [{ id: "compare", label: t("md.tab_compare") }] : []),
+        /* §10.1: le schede approfondimento esistono solo coi loro dati.
+           16/10: nessuna scheda cambia più il periodo — quelle che a un
+           orizzonte non hanno senso semplicemente non compaiono. */
+        ...(eui.data && (period === "month" || period === "year") ? [{ id: "compare", label: t("md.tab_compare") }] : []),
         ...(wcorr.data ? [{ id: "weather", label: t("md.tab_weather") }] : []),
         { id: "carbon", label: t("md.tab_carbon") },
         ...(period === "year" && periodsY.data ? [{ id: "periods", label: t("md.tab_periods") }] : []),
@@ -630,19 +658,17 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
       value={module === "energy" ? energyTab : airMetric}
       onChange={id => {
         if (module !== "energy") { setAirMetric(id); return; }
+        // 16/10: cambiare scheda NON cambia più l'orizzonte scelto
         setEnergyTab(id as EnergyTab);
-        // §10.1: Confronto/Meteo/Carbonio ragionano per MESE, Periodi per ANNO
-        if (["compare", "weather", "carbon"].includes(id) && period !== "month") setPeriod("month");
-        // §10.6: le Bollette ragionano per ANNO (‹ 2026 ›)
-        if (["periods", "bills"].includes(id) && period !== "year") setPeriod("year");
       }}
     />
   ) : null;
-  // cambiando orizzonte, una scheda approfondimento incompatibile torna a Potenza
+  // cambiando orizzonte, una scheda che lì non esiste torna a Potenza
+  // (Meteo e Carbonio invece esistono ovunque e restano selezionate)
   useEffect(() => {
     if (!insightTab) return;
     if (["periods", "bills"].includes(energyTab) && period !== "year") setEnergyTab("power");
-    if (["compare", "weather", "carbon"].includes(energyTab) && period !== "month") setEnergyTab("power");
+    if (energyTab === "compare" && period !== "month" && period !== "year") setEnergyTab("power");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
   // ambra su SOGLIA (non su media) per barre e calendario di aria/acqua
@@ -1245,22 +1271,35 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               <VerdictLine
                 color={TEAL}
                 verdict={t("md.weather_weighs").replace("{p}", String(Math.round(wcorr.data.r2 * 100)))}
-                summary={t("md.weather_rest")}
+                /* a scala oraria il modello è quello del mese: dichiararlo */
+                summary={wcorr.data.fitWindow === "month" ? t("md.weather_fit_month") : t("md.weather_rest")}
                 onExplain={() => setExplainTab("power")}
               />
             )}
             {metricTabsEl}
-            {wxView === "scatter"
-              ? <div className="px-6 mt-3"><WeatherScatter s={wcorr.data} todayKey={todayKey} fmt={v => nf0.format(v)} /></div>
-              : <div className="px-6 mt-3"><WeatherTimeline s={wcorr.data} /></div>}
+            {/* con pochi punti la dispersione è illeggibile: alla scala
+                oraria e settimanale vince la lettura «nel tempo» */}
+            {wxEffective === "scatter"
+              ? <div className="px-6 mt-3"><WeatherScatter s={wcorr.data} todayKey={period === "day" ? dateKey : todayKey} fmt={v => nf0.format(v)} /></div>
+              : <div className="px-6 mt-3"><WeatherTimeline s={wcorr.data} axisLabels={wxAxisLabels} /></div>}
             <p className="text-center" style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
-              {wxView === "scatter" ? t("md.weather_axis") : t("md.weather_axis_time")}
+              {wxEffective === "scatter"
+                ? t("md.weather_axis").replace("{u}", wcorr.data.valueUnit)
+                : t("md.weather_axis_time").replace("{u}", wcorr.data.valueUnit)}
             </p>
+            {/* la frase che il PC dà e il mobile nascondeva in un numero */}
+            {wcorr.data.r2 != null && (
+              <p className="px-8 text-center" style={{ fontSize: 12, color: INK, marginTop: 10, lineHeight: 1.5 }}>
+                {t(wcorr.data.kwhPerDegree != null && wcorr.data.kwhPerDegree > 0 ? "md.weather_insight" : "md.weather_insight_flat")
+                  .replace("{p}", String(Math.round(wcorr.data.r2 * 100)))
+                  .replace("{k}", nf0.format(wcorr.data.kwhPerDegree ?? 0))}
+              </p>
+            )}
             <div className="flex justify-center gap-2 mt-3">
               {(["scatter", "time"] as const).map(v => (
                 <button key={v} type="button" onClick={() => { hapticLight(); setWxView(v); }}
                   className="rounded-full font-semibold"
-                  style={{ fontSize: 11.5, minHeight: 34, padding: "0 14px", color: wxView === v ? INK : SUB, background: wxView === v ? "#eef4f4" : "transparent" }}>
+                  style={{ fontSize: 11.5, minHeight: 34, padding: "0 14px", color: wxEffective === v ? INK : SUB, background: wxEffective === v ? "#eef4f4" : "transparent" }}>
                   {v === "scatter" ? t("md.scatter") : t("md.in_time")}
                 </button>
               ))}
@@ -1268,7 +1307,7 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             <SummaryRow items={[
               ...(wcorr.data.r2 != null ? [{ value: `R² ${nf2.format(wcorr.data.r2)}`, label: t("md.temp_hum") }] : []),
               ...(wcorr.data.kwhPerDegree != null && wcorr.data.kwhPerDegree > 0 ? [{ value: `+${nf0.format(wcorr.data.kwhPerDegree)} kWh`, label: t("md.per_degree") }] : []),
-              { value: String(wcorr.data.points.length), label: t("md.days_lbl") },
+              { value: String(wcorr.data.points.length), label: t(wxScale === "hour" ? "md.hours_lbl" : wxScale === "month" ? "md.months_lbl2" : "md.days_lbl") },
             ]} />
           </>
         ) : <p className="text-center py-14" style={{ color: SUB, fontSize: 13 }}>{t("md.no_data")}</p>
