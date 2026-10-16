@@ -97,6 +97,107 @@ export const HourHeatmap = ({ s, onOpenDay, title, hint, weekdays, fmtCell }: {
     giorno (1–31), una riga per ora (0–24 dall'alto), colore più intenso =
     valore più alto. Weekend segnati sotto, oggi contornato, futuri grigi.
     Un tocco su una colonna apre quel giorno. */
+/** Striscia delle 24 ore del giorno (parità con le heatmap degli altri
+ *  orizzonti): una cella per ora, intensità sul valore, ambra sopra soglia.
+ *  Tap su una cella: ora e valore. */
+export const HourStrip = ({ points, unit, overLimit, title, hint, fmt }: {
+  points: Array<{ h: number; v: number | null }>;
+  unit?: string;
+  overLimit?: number;
+  title: string;
+  hint: string;
+  fmt: (v: number) => string;
+}) => {
+  const [sel, setSel] = useState<number | null>(null);
+  const maxV = Math.max(...points.map(p => p.v ?? 0), 1);
+  return (
+    <div className="px-6 mt-5">
+      <div className="flex items-baseline justify-between mb-2">
+        <span style={{ fontSize: 12.5, fontWeight: 500, color: INK }}>{title}</span>
+        <span style={{ fontSize: 11, color: SUB }}>
+          {sel != null && points[sel]?.v != null
+            ? `${String(points[sel].h).padStart(2, "0")}:00 · ${fmt(points[sel].v!)}${unit ? ` ${unit}` : ""}`
+            : hint}
+        </span>
+      </div>
+      <div className="flex" style={{ gap: 2 }}>
+        {points.map((p, i) => {
+          const over = overLimit != null && p.v != null && p.v > overLimit;
+          const a = p.v == null ? 0 : 0.1 + 0.85 * Math.min(1, p.v / maxV);
+          return (
+            <button key={p.h} type="button" className="flex-1" aria-label={`${p.h}:00`}
+              onClick={() => { if (p.v != null) { hapticLight(); setSel(sel === i ? null : i); } }}
+              style={{
+                height: 30, borderRadius: 3,
+                background: p.v == null ? "rgba(159,178,179,.14)" : over ? `rgba(217,154,43,${(0.35 + 0.6 * Math.min(1, p.v / maxV)).toFixed(2)})` : `rgba(10,143,145,${a.toFixed(2)})`,
+                outline: sel === i ? `1.5px solid ${TEAL}` : "none",
+                outlineOffset: 1,
+              }} />
+          );
+        })}
+      </div>
+      <div className="flex justify-between" style={{ fontSize: 9.5, color: AXIS, marginTop: 4 }}>
+        {[0, 6, 12, 18, 24].map(h => <span key={h}>{h}</span>)}
+      </div>
+    </div>
+  );
+};
+
+/** Carpet dell'anno: 12 colonne (mesi) × 31 righe (giorni) — l'equivalente
+ *  «giorni × mesi» che il desktop mostra sugli intervalli lunghi. */
+export const YearCarpet = ({ s, year, monthLabels, onOpenDay, overLimit, legendLess, legendMore }: {
+  s: YearSeries; year: number; monthLabels: string[];
+  onOpenDay: (date: string) => void;
+  overLimit?: number;
+  legendLess: string; legendMore: string;
+}) => {
+  const W = 342, H = 164, GAP = 1;
+  const cw = (W - 14) / 12;
+  const rh = H / 31;
+  const max = s.daysMax || 1;
+  return (
+    <div className="px-6 mt-4">
+      <svg viewBox={`0 0 ${W} ${H + 30}`} className="w-full block" style={{ touchAction: "pan-y" }}>
+        {[1, 10, 20, 31].map(d => (
+          <text key={d} x={0} y={(d - 1) * rh + 6} fontSize="7.5" fill={AXIS}>{d}</text>
+        ))}
+        {s.days.map((col, mi) => {
+          const x = 14 + mi * cw;
+          return (
+            <g key={mi}>
+              {col.map((v, di) => {
+                const over = overLimit != null && v != null && v > overLimit;
+                const fill = v == null
+                  ? "rgba(159,178,179,.10)"
+                  : over
+                    ? `rgba(217,154,43,${(0.35 + 0.6 * Math.min(1, v / max)).toFixed(2)})`
+                    : `rgba(10,143,145,${(0.08 + 0.85 * Math.min(1, v / max)).toFixed(2)})`;
+                return (
+                  <rect key={di} x={x} y={di * rh} width={Math.max(0.5, cw - GAP)} height={rh - 0.5} rx={1} fill={fill}
+                    onClick={() => {
+                      if (v == null) return;
+                      hapticLight();
+                      onOpenDay(`${year}-${String(mi + 1).padStart(2, "0")}-${String(di + 1).padStart(2, "0")}`);
+                    }}
+                    style={{ cursor: v == null ? "default" : "pointer" }} />
+                );
+              })}
+              <text x={x + (cw - GAP) / 2} y={H + 11} fontSize="8" fill={AXIS} textAnchor="middle">{monthLabels[mi]}</text>
+            </g>
+          );
+        })}
+        <g transform={`translate(14, ${H + 24})`}>
+          <text x={0} y={4} fontSize="8" fill={SUB}>{legendLess}</text>
+          {[0.15, 0.35, 0.55, 0.75, 0.95].map((o, i) => (
+            <rect key={i} x={26 + i * 9} y={-2} width={7} height={7} rx={1.5} fill={`rgba(10,143,145,${o})`} />
+          ))}
+          <text x={76} y={4} fontSize="8" fill={SUB}>{legendMore}</text>
+        </g>
+      </svg>
+    </div>
+  );
+};
+
 /** Barre giornaliere del mese: una barra per giorno, STESSA geometria del
  *  carpet che sta sotto (ogni barra è esattamente sopra la sua colonna).
  *  Weekend attenuati, oggi contornato, futuri assenti; tap → vista Giorno. */

@@ -1194,6 +1194,9 @@ export interface YearSeries {
   avg?: number;               // media dei mesi con dati
   totalKwh?: number;
   costEur?: number;
+  /** carpet dell'anno: 12 mesi × 31 giorni (null = nessun dato / data inesistente) */
+  days: Array<Array<number | null>>;
+  daysMax: number;
   unit: string;
   isDemo: boolean;
 }
@@ -1215,11 +1218,26 @@ function demoYear(module: DashModule, airMetric: string, energyCat: EnergyCat = 
   });
   const present = months.filter(x => x.v != null).map(x => x.v!) ;
   const totalKwh = module === "energy" ? present.reduce((a, b) => a + b, 0) : undefined;
+  // carpet demo: il valore mensile spalmato sui giorni, weekend più bassi
+  const now = new Date();
+  const days = months.map((mo, mi) => {
+    const nd = new Date(now.getFullYear(), mi + 1, 0).getDate();
+    return Array.from({ length: 31 }, (_, di) => {
+      if (mo.v == null || di >= nd) return null;
+      if (mi === nowM && di >= now.getDate()) return null;
+      const wd = new Date(now.getFullYear(), mi, di + 1).getDay();
+      const base = module === "energy" ? mo.v / (mi === nowM ? now.getDate() : nd) : mo.v;
+      const k = wd === 0 || wd === 6 ? (module === "energy" ? 0.28 : 0.92) : 1 + 0.06 * Math.sin(di * 1.3);
+      return module === "energy" ? Math.round(base * k) : rnd(base * k);
+    });
+  });
   return {
     months,
     avg: present.length ? (module === "energy" || isIaq ? Math.round : rnd)(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
     totalKwh,
     costEur: module === "energy" ? Math.round((totalKwh || 0) * 0.19) : undefined,
+    days,
+    daysMax: Math.max(...days.flat().map(v => v ?? 0), 1),
     unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
     isDemo: true,
   };
@@ -1234,6 +1252,14 @@ export function useYearSeries(module: DashModule, siteId: string | undefined, ye
       const last = `${year}-12-31`;
       const isIaq = module === "air" && airMetric === "iaq";
       const byMonth = new Map<number, { s: number; n: number }>();
+      // carpet dell'anno: stessa passata sui record GIORNALIERI, nessuna
+      // query in più (energia: somma del giorno; aria/acqua: media)
+      const byDay = new Map<string, { s: number; n: number }>();
+      const addDay = (tsDay: string, v: number) => {
+        const e = byDay.get(tsDay) || { s: 0, n: 0 };
+        e.s += v; e.n++;
+        byDay.set(tsDay, e);
+      };
 
       if (module === "energy") {
         const ids = (await deviceSets(siteId))[energyCat];
@@ -1248,6 +1274,7 @@ export function useYearSeries(module: DashModule, siteId: string | undefined, ye
           const e = byMonth.get(m) || { s: 0, n: 0 };
           e.s += Number(r.value_sum); e.n++;
           byMonth.set(m, e);
+          addDay(r.ts_day, Number(r.value_sum));
         }
       } else {
         let qy = supabase!.from("telemetry_daily")
@@ -1262,6 +1289,7 @@ export function useYearSeries(module: DashModule, siteId: string | undefined, ye
           const e = byMonth.get(m) || { s: 0, n: 0 };
           e.s += Number(r.value_avg); e.n++;
           byMonth.set(m, e);
+          addDay(r.ts_day, Number(r.value_avg));
         }
       }
       if (byMonth.size === 0) return null;
@@ -1275,11 +1303,20 @@ export function useYearSeries(module: DashModule, siteId: string | undefined, ye
       });
       const present = months.filter(x => x.v != null).map(x => x.v!);
       const totalKwh = module === "energy" ? present.reduce((a, b) => a + b, 0) : undefined;
+      const days = Array.from({ length: 12 }, (_, mi) =>
+        Array.from({ length: 31 }, (_, di) => {
+          const e = byDay.get(`${year}-${String(mi + 1).padStart(2, "0")}-${String(di + 1).padStart(2, "0")}`);
+          if (!e) return null;
+          return module === "energy" ? Math.round(e.s) : isIaq ? co2ToScore(e.s / e.n) : rnd(e.s / e.n);
+        }),
+      );
       return {
         months,
         avg: present.length ? (module === "energy" || isIaq ? Math.round : rnd)(present.reduce((a, b) => a + b, 0) / present.length) : undefined,
         totalKwh,
         costEur: totalKwh && priceKwh ? Math.round(totalKwh * priceKwh) : undefined,
+        days,
+        daysMax: Math.max(...days.flat().map(v => v ?? 0), 1),
         unit: module === "energy" ? "kWh" : isIaq ? "" : (metricsFor(module)[airMetric] ?? AIR_METRICS.co2).unit,
         isDemo: false,
       };

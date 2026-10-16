@@ -791,6 +791,7 @@ const translations: Record<string, Record<Language, string>> = {
   'md.split_sim': { en: 'SIMULATED SPLIT', it: 'RIPARTIZIONE SIMULATA', fr: 'RÉPARTITION SIMULÉE', es: 'REPARTO SIMULADO', zh: '模拟分摊' },
   'md.split_note': { en: 'This site only has the general meter: benchmark-based estimate, as on desktop.', it: 'Questo sito ha solo il contatore generale: stima da benchmark, come sul PC.', fr: "Ce site n'a que le compteur général : estimation par benchmark, comme sur PC.", es: 'Este sitio solo tiene el contador general: estimación por benchmark, como en PC.', zh: '该站点仅有总表：按基准估算，与桌面端一致。' },
   'md.cat_other': { en: 'Other', it: 'Altro', fr: 'Autre', es: 'Otro', zh: '其他' },
+  'md.tap_hour': { en: 'tap an hour', it: "tocca un'ora", fr: 'touchez une heure', es: 'toca una hora', zh: '点按小时' },
   // Parità E2 — blocco real-time «In questo momento»
   'md.live_now': { en: 'Right now', it: 'In questo momento', fr: 'En ce moment', es: 'Ahora mismo', zh: '当前功率' },
   'md.live_upd': { en: 'updated {t}', it: 'aggiornato {t}', fr: 'mis à jour {t}', es: 'actualizado {t}', zh: '更新于 {t}' },

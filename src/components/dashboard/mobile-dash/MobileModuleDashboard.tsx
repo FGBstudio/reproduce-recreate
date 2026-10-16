@@ -20,7 +20,7 @@ import TimeSeriesChart from "./TimeSeriesChart";
 import PeriodSheet, { type PeriodChoice } from "./PeriodSheet";
 import BillUploadSheet from "./BillUploadSheet";
 import BillDetail from "./BillDetail";
-import { HourHeatmap, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars } from "./views";
+import { HourHeatmap, HourStrip, LabelValueGrid, MonthBars, MonthCarpet, RangeBars, WeekBars, YearBars, YearCarpet } from "./views";
 import { BillsCompareChart, CarbonBars, CategoryBars, DayNightBars, EuiCompareChart, PeriodsList, WeatherScatter, WeatherTimeline } from "./insights";
 import { useBillsYear, useEnergySplit, useEuiCompare, usePeriodsYear, useWeatherCorr, type BillItem } from "./useEnergyInsights";
 import { useQueryClient } from "@tanstack/react-query";
@@ -234,6 +234,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     if ("months" in out) {
       (out as YearSeries).months = (s as YearSeries).months.map(x => ({ ...x, v: x.v == null ? null : r0(x.v) }));
       (out as YearSeries).avg = (s as YearSeries).avg != null ? r0((s as YearSeries).avg!) : undefined;
+      (out as YearSeries).days = (s as YearSeries).days.map(col => col.map(v => (v == null ? null : r0(v))));
+      (out as YearSeries).daysMax = (s as YearSeries).daysMax * DERIVED.f;
     }
     return out;
   };
@@ -276,6 +278,8 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
     if ("months" in out) {
       (out as YearSeries).months = (s as YearSeries).months.map(x => ({ ...x, v: x.v == null ? null : r(x.v) }));
       (out as YearSeries).avg = (s as YearSeries).avg != null ? r((s as YearSeries).avg!) : undefined;
+      (out as YearSeries).days = (s as YearSeries).days.map(col => col.map(v => (v == null ? null : r(v))));
+      (out as YearSeries).daysMax = (s as YearSeries).daysMax * 1440;
     }
     return out;
   };
@@ -918,6 +922,16 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
                   ))}
                 </div>
               )}
+              {/* stesso blocco «pattern» degli altri orizzonti, alla scala
+                  del giorno: una cella per ora (decisione owner 16/10) */}
+              <HourStrip
+                points={d.points}
+                unit={d.unit}
+                overLimit={overLimitFor}
+                title={module === "energy" ? t("md.hour_load") : t("md.hour_pattern")}
+                hint={t("md.tap_hour")}
+                fmt={fmtV}
+              />
               {/* parità E1: da dove viene il consumo di oggi */}
               {splitEl(d.totalKwh)}
             </>
@@ -1104,6 +1118,16 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
               onOpenMonth={m => { const dd = new Date(anchor.getFullYear(), m - 1, 1); setAnchor(dd); setPeriod("month"); }}
               avgLabel={yearData.data.avg != null ? t("md.monthly_avg").replace("{v}", `${fmtV(yearData.data.avg)}${yearData.data.unit ? ` ${yearData.data.unit}` : ""}`) : undefined}
               fmt={fmtV}
+            />
+            {/* carpet dell'anno: 12 mesi × 31 giorni (il «giorni × mesi» che
+                il desktop mostra sugli intervalli lunghi) */}
+            <YearCarpet
+              s={yearData.data}
+              year={anchor.getFullYear()}
+              monthLabels={monthHeads}
+              overLimit={overLimitFor}
+              legendLess={t("md.less")} legendMore={t("md.more")}
+              onOpenDay={date => { setAnchor(new Date(`${date}T12:00:00`)); setPeriod("day"); }}
             />
             <SummaryRow items={[
               ...(yearData.data.totalKwh != null ? [{
