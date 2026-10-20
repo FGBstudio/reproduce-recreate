@@ -20,7 +20,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud, ArrowLeft } from "lucide-react";
 import { hapticLight } from "@/lib/native";
 import type { DeviceFamily, SiteDeviceGroup } from "@/hooks/useSiteDevices";
-import { AirRibbonFx, EnergyBoltFx, EnergyCircuitFx, WaterRippleFx } from "./DeviceFx";
+import { AirRibbonFx, EnergyCircuitFx, WaterRippleFx } from "./DeviceFx";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 
@@ -397,8 +397,9 @@ const DeviceRotator = ({ groups, installedLabel, fxLevels, onPick }: {
           className="relative flex items-center justify-center min-h-0"
           style={{ flex: "1 1 auto", width: "100%", opacity: shown ? 1 : 0, transition: fade }}
         >
-          {/* qui l'energia è detta dal solo fulmine: le tracce di circuito
-              restano sulla facciata Energy, dove hanno spazio (16/10) */}
+          {/* l'energia resta senza animazione: il render da solo (19/10).
+              Aria e acqua la tengono, perché lì il movimento dice davvero
+              cosa misura la sonda. */}
           {g.family === "air" && <AirRibbonFx level={fxLevels?.air ?? 0.25} />}
           {g.family === "water" && <WaterRippleFx level={fxLevels?.water ?? 0.3} />}
           <img
@@ -410,7 +411,6 @@ const DeviceRotator = ({ groups, installedLabel, fxLevels, onPick }: {
               transition: fade,
             }}
           />
-          {g.family === "energy" && <EnergyBoltFx level={fxLevels?.energy ?? 0.3} />}
         </span>
         <span
           className="block shrink-0" aria-hidden
@@ -489,8 +489,10 @@ const ModuleScreen = ({
             <div className="my-auto py-2 w-full flex flex-col items-center">
               {deviceImg && (
                 /* il render respira (6 s, fermo con prefers-reduced-motion)
-                   e l'ombra si stringe quando sale; sopra, il movimento che
-                   dice COSA misura: scarica per l'energia, flusso per l'aria */
+                   e l'ombra si stringe quando sale; dietro, il movimento che
+                   dice COSA misura: le tracce di corrente per l'energia, il
+                   flusso per l'aria. Il fulmine che stava davanti al render
+                   è stato tolto il 19/10, le tracce restano. */
                 <div className="relative flex flex-col items-center" aria-hidden="true">
                   {deviceFx === "energy" && <EnergyCircuitFx level={fxLevel ?? 0.3} light={light} />}
                   {deviceFx === "air" && <AirRibbonFx level={fxLevel ?? 0.3} light={light} />}
@@ -501,8 +503,6 @@ const ModuleScreen = ({
                     className="object-contain animate-hw-float motion-reduce:animate-none"
                     style={{ height: "clamp(72px, 14svh, 120px)", maxWidth: 190, position: "relative" }}
                   />
-                  {/* il fulmine sta DAVANTI al dispositivo, non dietro */}
-                  {deviceFx === "energy" && <EnergyBoltFx level={fxLevel ?? 0.3} light={light} />}
                   <span
                     className="block -mt-1 animate-hw-shadow motion-reduce:animate-none"
                     style={{ width: 104, height: 14, background: "radial-gradient(ellipse at center, rgba(0,0,0,.18) 0%, rgba(0,0,0,0) 68%)" }}
@@ -642,7 +642,7 @@ export const OverviewMobileView = ({
 
   /* intensità delle animazioni, dalla telemetria viva: i pacchetti di
      corrente corrono col carico, i nastri d'aria si calmano quando l'IAQ
-     è alto. Usate sia nelle facciate sia nell'hero. */
+     è alto. Usate nelle facciate; nell'hero solo aria e acqua. */
   const fxLevels = useMemo(() => {
     const kw = power?.total ?? energyAvgKw;
     const lim = energyLimitKw || 25;

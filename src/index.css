@@ -404,22 +404,24 @@ body {
   .animate-hw-shadow { animation: hw-shadow 6s ease-in-out infinite; }
 
   /* Cosa sta misurando il dispositivo, detto col movimento:
-     ENERGIA = una scarica che si carica e scocca;
-     ARIA    = l'aria che attraversa la sonda. */
+     ENERGIA = i pacchetti che corrono lungo le tracce, e il nodo che
+               pulsa dove la corrente entra nel dispositivo;
+     ARIA    = l'aria che attraversa la sonda;
+     ACQUA   = l'onda che si allarga dal contatore. */
   @keyframes fx-spark {
     0%, 100% { opacity: .22; transform: scale(.9); }
     42%      { opacity: 1;   transform: scale(1.08); }
     56%      { opacity: .45; transform: scale(1); }
-  }
-  @keyframes fx-ring {
-    0%   { transform: scale(.6); opacity: .45; }
-    100% { transform: scale(1.9); opacity: 0; }
   }
   /* pacchetto di luce lungo una traccia di circuito: il tratteggio
      scorre sul percorso (dasharray impostato dal componente) */
   @keyframes fx-packet {
     from { stroke-dashoffset: 374; }
     to   { stroke-dashoffset: 0; }
+  }
+  @keyframes fx-ring {
+    0%   { transform: scale(.6); opacity: .45; }
+    100% { transform: scale(1.9); opacity: 0; }
   }
   /* nastro d'aria: trasla di ESATTAMENTE un periodo d'onda (100), così
      il ciclo si richiude senza giunture */

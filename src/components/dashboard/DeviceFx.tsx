@@ -1,7 +1,6 @@
 /**
  * Il movimento che dice COSA sta misurando il dispositivo, nelle facciate
- * mobile (§5.4). Due linguaggi distinti, entrambi SVG puro — niente
- * librerie, niente asset:
+ * mobile (§5.4). SVG puro — niente librerie, niente asset:
  *
  *  · EnergyCircuitFx — tracce di circuito con pacchetti di luce che
  *    scorrono verso il dispositivo (Powerwall / Polestar): la VELOCITÀ e
@@ -9,9 +8,15 @@
  *  · AirRibbonFx — nastri d'aria traslucidi che ondeggiano da sinistra a
  *    destra attraversando la sonda (MyDyson / Apple Weather): la calma
  *    del flusso segue la qualità dell'aria misurata.
+ *  · WaterRippleFx — onde concentriche che si allargano dal contatore.
  *
- * `level` è 0…1 (0 = calmo/poco carico, 1 = intenso). Con
- * prefers-reduced-motion tutto resta fermo: le forme restano, il moto no.
+ * Il fulmine che stava davanti al render dell'energia è stato rimosso il
+ * 19/10: era l'elemento che non funzionava. Le tracce restano, perché
+ * sono la parte che dà profondità alla facciata. Se serve recuperarlo,
+ * EnergyBoltFx sta nel commit c002205.
+ *
+ * `level` è 0…1 (0 = calmo, 1 = intenso). Con prefers-reduced-motion
+ * tutto resta fermo: le forme restano, il moto no.
  */
 
 interface FxProps {
@@ -22,9 +27,6 @@ interface FxProps {
 }
 
 const clamp01 = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.3);
-
-/** fulmine in una scatola 24×24 */
-const BOLT = "M13.2 2.4 L5 13.8 h5.4 l-1 7.8 L18 10.2 h-5.4 l0.6-7.8 z";
 
 /* ── ENERGIA ─────────────────────────────────────────────────────────
    Tre tracce che convergono nel dispositivo. Ogni traccia ha una linea
@@ -114,42 +116,6 @@ export const EnergyCircuitFx = ({ level, light }: FxProps) => {
   );
 };
 
-/**
- * Il fulmine: ciò che tutta quella corrente diventa. Va montato DOPO il
- * render del dispositivo, così resta davanti e non ci finisce dietro.
- * Contorno sempre visibile, pieno che scocca al ritmo dei pacchetti.
- */
-export const EnergyBoltFx = ({ level, light }: FxProps) => {
-  const k = clamp01(level);
-  const ink = light ? "rgba(1,71,75," : "rgba(255,255,255,";
-  const dur = (3.4 - 2.3 * k) / 2;
-  return (
-    <svg
-      viewBox="0 0 24 24" aria-hidden
-      style={{ position: "absolute", width: "26%", maxWidth: 46, top: "16%", right: "12%", overflow: "visible", pointerEvents: "none" }}
-    >
-      <defs>
-        <filter id="fx-bolt-bloom" x="-80%" y="-80%" width="260%" height="260%">
-          <feGaussianBlur stdDeviation="1.1" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <path
-        d={BOLT} fill="none" stroke={`${ink}.45)`} strokeWidth="1"
-        strokeLinejoin="round" strokeLinecap="round"
-      />
-      <path
-        d={BOLT} fill={`${ink}1)`}
-        className="animate-fx-spark motion-reduce:animate-none"
-        filter="url(#fx-bolt-bloom)"
-        style={{ animationDuration: `${dur.toFixed(2)}s`, transformOrigin: "12px 12px" }}
-      />
-    </svg>
-  );
-};
 
 /* ── ACQUA ───────────────────────────────────────────────────────────
    Onde concentriche che si allargano dal contatore e svaniscono: il
