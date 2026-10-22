@@ -90,7 +90,6 @@ function getDiurnalFactor(date: Date): { occupancy: number; isWeekend: boolean }
   else if (hour > 17 && hour <= 20) occupancy = 0.85 - ((hour - 17) / 3) * 0.65;
   return { occupancy, isWeekend: false };
 }
-
 // Funzione helper per generare i gradienti di criticità IAQ (Termometri CSS)
 const getIAQGradient = (type: string) => {
   switch (type) {
@@ -2391,22 +2390,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
 
   const estimatedCostData = useMemo(() => {
     const livePrice = Number(liveEnergyPriceEur || 0.23);
-    const data = energyTimeseriesResp?.data;
-    let totalKWh = 0;
-
-    if (Array.isArray(data) && data.length > 0) {
-      // Stessa conversione del kWh/m²: l'unità della metrica decide il campo,
-      // e un dispositivo che riporta sia kWh sia kW non viene contato due volte.
-      totalKWh = sumPointsAsKwh(data, bucketHours, (curr) => {
-        const info = deviceMap.get(curr.device_id);
-        return (!!info && info.category === 'general') ||
-          (!info && (curr.metric === 'energy.power_kw' || curr.metric === 'energy.active_energy'));
-      });
-    } else if (energyConsumptionData && energyConsumptionData.length > 0) {
-      totalKWh = energyConsumptionData.reduce((acc, curr) => {
-        return acc + ((curr.HVAC || 0) + (curr.Lighting || 0) + (curr.Plugs || 0)) * bucketHours;
-      }, 0);
-    }
+    const totalKWh = totalBreakdownKwh > 0
+      ? totalBreakdownKwh
+      : (energyConsumptionData && energyConsumptionData.length > 0
+          ? energyConsumptionData.reduce((acc, curr) => {
+              return acc + ((curr.HVAC || 0) + (curr.Lighting || 0) + (curr.Plugs || 0)) * bucketHours;
+            }, 0)
+          : 0);
 
     if (totalKWh === 0) return null;
     return {
@@ -2414,7 +2404,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       totalKwh: totalKWh,
       pricePerKwh: livePrice
     };
-  }, [energyTimeseriesResp, liveEnergyPriceEur, energyConsumptionData, bucketHours, deviceMap]);
+  }, [totalBreakdownKwh, liveEnergyPriceEur, energyConsumptionData, bucketHours]);
 
   const estimatedPricePerKwhDisplay = useMemo(() => {
     if (!estimatedCostData) return null;
