@@ -10,7 +10,7 @@
  * dell'energia arrivano con il loader per categoria (v2).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AirVent, ArrowLeft, ChevronLeft, ChevronRight, Clock, CloudFog, Droplets, Flame, FlaskConical, Lightbulb, MoreHorizontal, PlugZap, Sun, Thermometer, Wind, type LucideIcon } from "lucide-react";
+import { AirVent, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Clock, CloudFog, Droplets, Flame, FlaskConical, Lightbulb, MoreHorizontal, PlugZap, Sun, Thermometer, Wind, type LucideIcon } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { hapticLight } from "@/lib/native";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
@@ -32,6 +32,9 @@ import { isValidUUID } from "@/lib/utils";
 import { useSiteThresholds } from "@/hooks/useSiteThresholds";
 import { useEnergyPowerByCategory } from "@/hooks/useEnergyPowerByCategory";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { useThresholdAlerts } from "@/hooks/useThresholdAlerts";
+import { useSensorHealth } from "@/hooks/useSensorHealth";
+import AlertsSheet, { alertModuleOf, toAlertRows, type SensorTrustModel } from "./AlertsSensors";
 
 interface Props {
   module: DashModule;
@@ -179,6 +182,33 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
   const live = useEnergyPowerByCategory(liveOn && !isDemoSite ? safeSiteId : undefined);
   // §10.6 — Bollette: schermata a parte, aperta dal footer (16/10)
   const [billsOpen, setBillsOpen] = useState(false);
+
+  /* ── I1 (parità grafici): gli alert del modulo, nel contesto del modulo.
+     Stessa tabella (site_alerts, realtime) e stesso Trust layer
+     dell'overview, ma filtrati su QUESTO modulo: chi guarda Energy vede se
+     Energy ha allarmi senza uscire. Sola lettura — l'acknowledge resta una
+     decisione di prodotto (C4). Sui siti demo safeSiteId è undefined:
+     nessun alert finto, il badge semplicemente non compare. ── */
+  const siteAlerts = useThresholdAlerts(safeSiteId);
+  const moduleAlerts = useMemo(() => {
+    const list = (siteAlerts.alerts || []).filter(a => alertModuleOf(a.metric) === module);
+    return {
+      criticalCount: list.filter(a => a.severity === "critical").length,
+      warningCount: list.filter(a => a.severity === "warning").length,
+      infoCount: list.filter(a => a.severity === "info").length,
+      list: toAlertRows(list),
+    };
+  }, [siteAlerts.alerts, module]);
+  const alertCount = moduleAlerts.criticalCount + moduleAlerts.warningCount;
+  const sensHealth = useSensorHealth(safeSiteId, module);
+  const sensorTrust: SensorTrustModel | undefined = safeSiteId ? {
+    score: Math.round(sensHealth.averageTrustScore),
+    offline: sensHealth.offlineCount,
+    flatline: sensHealth.flatliningCount,
+    flapping: sensHealth.flappingCount,
+    offlineNames: sensHealth.sensors.filter(s => s.is_offline).map(s => s.device_name || s.sensor_id).slice(0, 3),
+  } : undefined;
+  const [alertsOpen, setAlertsOpen] = useState(false);
 
   // ── Serie derivate (CO₂ emessa / costo): la stessa serie kWh del sito,
   // riscalata. Nessuna query in più; gli stessi numeri del Carbon Footprint
@@ -823,11 +853,15 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
         WebkitOverflowScrolling: "touch",
       }}
     >
-      {/* barra superiore: ← · modulo + sito · ⋯ */}
+      {/* barra superiore: ← · modulo + sito · [alert] ⋯ — lo spaziatore a
+          sinistra pareggia il badge quando c'è, così il titolo non si sposta */}
       <div className="relative shrink-0 flex items-center justify-between px-2 pt-1">
-        <button type="button" onClick={onBack} aria-label="←" className="grid place-items-center" style={{ width: 44, height: 44, color: INK }}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+        <div className="flex items-center shrink-0">
+          <button type="button" onClick={onBack} aria-label="←" className="grid place-items-center" style={{ width: 44, height: 44, color: INK }}>
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          {alertCount > 0 && <span style={{ width: 44 }} aria-hidden />}
+        </div>
         <div className="text-center min-w-0 flex-1">
           {/* stesso titolo su tutti gli orizzonti (16/10) */}
           <span className="inline-block whitespace-nowrap" style={{ fontSize: 15, fontWeight: 600 }}>{moduleLabel}</span>
@@ -841,7 +875,25 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
             <span className="align-middle uppercase" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: SUB, background: "rgba(127,149,151,.14)", borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>{t("md.proposal")}</span>
           )}
         </div>
-        <ExportMenu items={exportItems} />
+        <div className="flex items-center shrink-0">
+          {/* I1: il badge dice che QUESTO modulo ha allarmi; tap → schermata
+              filtrata. Rosso solo sul critical (la palette lo riserva ai
+              problemi), ambra per i warning. Zero alert = niente badge. */}
+          {alertCount > 0 && (
+            <button type="button" onClick={() => { hapticLight(); setAlertsOpen(true); }}
+              aria-label={t("ovm.alerts_sensors")} className="grid place-items-center" style={{ width: 44, height: 44 }}>
+              <span className="inline-flex items-center gap-1 rounded-full tabular-nums"
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: "3px 8px",
+                  color: moduleAlerts.criticalCount > 0 ? "#931841" : "#b45309",
+                  background: moduleAlerts.criticalCount > 0 ? "#f9e4ea" : "rgba(217,154,43,.15)",
+                }}>
+                <AlertTriangle size={12} strokeWidth={2.4} aria-hidden />{alertCount}
+              </span>
+            </button>
+          )}
+          <ExportMenu items={exportItems} />
+        </div>
       </div>
 
       <div className="shrink-0 mt-2">
@@ -1486,6 +1538,17 @@ const MobileModuleDashboard = ({ module, siteId, siteName, timezone, isDemoSite,
           contractKw={limit}
           priceKwh={priceKwh}
           onBack={() => setBillsOpen(false)}
+        />
+      )}
+
+      {/* Schermata «Alert e sensori» filtrata sul modulo (parità I1) */}
+      {alertsOpen && (
+        <AlertsSheet
+          moduleLabel={moduleLabel}
+          siteName={siteName}
+          alerts={moduleAlerts}
+          sensorHealth={sensorTrust}
+          onBack={() => setAlertsOpen(false)}
         />
       )}
 

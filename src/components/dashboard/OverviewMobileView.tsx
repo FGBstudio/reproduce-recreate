@@ -21,6 +21,7 @@ import { Zap, Wind, Droplet, AlertTriangle, Award, Cloud, ArrowLeft } from "luci
 import { hapticLight } from "@/lib/native";
 import type { DeviceFamily, SiteDeviceGroup } from "@/hooks/useSiteDevices";
 import { AirRibbonFx, EnergyCircuitFx, WaterRippleFx } from "./DeviceFx";
+import { AlertsSensorsPanel } from "./mobile-dash/AlertsSensors";
 import { performanceColor, ratioFromLimit, ratioFromScore } from "@/lib/gradientColor";
 import ExplainSheet from "@/components/dashboard/ExplainSheet";
 
@@ -681,7 +682,6 @@ export const OverviewMobileView = ({
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeScreen, setActiveScreen] = useState(0);
-  const [showAllAlerts, setShowAllAlerts] = useState(false);
   // Foglio «Dati spiegati» (§5.5): quale scheda aprire, null = chiuso
   const [explainTab, setExplainTab] = useState<string | null>(null);
   const onScroll = useCallback(() => {
@@ -1024,68 +1024,9 @@ export const OverviewMobileView = ({
           <h4 className="m-0 text-[11px] font-bold tracking-[0.3em] opacity-75 uppercase">{t("ovm.alerts_sensors")}</h4>
         </div>
 
-        {/* conteggi per gravità */}
-        <div className="grid grid-cols-3 gap-3 text-center mt-5 w-full max-w-[290px] mx-auto">
-          {[
-            { n: alerts.criticalCount, label: t("ovm.sev_critical"), hot: alerts.criticalCount > 0 },
-            { n: alerts.warningCount, label: t("ovm.sev_medium"), warn: alerts.warningCount > 0 },
-            { n: alerts.infoCount ?? 0, label: t("ovm.sev_low") },
-          ].map((x, i) => (
-            <div key={i}>
-              <div className={`text-[24px] font-bold tabular-nums ${x.hot ? "text-[#f9cace]" : x.warn ? "text-[#f2b84b]" : ""}`}>{nf0.format(x.n)}</div>
-              <div className="text-[10.5px] opacity-70 tracking-wide">{x.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="w-full max-w-[290px] mx-auto text-left text-[12.5px] mt-4">
-          {alerts.list.length === 0 ? (
-            <div className="opacity-70 text-center py-3 text-[12px]">{t("ovm.no_alerts")}</div>
-          ) : (
-            (showAllAlerts ? alerts.list : alerts.list.slice(0, 3)).map((a, i) => (
-              <div key={i} className="py-2 border-b border-white/15">
-                <span className={`block ${a.severity === "critical" ? "text-[#f9cace]" : ""}`}>{a.title}</span>
-                <span className="block text-[11px] opacity-65 mt-0.5">
-                  {[a.module, a.device, a.ago ? `${t("ovm.since")} ${a.ago}` : null].filter(Boolean).join(" · ")}
-                </span>
-              </div>
-            ))
-          )}
-          {alerts.list.length > 3 && !showAllAlerts && (
-            <button type="button" onClick={() => setShowAllAlerts(true)}
-              className="w-full text-center py-2.5 font-bold text-[11px] tracking-[0.14em] uppercase opacity-85" style={{ minHeight: 44 }}>
-              {t("ovm.cta_alerts")}
-            </button>
-          )}
-        </div>
-
-        {/* Trust layer (§10.5): affidabilità dei sensori */}
-        {sensorHealth && (
-          <div className="w-full max-w-[290px] mx-auto mt-6 pt-4 border-t border-white/20">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[12px] font-bold tracking-[0.18em] uppercase opacity-80">{t("ovm.sensor_trust")}</span>
-              <span className="text-[22px] font-bold tabular-nums">{nf0.format(sensorHealth.score)}<em className="not-italic text-[12px] opacity-70 font-normal">/100</em></span>
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-center mt-3">
-              {[
-                { n: sensorHealth.offline, label: t("ovm.offline_lbl"), warn: sensorHealth.offline > 0 },
-                { n: sensorHealth.flatline, label: t("ovm.flatline_lbl"), warn: sensorHealth.flatline > 0 },
-                { n: sensorHealth.flapping, label: t("ovm.flapping_lbl") },
-              ].map((x, i) => (
-                <div key={i}>
-                  <div className={`text-[20px] font-bold tabular-nums ${x.warn ? "text-[#f2b84b]" : ""}`}>{nf0.format(x.n)}</div>
-                  <div className="text-[10.5px] opacity-70">{x.label}</div>
-                </div>
-              ))}
-            </div>
-            {/* i dati del sensore offline MANCANO dai grafici, non vengono stimati */}
-            {sensorHealth.offline > 0 && sensorHealth.offlineNames.length > 0 && (
-              <p className="text-[11.5px] opacity-80 mt-3 leading-relaxed">
-                {t("ovm.offline_note").replace("{names}", sensorHealth.offlineNames.join(", "))}
-              </p>
-            )}
-          </div>
-        )}
+        {/* conteggi · lista · Trust layer: pannello condiviso con la
+            dashboard modulo (parità I1), vive in mobile-dash/AlertsSensors */}
+        <AlertsSensorsPanel alerts={alerts} sensorHealth={sensorHealth} />
       </section>
       </div>
 
