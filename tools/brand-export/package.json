@@ -1,0 +1,14 @@
+{
+  "name": "fgb-brand-export",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Export energia per brand: pagina di stato flotta, CSV per sito, analisi di confronto. Strumento interno FGB, isolato dalle dipendenze del prodotto.",
+  "main": "export.cjs",
+  "scripts": {
+    "export": "node export.cjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "puppeteer-core": "^23.0.0"
+  }
+}

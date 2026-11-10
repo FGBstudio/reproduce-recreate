@@ -30,3 +30,7 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Tool export brand: dipendenze isolate e credenziali locali
+tools/brand-export/node_modules/
+tools/brand-export/.dbenv
