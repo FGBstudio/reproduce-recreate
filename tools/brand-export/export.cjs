@@ -53,8 +53,12 @@ function databaseUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   const f = path.join(__dirname, ".dbenv");
   if (fs.existsSync(f)) {
-    const m = fs.readFileSync(f, "utf8").match(/^\s*DATABASE_URL\s*=\s*(.+?)\s*$/m);
+    const raw = fs.readFileSync(f, "utf8");
+    const m = raw.match(/^\s*DATABASE_URL\s*=\s*(.+?)\s*$/m);
     if (m) return m[1];
+    // tolleranza: il file può contenere la sola connection string nuda
+    const bare = raw.replace(/^﻿/, "").trim();
+    if (/^postgres(ql)?:\/\//.test(bare)) return bare;
   }
   console.error("DATABASE_URL mancante: esporta la variabile o crea tools/brand-export/.dbenv");
   process.exit(1);
@@ -83,7 +87,13 @@ function writeCsv(file, header, rows) {
 }
 const slug = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "")
   .replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48) || "site";
-const day = (d) => String(d).slice(0, 10);
+/* pg restituisce le colonne DATE come oggetti Date (mezzanotte LOCALE):
+   niente toISOString, che su fusi positivi scala al giorno prima — si
+   compongono le parti locali. Le stringhe passano con lo slice. */
+const pad2 = (n) => String(n).padStart(2, "0");
+const day = (d) => d instanceof Date
+  ? `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+  : String(d).slice(0, 10);
 const r1 = (n) => n == null ? null : Math.round(n * 10) / 10;
 const r2 = (n) => n == null ? null : Math.round(n * 100) / 100;
 
@@ -98,12 +108,40 @@ function localStamp(dateUtc, tz) {
   } catch { return ""; }
 }
 
+/* ── connessione resiliente ────────────────────────────────────────────
+   Il pooler tronca le connessioni lunghe (ECONNRESET a metà run, visto al
+   primo collaudo): ogni query passa da q(), che riconnette e riprova fino
+   a 3 volte sui soli errori di rete. Un errore SQL vero esce subito. */
+let client = null;
+async function connectDb() {
+  client = new Client({
+    connectionString: databaseUrl(), ssl: { rejectUnauthorized: false },
+    keepAlive: true, connectionTimeoutMillis: 15000,
+  });
+  // reset mentre siamo a riposo: niente crash, riconnessione alla prossima query
+  client.on("error", () => { client = null; });
+  await client.connect();
+}
+async function q(sql, params) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      if (!client) await connectDb();
+      return await client.query(sql, params);
+    } catch (e) {
+      const transient = /ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE|Connection terminated|server closed|SSL|timeout/i.test(String(e?.message));
+      try { const dead = client; client = null; dead?.end?.()?.catch?.(() => {}); } catch { /* già chiusa */ }
+      if (!transient || attempt >= 3) throw e;
+      await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+    }
+  }
+}
+
 /* ── introspezione difensiva: colonne/tabelle opzionali ────────────────── */
-async function tableCols(c, table) {
-  const q = await c.query(
+async function tableCols(_c, table) {
+  const res = await q(
     `SELECT column_name FROM information_schema.columns
      WHERE table_schema='public' AND table_name=$1`, [table]);
-  return new Set(q.rows.map(r => r.column_name));
+  return new Set(res.rows.map(r => r.column_name));
 }
 
 /* ── kWh di un insieme di righe bucket (fix 16/10, lato SQL in JS) ─────── */
@@ -134,19 +172,19 @@ function rowsToKwh(rows, bucketHours) {
 /* ══════════════════════════ MAIN ══════════════════════════ */
 (async () => {
   const t0 = Date.now();
-  const c = new Client({ connectionString: databaseUrl(), ssl: { rejectUnauthorized: false } });
-  await c.connect();
+  await connectDb();
+  const c = null; // le query passano tutte da q(); c resta solo per tableCols(c, …)
   const log = (m) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] ${m}`);
 
   /* 1 · brand e siti */
-  const b = await c.query(`SELECT id, name FROM brands WHERE name ILIKE $1 ORDER BY name LIMIT 1`, [`%${BRAND_Q}%`]);
+  const b = await q(`SELECT id, name FROM brands WHERE name ILIKE $1 ORDER BY name LIMIT 1`, [`%${BRAND_Q}%`]);
   if (!b.rows.length) { console.error(`Nessun brand corrisponde a "${BRAND_Q}"`); process.exit(1); }
   const brand = b.rows[0];
   log(`Brand: ${brand.name} (${brand.id})`);
 
   const siteCols = await tableCols(c, "sites");
   const opt = (n) => siteCols.has(n) ? `s.${n}` : `NULL AS ${n}`;
-  const sites = (await c.query(`
+  const sites = (await q(`
     SELECT s.id, s.name, ${opt("city")}, ${opt("country")}, ${opt("timezone")},
            ${opt("area_m2")}, ${opt("energy_price_kwh")}
     FROM sites s WHERE s.brand_id = $1 ORDER BY s.name`, [brand.id])).rows;
@@ -156,7 +194,7 @@ function rowsToKwh(rows, bucketHours) {
 
   /* 2 · device energia */
   const devCols = await tableCols(c, "devices");
-  const devices = (await c.query(`
+  const devices = (await q(`
     SELECT d.id, d.site_id, d.name, d.category, d.last_seen
            ${devCols.has("model") ? ", d.model" : ", NULL AS model"}
     FROM devices d
@@ -168,13 +206,15 @@ function rowsToKwh(rows, bucketHours) {
   log(`Device energia: ${devices.length}`);
 
   /* 3 · copertura e ultimo dato (daily = storico intero, hourly = finestra) */
-  const cov = (await c.query(`
+  const cov = (await q(`
     SELECT d.site_id, min(ed.ts_day) AS first_day, max(ed.ts_day) AS last_day,
            count(DISTINCT ed.ts_day)::int AS days_with_data
     FROM energy_daily ed JOIN devices d ON d.id = ed.device_id
     WHERE d.site_id = ANY($1) GROUP BY d.site_id`, [siteIds])).rows;
+  // normalizza subito le DATE in stringhe ISO: tutto il resto confronta stringhe
+  for (const r of cov) { r.first_day = day(r.first_day); r.last_day = day(r.last_day); }
   const covBy = new Map(cov.map(r => [r.site_id, r]));
-  const lastHour = (await c.query(`
+  const lastHour = (await q(`
     SELECT d.site_id, max(eh.ts_hour) AS last_ts
     FROM energy_hourly eh JOIN devices d ON d.id = eh.device_id
     WHERE d.site_id = ANY($1) GROUP BY d.site_id`, [siteIds])).rows;
@@ -214,7 +254,7 @@ function rowsToKwh(rows, bucketHours) {
       const fromCol = ph.has("valid_from") ? "valid_from" : ph.has("effective_from") ? "effective_from" : null;
       const priceCol = ph.has("price_eur_kwh") ? "price_eur_kwh" : ph.has("price_kwh") ? "price_kwh" : ph.has("price") ? "price" : null;
       if (fromCol && priceCol) {
-        const rows = (await c.query(`
+        const rows = (await q(`
           SELECT site_id, ${fromCol} AS vfrom, ${priceCol} AS price
           FROM site_energy_price_history WHERE site_id = ANY($1)
           ORDER BY site_id, ${fromCol}`, [siteIds])).rows;
@@ -256,7 +296,7 @@ function rowsToKwh(rows, bucketHours) {
       s._devs.map(d => [d.id, d.name, d.category, d.model, d.last_seen ? new Date(d.last_seen).toISOString() : ""]));
 
     /* hourly — long format, finestra di retention */
-    const hr = await c.query(`
+    const hr = await q(`
       SELECT eh.ts_hour, eh.device_id, eh.metric, eh.value_avg, eh.value_sum,
              eh.value_min, eh.value_max, eh.sample_count
       FROM energy_hourly eh
@@ -274,7 +314,7 @@ function rowsToKwh(rows, bucketHours) {
       }));
 
     /* daily — long format, storico intero */
-    const dr = await c.query(`
+    const dr = await q(`
       SELECT ed.ts_day, ed.device_id, ed.metric, ed.value_avg, ed.value_sum,
              ed.value_min, ed.value_max, ed.sample_count
       FROM energy_daily ed
@@ -350,7 +390,11 @@ function rowsToKwh(rows, bucketHours) {
     const dd = perSiteDaily.get(s.id) ?? [];
     const win = (from, to) => dd.filter(r => r.day >= from && (!to || r.day < to));
     const sum = (rows) => rows.reduce((a, r) => a + (r.kwh || 0), 0);
-    const last30 = win(D30), last365 = win(D365), prev365 = win(D730, D365);
+    /* il taglio della finestra è in UTC ma i giorni sono locali al sito: per
+       i fusi avanti (Cina) entrano 31 chiavi-giorno → si tengono le ULTIME
+       30/365, così la copertura non supera mai il 100% (dd è ordinato) */
+    const clamp = (rows, n) => rows.length > n ? rows.slice(-n) : rows;
+    const last30 = clamp(win(D30), 30), last365 = clamp(win(D365), 365), prev365 = win(D730, D365);
     const area = Number(s.area_m2) > 0 ? Number(s.area_m2) : null;
     const covDays30 = last30.filter(r => r.kwh > 0).length;
     const coverage30 = Math.round((covDays30 / 30) * 100);
@@ -415,7 +459,7 @@ function rowsToKwh(rows, bucketHours) {
     }
   }
 
-  await c.end();
+  if (client) await client.end();
   log(`FATTO → ${outDir}`);
   console.log(`\nPer lo ZIP:  Compress-Archive -Path "${outDir}" -DestinationPath "${outDir}.zip"`);
 })().catch(e => { console.error("ERRORE:", e.message); process.exit(1); });
