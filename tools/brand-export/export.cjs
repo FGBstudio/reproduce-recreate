@@ -46,7 +46,23 @@ const BRAND_Q = arg("brand", null);
 const OUT_BASE = arg("out", path.join(require("os").homedir(), "Downloads"));
 const HOURLY_MONTHS = Number(arg("hourly-months", "12"));
 const NO_PDF = process.argv.includes("--no-pdf");
-if (!BRAND_Q) { console.error("Uso: node export.cjs --brand <nome> [--out DIR]"); process.exit(1); }
+/* Perimetro di progetto (es. «Fendi Energy 2024»): coi soli --brand entrano
+   TUTTI i siti del brand, compresi quelli LEED-only che col progetto energia
+   non c'entrano. --cert-perimeter Energy limita ai siti che hanno una riga
+   in `certifications` di quel cert_type con status ≠ canceled. */
+const CERT_PERIMETER = arg("cert-perimeter", null);
+/* Siti duplicati (es. Bicester: la cert del progetto sta sulla riga nuova,
+   i device e lo storico sulla vecchia). --alias "SitoPerimetro=SitoConIDati"
+   aggancia al sito di perimetro i device e i dati del portatore; ripetibile.
+   Decisione owner 11/11: per Bicester si usano i dati della riga vecchia. */
+const ALIASES = [];
+for (let i = 0; i < process.argv.length; i++) {
+  if (process.argv[i] === "--alias" && process.argv[i + 1]) {
+    const [a, b] = process.argv[i + 1].split("=");
+    if (a && b) ALIASES.push({ perimeter: a.trim(), carrier: b.trim() });
+  }
+}
+if (!BRAND_Q) { console.error("Uso: node export.cjs --brand <nome> [--cert-perimeter Energy] [--alias \"A=B\"] [--out DIR]"); process.exit(1); }
 
 /* ── credenziali ───────────────────────────────────────────────────────── */
 function databaseUrl() {
@@ -184,13 +200,43 @@ function rowsToKwh(rows, bucketHours) {
 
   const siteCols = await tableCols(c, "sites");
   const opt = (n) => siteCols.has(n) ? `s.${n}` : `NULL AS ${n}`;
+  const perimeterSql = CERT_PERIMETER
+    ? `AND EXISTS (SELECT 1 FROM certifications cc
+                   WHERE cc.site_id = s.id AND cc.cert_type = $2
+                     AND cc.status <> 'canceled')`
+    : "";
+  const params = CERT_PERIMETER ? [brand.id, CERT_PERIMETER] : [brand.id];
   const sites = (await q(`
     SELECT s.id, s.name, ${opt("city")}, ${opt("country")}, ${opt("timezone")},
            ${opt("area_m2")}, ${opt("energy_price_kwh")}
-    FROM sites s WHERE s.brand_id = $1 ORDER BY s.name`, [brand.id])).rows;
-  log(`Siti del brand: ${sites.length}`);
+    FROM sites s WHERE s.brand_id = $1 ${perimeterSql} ORDER BY s.name`, params)).rows;
+  log(`Siti del brand${CERT_PERIMETER ? ` nel perimetro ${CERT_PERIMETER} (non-canceled)` : ""}: ${sites.length}`);
   if (!sites.length) process.exit(1);
+
+  /* alias: trova il sito portatore (stesso brand, anche FUORI perimetro),
+     prendi in prestito i campi anagrafici mancanti e prepara la mappa
+     carrierId → perimeterId con cui rietichettare device e aggregati */
+  const aliasMap = new Map();
+  for (const al of ALIASES) {
+    const per = sites.find(s => s.name === al.perimeter)
+      ?? sites.find(s => String(s.name).toLowerCase().includes(al.perimeter.toLowerCase()));
+    if (!per) { log(`ALIAS ignorato: "${al.perimeter}" non è nel perimetro`); continue; }
+    const car = (await q(`
+      SELECT s.id, s.name, ${opt("city")}, ${opt("country")}, ${opt("timezone")},
+             ${opt("area_m2")}, ${opt("energy_price_kwh")}
+      FROM sites s WHERE s.brand_id = $1 AND s.id <> $2 AND s.name ILIKE $3
+      ORDER BY s.name LIMIT 1`, [brand.id, per.id, `%${al.carrier}%`])).rows[0];
+    if (!car) { log(`ALIAS ignorato: portatore "${al.carrier}" non trovato nel brand`); continue; }
+    aliasMap.set(car.id, per.id);
+    for (const f of ["city", "country", "timezone", "area_m2", "energy_price_kwh"]) {
+      if (per[f] == null && car[f] != null) per[f] = car[f];
+    }
+    per._mergedFrom = car.name;
+    log(`ALIAS: "${per.name}" userà device e dati di "${car.name}"`);
+  }
   const siteIds = sites.map(s => s.id);
+  const queryIds = [...siteIds, ...aliasMap.keys()];
+  const remap = (id) => aliasMap.get(id) ?? id;
 
   /* 2 · device energia */
   const devCols = await tableCols(c, "devices");
@@ -199,7 +245,8 @@ function rowsToKwh(rows, bucketHours) {
            ${devCols.has("model") ? ", d.model" : ", NULL AS model"}
     FROM devices d
     WHERE d.site_id = ANY($1) AND d.device_type = 'energy_monitor'
-    ORDER BY d.site_id, d.category, d.name`, [siteIds])).rows;
+    ORDER BY d.site_id, d.category, d.name`, [queryIds])).rows;
+  for (const d of devices) d.site_id = remap(d.site_id);
   const devsBySite = new Map(siteIds.map(id => [id, []]));
   for (const d of devices) devsBySite.get(d.site_id)?.push(d);
   const devName = new Map(devices.map(d => [d.id, d]));
@@ -210,15 +257,30 @@ function rowsToKwh(rows, bucketHours) {
     SELECT d.site_id, min(ed.ts_day) AS first_day, max(ed.ts_day) AS last_day,
            count(DISTINCT ed.ts_day)::int AS days_with_data
     FROM energy_daily ed JOIN devices d ON d.id = ed.device_id
-    WHERE d.site_id = ANY($1) GROUP BY d.site_id`, [siteIds])).rows;
+    WHERE d.site_id = ANY($1) GROUP BY d.site_id`, [queryIds])).rows;
   // normalizza subito le DATE in stringhe ISO: tutto il resto confronta stringhe
-  for (const r of cov) { r.first_day = day(r.first_day); r.last_day = day(r.last_day); }
-  const covBy = new Map(cov.map(r => [r.site_id, r]));
+  for (const r of cov) { r.first_day = day(r.first_day); r.last_day = day(r.last_day); r.site_id = remap(r.site_id); }
+  const covBy = new Map();
+  for (const r of cov) {
+    const prev = covBy.get(r.site_id);
+    // con un alias possono arrivare due gruppi per lo stesso sito: si fondono
+    covBy.set(r.site_id, !prev ? r : {
+      site_id: r.site_id,
+      first_day: r.first_day < prev.first_day ? r.first_day : prev.first_day,
+      last_day: r.last_day > prev.last_day ? r.last_day : prev.last_day,
+      days_with_data: Math.max(r.days_with_data, prev.days_with_data),
+    });
+  }
   const lastHour = (await q(`
     SELECT d.site_id, max(eh.ts_hour) AS last_ts
     FROM energy_hourly eh JOIN devices d ON d.id = eh.device_id
-    WHERE d.site_id = ANY($1) GROUP BY d.site_id`, [siteIds])).rows;
-  const lastBy = new Map(lastHour.map(r => [r.site_id, r.last_ts]));
+    WHERE d.site_id = ANY($1) GROUP BY d.site_id`, [queryIds])).rows;
+  const lastBy = new Map();
+  for (const r of lastHour) {
+    const id = remap(r.site_id);
+    const prev = lastBy.get(id);
+    if (!prev || new Date(r.last_ts) > new Date(prev)) lastBy.set(id, r.last_ts);
+  }
 
   /* 4 · stato per sito (regola piattaforma) */
   const now = Date.now();
@@ -257,10 +319,11 @@ function rowsToKwh(rows, bucketHours) {
         const rows = (await q(`
           SELECT site_id, ${fromCol} AS vfrom, ${priceCol} AS price
           FROM site_energy_price_history WHERE site_id = ANY($1)
-          ORDER BY site_id, ${fromCol}`, [siteIds])).rows;
+          ORDER BY ${fromCol}`, [queryIds])).rows;
         for (const r of rows) {
-          if (!priceHist.has(r.site_id)) priceHist.set(r.site_id, []);
-          priceHist.get(r.site_id).push({ from: day(r.vfrom), price: Number(r.price) });
+          const id = remap(r.site_id);
+          if (!priceHist.has(id)) priceHist.set(id, []);
+          priceHist.get(id).push({ from: day(r.vfrom), price: Number(r.price) });
         }
         log(`Tariffe storicizzate: ${rows.length} righe`);
       }
@@ -288,8 +351,8 @@ function rowsToKwh(rows, bucketHours) {
     const devIds = s._devs.map(d => d.id);
 
     writeCsv(path.join(dir, "site_info.csv"),
-      ["site_id", "name", "city", "country", "timezone", "area_m2", "energy_price_kwh_eur", "status", "first_data_day", "last_data"],
-      [[s.id, s.name, s.city, s.country, s.timezone, s.area_m2, s.energy_price_kwh, s._state, day(s._cov.first_day), s._lastTs ? new Date(s._lastTs).toISOString() : ""]]);
+      ["site_id", "name", "city", "country", "timezone", "area_m2", "energy_price_kwh_eur", "status", "first_data_day", "last_data", "data_merged_from"],
+      [[s.id, s.name, s.city, s.country, s.timezone, s.area_m2, s.energy_price_kwh, s._state, day(s._cov.first_day), s._lastTs ? new Date(s._lastTs).toISOString() : "", s._mergedFrom ?? ""]]);
 
     writeCsv(path.join(dir, "devices.csv"),
       ["device_id", "name", "category", "model", "last_seen_utc"],

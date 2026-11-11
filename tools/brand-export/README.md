@@ -15,6 +15,21 @@ node export.cjs --brand fendi    # output in ~/Downloads/FENDI_Energy_Export_<da
 Opzioni: `--out DIR` cartella di destinazione · `--hourly-months 12` finestra
 del CSV orario · `--no-pdf` salta la stampa PDF (restano gli HTML).
 
+**Perimetro di progetto** — coi soli `--brand` entrano TUTTI i siti del brand,
+compresi i LEED-only estranei al progetto energia. Per l'export di un progetto:
+
+```sh
+node export.cjs --brand fendi --cert-perimeter Energy \
+  --alias "Bicester, Outlet=Fendi Bicester Village outlet"
+```
+
+`--cert-perimeter Energy` = solo i siti con una riga `certifications` di quel
+`cert_type` con status ≠ canceled (Fendi Energy 2024 → 66 siti).
+`--alias "A=B"` (ripetibile) aggancia al sito di perimetro A i device e lo
+storico del sito B — per le righe duplicate dove la cert sta sul sito nuovo e
+i dati sul vecchio (caso Bicester, decisione owner 11/11). Il merge è
+dichiarato nella colonna `data_merged_from` di `site_info.csv`.
+
 ## Credenziali
 
 La connection string di produzione NON vive nel repo. Due modi:
