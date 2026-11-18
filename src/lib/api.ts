@@ -396,8 +396,6 @@ export async function fetchLatestApi(params?: {
 }): Promise<ApiLatestResponse | null> {
   if (!supabase) return null;
 
-  // IMPORTANT:
-  // telemetry_latest (migration 003) does NOT include site_id. Filter by site via join on devices.
   let query = supabase
     .from('telemetry_latest')
     .select(
@@ -408,7 +406,7 @@ export async function fetchLatestApi(params?: {
         unit,
         ts,
         quality,
-        devices!inner(site_id)
+        site_id
       `
     );
 
@@ -417,9 +415,9 @@ export async function fetchLatestApi(params?: {
     if (Array.isArray(params.site_id)) {
       const validUuids = params.site_id.filter(isValidUUID);
       if (validUuids.length === 0) return { data: {}, timestamp: new Date().toISOString() };
-      query = query.in('devices.site_id', validUuids);
+      query = query.in('site_id', validUuids);
     } else if (isValidUUID(params.site_id)) {
-      query = query.eq('devices.site_id', params.site_id);
+      query = query.eq('site_id', params.site_id);
     } else {
       return { data: {}, timestamp: new Date().toISOString() };
     }
@@ -470,12 +468,13 @@ export async function fetchLatestApi(params?: {
  * Smart table routing configuration
  * Routes queries to the optimal table based on time range duration
  * * FORCED bucket selection (aligns with Edge Function spec):
- * - ≤24 hours: 15m granularity → raw tables
+ * - ≤24 hours: 15m bucketed granularity → raw tables aggregated client-side
  * - >24h AND ≤30 days: 1h granularity → hourly tables  
  * - >30 days: 1d granularity → daily tables
  */
 type TableRoute = 'raw' | 'hourly' | 'daily';
 type ForcedBucket = '15m' | '1h' | '1d';
+type RawAggregateBucket = '15m' | '1h' | '1d' | '1M';
 
 interface TableRouteConfig {
   table: TableRoute;
@@ -486,11 +485,109 @@ interface TableRouteConfig {
   forcedBucket: ForcedBucket;
 }
 
+const FIFTEEN_MIN_MS = 15 * 60 * 1000;
+
+/** Snap a raw ISO timestamp to its aligned bucket boundary and aggregate rows per (bucket, device, metric). */
+function aggregateRawRows(
+  rawRows: Array<{ ts: string; device_id: string; metric: string; value: number | null }>,
+  targetBucket: RawAggregateBucket,
+  options?: { energyMode?: boolean; isEnergySumMetric?: (metric: string) => boolean }
+): ApiTimeseriesPoint[] {
+  const bucketIso = (tsIso: string) => {
+    const d = new Date(tsIso);
+    if (Number.isNaN(d.getTime())) return tsIso;
+
+    if (targetBucket === '15m') {
+      const floored = Math.floor(d.getTime() / FIFTEEN_MIN_MS) * FIFTEEN_MIN_MS;
+      return new Date(floored).toISOString();
+    }
+
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const h = String(d.getUTCHours()).padStart(2, '0');
+
+    if (targetBucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
+    if (targetBucket === '1M') return `${y}-${m}-01T00:00:00.000Z`;
+    return `${y}-${m}-${day}T00:00:00.000Z`;
+  };
+
+  type Agg = {
+    ts_bucket: string;
+    device_id: string;
+    metric: string;
+    sum: number;
+    min: number;
+    max: number;
+    count: number;
+  };
+
+  const map = new Map<string, Agg>();
+
+  for (const r of rawRows) {
+    if (r.value == null) continue;
+    const val = Number(r.value);
+    if (!Number.isFinite(val)) continue;
+
+    const ts_bucket = bucketIso(r.ts);
+    const metric = normalizeMetric(r.metric);
+    const key = `${ts_bucket}|${r.device_id}|${metric}`;
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, {
+        ts_bucket,
+        device_id: r.device_id,
+        metric,
+        sum: val,
+        min: val,
+        max: val,
+        count: 1,
+      });
+    } else {
+      prev.sum += val;
+      prev.count += 1;
+      if (val < prev.min) prev.min = val;
+      if (val > prev.max) prev.max = val;
+    }
+  }
+
+  return Array.from(map.values())
+    .map((a) => {
+      const avg = a.count ? a.sum / a.count : 0;
+      if (!options?.energyMode) {
+        return {
+          ts_bucket: a.ts_bucket,
+          device_id: a.device_id,
+          metric: a.metric,
+          value_avg: avg,
+          value_min: a.min,
+          value_max: a.max,
+          sample_count: a.count,
+        };
+      }
+      const wantsSum = options.isEnergySumMetric?.(a.metric) ?? false;
+      return {
+        ts_bucket: a.ts_bucket,
+        ts: a.ts_bucket,
+        device_id: a.device_id,
+        metric: a.metric,
+        value_avg: avg,
+        value_sum: a.sum,
+        // Power metrics (kW) must expose average kW as `value`; energy metrics (kWh) use sum.
+        value: wantsSum ? a.sum : avg,
+        value_min: a.min,
+        value_max: a.max,
+        sample_count: a.count,
+      };
+    })
+    .sort((a, b) => (a.ts_bucket < b.ts_bucket ? -1 : a.ts_bucket > b.ts_bucket ? 1 : 0));
+}
+
 function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
   const durationMs = endDate.getTime() - startDate.getTime();
   const durationHours = durationMs / (1000 * 60 * 60);
 
-  // ≤24 hours: use raw telemetry (15m granularity)
+  // ≤24 hours: use raw telemetry bucketed into aligned 15m intervals
   if (durationHours <= 24) {
     return {
       table: 'raw',
@@ -533,30 +630,6 @@ function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
  * - >30 days: telemetry_daily → daily averages
  * * Includes fallback to raw + client-side aggregation if aggregate tables are empty
  */
-/**
- * Scarica TUTTE le pagine di una query PostgREST.
- * PostgREST tronca ogni risposta al proprio max-rows: qualsiasi query di serie
- * storiche senza .range() perde la coda del periodo in silenzio (piu' device
- * = piu' righe = taglio piu' precoce). Pagina da 10k, tetto di sicurezza 300k.
- */
-async function fetchAllPages(
-  buildPage: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>
-): Promise<{ data: any[]; error: any }> {
-  const PAGE = 10000;
-  const MAX_ROWS = 300000;
-  const all: any[] = [];
-  for (let from = 0; from < MAX_ROWS; from += PAGE) {
-    const { data, error } = await buildPage(from, from + PAGE - 1);
-    if (error) return { data: all, error };
-    if (data && data.length > 0) all.push(...data);
-    if (!data || data.length < PAGE) break;
-  }
-  if (all.length >= MAX_ROWS) {
-    console.warn(`[fetchAllPages] raggiunto il tetto di ${MAX_ROWS} righe: risultato potenzialmente parziale`);
-  }
-  return { data: all, error: null };
-}
-
 export async function fetchTimeseriesApi(params: {
   device_ids: string[];
   metrics: string[];
@@ -567,73 +640,6 @@ export async function fetchTimeseriesApi(params: {
   if (!supabase) return null;
 
   const metricFilter = expandMetricFilter(params.metrics) || params.metrics;
-
-  // Client-side aggregation for fallback scenarios
-  const aggregateRaw = (
-    rawRows: Array<{ ts: string; device_id: string; metric: string; value: number }>,
-    targetBucket: '1h' | '1d' | '1M'
-  ): ApiTimeseriesPoint[] => {
-    const bucketIso = (tsIso: string) => {
-      const d = new Date(tsIso);
-      if (Number.isNaN(d.getTime())) return tsIso;
-
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(d.getUTCDate()).padStart(2, '0');
-      const h = String(d.getUTCHours()).padStart(2, '0');
-
-      if (targetBucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
-      if (targetBucket === '1M') return `${y}-${m}-01T00:00:00.000Z`;
-      return `${y}-${m}-${day}T00:00:00.000Z`;
-    };
-
-    type Agg = {
-      ts_bucket: string;
-      device_id: string;
-      metric: string;
-      sum: number;
-      min: number;
-      max: number;
-      count: number;
-    };
-
-    const map = new Map<string, Agg>();
-
-    for (const r of rawRows) {
-      const ts_bucket = bucketIso(r.ts);
-      const metric = normalizeMetric(r.metric);
-      const key = `${ts_bucket}|${r.device_id}|${metric}`;
-      const prev = map.get(key);
-      if (!prev) {
-        map.set(key, {
-          ts_bucket,
-          device_id: r.device_id,
-          metric,
-          sum: r.value,
-          min: r.value,
-          max: r.value,
-          count: 1,
-        });
-      } else {
-        prev.sum += r.value;
-        prev.count += 1;
-        if (r.value < prev.min) prev.min = r.value;
-        if (r.value > prev.max) prev.max = r.value;
-      }
-    }
-
-    return Array.from(map.values())
-      .map((a) => ({
-        ts_bucket: a.ts_bucket,
-        device_id: a.device_id,
-        metric: a.metric,
-        value_avg: a.count ? a.sum / a.count : 0,
-        value_min: a.min,
-        value_max: a.max,
-        sample_count: a.count,
-      }))
-      .sort((a, b) => (a.ts_bucket < b.ts_bucket ? -1 : a.ts_bucket > b.ts_bucket ? 1 : 0));
-  };
 
   // Parse dates and determine optimal table routing
   const startDate = new Date(params.start);
@@ -647,46 +653,39 @@ export async function fetchTimeseriesApi(params: {
   let data: any[] | null = null;
   let error: any = null;
 
-  // Execute query based on route — SEMPRE paginato: senza .range() PostgREST
-  // applica il proprio tetto di righe e tronca in silenzio la coda del
-  // periodo. Caso reale: sito con 10 monitor aria, il mese richiede ~146k
-  // righe raw, il vecchio .limit(50000) tagliava tutto dopo il 7/08 mentre
-  // ogni singolo monitor (sotto il tetto) arrivava a oggi.
+  // Execute query based on route
   if (route.table === 'hourly') {
-    const resp = await fetchAllPages((from, to) => supabase
+    const resp = await supabase
       .from('telemetry_hourly')
       .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true })
-      .range(from, to));
+      .order('ts_hour', { ascending: true });
     data = resp.data as any;
     error = resp.error;
   } else if (route.table === 'daily') {
-    const resp = await fetchAllPages((from, to) => supabase
+    const resp = await supabase
       .from('telemetry_daily')
       .select('ts_day, device_id, metric, value_avg, value_min, value_max, sample_count')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true })
-      .range(from, to));
+      .order('ts_day', { ascending: true });
     data = resp.data as any;
     error = resp.error;
   } else {
     // Raw telemetry
-    const resp = await fetchAllPages((from, to) => supabase
+    const resp = await supabase
       .from('telemetry')
       .select('ts, device_id, metric, value')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .order('ts', { ascending: true })
-      .range(from, to));
+      .order('ts', { ascending: true });
     data = resp.data as any;
     error = resp.error;
   }
@@ -699,17 +698,17 @@ export async function fetchTimeseriesApi(params: {
   // FALLBACK: If aggregate tables return 0 rows, fall back to raw + client-side aggregation
   const hasNoRows = !data || data.length === 0;
   if (hasNoRows && route.table !== 'raw') {
-    console.warn(`[Timeseries] ${route.source} returned 0 rows for devices [${params.device_ids.join(',')}] — falling back to raw + client-side aggregation`);
-
-    const rawResp = await fetchAllPages((from, to) => supabase
+    console.log(`[Timeseries] ${route.source} returned 0 rows, falling back to raw + client-side aggregation`);
+    
+    const rawResp = await supabase
       .from('telemetry')
       .select('ts, device_id, metric, value')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .order('ts', { ascending: true })
-      .range(from, to));
+      .limit(50000)
+      .order('ts', { ascending: true });
 
     if (rawResp.error) {
       console.error('Direct DB Timeseries raw fallback error:', rawResp.error);
@@ -718,7 +717,7 @@ export async function fetchTimeseriesApi(params: {
 
     // Determine aggregation bucket based on route
     const aggBucket: '1h' | '1d' | '1M' = route.table === 'hourly' ? '1h' : '1d';
-    const aggregated = aggregateRaw((rawResp.data as any[]) || [], aggBucket);
+    const aggregated = aggregateRawRows((rawResp.data as any[]) || [], aggBucket);
 
     return {
       data: aggregated,
@@ -728,6 +727,21 @@ export async function fetchTimeseriesApi(params: {
         start: params.start,
         end: params.end,
         point_count: aggregated.length,
+      },
+    };
+  }
+
+  // Raw route (<=24h / Today): align all devices onto 15-minute buckets
+  if (route.table === 'raw') {
+    const bucketedData = aggregateRawRows((data as any[]) || [], '15m');
+    return {
+      data: bucketedData,
+      meta: {
+        bucket: route.forcedBucket,
+        source: `${route.source}(client_agg:15m)`,
+        start: params.start,
+        end: params.end,
+        point_count: bucketedData.length,
       },
     };
   }
@@ -745,30 +759,17 @@ export async function fetchTimeseriesApi(params: {
         sample_count: row.sample_count ?? 0,
       };
     }
-    
-    if (route.table === 'daily') {
-      // DATE -> ISO timestamp (midnight UTC) for consistent parsing in UI
-      const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
-      return {
-        ts_bucket: dayIso,
-        device_id: row.device_id,
-        metric: normalizeMetric(row.metric),
-        value_avg: row.value_avg ?? 0,
-        value_min: row.value_min ?? row.value_avg ?? 0,
-        value_max: row.value_max ?? row.value_avg ?? 0,
-        sample_count: row.sample_count ?? 0,
-      };
-    }
 
-    // Raw telemetry
+    // Daily: DATE -> ISO timestamp (midnight UTC) for consistent parsing in UI
+    const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
     return {
-      ts_bucket: row.ts,
+      ts_bucket: dayIso,
       device_id: row.device_id,
       metric: normalizeMetric(row.metric),
-      value_avg: row.value,
-      value_min: row.value,
-      value_max: row.value,
-      sample_count: 1,
+      value_avg: row.value_avg ?? 0,
+      value_min: row.value_min ?? row.value_avg ?? 0,
+      value_max: row.value_max ?? row.value_avg ?? 0,
+      sample_count: row.sample_count ?? 0,
     };
   });
 
@@ -803,75 +804,6 @@ export async function fetchEnergyTimeseriesApi(params: {
 
   // Energy metrics don't need the same expansion as IAQ
   const metricFilter = params.metrics;
-
-  // Client-side aggregation for fallback scenarios
-  const aggregateRaw = (
-    rawRows: Array<{ ts: string; device_id: string; metric: string; value: number }>,
-    targetBucket: '1h' | '1d' | '1M'
-  ): ApiTimeseriesPoint[] => {
-    const bucketIso = (tsIso: string) => {
-      const d = new Date(tsIso);
-      if (Number.isNaN(d.getTime())) return tsIso;
-
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(d.getUTCDate()).padStart(2, '0');
-      const h = String(d.getUTCHours()).padStart(2, '0');
-
-      if (targetBucket === '1h') return `${y}-${m}-${day}T${h}:00:00.000Z`;
-      if (targetBucket === '1M') return `${y}-${m}-01T00:00:00.000Z`;
-      return `${y}-${m}-${day}T00:00:00.000Z`;
-    };
-
-    type Agg = {
-      ts_bucket: string;
-      device_id: string;
-      metric: string;
-      sum: number;
-      min: number;
-      max: number;
-      count: number;
-    };
-
-    const map = new Map<string, Agg>();
-
-    for (const r of rawRows) {
-      const ts_bucket = bucketIso(r.ts);
-      const key = `${ts_bucket}|${r.device_id}|${r.metric}`;
-      const prev = map.get(key);
-      if (!prev) {
-        map.set(key, {
-          ts_bucket,
-          device_id: r.device_id,
-          metric: r.metric,
-          sum: r.value,
-          min: r.value,
-          max: r.value,
-          count: 1,
-        });
-      } else {
-        prev.sum += r.value;
-        prev.count += 1;
-        if (r.value < prev.min) prev.min = r.value;
-        if (r.value > prev.max) prev.max = r.value;
-      }
-    }
-
-    return Array.from(map.values())
-      .map((a) => ({
-        ts_bucket: a.ts_bucket,
-        ts: a.ts_bucket,
-        device_id: a.device_id,
-        metric: a.metric,
-        value_avg: a.count ? a.sum / a.count : 0,
-        value_sum: a.sum, // ENERGIA TOTALE: somma dei valori nel bucket
-        value: a.sum, // Helper per il frontend
-        value_min: a.min,
-        value_max: a.max,
-        sample_count: a.count,
-      }))
-      .sort((a, b) => (a.ts_bucket < b.ts_bucket ? -1 : a.ts_bucket > b.ts_bucket ? 1 : 0));
-  };
 
   // Parse dates and determine optimal table routing
   const startDate = new Date(params.start);
@@ -925,38 +857,43 @@ export async function fetchEnergyTimeseriesApi(params: {
     );
   };
 
-  // Paginazione ovunque: i vecchi .limit(10000) troncavano in silenzio la
-  // coda del periodo sui siti con molti contatori (stessa classe di bug della
-  // heatmap aria: fetchAllPages, vedi sopra).
   if (route.table === 'hourly') {
-    const resp = await fetchAllPages((from, to) => buildQuery(supabase
+    let query = supabase
       .from('energy_hourly')
       .select('ts_hour, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true }))
-      .range(from, to));
+      .order('ts_hour', { ascending: true })
+      .limit(10000);
+
+    query = buildQuery(query);
+    const resp = await query;
     data = resp.data as any;
     error = resp.error;
   } else if (route.table === 'daily') {
-    const resp = await fetchAllPages((from, to) => buildQuery(supabase
+    let query = supabase
       .from('energy_daily')
       .select('ts_day, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true }))
-      .range(from, to));
+      .order('ts_day', { ascending: true })
+      .limit(10000);
+
+    query = buildQuery(query);
+    const resp = await query;
     data = resp.data as any;
     error = resp.error;
   } else {
     // Raw energy telemetry
-    const resp = await fetchAllPages((from, to) => buildQuery(supabase
+    let query = supabase
       .from('energy_telemetry')
       .select('ts, device_id, metric, value')
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .order('ts', { ascending: true }))
-      .range(from, to));
+      .order('ts', { ascending: true });
+
+    query = buildQuery(query);
+    const resp = await query;
     data = resp.data as any;
     error = resp.error;
   }
@@ -979,13 +916,16 @@ export async function fetchEnergyTimeseriesApi(params: {
   if (hasNoRows && route.table !== 'raw') {
     console.log(`[Energy] ${route.source} returned 0 rows, trying raw energy_telemetry`);
 
-    const rawResp = await fetchAllPages((from, to) => buildQuery(supabase
+    let rawQuery = supabase
       .from('energy_telemetry')
       .select('ts, device_id, metric, value')
       .gte('ts', params.start)
       .lte('ts', params.end)
-      .order('ts', { ascending: true }))
-      .range(from, to));
+      .limit(50000)
+      .order('ts', { ascending: true });
+
+    rawQuery = buildQuery(rawQuery);
+    const rawResp = await rawQuery;
 
     if (rawResp.error || !rawResp.data || rawResp.data.length === 0) {
       // Final fallback: try generic telemetry tables
@@ -1001,7 +941,10 @@ export async function fetchEnergyTimeseriesApi(params: {
 
     // Determine aggregation bucket based on route
     const aggBucket: '1h' | '1d' | '1M' = route.table === 'hourly' ? '1h' : '1d';
-    const aggregated = aggregateRaw((rawResp.data as any[]) || [], aggBucket);
+    const aggregated = aggregateRawRows((rawResp.data as any[]) || [], aggBucket, {
+      energyMode: true,
+      isEnergySumMetric,
+    });
 
     return {
       data: aggregated,
@@ -1011,6 +954,24 @@ export async function fetchEnergyTimeseriesApi(params: {
         start: params.start,
         end: params.end,
         point_count: aggregated.length,
+      },
+    };
+  }
+
+  // Raw route (<=24h / Today): align all meters onto 15-minute buckets
+  if (route.table === 'raw') {
+    const bucketedData = aggregateRawRows((data as any[]) || [], '15m', {
+      energyMode: true,
+      isEnergySumMetric,
+    });
+    return {
+      data: bucketedData,
+      meta: {
+        bucket: route.forcedBucket,
+        source: `energy_${route.source}(client_agg:15m)`,
+        start: params.start,
+        end: params.end,
+        point_count: bucketedData.length,
       },
     };
   }
@@ -1040,41 +1001,24 @@ export async function fetchEnergyTimeseriesApi(params: {
       };
     }
 
-    if (route.table === 'daily') {
-      const metric = normalizeMetric(row.metric);
-      const wantsSum = isEnergySumMetric(metric);
-      const avg = row.value_avg ?? 0;
-      const sum = wantsSum ? (row.value_sum ?? avg) : avg;
-      const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
-
-      return {
-        ts_bucket: dayIso,
-        ts: dayIso,
-        device_id: row.device_id,
-        metric,
-        value_avg: avg,
-        value_sum: sum,
-        value_min: row.value_min ?? avg,
-        value_max: row.value_max ?? avg,
-        sample_count: row.sample_count ?? 0,
-        // Daily: value segue la semantica della metrica (kWh=sum, kW=avg)
-        value: wantsSum ? sum : avg,
-      };
-    }
-
-    // Raw telemetry - value è già l'energia (integrale 15min)
     const metric = normalizeMetric(row.metric);
+    const wantsSum = isEnergySumMetric(metric);
+    const avg = row.value_avg ?? 0;
+    const sum = wantsSum ? (row.value_sum ?? avg) : avg;
+    const dayIso = typeof row.ts_day === 'string' ? `${row.ts_day}T00:00:00.000Z` : row.ts_day;
+
     return {
-      ts_bucket: row.ts,
-      ts: row.ts,
+      ts_bucket: dayIso,
+      ts: dayIso,
       device_id: row.device_id,
       metric,
-      value_avg: row.value ?? 0,
-      value_sum: row.value ?? 0,
-      value_min: row.value ?? 0,
-      value_max: row.value ?? 0,
-      sample_count: 1,
-      value: row.value ?? 0,
+      value_avg: avg,
+      value_sum: sum,
+      value_min: row.value_min ?? avg,
+      value_max: row.value_max ?? avg,
+      sample_count: row.sample_count ?? 0,
+      // Daily: value segue la semantica della metrica (kWh=sum, kW=avg)
+      value: wantsSum ? sum : avg,
     };
   });
 
