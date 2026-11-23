@@ -10,11 +10,7 @@
 // Authorization: Only users with 'admin' role can access this endpoint
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders as buildCors } from '../_shared/cors.ts'
 
 // Valid roles
 const VALID_ROLES = ['admin', 'editor', 'viewer'] as const
@@ -44,6 +40,7 @@ const errorResponse = (error: string, details?: string, status = 400) => {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req)
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })

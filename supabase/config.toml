@@ -1,25 +1,15 @@
 project_id = "vejqfpznzcohtbggkfhr"
 
-[functions.energy-diagnosis]
-verify_jwt = false
+# Audit C2/A2 (nov 2026): il default di Supabase è verify_jwt = true — il
+# gateway rifiuta le chiamate senza un JWT valido PRIMA che la funzione
+# parta. Qui restano elencate SOLO le eccezioni, con il motivo.
+#
+# Dentro ogni funzione c'è comunque il secondo lucchetto (requireUser /
+# check admin): il gateway accetta anche la anon key come JWT valido,
+# quindi verify_jwt da solo non basta mai.
 
+# Orchestrazione: viene chiamata con il CRON_SECRET dedicato, che non è un
+# JWT — il gateway la rifiuterebbe. L'autenticazione è il confronto col
+# segreto dentro la funzione.
 [functions.scheduled-jobs]
-verify_jwt = false
-
-[functions.admin-roles]
-verify_jwt = false
-
-[functions.devices]
-verify_jwt = false
-
-[functions.latest]
-verify_jwt = false
-
-[functions.timeseries]
-verify_jwt = false
-
-[functions.geo-timezone]
-verify_jwt = false
-
-[functions.fingerprint-verdict]
 verify_jwt = false

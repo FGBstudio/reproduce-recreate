@@ -1,7 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { corsHeaders as buildCors } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

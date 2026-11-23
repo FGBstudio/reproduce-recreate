@@ -14,11 +14,7 @@
 //   curl "https://PROJECT.supabase.co/functions/v1/devices?type=air_quality&status=online"
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-}
+import { corsHeaders as buildCors } from '../_shared/cors.ts'
 
 // Validation helpers
 const isValidUUID = (str: string): boolean => {
@@ -30,6 +26,7 @@ const VALID_DEVICE_TYPES = ['air_quality', 'energy_monitor', 'water_meter', 'occ
 const VALID_STATUSES = ['online', 'offline', 'warning', 'error', 'maintenance']
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req)
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }

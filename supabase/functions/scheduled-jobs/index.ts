@@ -37,11 +37,14 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
-    // The old check only looked at the "Bearer " prefix, so ANY token —
-    // including the public anon key — could trigger jobs (even ?job=purge,
-    // which deletes data past retention). Only the service role key passes.
+    // Audit A1: prima il confronto era con la SERVICE KEY stessa — la
+    // credenziale più potente del sistema viaggiava come header HTTP e
+    // viveva nei secrets di GitHub. Ora si usa un segreto dedicato alla
+    // sola orchestrazione (CRON_SECRET, env della funzione): se trapela
+    // non apre il database, apre solo questo interruttore.
     const token = authHeader.slice('Bearer '.length).trim()
-    if (token !== Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+    const cronSecret = Deno.env.get('CRON_SECRET')
+    if (!cronSecret || token !== cronSecret) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

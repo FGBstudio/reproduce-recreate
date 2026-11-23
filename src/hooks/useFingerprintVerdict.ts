@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 export type VerdictTone = "GOOD" | "OK" | "WARNING" | "CRITICAL";
 
@@ -74,26 +75,20 @@ export function useFingerprintVerdict(input: FingerprintVerdictInput): Fingerpri
     refetchOnWindowFocus: false,
     retry: 1,
     queryFn: async () => {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      if (!supabaseUrl) throw new Error("supabase_url_missing");
-
-      const resp = await fetch(`${supabaseUrl}/functions/v1/fingerprint-verdict`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(anon ? { Authorization: `Bearer ${anon}` } : {}),
-        },
-        body: JSON.stringify({
+      // Audit A2: la funzione ora pretende un UTENTE autenticato — la anon
+      // key come Bearer non basta più. functions.invoke allega da solo il
+      // token della sessione corrente.
+      if (!supabase) throw new Error("supabase_missing");
+      const { data: json, error } = await supabase.functions.invoke("fingerprint-verdict", {
+        body: {
           siteName: input.siteName,
           overall: input.overall,
           modules: input.modules,
           alerts: input.alerts,
           telemetry: input.telemetry || {},
-        }),
+        },
       });
-      if (!resp.ok) throw new Error(`http_${resp.status}`);
-      const json = await resp.json();
+      if (error) throw new Error(error.message || "invoke_failed");
       if (!json?.headline || !json?.reason || !json?.tone) throw new Error("invalid_response");
       return json as FingerprintVerdict;
     },

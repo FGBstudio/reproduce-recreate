@@ -12,12 +12,8 @@
 //   curl "https://PROJECT.supabase.co/functions/v1/latest?site_id=UUID"
 //   curl "https://PROJECT.supabase.co/functions/v1/latest?device_ids=UUID1,UUID2&metrics=iaq.co2,iaq.voc"
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders as buildCors } from '../_shared/cors.ts'
+import { requireUser } from '../_shared/auth.ts'
 
 // Validation helpers
 const isValidUUID = (str: string): boolean => {
@@ -32,6 +28,7 @@ const isValidMetric = (str: string): boolean => {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req)
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -44,9 +41,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    // Audit C2: prima qui c'era un client service-role senza alcuna verifica
+    // dell'identità — chiunque conoscesse l'URL leggeva i dati di qualunque
+    // sito. Ora serve un utente autenticato e le query girano col SUO token:
+    // la RLS perimetrata decide cosa vede.
+    const auth = await requireUser(req)
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    const supabase = auth.client
 
     const url = new URL(req.url)
     const siteId = url.searchParams.get('site_id')

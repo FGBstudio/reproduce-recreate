@@ -39,9 +39,12 @@ jobs:
         run: |
           echo "Running ${{ steps.job.outputs.type }} job..."
           
+          # Audit A1: non si spedisce piu' la service key come header — la
+          # funzione accetta il CRON_SECRET dedicato. La service key puo'
+          # (e deve) sparire dai secrets di GitHub.
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             "${{ secrets.SUPABASE_URL }}/functions/v1/scheduled-jobs?job=${{ steps.job.outputs.type }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)

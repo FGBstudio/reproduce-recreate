@@ -1,16 +1,22 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders as buildCors } from '../_shared/cors.ts'
+import { requireUser } from '../_shared/auth.ts'
 
 const SUPPORTED = ['EUR','USD','GBP','CHF','JPY','CNY','AUD','CAD','SEK','NOK','DKK','PLN','AED','SGD','HKD']
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
+    // Scrive su fx_rates con la service key: serve almeno un utente
+    // autenticato a chiederlo (il frontend la invoca da sessioni loggate).
+    const auth = await requireUser(req)
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ ok: false, error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
     const url = `https://api.frankfurter.app/latest?from=EUR&to=${SUPPORTED.filter(c => c !== 'EUR').join(',')}`
     const resp = await fetch(url)
     if (!resp.ok) throw new Error(`Frankfurter HTTP ${resp.status}`)

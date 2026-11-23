@@ -47,11 +47,15 @@ export async function generateEnergyDiagnosis(
   }
 
   try {
+    // Audit A2: la funzione pretende un UTENTE autenticato — il Bearer con
+    // la sola anon key viene rifiutato. Si allega il token della sessione.
+    const { supabase } = await import("@/lib/supabase");
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
     const response = await fetch(`${supabaseUrl}/functions/v1/energy-diagnosis`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
       body: JSON.stringify({ energyData }),
     });

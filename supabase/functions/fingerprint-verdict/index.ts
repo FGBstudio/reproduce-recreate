@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { requireUser, rateLimit, promptSafe } from "../_shared/auth.ts";
 
 interface VerdictRequest {
   siteName?: string;
@@ -40,9 +37,26 @@ Rules:
 - Always in English. No emojis. No quotes.`;
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    // Audit A2: prima rispondeva a chiunque e inoltrava tutto al servizio AI
+    // a pagamento con la chiave aziendale. Ora: utente autenticato + tetto
+    // giornaliero per utente.
+    const auth = await requireUser(req);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const MAX_PER_DAY = Number(Deno.env.get("AI_VERDICT_DAILY_LIMIT") ?? "150");
+    if (!(await rateLimit(auth.user.id, "fingerprint-verdict", MAX_PER_DAY))) {
+      return new Response(JSON.stringify({ error: "Daily AI quota reached" }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = (await req.json()) as VerdictRequest;
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -51,6 +65,9 @@ serve(async (req) => {
       });
     }
 
+    // Audit A2: l'unico campo a testo libero è il nome sito — sanificato
+    // prima di entrare nel prompt. I numeri vengono forzati a numeri.
+    body.siteName = promptSafe(body.siteName, 80);
     const userPayload = JSON.stringify(body, null, 2);
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

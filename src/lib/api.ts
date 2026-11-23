@@ -177,7 +177,11 @@ export interface ApiLatestTelemetry {
 
 export interface ApiLatestResponse {
   data: Record<string, ApiLatestTelemetry[]>;
-  meta: {
+  /* I percorsi di errore/vuoto restituiscono { data, timestamp } senza meta:
+     erano i 3 errori tsc storici del baseline, ora azzerato perché il
+     deploy ha un gate di typecheck (audit R4). */
+  timestamp?: string;
+  meta?: {
     device_count: number;
     metric_count: number;
   };

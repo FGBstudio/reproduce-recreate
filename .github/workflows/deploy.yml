@@ -23,10 +23,18 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
+      # Audit R4: gate minimo prima della pubblicazione — una build che non
+      # typechecka non raggiunge la produzione. (eslint resta fuori dal gate:
+      # il baseline storico ha ~280 errori pre-esistenti.)
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.app.json
       - run: npm run build
         env:
-          VITE_SUPABASE_URL: https://vejqfpznzcohtbggkfhr.supabase.co
-          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlanFmcHpuemNvaHRiZ2drZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODQ5MzksImV4cCI6MjA4NDA2MDkzOX0.AUoQvIiaM8AjnYxnvOr1-zonkV8BXUFco62v3G5388c
+          # Audit A3: i valori vivono nei GitHub Secrets, non nel file.
+          # La anon key resta comunque pubblica nel bundle JS per design:
+          # questa e' igiene del repository, non segretezza.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

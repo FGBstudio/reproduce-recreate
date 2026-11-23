@@ -3,11 +3,8 @@
 // Uses a simplified timezone lookup algorithm based on coordinates
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders as buildCors } from '../_shared/cors.ts'
+import { requireUser } from '../_shared/auth.ts'
 
 // =============================================================================
 // Timezone lookup from coordinates
@@ -186,6 +183,7 @@ function isValidIANA(tz: string): boolean {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req)
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -198,9 +196,23 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Scrive sites.timezone con la service key: era invocabile da chiunque.
+    // Ora: utente autenticato E ruolo admin.
+    const auth = await requireUser(req)
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
+    const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: auth.user.id, _role: 'admin' })
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: 'Admin role required' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     // Parse optional body for filtering
     let filter: { site_ids?: string[], force?: boolean } = {}

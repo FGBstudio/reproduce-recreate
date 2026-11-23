@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { requireUser, rateLimit, promptSafe } from "../_shared/auth.ts";
 
 interface EnergyPayload {
   totalConsumption: number;
@@ -131,18 +128,38 @@ function buildUserMessage(data: DiagnosisRequest): string {
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Audit A2: utente autenticato obbligatorio + tetto giornaliero.
+    const auth = await requireUser(req);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const MAX_PER_DAY = Number(Deno.env.get("AI_DIAGNOSIS_DAILY_LIMIT") ?? "30");
+    if (!(await rateLimit(auth.user.id, "energy-diagnosis", MAX_PER_DAY))) {
+      return new Response(JSON.stringify({ error: "Daily AI quota reached" }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const requestData = await req.json() as DiagnosisRequest;
 
     if (!requestData.projectName || !requestData.modules) {
       throw new Error("Missing required fields (projectName or modules)");
     }
 
-    const language = requestData.language || 'en';
+    // Audit A2: i campi liberi del chiamante entravano nel prompt così
+    // com'erano, e la risposta finisce nel PDF come «diagnosi tecnica».
+    requestData.projectName = promptSafe(requestData.projectName, 80);
+    requestData.period = promptSafe(requestData.period, 60);
+
+    const language = requestData.language === 'it' ? 'it' : 'en';
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

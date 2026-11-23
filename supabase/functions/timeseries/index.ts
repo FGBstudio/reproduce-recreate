@@ -22,12 +22,8 @@
 //
 // IMPORTANT: Mixed domain requests are NOT allowed (except env.temperature with energy.*)
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders as buildCors } from '../_shared/cors.ts'
+import { requireUser } from '../_shared/auth.ts'
 
 // =============================================================================
 // Validation helpers
@@ -143,6 +139,7 @@ interface TimeseriesPoint {
 // =============================================================================
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req)
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -156,16 +153,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client with auth header forwarding for RLS
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const authHeader = req.headers.get('Authorization') ?? ''
-    
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: authHeader ? { Authorization: authHeader } : {}
-      }
-    })
+    // Audit C2: la versione precedente usava la service key e inoltrava
+    // l'Authorization solo SE presente — senza header si leggeva tutto con
+    // privilegi massimi. Ora l'utente autenticato è obbligatorio e ogni
+    // query passa dalla RLS perimetrata col suo token.
+    const auth = await requireUser(req)
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    const supabase = auth.client
 
     // Parse query parameters
     const url = new URL(req.url)
