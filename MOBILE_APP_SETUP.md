@@ -1,161 +1,189 @@
-# 📱 FGB Monitoring — Mobile App Architecture, Setup & Release Guide
+# FGB Monitoring — Mobile Architecture, Setup & Store Readiness Guide
 
-> **Ultimo aggiornamento:** Novembre 2026  
-> **Stato dell'app:** Produzione / Ready for App Store & Google Play submission  
-> **Package / Bundle ID:** `com.fgb.world`  
-> **Nome App:** `FGB`  
-> **Capacitor Version:** `8.3.x`  
-> **PWA Version:** `1.3.0`  
+> **Last Updated:** November 2026  
+> **App Name:** `FGB`  
+> **Bundle ID / Application ID:** `com.fgb.world`  
+> **Version:** `1.0` (Android `versionCode: 1`, iOS `CURRENT_PROJECT_VERSION: 1`)  
+> **Mobile Stack:** Capacitor `8.3.x` (iOS + Android) + PWA (`vite-plugin-pwa` `1.3.0`)  
 
-Questo documento è la **fonte di verità** per l'infrastruttura mobile di FGB Monitoring. Descrive lo stato attuale, l'architettura tecnica (PWA + Capacitor), i comandi per la build locale e la roadmap con le tappe per la pubblicazione su **Apple App Store** e **Google Play Store**.
-
----
-
-## 1. Architettura di Distribuzione Mobile
-
-L'applicazione supporta due canali di distribuzione paralleli con una singola codebase:
-
-```
-                          ┌─────────────────────────────┐
-                          │   React 18 + Vite (SPA)     │
-                          │   src/ (Tailwind + Shadcn)  │
-                          └──────────────┬──────────────┘
-                                         │  npm run build
-                                         ▼
-                          ┌─────────────────────────────┐
-                          │     dist/ (Static Assets)   │
-                          └──────────────┬──────────────┘
-                                         │
-                 ┌───────────────────────┴───────────────────────┐
-                 ▼                                               ▼
-   ┌───────────────────────────┐                   ┌───────────────────────────┐
-   │    PWA (Web / Browser)    │                   │   Capacitor 8.3 Native    │
-   │  vite-plugin-pwa (1.3.0)  │                   │   iOS + Android Projects  │
-   ├───────────────────────────┤                   ├───────────────────────────┤
-   │ • Standalone display mode │                   │ • Bundled local WebView   │
-   │ • Workbox offline caching │                   │ • Native Haptics & Share  │
-   │ • Install landing /install│                   │ • Filesystem PDF exports  │
-   │ • Host: GitHub Pages /    │                   │ • Hardware back button    │
-   │   xmonitoring.fgb-studio  │                   │ • Auth via web redirect   │
-   └───────────────────────────┘                   └───────────────────────────┘
-```
+This document is the English source of truth for FGB Monitoring's mobile architecture, build workflow, Privacy Policy status, and App Store / Google Play readiness.
 
 ---
 
-## 2. Stato Attuale della Configurazione (`capacitor.config.ts`)
+## 1. What the App Is & Tech Stack
 
-| Parametro | Valore Attuale | Note |
+**FGB Monitoring** is an enterprise B2B smart-building intelligence platform for luxury retail holdings and facility teams. It monitors real-time **Energy (kW / kWh)**, **Indoor Air Quality (CO2, TVOC, PM2.5, PM10, Temp, Humidity)**, **Water**, and **LEED / WELL Certifications** across global store portfolios.
+
+### Core Technology Stack
+| Layer | Technology | Details |
 |---|---|---|
-| **App ID / Bundle ID** | `com.fgb.world` | Unificato tra Android e iOS |
-| **App Name** | `FGB` | Nome visualizzato sotto l'icona e nei menu di sistema |
-| **Web Assets Directory** | `dist` | Compilato statico locale (nessun puntatore cloud esterno) |
-| **Server URL** | *Disabilitato / Rimosso* | **Nessuna dipendenza da server esterni**: zero rischi di caricare webview lente o preview instabili |
-| **Splash Screen** | 2000ms duration, `#002838` | Sfondo corporate scuro, splash nativa con dissolvenza fluida |
-| **Status Bar** | Dark style, `#002838` | Integrata con safe area mobile |
+| **Frontend UI** | React 18, TypeScript, Vite 5, Tailwind CSS, shadcn-ui | Single-page app with dedicated mobile views (`OverviewMobileView`, `MobileModuleDashboard`) |
+| **Maps & Charts** | Leaflet (`leaflet.markercluster`), Recharts | Interactive world/region/brand map + site telemetry charts |
+| **Backend & Auth** | Supabase (PostgreSQL, Auth, Edge Functions) | Multi-tenant RLS (`user_memberships`, `user_roles`), `delete-account` Edge Function |
+| **Web / PWA** | `vite-plugin-pwa` (`1.3.0`, Workbox) | `registerType: "autoUpdate"`, offline shell caching, `/install` onboarding |
+| **Native Wrapper** | Capacitor `8.3.1` (`android/` & `ios/` committed) | Bundles local `dist/` static build directly inside the native binary (no external `server.url`) |
+| **OTA Updates** | *Not installed* | Native updates ship through standard Apple App Store & Google Play releases |
 
-### Plugin Nativi Integrati nel Progetto
-
-1. **`@capacitor/haptics` (`^8.0.2`):** Feedback tattile (vibrazione leggera `hapticLight()` per selezioni e switch, media `hapticMedium()` per azioni di conferma e report). Gestito in `src/lib/native.ts`.
-2. **`@capacitor/share` (`^8.0.1`) + `@capacitor/filesystem` (`^8.1.2`):** Permette l'esportazione nativa dei report PDF e l'apertura automatica dello **Share Sheet nativo** (AirDrop, WhatsApp, Mail, Salva su File).
-3. **`@capacitor/app` (`^8.1.1`):** Gestione ciclo di vita app e intercettazione del tasto "Back" hardware su Android (contratto `fgb:back` in `src/main.tsx`).
-4. **`@capacitor/status-bar` & `@capacitor/splash-screen` (`^8.x`):** Gestione estetica del viewport e immersione grafica.
-
----
-
-## 3. Particolarità Critica: Autenticazione Mobile & Deep Links
-
-Nel WebView nativo di Capacitor, l'origine locale è `capacitor://localhost` (iOS) o `http://localhost` (Android).  
-Se Supabase inviasse email di conferma o reset password con quest'origine, **i link risulterebbero impossibili da aprire** per gli utenti.
-
-Nel file `src/lib/native.ts` è già configurato il redirect corretto:
-```ts
-const WEB_APP_URL = "https://xmonitoring.fgb-studio.com/";
-
-export function authRedirectUrl(): string {
-  if (isNative) return WEB_APP_URL;
-  return window.location.origin + window.location.pathname;
-}
-```
-> Tutte le email di conferma reindirizzano al dominio pubblico autorizzato `xmonitoring.fgb-studio.com`, che è già presente nella allow-list del progetto Supabase.
+### Installed Native Capacitor Plugins
+| Package | Version | Purpose |
+|---|---|---|
+| `@capacitor/core` / `cli` / `android` / `ios` | `^8.3.1` | Native WebView runtime & platform projects |
+| `@capacitor/app` | `^8.1.1` | Deep link handling (`appUrlOpen`) & Android hardware back button (`fgb:back`) |
+| `@capacitor/haptics` | `^8.0.2` | Tactile feedback (`hapticLight`, `hapticMedium` in `src/lib/native.ts`) |
+| `@capacitor/filesystem` | `^8.1.2` | Writing generated PDF reports to device storage |
+| `@capacitor/share` | `^8.0.1` | Native OS Share Sheet for exporting PDF reports |
+| `@capacitor/splash-screen` | `^8.0.1` | 2000ms corporate dark splash (`#002838`) |
+| `@capacitor/status-bar` | `^8.0.2` | Dark status bar styling (`#002838`) |
 
 ---
 
-## 4. Workflow di Compilazione Locale
+## 2. Architecture & Flow Diagrams
 
-I progetti nativi **iOS** (`ios/`) e **Android** (`android/`) sono **già inclusi e versionati nel repository**. Non è necessario eseguire `cap add`.
+### 2.1 Dual Distribution Architecture (Single Codebase -> Web/PWA & Native)
 
-### Step 1: Installazione Dipendenze
-```bash
-npm install
+```mermaid
+flowchart TD
+    A["React 18 + Vite Source (src/)"] -->|npm run build| B["Static Bundle (dist/)"]
+    B -->|GitHub Actions deploy.yml| C["Web / PWA (xmonitoring.fgb-studio.com)"]
+    B -->|npx cap sync| D["Capacitor Native Projects"]
+    D --> E["Android (android/ -> .aab)"]
+    D --> F["iOS (ios/ -> .ipa)"]
+    E -->|Google Play Console| G["Android Devices"]
+    F -->|Xcode / App Store Connect| H["iPhone & iPad"]
 ```
 
-### Step 2: Compilazione Web
-```bash
-npm run build
+### 2.2 Native Runtime, Auth & Deep-Link Flow
+
+Inside a native WebView, `window.location.origin` is `capacitor://localhost` (iOS) or `http://localhost` (Android), which cannot receive email confirmation links. `src/lib/native.ts` and native manifests solve this as follows:
+
+```mermaid
+sequenceDiagram
+    participant User as Mobile App (com.fgb.world)
+    participant Native as src/lib/native.ts & main.tsx
+    participant Supa as Supabase Auth
+    participant Web as xmonitoring.fgb-studio.com
+
+    User->>Native: Sign up / Password reset
+    Native->>Supa: authRedirectUrl() -> "https://xmonitoring.fgb-studio.com/"
+    Supa-->>User: Sends verification email
+    User->>Web: Opens link in system browser
+    Note over User,Native: Custom URL scheme "com.fgb.world://" is registered<br/>in AndroidManifest.xml & Info.plist
+    Web-->>Native: appUrlOpen listener routes session back into app
 ```
-*(Verifica che il build termini con exit code 0 e che la cartella `dist/` sia aggiornata).*
 
-### Step 3: Sincronizzazione Piattaforme Native
-```bash
-npx cap sync
+### 2.3 Local Build & Native Sync Flow
+
 ```
-*(Questo comando copia `dist/` in `android/app/src/main/assets/public` e `ios/App/App/public`, aggiornando anche i plugin nativi).*
-
-### Step 4: Apertura negli Ambienti Nativi
-
-- **Per Android (su qualsiasi PC / Mac):**
-  ```bash
-  npx cap open android
-  ```
-  *Apre Android Studio.*  
-  Da Android Studio: seleziona un dispositivo o emulatore e premi **Run** (tasto verde Play), oppure vai su `Build > Generate Signed Bundle / APK` per creare il file `.aab` di produzione.
-
-- **Per iOS (solo su macOS con Xcode 15+):**
-  ```bash
-  npx cap open ios
-  ```
-  *Apre Xcode.*  
-  Da Xcode: seleziona il target, imposta il tuo Team di sviluppo in `Signing & Capabilities`, e avvia sul simulatore o dispositivo fisico, oppure seleziona `Any iOS Device (arm64)` e clicca `Product > Archive` per caricare su TestFlight / App Store Connect.
+[Code Changes in src/]
+         │
+         ▼
+   npm install          (if dependencies changed)
+         │
+         ▼
+   npm run build        (compiles TypeScript + Vite into dist/)
+         │
+         ▼
+   npx cap sync         (copies dist/ into android/ & ios/ + syncs native plugins)
+         │
+         ├─────────────────────────────┐
+         ▼                             ▼
+ npx cap open android          npx cap open ios (macOS only)
+ (Android Studio -> .aab)      (Xcode -> Product > Archive)
+```
 
 ---
 
-## 5. Checklist dei Prerequisiti per gli Store
+## 3. Native Platform Configuration Details
 
-Prima di poter inviare l'app alle recensioni ufficiali di Apple e Google, devono essere soddisfatti questi requisiti legali e tecnici:
+### Android (`android/`)
+- **`applicationId` / `namespace`:** `com.fgb.world` (`android/app/build.gradle`)
+- **SDK Targets (`android/variables.gradle`):** `minSdkVersion = 24`, `compileSdkVersion = 36`, `targetSdkVersion = 36`
+- **Versioning:** `versionCode 1`, `versionName "1.0"`
+- **Permissions (`AndroidManifest.xml`):** Only `INTERNET` (minimal footprint; no invasive camera/location permissions)
+- **Deep Link Scheme:** `@string/custom_url_scheme` (`com.fgb.world://`)
+- **Signing:** Release keystore (`.jks`) is **not** committed in the repo and must be generated/stored securely during release build.
 
-- [x] **Bundle ID definitivo:** `com.fgb.world` confermato e unificato.
-- [x] **Build statica autonoma:** `server.url` rimosso (app 100% offline-ready & packaged).
-- [x] **Safe Area & UI audit:** Touch target $\ge 44\text{px}$, responsive breakpoint mobile dedicato (`OverviewMobileView`, `MobileModuleDashboard`).
-- [x] **Privacy Policy:** Creata in `PRIVACY_POLICY.md` e disponibile in formato web standalone in `public/privacy.html` (obbligatoria sia per Apple che per Google).
-- [ ] **Account Apple Developer:** Registrazione societaria (D-U-N-S number) attiva per FGB Studio ($99/anno).
-- [ ] **Account Google Play Console:** Registrazione sviluppatore FGB Studio attiva ($25 una tantum).
-- [ ] **Keystore Android di produzione:** File `.jks` per la firma dell'app creato e custodito in cassaforte sicura con le relative credenziali.
-- [ ] **Asset grafici Store:** Screenshot in risoluzione richiesta (iPhone 6.7", iPad 12.9", Android Phone 1080x2400) e Icona Store 1024x1024.
-- [ ] **Account Demo per i Reviewer:** Credenziali di test (email + password) fornite nelle note di revisione per permettere ai reviewer di Apple/Google di accedere alla dashboard.
+### iOS (`ios/`)
+- **`PRODUCT_BUNDLE_IDENTIFIER`:** `com.fgb.world` (`project.pbxproj`)
+- **Versioning:** `MARKETING_VERSION = 1.0`, `CURRENT_PROJECT_VERSION = 1`
+- **Export Compliance (`Info.plist`):** `ITSAppUsesNonExemptEncryption` is already set to `false`
+- **Orientations:** Portrait on iPhone; all 4 orientations on iPad
+- **Deep Link Scheme:** `CFBundleURLSchemes` includes `com.fgb.world`
+- **Signing:** Requires Apple Developer Team + Distribution Certificate & Provisioning Profile in Xcode on macOS.
+
+### Store Compliance Features Already Implemented
+- **In-App Account Deletion:** `UserAccountDropdown.tsx` invokes the `delete-account` Supabase Edge Function (`supabase.functions.invoke('delete-account')`), satisfying Apple App Store Guideline 5.1.1(v).
+- **No Unapproved Dynamic Code Loading:** `capacitor.config.ts` bundles static `dist/` locally (no `server.url` pointing to an external preview).
 
 ---
 
-## 6. Prossimi Passi e Timeline di Pubblicazione
+## 4. Privacy Policy Status (Audit)
 
-| Fase | Attività Principali | Owner | Durata Stimata |
+**Do we already have a Privacy Policy?** **Yes — updated with verified company details, pending git commit/deployment & in-app link.**
+
+What exists in the repository (currently **untracked local files**):
+- `PRIVACY_POLICY.md` — Full GDPR-compliant notice for **FGB Studio Italy S.r.l.** (P.IVA `12634970961`, Via Monte Napoleone n. 23 – 20121 Milano (MI), Italy; D-U-N-S `442810108`; PEC `fgbstudiosrl@pec.it`; Emails: `fgb@fgb-studio.com` / `monitoring@fgb-studio.com`; Effective Date: `November 2026`; Supabase EU Frankfurt confirmed).
+- `public/privacy.html` — Styled standalone HTML version intended to be served publicly at `https://xmonitoring.fgb-studio.com/privacy.html`.
+
+### Remaining Privacy Policy Actions Before Store Submission
+1. **Commit & deploy `public/privacy.html`:** Currently untracked in git (`git status`) and not pushed to `main`. Until deployed, `https://xmonitoring.fgb-studio.com/privacy.html` will return **404** (both Apple and Google reject submissions with a broken Privacy Policy URL).
+2. **Add an in-app Privacy Policy link:** Searching `src/` shows no link to `/privacy.html` on the login screen or account menu. Apple App Store and Google Play expect an accessible Privacy Policy link **inside the app** as well as on the store listing.
+3. **Sub-processor & AI/CCPA alignment (Sentry, Push, AI Chatbot):** `PRIVACY_POLICY.md` and `public/privacy.html` already include **Sentry** and **Firebase FCM / Apple APNs** in anticipation of the 6-day implementation sprint below.
+   - **Important note on AI Chatbot & ML:** If we add an **AI Chatbot** (or ML insights/chat) before launch, we **must update `PRIVACY_POLICY.md` and `public/privacy.html`** to add: (a) an AI Chat & ML data-processing clause (covering prompts, chat history, and site telemetry), and (b) the external LLM sub-processor (e.g., OpenAI, Google Gemini, Anthropic, or AWS Bedrock).
+   - **Optional US/CCPA note:** If clients have US stores (e.g. California), consider adding a short CCPA/CPRA non-sale disclosure in Section 9.
+
+---
+
+## 5. Are We 100% Ready to Pay & Submit?
+
+### A. Ready to pay Apple ($99/yr) and Google Play ($25 one-time) NOW? — **YES**
+You can pay and start both developer account enrollments **immediately**:
+- You already have the required legal entity & D-U-N-S number (**FGB Studio Italy S.r.l.**, P.IVA `12634970961`, D-U-N-S `442810108`) for Apple Developer Organization verification.
+- Paying early is recommended because **Apple Organization verification and Google Play identity verification take 2–5 business days**.
+
+### B. Things To Do Before Client Release & Store Submission (6-Day Target)
+
+| Item | Status | Action Needed |
+|---|---|---|
+| App code, `dist/` build & Capacitor `8.3` | **Ready** | Verified building cleanly (`npm run build`) |
+| Bundle ID (`com.fgb.world`) & SDK targets | **Ready** | Unified across `capacitor.config.ts`, Android (`targetSdk 36`), and iOS |
+| Native app icons & splash screen | **Ready** | Generated in `android/app/src/main/res/` and `ios/App/App/Assets.xcassets/` |
+| In-app account deletion (`delete-account`) | **Ready** | Implemented in `UserAccountDropdown.tsx` |
+| **1. Deploy Privacy Policy** | **To Do** | Commit & push `public/privacy.html` + `PRIVACY_POLICY.md` so `https://xmonitoring.fgb-studio.com/privacy.html` is live |
+| **2. In-app Privacy Policy link** | **To Do** | Add a clickable Privacy Policy link in `Auth.tsx` / `UserAccountDropdown.tsx` |
+| **3. Sentry Crash & Error Tracking** | **Live (Verify CI Maps)** | `@sentry/react` v11 (`dataCollection` PII disabled + `beforeSend` scrubbing + offline IndexedDB transport) & `@sentry/vite-plugin` pushed to `origin/main` (`c8ef7b6`). EU project (`fgb-studio` / `javascript-react`) & privacy filters configured; live localhost event verified (`#163383347`). **Final check:** confirm GitHub Actions `Deploy to GitHub Pages` passes green (with `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` in GitHub Secrets) and source maps appear in **Sentry → Project Settings → Source Maps** |
+| **4. Mobile Push Notifications (FCM & APNs)** | **To Do (6-day goal)** | Install `@capacitor/push-notifications`, set up Firebase (`google-services.json` for Android) + Apple `.p8` key (iOS), store device tokens in Supabase, and wire alert dispatch |
+| **5. AI Chatbot (Optional / Potential)** | **To Do (6-day goal)** | Decide scope/provider; if included in v1.0, implement UI + backend proxy and disclose the LLM sub-processor in the Privacy Policy |
+| **6. Android release keystore (`.jks`)** | **To Do** | Generate in Android Studio when building the signed `.aab` (back up `.jks` + passwords safely) |
+| **7. macOS + Xcode build for iOS** | **To Do** | Run `npm run build && npx cap sync && npx cap open ios` on a Mac to sign & archive to TestFlight |
+| **8. Store assets & reviewer demo login** | **To Do** | Prepare store screenshots, Play Store feature graphic (1024x500), descriptions, and a dedicated non-admin demo user account for Apple/Google reviewers |
+
+---
+
+## 6. Next Steps & Publishing Timeline
+
+| Phase | Tasks | Owner | Est. Time |
 |---|---|---|---|
-| **Fase 1: Preparazione Account** | • Registrazione/Verifica Account Apple Developer Organization<br>• Registrazione Google Play Console Organization | Team Admin / FGB | 3 - 5 giorni lavorativi |
-| **Fase 2: Asset & Keystore** | • Generazione Keystore Android di rilascio (`fgb-release.jks`)<br>• Generazione certificati di distribuzione Apple (`Distribution Certificate + Provisioning Profile`)<br>• Realizzazione screenshot e grafica promozionale dello store | Team Dev / Design | 2 giorni |
-| **Fase 3: Test Interno (Beta)** | • Deploy build Android su **Google Play Internal Testing**<br>• Deploy build iOS su **Apple TestFlight**<br>• Collaudo sul campo con team interno FGB e partner pilota | Team Dev + QA | 3 - 5 giorni |
-| **Fase 4: Invio per Revisione** | • Compilazione scheda store (descrizioni multilingua, privacy policy URL, classificazione contenuti)<br>• Configurazione account test per i reviewer<br>• Invio ufficiale per approvazione | Team Dev / Admin | 1 giorno |
-| **Fase 5: Approvazione & Go-Live** | • Tempo medio di revisione Apple (24 - 48 ore)<br>• Tempo medio di revisione Google Play per nuovi sviluppatori (2 - 7 giorni)<br>• Pubblicazione pubblica o rilascio unlisted/B2B | Apple / Google | 2 - 7 giorni |
+| **1. Pay & Enroll Accounts (Start Now)** | Pay Apple Developer Program ($99/yr, D-U-N-S `442810108`) and Google Play Console ($25) and complete organization identity verification | Admin / Owner | Days 1–5 (parallel verification) |
+| **2. Feature & Compliance Sprint (6-Day Goal)** | ~~Sentry~~ (pushed `c8ef7b6`; verify CI source maps), implement **Push Notifications (FCM + APNs)**, optional **AI Chatbot**, add in-app Privacy Policy link, and commit/push `public/privacy.html` | Dev | Days 1–6 |
+| **3. Store Listing Assets & Demo User** | Create store screenshots (iPhone 6.7", iPad, Android), Play Store 1024x500 banner, store copy, and a demo login account for reviewers | Design / Admin | Days 4–6 |
+| **4. Signed Builds & Internal Beta** | Generate Android keystore + signed `.aab` -> **Play Internal Testing**; archive iOS build on Mac -> **TestFlight**; test auth, push, Sentry, telemetry & PDF share on real devices | Dev + QA | Days 6–7 |
+| **5. Submit & Store Review** | Submit store listings + builds; Apple review typically takes 24–48h, new Google Play org accounts typically take 2–7 days | Apple / Google | 2–7 days |
 
 ---
 
-## 7. Comandi Rapidi di Riferimento
+## 7. Quick Reference Commands
 
 ```bash
-# Esecuzione e verifica veloce della build
-npm run build && npx cap sync
+# Install dependencies, build production bundle, and sync native projects
+npm install
+npm run build
+npx cap sync
 
-# Verifica versione e configurazione Capacitor
+# Open native IDEs
+npx cap open android    # Build > Generate Signed Bundle / APK (.aab)
+npx cap open ios        # macOS only: Product > Archive -> App Store Connect
+
+# Diagnostics
 npx cap doctor
-
-# Aggiornamento splash & icone (quando si sostituiscono i file in resources/)
-npx capacitor-assets generate --android --ios
 ```
