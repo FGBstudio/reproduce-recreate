@@ -167,7 +167,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
     setIsAckLoading(alertId);
     setAckError(null);
     try {
-      const { data, error } = await supabase.rpc('acknowledge_site_alert', {
+      const { data, error } = await (supabase as any).rpc('acknowledge_site_alert', {
         p_alert_id: alertId,
       });
 
@@ -177,7 +177,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
         return;
       }
 
-      const row = Array.isArray(data) ? data[0] : data;
+      const row = (Array.isArray(data) ? data[0] : data) as any;
       setLocalAckMap(prev => ({
         ...prev,
         [alertId]: {

@@ -108,7 +108,7 @@ export function useThresholdAlerts(
       if (error) {
         console.error('[useThresholdAlerts] Fetch error:', error);
       } else if (data) {
-        const mapped: ThresholdAlert[] = data.map(d => ({
+        const mapped: ThresholdAlert[] = data.map((d: any) => ({
           id: d.id,
           severity: d.severity as AlertSeverity,
           metric: d.metric,
