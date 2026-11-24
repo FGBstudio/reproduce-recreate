@@ -20,6 +20,7 @@ export interface ThresholdAlert {
   message: string;
   currentValue: number;
   threshold: number;
+  condition?: string;
   unit?: string;
   deviceName?: string;
   deviceId?: string;
@@ -28,7 +29,11 @@ export interface ThresholdAlert {
   recommendation?: string;
   duration_minutes?: number;
   hysteresis_pct?: number;
-  status: 'active' | 'resolved';
+  status: 'active' | 'acknowledged' | 'resolved';
+  acknowledgedAt?: string | null;
+  acknowledgedBy?: string | null;
+  acknowledgedByName?: string | null;
+  incidentGroupKey?: string | null;
   deviceType?: string;
 }
 
@@ -38,6 +43,7 @@ export interface ThresholdAlertStatus {
   warningCount: number;
   infoCount: number;
   totalCount: number;
+  unacknowledgedCount: number;
   hasAlerts: boolean;
   worstSeverity: AlertSeverity | null;
   isLoading: boolean;
@@ -91,28 +97,34 @@ export function useThresholdAlerts(
           *,
           alert_rules (
             threshold,
+            condition,
             duration_minutes,
             hysteresis_pct
           )
         `)
         .eq('site_id', siteId)
-        .eq('status', 'active');
+        .in('status', ['active', 'acknowledged']);
 
       if (error) {
         console.error('[useThresholdAlerts] Fetch error:', error);
       } else if (data) {
         const mapped: ThresholdAlert[] = data.map(d => ({
           id: d.id,
-          severity: d.severity as any,
+          severity: d.severity as AlertSeverity,
           metric: d.metric,
           message: d.message,
-          currentValue: d.value_at_trigger || d.current_value || 0,
-          threshold: d.alert_rules?.threshold || d.threshold_value || 0,
-          duration_minutes: d.alert_rules?.duration_minutes || 0,
-          hysteresis_pct: d.alert_rules?.hysteresis_pct || 5,
+          currentValue: d.current_value ?? d.value_at_trigger ?? 0,
+          threshold: d.alert_rules?.threshold ?? d.threshold_value ?? 0,
+          condition: d.alert_rules?.condition,
+          duration_minutes: d.alert_rules?.duration_minutes ?? 0,
+          hysteresis_pct: d.alert_rules?.hysteresis_pct ?? 5,
           recommendation: d.recommendation,
           timestamp: d.triggered_at,
-          status: d.status as any,
+          status: d.status as ThresholdAlert['status'],
+          acknowledgedAt: d.acknowledged_at ?? null,
+          acknowledgedBy: d.acknowledged_by ?? null,
+          acknowledgedByName: d.acknowledged_by_name ?? null,
+          incidentGroupKey: d.incident_group_key ?? null,
           deviceId: d.device_id,
         }));
         setDbAlerts(mapped);
@@ -139,21 +151,25 @@ export function useThresholdAlerts(
             const newItem = payload.new as any;
             const oldItem = payload.old as any;
 
-            if (payload.eventType === 'INSERT' && newItem.status === 'active') {
-              // Add new active alert
+            if (payload.eventType === 'INSERT' && (newItem.status === 'active' || newItem.status === 'acknowledged')) {
+              if (current.some(a => a.id === newItem.id)) return current;
+              // Add new active/acknowledged alert
               return [...current, {
                 id: newItem.id,
                 severity: newItem.severity,
                 metric: newItem.metric,
                 message: newItem.message,
-                currentValue: newItem.value_at_trigger || newItem.current_value,
-                // Threshold and duration are joined in frontend, for realtime insert we rely on a refetch or default
-                threshold: newItem.threshold_value || 0,
+                currentValue: newItem.current_value ?? newItem.value_at_trigger ?? 0,
+                threshold: newItem.threshold_value ?? 0,
                 duration_minutes: 0,
                 hysteresis_pct: 5,
                 recommendation: newItem.recommendation,
                 timestamp: newItem.triggered_at,
                 status: newItem.status,
+                acknowledgedAt: newItem.acknowledged_at ?? null,
+                acknowledgedBy: newItem.acknowledged_by ?? null,
+                acknowledgedByName: newItem.acknowledged_by_name ?? null,
+                incidentGroupKey: newItem.incident_group_key ?? null,
                 deviceId: newItem.device_id
               }];
             } else if (payload.eventType === 'UPDATE') {
@@ -161,11 +177,19 @@ export function useThresholdAlerts(
                 // Remove resolved alert
                 return current.filter(a => a.id !== newItem.id);
               } else {
-                // Update existing alert value
+                // Update existing alert value & acknowledgment state
                 return current.map(a => a.id === newItem.id ? {
                   ...a,
-                  currentValue: newItem.value_at_trigger || newItem.current_value,
-                  timestamp: newItem.triggered_at
+                  status: newItem.status ?? a.status,
+                  severity: newItem.severity ?? a.severity,
+                  message: newItem.message ?? a.message,
+                  currentValue: newItem.current_value ?? newItem.value_at_trigger ?? a.currentValue,
+                  threshold: newItem.threshold_value ?? a.threshold,
+                  timestamp: newItem.triggered_at ?? a.timestamp,
+                  acknowledgedAt: newItem.acknowledged_at ?? a.acknowledgedAt,
+                  acknowledgedBy: newItem.acknowledged_by ?? a.acknowledgedBy,
+                  acknowledgedByName: newItem.acknowledged_by_name ?? a.acknowledgedByName,
+                  incidentGroupKey: newItem.incident_group_key ?? a.incidentGroupKey,
                 } : a);
               }
             } else if (payload.eventType === 'DELETE') {
@@ -212,9 +236,18 @@ export function useThresholdAlerts(
       mappedDbAlerts = [staleAlert, ...mappedDbAlerts];
     }
 
+    // 3. Sort unacknowledged alerts above acknowledged ones
+    mappedDbAlerts.sort((a, b) => {
+      const ackDiff = (a.status === 'acknowledged' ? 1 : 0) - (b.status === 'acknowledged' ? 1 : 0);
+      if (ackDiff !== 0) return ackDiff;
+      const sevOrder: Record<AlertSeverity, number> = { critical: 0, warning: 1, info: 2 };
+      return sevOrder[a.severity] - sevOrder[b.severity];
+    });
+
     const criticalCount = mappedDbAlerts.filter(a => a.severity === 'critical').length;
     const warningCount = mappedDbAlerts.filter(a => a.severity === 'warning').length;
     const infoCount = mappedDbAlerts.filter(a => a.severity === 'info').length;
+    const unacknowledgedCount = mappedDbAlerts.filter(a => a.status !== 'acknowledged').length;
 
     let worstSeverity: AlertSeverity | null = null;
     if (criticalCount > 0) worstSeverity = 'critical';
@@ -227,11 +260,12 @@ export function useThresholdAlerts(
       warningCount,
       infoCount,
       totalCount: mappedDbAlerts.length,
+      unacknowledgedCount,
       hasAlerts: mappedDbAlerts.length > 0,
       worstSeverity,
       isLoading,
     };
-  }, [dbAlerts, options?.devices, language, isLoading]);
+  }, [dbAlerts, options?.devices, options?.isStale, options?.lastUpdate, options?.staleMessage, language, isLoading]);
 }
 
 export function getMetricStatus(

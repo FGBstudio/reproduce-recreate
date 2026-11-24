@@ -152,17 +152,42 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
   const [focusedCategory, setFocusedCategory] = useState<DisplaySeverity | null>(null);
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
   const [isAckLoading, setIsAckLoading] = useState<string | null>(null);
+  const [ackError, setAckError] = useState<string | null>(null);
+  const [localAckMap, setLocalAckMap] = useState<Record<string, { acknowledgedAt: string; acknowledgedByName: string }>>({});
+
+  const isAlertAcknowledged = (alert: ThresholdAlert) =>
+    alert.status === 'acknowledged' || Boolean(localAckMap[alert.id]);
+
+  const hasUnacknowledgedAlerts = useMemo(
+    () => filteredAlerts.some(a => !isAlertAcknowledged(a)),
+    [filteredAlerts, localAckMap]
+  );
 
   const handleAcknowledge = async (alertId: string) => {
     setIsAckLoading(alertId);
+    setAckError(null);
     try {
-      await supabase
-        .from('site_alerts')
-        .update({ acknowledged_at: new Date().toISOString() })
-        .eq('id', alertId);
-      // Row will be updated via realtime hook in useThresholdAlerts
-    } catch (err) {
+      const { data, error } = await supabase.rpc('acknowledge_site_alert', {
+        p_alert_id: alertId,
+      });
+
+      if (error) {
+        console.error('Ack RPC error:', error);
+        setAckError(error.message || 'Failed to acknowledge alert');
+        return;
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      setLocalAckMap(prev => ({
+        ...prev,
+        [alertId]: {
+          acknowledgedAt: row?.acknowledged_at || new Date().toISOString(),
+          acknowledgedByName: row?.acknowledged_by_name || 'Operator',
+        },
+      }));
+    } catch (err: any) {
       console.error('Ack error:', err);
+      setAckError(err?.message || 'Failed to acknowledge alert');
     } finally {
       setIsAckLoading(null);
     }
@@ -172,6 +197,15 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
     setFocusedCategory(cat);
     setExpandedAlertId(null);
   };
+
+  const activeAlerts = useMemo(() => {
+    if (!focusedCategory) return [];
+    return [...grouped[focusedCategory]].sort((a, b) => {
+      const aAck = isAlertAcknowledged(a) ? 1 : 0;
+      const bAck = isAlertAcknowledged(b) ? 1 : 0;
+      return aAck - bAck;
+    });
+  }, [grouped, focusedCategory, localAckMap]);
 
   // ─── MASTER VIEW ───────────────────────────────────────────────────────────
   if (focusedCategory === null) {
@@ -184,7 +218,7 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
               <p className={`text-5xl font-extrabold tracking-tight ${hasAlerts ? 'text-rose-600' : 'text-slate-600'}`}>
                 {totalCount}
               </p>
-              {hasAlerts && (
+              {hasUnacknowledgedAlerts && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
@@ -250,14 +284,13 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
   }
 
   // ─── DETAIL VIEW ───────────────────────────────────────────────────────────
-  const activeAlerts = grouped[focusedCategory];
   const cfg = severityConfig[focusedCategory];
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-1">
         <button
-          onClick={() => setFocusedCategory(null)}
+          onClick={() => { setFocusedCategory(null); setAckError(null); }}
           className="flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-slate-800 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -279,6 +312,12 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
         </div>
       </div>
 
+      {ackError && (
+        <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-medium">
+          {ackError}
+        </div>
+      )}
+
       <div className="overflow-y-auto max-h-[220px] space-y-2 pr-1 custom-scrollbar">
         {activeAlerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-slate-600 gap-2">
@@ -290,28 +329,42 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
             const isExpanded = expandedAlertId === alert.id;
             const MetricIcon = getMetricIcon(alert.metric);
             const activeSince = alert.timestamp ? formatDistanceToNow(new Date(alert.timestamp), { locale: dateLocale, addSuffix: false }) : null;
+            const localAck = localAckMap[alert.id];
+            const isAcknowledged = alert.status === 'acknowledged' || Boolean(localAck);
+            const ackByName = alert.acknowledgedByName || localAck?.acknowledgedByName;
+            const ackAt = alert.acknowledgedAt || localAck?.acknowledgedAt;
+            const ackSince = ackAt ? formatDistanceToNow(new Date(ackAt), { locale: dateLocale, addSuffix: true }) : null;
+            const isSynthetic = alert.id === 'system-stale-offline' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(alert.id);
+            const thresholdVal = Number(alert.threshold ?? 0);
+            const hysteresisPct = Number(alert.hysteresis_pct ?? 0);
+            const isLowerBound = alert.condition === '<' || alert.condition === '<=';
+            const resolutionTarget = isLowerBound
+              ? thresholdVal + (thresholdVal * (hysteresisPct / 100))
+              : thresholdVal - (thresholdVal * (hysteresisPct / 100));
 
             return (
               <div
                 key={alert.id}
                 className={`rounded-xl border transition-all overflow-hidden ${
-                  isExpanded 
-                    ? `${cfg.bgColor} border-current/20 shadow-sm` 
-                    : 'bg-white border-slate-100 hover:border-slate-300 shadow-sm'
+                  isAcknowledged
+                    ? 'bg-slate-50/80 border-slate-200/80 opacity-75'
+                    : isExpanded
+                      ? `${cfg.bgColor} border-current/20 shadow-sm`
+                      : 'bg-white border-slate-100 hover:border-slate-300 shadow-sm'
                 }`}
               >
                 <button
                   onClick={() => setExpandedAlertId(isExpanded ? null : alert.id)}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left group"
                 >
-                  <div className={`p-1.5 rounded-lg ${isExpanded ? 'bg-foreground/60' : cfg.bgColor}`}>
-                    <MetricIcon className={`w-4 h-4 ${cfg.textColor}`} />
+                  <div className={`p-1.5 rounded-lg ${isAcknowledged ? 'bg-slate-200/70' : isExpanded ? 'bg-foreground/60' : cfg.bgColor}`}>
+                    <MetricIcon className={`w-4 h-4 ${isAcknowledged ? 'text-slate-500' : cfg.textColor}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-bold truncate ${cfg.textColor}`}>
+                    <p className={`text-xs font-bold truncate ${isAcknowledged ? 'text-slate-600' : cfg.textColor}`}>
                       {alert.message}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center flex-wrap gap-2 mt-0.5">
                       <span className="text-[10px] text-slate-600 flex items-center gap-0.5">
                         <Clock className="w-2.5 h-2.5" />
                         {activeSince}
@@ -319,6 +372,14 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                       {alert.deviceName && (
                         <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded truncate max-w-[120px]">
                           {alert.deviceName}
+                        </span>
+                      )}
+                      {isAcknowledged && (
+                        <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <CheckCircle className="w-2.5 h-2.5" />
+                          {language === 'it' ? 'Preso in carico' : 'Acknowledged'}
+                          {ackByName ? ` • ${ackByName}` : ''}
+                          {ackSince ? ` (${ackSince})` : ''}
                         </span>
                       )}
                     </div>
@@ -354,17 +415,17 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                             />
                           </p>
                           <p className="text-xs font-black text-slate-800">
-                             {alert.currentValue.toFixed(1)} <span className="text-[10px] opacity-60 font-medium">{alert.unit}</span>
-                             {alert.duration_minutes !== undefined && alert.duration_minutes > 0 ? (
+                             {Number(alert.currentValue ?? 0).toFixed(1)} <span className="text-[10px] opacity-60 font-medium">{alert.unit}</span>
+                             {alert.duration_minutes === 1440 ? (
+                               <span className="block text-[9px] text-indigo-500 font-bold mt-0.5 leading-tight">
+                                 (Daily Budget Exceeded)
+                               </span>
+                             ) : alert.duration_minutes !== undefined && alert.duration_minutes > 0 ? (
                                <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight">
                                  (Sustained for {alert.duration_minutes}m)
                                </span>
-                             ) : alert.duration_minutes === 1440 ? (
-                               <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight text-indigo-500 font-bold">
-                                 (Daily Budget Exceeded)
-                               </span>
                              ) : alert.duration_minutes === 0 ? (
-                               <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight text-rose-500 font-bold">
+                               <span className="block text-[9px] text-rose-500 font-bold mt-0.5 leading-tight">
                                  (Instant Spike)
                                </span>
                              ) : null}
@@ -376,34 +437,36 @@ export function SiteAlertsWidget({ alertStatus, moduleFilter }: SiteAlertsWidget
                           {t('pd.site_alerts.threshold')}
                           <LegendTooltip 
                             iconSize={10} 
-                            content={`Alerts auto-resolve using a ${(alert.hysteresis_pct || 0)}% hysteresis buffer to prevent notification spam.`} 
+                            content={`Alerts auto-resolve using a ${hysteresisPct}% hysteresis buffer to prevent notification spam.`} 
                           />
                         </p>
                         <p className="text-xs font-black text-slate-800">
-                          {alert.threshold.toFixed(1)} <span className="text-[10px] opacity-60 font-medium">{alert.unit}</span>
-                          {alert.hysteresis_pct && alert.hysteresis_pct > 0 && (
+                          {thresholdVal.toFixed(1)} <span className="text-[10px] opacity-60 font-medium">{alert.unit}</span>
+                          {hysteresisPct > 0 && (
                             <span className="block text-[9px] text-slate-600 font-medium mt-0.5 leading-tight">
-                              Resolves at {(alert.threshold - (alert.threshold * (alert.hysteresis_pct / 100))).toFixed(1)}
+                              Resolves at {resolutionTarget.toFixed(1)}
                             </span>
                           )}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => handleAcknowledge(alert.id)}
-                        disabled={!!isAckLoading}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                          isAckLoading === alert.id 
-                            ? 'bg-slate-100 text-slate-600 cursor-wait' 
-                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm active:scale-95'
-                        }`}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        {t('pd.site_alerts.acknowledge')}
-                      </button>
-                    </div>
+                    {!isSynthetic && !isAcknowledged && (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleAcknowledge(alert.id)}
+                          disabled={!!isAckLoading}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                            isAckLoading === alert.id 
+                              ? 'bg-slate-100 text-slate-600 cursor-wait' 
+                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm active:scale-95'
+                          }`}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          {t('pd.site_alerts.acknowledge')}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
