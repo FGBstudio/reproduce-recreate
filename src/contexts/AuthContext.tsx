@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, Rea
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { authRedirectUrl } from '@/lib/native';
+import { setSentryUser } from '@/lib/sentry';
 import { User, UserRole, UserProfile, AuthState } from '@/lib/types/admin';
 
 interface AuthContextType extends AuthState {
@@ -84,6 +85,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.error('Error fetching user data:', error);
     }
   }, []);
+
+  // Keep Sentry user ID synced with auth state (no email/PII)
+  useEffect(() => {
+    setSentryUser(user?.id ?? null);
+  }, [user?.id]);
 
   // Initialize auth state
   useEffect(() => {

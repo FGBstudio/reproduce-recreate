@@ -299,16 +299,19 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
        4 frame) e muove camera, wrapper, flood e nuvole in un colpo solo.
        In pausa (globo coperto o oltre lo stage) non fa alcun lavoro. */
     let animRaf: number | null = null;
+    let cancelled = false;
     const damp = () => {
+      if (cancelled) return;
       animRaf = requestAnimationFrame(damp);
       const t = camTarget.current;
-      if (!t || globePaused.current) return;
+      const wrap = globeWrap.current;
+      const f = flood.current;
+      if (!t || !wrap || !f || globePaused.current) return;
       const c = camCur.current || (camCur.current = { ...t });
       const k = 0.16;
       for (const key of Object.keys(t)) c[key] += (t[key] - c[key]) * k;
       globeRef.current?.pointOfView({ lat: c.lat, lng: c.lng, altitude: c.alt }, 0);
-      globeWrap.current!.style.transform = `translate3d(${c.tx}px,${c.ty}px,0) scale(${c.S / sideRef.current})`;
-      const f = flood.current!;
+      wrap.style.transform = `translate3d(${c.tx}px,${c.ty}px,0) scale(${c.S / sideRef.current})`;
       f.style.left = c.fx + "px";
       f.style.top = c.fy + "px";
       f.style.transform = `translate(-50%,-50%) scale(${c.fs})`;
@@ -447,6 +450,7 @@ const LandingScroll: React.FC<Props> = ({ onSignIn, onCreate }) => {
     sc.querySelectorAll(".fgbl-reveal").forEach((el) => io.observe(el));
 
     return () => {
+      cancelled = true;
       sc.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);

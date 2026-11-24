@@ -1,4 +1,5 @@
 import React from "react";
+import { captureSentryException } from "@/lib/sentry";
 
 /**
  * Error boundary di ultima istanza. Nel WebView nativo (Capacitor) un throw
@@ -19,6 +20,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // console.error sopravvive allo strip di produzione (solo log/debug vengono rimossi)
     console.error("[ErrorBoundary]", error, info.componentStack);
+    captureSentryException(error, { componentStack: info.componentStack });
   }
 
   render() {
