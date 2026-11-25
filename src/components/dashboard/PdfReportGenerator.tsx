@@ -52,10 +52,14 @@ interface GeneratePdfOptions {
   onProgress?: (message: string) => void;
   language?: ReportLanguage;
   precalculatedTotals?: {
-    totalEnergyKwh?: number;
-    totalCostEur?: number;
-    totalCo2Kg?: number;
+    // null = nessuna misura nel periodo (→ "N/A"); 0 = misura reale a zero.
+    totalEnergyKwh?: number | null;
+    totalCostEur?: number | null;
+    totalCo2Kg?: number | null;
   };
+  /** Intervallo EFFETTIVO del report (analisi #7): per un mese in corso il
+      "November 2026" nascondeva che sono 25 giorni su 30. */
+  periodRange?: { start: string; end: string };
 }
 
 // --- COLORS ---
@@ -170,11 +174,31 @@ const cleanLatex = (text: string): string => {
     .trim();
 };
 
-/** Format a number with 2 decimals and thousands separator */
+/** Format a number with fixed decimals and thousands separator */
 const fmtNum = (val: unknown, decimals = 2): string => {
   const n = Number(val);
-  if (isNaN(n)) return '–';
+  if (val === null || val === undefined || val === '' || isNaN(n)) return '–';
   return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
+
+/* Fase A (nov 2026) — un UNICO modo di dire "nessun dato".
+   Prima lo stesso concetto usciva in 5 forme: `null °C`, `—`, `Undefined`,
+   `No Data`, `0`. Peggio: lo ZERO trasformava un buco di misure in un numero
+   falso che poi finiva nei totali e nell'AI. Regola: null/NaN => "N/A",
+   SENZA unita'; un vero zero misurato resta "0". Mai la stringa "null". */
+const N_A = 'N/A';
+const isMissing = (v: unknown): boolean =>
+  v === null || v === undefined || v === '' ||
+  (typeof v === 'string' && /^(null|undefined|nan)$/i.test(v.trim())) ||
+  (typeof v === 'number' && isNaN(v));
+
+/** Valore + unita' per il PDF: "N/A" se manca (niente unita'), altrimenti
+    il numero formattato con l'unita'. Un 0 reale resta 0. */
+const fmtValue = (val: unknown, unit = '', decimals = 0): string => {
+  if (isMissing(val)) return N_A;
+  const n = Number(val);
+  if (isNaN(n)) return String(val) + (unit ? ` ${unit}` : '');
+  return fmtNum(n, decimals) + (unit ? ` ${unit}` : '');
 };
 
 /** Extract a numeric value from a record trying common keys */
@@ -200,6 +224,7 @@ export const generatePdfReport = async ({
   onProgress,
   language = 'en',
   precalculatedTotals,
+  periodRange,
 }: GeneratePdfOptions) => {
   const t = getTranslations(language);
   const dateLocale = await getDateLocale(language);
@@ -261,20 +286,22 @@ export const generatePdfReport = async ({
   ]);
 
   // --- COMPUTED METRICS ---
-  // Nessun ripiego inventato: se la somma reale e' zero il report dice zero.
-  // Prima qui c'era `|| (project.data.total * 30)`, che moltiplicava il dato
-  // istantaneo per trenta giorni e lo presentava come consumo del periodo.
-  const totalEnergyKwh = precalculatedTotals?.totalEnergyKwh !== undefined
-    ? precalculatedTotals.totalEnergyKwh
-    : (moduleConfig.energy.enabled
-        ? data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0)
-        : 0);
-  const totalCo2Kg = precalculatedTotals?.totalCo2Kg !== undefined
-    ? precalculatedTotals.totalCo2Kg
-    : totalEnergyKwh * CO2_EMISSION_FACTOR_KG_KWH;
-  const totalCostEur = precalculatedTotals?.totalCostEur !== undefined
-    ? precalculatedTotals.totalCostEur
-    : totalEnergyKwh * energyPrice;
+  // null ≠ 0 (analisi #1.2): quando il chiamante passa null non c'e' NESSUNA
+  // misura nel periodo → tutto N/A. Un 0 reale (impianto spento) resta 0.
+  // Senza precalcolo si somma il consumo, e array vuoto => null (non 0).
+  const totalEnergyKwh: number | null =
+    precalculatedTotals?.totalEnergyKwh !== undefined
+      ? precalculatedTotals.totalEnergyKwh
+      : (moduleConfig.energy.enabled && data.energy.consumption.length > 0
+          ? data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0)
+          : null);
+  const energyMissing = totalEnergyKwh == null;
+  const totalCo2Kg: number | null =
+    precalculatedTotals?.totalCo2Kg !== undefined ? precalculatedTotals.totalCo2Kg
+      : (energyMissing ? null : (totalEnergyKwh as number) * CO2_EMISSION_FACTOR_KG_KWH);
+  const totalCostEur: number | null =
+    precalculatedTotals?.totalCostEur !== undefined ? precalculatedTotals.totalCostEur
+      : (energyMissing || !(energyPrice > 0) ? null : (totalEnergyKwh as number) * energyPrice);
 
   // --- 3. AI DIAGNOSIS (parallel with chart capture if possible) ---
   // Guardia: la diagnosi AI parte SOLO se c'e' davvero qualcosa da
@@ -287,7 +314,7 @@ export const generatePdfReport = async ({
     data.airQuality.co2History.length > 0 ||
     data.airQuality.tempHumidity.length > 0 ||
     data.airQuality.particulates.length > 0;
-  const hasAnalyzableData = totalEnergyKwh > 0 || airHasData;
+  const hasAnalyzableData = (typeof totalEnergyKwh === 'number' && totalEnergyKwh > 0) || airHasData;
   let aiDiagnosis: string | null = null;
   if (includeAiDiagnosis && hasAnalyzableData) {
     onProgress?.(t.progress.generatingAiDiagnosis);
@@ -496,6 +523,22 @@ export const generatePdfReport = async ({
   doc.setFontSize(11);
   doc.text(`${t.cover.period}: ${periodLabel}`, centerX, 102, { align: 'center' });
 
+  // Intervallo EFFETTIVO (analisi #7): per un mese in corso dichiara i giorni
+  // trascorsi su quelli del mese, cosi' "November 2026" non nasconde il parziale.
+  if (periodRange?.start && periodRange?.end) {
+    const ds = new Date(periodRange.start), de = new Date(periodRange.end);
+    const fmtD = (d: Date) => format(d, isIt ? 'dd/MM/yyyy' : 'MMM dd, yyyy', { locale: dateLocale });
+    const elapsedDays = Math.max(0, (de.getTime() - ds.getTime()) / 86400e3);
+    // giorni totali del mese se l'orizzonte e' mensile
+    const monthDays = new Date(ds.getFullYear(), ds.getMonth() + 1, 0).getDate();
+    const partial = String(timePeriod).toLowerCase().includes('month') && elapsedDays < monthDays - 0.5;
+    const rangeStr = `${fmtD(ds)} – ${fmtD(de)}`
+      + (partial ? (isIt ? ` · parziale, ${elapsedDays.toFixed(0)} gg su ${monthDays}` : ` · partial, ${elapsedDays.toFixed(0)} of ${monthDays} days`) : '');
+    doc.setFontSize(8.5);
+    doc.text(rangeStr, centerX, 108, { align: 'center' });
+    doc.setFontSize(11);
+  }
+
   // Project info box
   yPos = 125;
   doc.setFillColor(...COLORS.lightGray);
@@ -517,42 +560,42 @@ export const generatePdfReport = async ({
     const blockW = (pageWidth - 2 * margin - 10) / 3;
     const blockH = 30;
 
+    // value + unit insieme: "N/A" quando manca (nessuna unita'), altrimenti
+    // il numero con la sua unita' (un vero 0 resta 0).
+    const costMissing = totalCostEur == null;
+    const co2Missing = totalCo2Kg == null;
     drawKpiMacroBlock(
       margin, yPos, blockW, blockH,
       isIt ? 'Costo Stimato' : 'Estimated Cost',
-      energyPrice > 0 ? fmtNum(totalCostEur, 0) : 'N/A',
-      '€',
-      null, null,
-      COLORS.accent,
+      costMissing ? N_A : fmtNum(totalCostEur, 0), costMissing ? '' : '€',
+      null, null, COLORS.accent,
     );
     drawKpiMacroBlock(
       margin + blockW + 5, yPos, blockW, blockH,
       isIt ? 'Consumo Totale' : 'Total Consumption',
-      fmtNum(totalEnergyKwh, 0),
-      'kWh',
-      null, null,
-      COLORS.primary,
+      energyMissing ? N_A : fmtNum(totalEnergyKwh, 0), energyMissing ? '' : 'kWh',
+      null, null, COLORS.primary,
     );
     drawKpiMacroBlock(
       margin + 2 * (blockW + 5), yPos, blockW, blockH,
       isIt ? 'Emissioni CO2eq' : 'CO2eq Emissions',
-      fmtNum(totalCo2Kg / 1000, 2),
-      isIt ? 'ton' : 't',
-      null, null,
-      [120, 53, 15], // dark amber
+      co2Missing ? N_A : fmtNum((totalCo2Kg as number) / 1000, 2), co2Missing ? '' : (isIt ? 'ton' : 't'),
+      null, null, [120, 53, 15], // dark amber
     );
     yPos += blockH + 10;
   }
 
   // --- SMALL KPI CARDS (Air / Environment) ---
+  // fmtValue: niente piu' la stringa "null" ne' il 45% hardcoded; se il dato
+  // di periodo manca, la card mostra "N/A" senza unita'.
   const activeKpis: { title: string; value: string; unit: string }[] = [];
   if (moduleConfig.air.enabled || moduleConfig.energy.enabled) {
-    activeKpis.push({ title: t.kpis.temperature, value: `${project.data.temp}`, unit: "°C" });
+    activeKpis.push({ title: t.kpis.temperature, value: fmtValue(project.data.temp, "°C", 0), unit: "" });
   }
   if (moduleConfig.air.enabled) {
-    activeKpis.push({ title: t.kpis.co2, value: `${project.data.co2}`, unit: "ppm" });
-    activeKpis.push({ title: t.kpis.airQuality, value: project.data.aq, unit: "" });
-    activeKpis.push({ title: t.kpis.humidity, value: `${project.data.humidity || 45}`, unit: "%" });
+    activeKpis.push({ title: t.kpis.co2, value: fmtValue(project.data.co2, "ppm", 0), unit: "" });
+    activeKpis.push({ title: t.kpis.airQuality, value: isMissing(project.data.aq) ? N_A : String(project.data.aq), unit: "" });
+    activeKpis.push({ title: t.kpis.humidity, value: fmtValue(project.data.humidity, "%", 0), unit: "" });
   }
   if (activeKpis.length > 0) {
     const cardGap = 5;
@@ -595,8 +638,10 @@ export const generatePdfReport = async ({
     doc.text(badgeText, margin + 3, yPos + 5.5);
     yPos += 15;
 
-    // Carbon footprint correlation box
-    if (moduleConfig.energy.enabled) {
+    // Carbon footprint: solo se l'energia ha davvero un dato (niente box con
+    // "– kWh" su un sito solo-aria). «Correlazione» era un refuso (#13): e'
+    // una moltiplicazione, non una correlazione.
+    if (moduleConfig.energy.enabled && !energyMissing) {
       checkPageBreak(25);
       doc.setFillColor(240, 253, 244); // light green bg
       doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 20, 3, 3, "F");
@@ -607,7 +652,7 @@ export const generatePdfReport = async ({
       doc.setFontSize(9);
       doc.setTextColor(...COLORS.text);
       doc.setFont("FuturaLT", "bold");
-      const correlationTitle = isIt ? 'Correlazione Energia – Carbon Footprint' : 'Energy – Carbon Footprint Correlation';
+      const correlationTitle = isIt ? 'Emissioni da consumo energetico' : 'Emissions from energy consumption';
       doc.text(correlationTitle, margin + 5, yPos + 7);
       doc.setFont("FuturaLT", "normal");
       doc.setFontSize(8);
@@ -653,10 +698,10 @@ export const generatePdfReport = async ({
         isIt ? 'Costo Stimato (€)' : 'Est. Cost (€)',
         'CO2 (kg)',
       ];
-      
+
       // Calculate energy scale factor so rows sum to totalEnergyKwh exactly
       const totalTableKwh = data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0);
-      const energyScaleFactor = (totalTableKwh > 0 && totalEnergyKwh > 0) ? (totalEnergyKwh / totalTableKwh) : 1;
+      const energyScaleFactor = (totalTableKwh > 0 && typeof totalEnergyKwh === 'number' && totalEnergyKwh > 0) ? (totalEnergyKwh / totalTableKwh) : 1;
 
       const rows = data.energy.consumption.map(row => {
         const label = String(row['label'] || row['name'] || row['period'] || Object.values(row)[0] || '–');
@@ -664,9 +709,13 @@ export const generatePdfReport = async ({
         const kwh = rawKwh * energyScaleFactor;
         const cost = kwh * energyPrice;
         const co2 = kwh * CO2_EMISSION_FACTOR_KG_KWH;
-        return [label, fmtNum(kwh), energyPrice > 0 ? fmtNum(cost) : '–', fmtNum(co2)];
+        return [label, fmtNum(kwh), energyPrice > 0 ? fmtNum(cost) : N_A, fmtNum(co2)];
       });
       renderTable(headers, rows, COLORS.primary);
+    } else {
+      // Fase A (analisi #4.2): Energy non lasciava il titolo nel vuoto come
+      // Water/Air — stesso empty-state per tutte le sezioni.
+      drawNoData(t.noDataReasons.period);
     }
 
     if (deviceChartImg) {
@@ -705,13 +754,12 @@ export const generatePdfReport = async ({
       isIt ? 'Unità' : 'Unit',
     ];
     const co2SummaryRows = [
-      [isIt ? 'Consumo Totale' : 'Total Consumption', fmtNum(totalEnergyKwh), 'kWh'],
+      [isIt ? 'Consumo Totale' : 'Total Consumption', energyMissing ? N_A : fmtNum(totalEnergyKwh), 'kWh'],
       [isIt ? 'Fattore di Emissione' : 'Emission Factor', String(CO2_EMISSION_FACTOR_KG_KWH), 'kg CO2/kWh'],
-      [isIt ? 'Emissioni Totali' : 'Total Emissions', fmtNum(totalCo2Kg), 'kg CO2eq'],
-      [isIt ? 'Emissioni Totali' : 'Total Emissions', fmtNum(totalCo2Kg / 1000, 3), isIt ? 'tonnellate CO2eq' : 'tonnes CO2eq'],
+      [isIt ? 'Emissioni Totali' : 'Total Emissions', totalCo2Kg == null ? N_A : fmtNum(totalCo2Kg / 1000, 3), isIt ? 'tonnellate CO2eq' : 'tonnes CO2eq'],
     ];
     if (energyPrice > 0) {
-      co2SummaryRows.push([isIt ? 'Costo Totale Stimato' : 'Estimated Total Cost', fmtNum(totalCostEur), '€']);
+      co2SummaryRows.push([isIt ? 'Costo Totale Stimato' : 'Estimated Total Cost', totalCostEur == null ? N_A : fmtNum(totalCostEur), '€']);
       co2SummaryRows.push([isIt ? 'Prezzo Unitario' : 'Unit Price', fmtNum(energyPrice, 4), '€/kWh']);
     }
     renderTable(co2SummaryHeaders, co2SummaryRows, COLORS.success);

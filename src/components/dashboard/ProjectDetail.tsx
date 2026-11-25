@@ -3645,7 +3645,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         : 0;
 
       // Fresco se disponibile, altrimenti lo stato a schermo (comportamento storico).
-      const reportTotalKwh = freshTotalKwh > 0 ? freshTotalKwh : totalBreakdownKwh;
+      // null ≠ 0 (analisi #1.2): se non c'e' NESSUNA misura nel periodo, il
+      // totale e' null (→ "N/A" nel PDF), non 0. Un impianto spento con dati
+      // a 0 e' un'altra cosa e resta 0.
+      const energyHasData = freshEnergyPts.length > 0 || (filteredEnergyData?.length ?? 0) > 0 || totalBreakdownKwh > 0;
+      const reportTotalKwh: number | null = !energyHasData
+        ? null
+        : (freshTotalKwh > 0 ? freshTotalKwh : totalBreakdownKwh);
       const reportCo2Series = freshEnergyPts.length
         ? (freshEnergy!.data as Array<Record<string, unknown>>)
             .filter((r) => r.metric === "energy.active_energy")
@@ -3670,16 +3676,18 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       const avgCo2 = airAvg("iaq.co2") ?? (activeAirMetrics["iaq.co2"] ?? null);
       const avgHum = airAvg("env.humidity") ?? (activeAirMetrics["env.humidity"] ?? null);
 
-      // 1. Dynamic Telemetry Enrichment — niente piu' il 45% hardcoded:
-      // se il dato non c'e', il campo resta vuoto e il report lo dichiara.
+      // 1. Dynamic Telemetry Enrichment — i KPI aria di copertina sono la
+      // MEDIA del periodo (fresh), o il dato demo sintetico. Se nel periodo
+      // non c'e' misura: null → il PDF stampa "N/A", non il vecchio 45% ne'
+      // un'istantanea statica fuori periodo (analisi #1.1/#1.2).
       const enrichedProject = {
         ...project,
         data: {
           ...project.data,
-          temp: avgTemp != null ? Math.round(avgTemp) : project.data.temp,
-          co2: avgCo2 != null ? Math.round(avgCo2) : project.data.co2,
-          humidity: avgHum != null ? Math.round(avgHum) : project.data.humidity,
-          aq: avgCo2 != null ? co2Level(avgCo2) : project.data.aq,
+          temp: avgTemp != null ? Math.round(avgTemp) : null,
+          co2: avgCo2 != null ? Math.round(avgCo2) : null,
+          humidity: avgHum != null ? Math.round(avgHum) : null,
+          aq: avgCo2 != null ? co2Level(avgCo2) : null,
         }
       };
 
@@ -3719,13 +3727,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         project: enrichedProject,
         timePeriod,
         dateRange,
+        periodRange: { start: startISO, end: endISO },
         moduleConfig: resolvedModuleConfig,
         precalculatedTotals: {
           totalEnergyKwh: reportTotalKwh,
-          // il costo segue i kWh del report con la tariffa del sito (storicizzata
-          // altrove); se non c'e' tariffa, 0 e il generatore lo dichiara
-          totalCostEur: reportTotalKwh * (Number(project.energy_price_kwh || project.data?.energy_price_kwh) || 0) || (estimatedCostData?.totalCost ?? 0),
-          totalCo2Kg: reportTotalKwh * CO2_EMISSION_FACTOR,
+          // costo e CO2 derivano dall'energia: se l'energia e' null (nessuna
+          // misura), restano null → "N/A". La tariffa, se assente, lascia il
+          // costo null (niente stima nascosta).
+          totalCostEur: reportTotalKwh == null ? null
+            : (reportTotalKwh * (Number(project.energy_price_kwh || project.data?.energy_price_kwh) || 0) || (estimatedCostData?.totalCost ?? null)),
+          totalCo2Kg: reportTotalKwh == null ? null : reportTotalKwh * CO2_EMISSION_FACTOR,
         },
         data: {
           energy: {
