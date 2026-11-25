@@ -3572,23 +3572,114 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       // attendi il commit del render e la fine delle animazioni recharts
       // (~1,5s) prima delle catture html2canvas via ref.
       await new Promise((resolve) => setTimeout(resolve, 1600));
-      // 1. Dynamic Telemetry Enrichment
+
+      /* ── FIX report-a-zero (nov 2026) ──────────────────────────────────
+         Il PDF prendeva TUTTI i numeri dallo stato a schermo: se non avevi
+         aperto e lasciato caricare le schede Energia/Aria (l'aria e'
+         agganciata al selettore sonde), al report arrivava il vuoto — 0 kWh,
+         0 EUR, temp/CO2 null — e la diagnosi AI, ricevendo zeri, inventava
+         un "blackout totale". Ora l'export RILEGGE i dati del periodo da se',
+         deterministico e indipendente da quali tab erano aperte. Se la fetch
+         fallisce si ricade sullo stato (comportamento precedente). */
+      const reportApi = await import("@/lib/api");
+      const startISO = airStart.toISOString();
+      const endISO = airEnd.toISOString();
+      const catOf = new Map<string, string>();
+      siteDevices.forEach((d) => catOf.set(d.id, (d.category || "").toLowerCase()));
+      const bucketH = timeRange.bucket === "15m" ? 0.25 : timeRange.bucket === "1d" ? 24 : 1;
+
+      const freshEnergy = project.siteId
+        ? await reportApi.fetchEnergyTimeseriesApi({
+            site_id: project.siteId, metrics: energyMetrics, start: startISO, end: endISO,
+          }).catch(() => null)
+        : null;
+      const freshEnergyPts = freshEnergy?.data ?? [];
+      const freshAir = airDeviceIds.length > 0
+        ? await reportApi.fetchTimeseriesApi({
+            device_ids: airDeviceIds, metrics: airMetrics, start: startISO, end: endISO, bucket: airBucket,
+          }).catch(() => null)
+        : null;
+      const freshAirPts = freshAir?.data ?? [];
+
+      // Serie compatta per il PDF (media fra sonde per bucket) da punti freschi.
+      const siteTz = resolveTimezone(siteTimezone);
+      const buildFresh = (cols: Array<{ key: string; metric: string }>) => {
+        if (!freshAirPts.length) return [] as Record<string, unknown>[];
+        const want = new Map(cols.map((c) => [c.metric, c.key]));
+        const acc = new Map<string, Record<string, { s: number; n: number }>>();
+        const order: string[] = [];
+        for (const p of freshAirPts) {
+          const col = want.get(p.metric);
+          if (!col) continue;
+          const v = Number(p.value_avg ?? p.value);
+          if (!Number.isFinite(v)) continue;
+          const label = formatChartLabel(new Date(p.ts_bucket ?? p.ts), timeRange.bucket, siteTz, timePeriod as any);
+          if (!acc.has(label)) { acc.set(label, {}); order.push(label); }
+          const row = acc.get(label)!;
+          if (!row[col]) row[col] = { s: 0, n: 0 };
+          row[col].s += v; row[col].n += 1;
+        }
+        return order.map((label) => {
+          const row = acc.get(label)!;
+          const out: Record<string, unknown> = { time: label };
+          for (const c of cols) out[c.key] = row[c.key]?.n ? Number((row[c.key].s / row[c.key].n).toFixed(1)) : null;
+          return out;
+        }).filter((r) => cols.some((c) => r[c.key] != null));
+      };
+      // Media di periodo per i KPI di copertina (niente ripiego inventato).
+      const airAvg = (metric: string): number | null => {
+        let s = 0, n = 0;
+        for (const p of freshAirPts) {
+          if (p.metric !== metric) continue;
+          const v = Number(p.value_avg ?? p.value);
+          if (Number.isFinite(v)) { s += v; n++; }
+        }
+        return n ? s / n : null;
+      };
+
+      const freshTotalKwh = freshEnergyPts.length
+        ? sumPointsAsKwh(freshEnergyPts, bucketH, (p) => {
+            const cat = catOf.get(p.device_id);
+            return cat === "general" || (!cat && (p.metric === "energy.power_kw" || p.metric === "energy.active_energy"));
+          })
+        : 0;
+
+      // Fresco se disponibile, altrimenti lo stato a schermo (comportamento storico).
+      const reportTotalKwh = freshTotalKwh > 0 ? freshTotalKwh : totalBreakdownKwh;
+      const reportCo2Series = freshEnergyPts.length
+        ? (freshEnergy!.data as Array<Record<string, unknown>>)
+            .filter((r) => r.metric === "energy.active_energy")
+            .reduce((acc: Record<string, number>, r) => {
+              const label = formatChartLabel(new Date((r.ts_bucket ?? r.ts) as string), timeRange.bucket, siteTz, timePeriod as any);
+              const v = Number(r.value_sum ?? r.value) || 0;
+              acc[label] = (acc[label] ?? 0) + v;
+              return acc;
+            }, {})
+        : null;
+      const reportEnergyCo2 = reportCo2Series
+        ? Object.entries(reportCo2Series).map(([label, kwh]) => {
+            const k = Number(kwh);
+            return { label, kwh: Number(k.toFixed(1)), co2: Number((k * CO2_EMISSION_FACTOR).toFixed(1)) };
+          })
+        : pdfEnergyCo2Series;
+      const reportCo2Air = freshAirPts.length ? buildFresh([{ key: "co2", metric: "iaq.co2" }, { key: "tvoc", metric: "iaq.voc" }]) : pdfCo2Series;
+      const reportTempHum = freshAirPts.length ? buildFresh([{ key: "temp", metric: "env.temperature" }, { key: "humidity", metric: "env.humidity" }]) : pdfTempHumiditySeries;
+      const reportParticulate = freshAirPts.length ? buildFresh([{ key: "pm25", metric: "iaq.pm25" }, { key: "pm10", metric: "iaq.pm10" }]) : pdfParticulateSeries;
+
+      const avgTemp = airAvg("env.temperature") ?? (activeAirMetrics["env.temperature"] ?? null);
+      const avgCo2 = airAvg("iaq.co2") ?? (activeAirMetrics["iaq.co2"] ?? null);
+      const avgHum = airAvg("env.humidity") ?? (activeAirMetrics["env.humidity"] ?? null);
+
+      // 1. Dynamic Telemetry Enrichment — niente piu' il 45% hardcoded:
+      // se il dato non c'e', il campo resta vuoto e il report lo dichiara.
       const enrichedProject = {
         ...project,
         data: {
           ...project.data,
-          temp: activeAirMetrics["env.temperature"] != null 
-            ? Math.round(activeAirMetrics["env.temperature"]) 
-            : project.data.temp,
-          co2: activeAirMetrics["iaq.co2"] != null 
-            ? Math.round(activeAirMetrics["iaq.co2"]) 
-            : project.data.co2,
-          humidity: activeAirMetrics["env.humidity"] != null 
-            ? Math.round(activeAirMetrics["env.humidity"]) 
-            : (project.data.humidity || 45),
-          aq: activeAirMetrics["iaq.co2"] != null
-            ? co2Level(activeAirMetrics["iaq.co2"])
-            : project.data.aq,
+          temp: avgTemp != null ? Math.round(avgTemp) : project.data.temp,
+          co2: avgCo2 != null ? Math.round(avgCo2) : project.data.co2,
+          humidity: avgHum != null ? Math.round(avgHum) : project.data.humidity,
+          aq: avgCo2 != null ? co2Level(avgCo2) : project.data.aq,
         }
       };
 
@@ -3630,15 +3721,17 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         dateRange,
         moduleConfig: resolvedModuleConfig,
         precalculatedTotals: {
-          totalEnergyKwh: totalBreakdownKwh,
-          totalCostEur: estimatedCostData?.totalCost || 0,
-          totalCo2Kg: totalBreakdownKwh * CO2_EMISSION_FACTOR,
+          totalEnergyKwh: reportTotalKwh,
+          // il costo segue i kWh del report con la tariffa del sito (storicizzata
+          // altrove); se non c'e' tariffa, 0 e il generatore lo dichiara
+          totalCostEur: reportTotalKwh * (Number(project.energy_price_kwh || project.data?.energy_price_kwh) || 0) || (estimatedCostData?.totalCost ?? 0),
+          totalCo2Kg: reportTotalKwh * CO2_EMISSION_FACTOR,
         },
         data: {
           energy: {
             consumption: filteredEnergyData as unknown as Record<string, unknown>[],
             devices: devicesDataForReport, // Passing the correctly summed device categories flat array
-            co2: pdfEnergyCo2Series as unknown as Record<string, unknown>[],
+            co2: reportEnergyCo2 as unknown as Record<string, unknown>[],
           },
           // Il desktop non legge nessuna telemetria idrica reale: finche' non
           // c'e' una fonte, le tabelle acqua del report restano vuote e il
@@ -3652,9 +3745,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             leaks: [],
           },
           airQuality: {
-            co2History: pdfCo2Series,
-            tempHumidity: pdfTempHumiditySeries,
-            particulates: pdfParticulateSeries,
+            co2History: reportCo2Air,
+            tempHumidity: reportTempHum,
+            particulates: reportParticulate,
           },
         },
         chartRefs: {

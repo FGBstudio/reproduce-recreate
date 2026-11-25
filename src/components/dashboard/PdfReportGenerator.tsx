@@ -277,8 +277,19 @@ export const generatePdfReport = async ({
     : totalEnergyKwh * energyPrice;
 
   // --- 3. AI DIAGNOSIS (parallel with chart capture if possible) ---
+  // Guardia: la diagnosi AI parte SOLO se c'e' davvero qualcosa da
+  // analizzare. Con tutti zeri il modello inventava un "blackout totale /
+  // interruzione di corrente" (visto su un report reale): un documento del
+  // genere in mano a un cliente e' un danno, e viola la regola d'oro
+  // (mai spacciare un'assenza di dato per un fatto). Se non c'e' copertura,
+  // niente diagnosi: al suo posto una riga neutra e onesta.
+  const airHasData =
+    data.airQuality.co2History.length > 0 ||
+    data.airQuality.tempHumidity.length > 0 ||
+    data.airQuality.particulates.length > 0;
+  const hasAnalyzableData = totalEnergyKwh > 0 || airHasData;
   let aiDiagnosis: string | null = null;
-  if (includeAiDiagnosis) {
+  if (includeAiDiagnosis && hasAnalyzableData) {
     onProgress?.(t.progress.generatingAiDiagnosis);
     aiDiagnosis = await generateAiDiagnosis(project, periodLabel, data, moduleConfig, language, totalEnergyKwh);
   }
@@ -555,6 +566,20 @@ export const generatePdfReport = async ({
   // ================================================================
   //  PAGE 2: EXECUTIVE SUMMARY + ACTION PLAN (AI Diagnosis First!)
   // ================================================================
+  if (!aiDiagnosis && includeAiDiagnosis && !hasAnalyzableData) {
+    // Nessun dato nel periodo: lo si dichiara, non si inventa una diagnosi.
+    addPage();
+    drawHeader(isIt ? "Sintesi Esecutiva e Piano d'Azione" : "Executive Summary & Action Plan", 1);
+    drawSeparator();
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.secondary);
+    doc.setFont("FuturaLT", "normal");
+    const noDataMsg = isIt
+      ? "Nessun dato disponibile per il periodo selezionato: la diagnosi non viene generata. Verificare la copertura dei sensori o scegliere un intervallo con letture."
+      : "No data available for the selected period: the diagnosis is not generated. Check sensor coverage or choose a range with readings.";
+    doc.text(doc.splitTextToSize(noDataMsg, pageWidth - 2 * margin), margin, yPos);
+    yPos += 20;
+  }
   if (aiDiagnosis) {
     addPage();
     drawHeader(isIt ? "Sintesi Esecutiva e Piano d'Azione" : "Executive Summary & Action Plan", 1);
