@@ -1013,38 +1013,43 @@ async function generateAiDiagnosis(
   data: ReportData,
   moduleConfig: ReportModuleConfig,
   language: ReportLanguage,
-  totalEnergyKwh?: number,
+  totalEnergyKwh?: number | null,
 ): Promise<string | null> {
   try {
-    const totalConsumption = totalEnergyKwh !== undefined
-      ? totalEnergyKwh
-      : data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0);
-    const calculatedCo2 = totalConsumption * CO2_EMISSION_FACTOR_KG_KWH;
+    // Fase B (analisi #3.2/#3.3/#6): all'AI si passa solo cio' che e' stato
+    // MISURATO, con null espliciti e l'inventario di cosa esiste sul sito.
+    // Cosi' il modello non confonde "non installato" con "guasto" e non
+    // inventa numeri. Energia null = nessuna misura nel periodo (non 0).
+    const energyPresent = totalEnergyKwh != null && totalEnergyKwh > 0;
+    const co2Total = data.energy.co2.reduce((s, r) => s + extractNum(r, 'value', 'CO2 (kg)', 'CO₂ (kg)', 'co2'), 0);
 
-    const energyPayload = moduleConfig.energy.enabled ? {
-      totalConsumption,
+    const energyPayload = (moduleConfig.energy.enabled && energyPresent) ? {
+      totalConsumption: totalEnergyKwh,
       breakdown: data.energy.devices.map(d => ({
         name: String(d['name'] || d['Dispositivo'] || d['Device'] || ''),
         kwh: extractNum(d, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh'),
       })),
-      co2Total: data.energy.co2.reduce((s, r) => s + extractNum(r, 'value', 'CO2 (kg)', 'CO₂ (kg)', 'co2'), 0) || calculatedCo2,
+      co2Total: co2Total || (totalEnergyKwh as number) * CO2_EMISSION_FACTOR_KG_KWH,
     } : null;
 
-    // avgPh e avgTurbidity erano due costanti, 7.2 e 0.8: la diagnosi AI ne
-    // ricavava frasi sulla qualita' dell'acqua di un sito dove nessuno le ha
-    // mai misurate. Si passa solo cio' che e' stato misurato davvero, e il
-    // payload resta nullo se non c'e' nulla da dire.
     const waterTotal = data.water.consumption.reduce((s, r) => s + extractNum(r, 'value', 'consumption'), 0);
     const waterPayload = moduleConfig.water.enabled && data.water.consumption.length > 0 ? {
       totalConsumption: waterTotal,
       leaksDetected: data.water.leaks.filter(l => l['status'] !== 'ok').length,
     } : null;
 
-    const airPayload = moduleConfig.air.enabled ? {
-      avgTemp: project.data.temp,
-      avgCo2: project.data.co2,
-      avgAqi: project.data.aq,
-      status: project.data.aq === 'EXCELLENT' || project.data.aq === 'GOOD' ? 'Optimal' : 'Needs Attention',
+    // Aria: solo le metriche davvero presenti; null dove manca, mai un numero
+    // di comodo. L'elenco metricsAvailable dice all'AI cosa NON e' monitorato.
+    const airMetricsAvailable: string[] = [];
+    if (data.airQuality.co2History.length > 0) airMetricsAvailable.push('CO2');
+    if (data.airQuality.tempHumidity.length > 0) airMetricsAvailable.push('temperature', 'humidity');
+    if (data.airQuality.particulates.length > 0) airMetricsAvailable.push('PM2.5', 'PM10');
+    const airPayload = (moduleConfig.air.enabled && airMetricsAvailable.length > 0) ? {
+      avgTemp: project.data.temp ?? null,
+      avgCo2: project.data.co2 ?? null,
+      avgHumidity: project.data.humidity ?? null,
+      avgAqi: project.data.aq ?? null,
+      metricsAvailable: airMetricsAvailable,
     } : null;
 
     const { data: result, error } = await supabase.functions.invoke('energy-diagnosis', {
@@ -1052,11 +1057,13 @@ async function generateAiDiagnosis(
         projectName: project.displayName || project.name,
         period: periodLabel,
         language,
-        modules: {
-          energy: moduleConfig.energy.enabled,
-          water: moduleConfig.water.enabled,
-          air: moduleConfig.air.enabled,
+        // Inventario: cosa e' effettivamente MONITORATO con dati nel periodo.
+        installed: {
+          energy: energyPayload !== null,
+          water: waterPayload !== null,
+          air: airPayload !== null,
         },
+        siteAreaM2: Number(project.area_m2) > 0 ? Number(project.area_m2) : null,
         energyData: energyPayload,
         waterData: waterPayload,
         airData: airPayload,
