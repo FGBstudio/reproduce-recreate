@@ -3672,6 +3672,43 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       const reportTempHum = freshAirPts.length ? buildFresh([{ key: "temp", metric: "env.temperature" }, { key: "humidity", metric: "env.humidity" }]) : pdfTempHumiditySeries;
       const reportParticulate = freshAirPts.length ? buildFresh([{ key: "pm25", metric: "iaq.pm25" }, { key: "pm10", metric: "iaq.pm10" }]) : pdfParticulateSeries;
 
+      /* TABELLA giornaliera + breakdown per categoria dai dati FRESCHI: era
+         l'ultimo pezzo del report che leggeva ancora lo stato a schermo
+         (filteredEnergyData/energyDistributionData), spesso vuoto → la
+         tabella usciva a zero con qualche riga isolata. */
+      const genFilter = (p: { device_id: string; metric: string }) => {
+        const c = catOf.get(p.device_id);
+        return c === "general" || (!c && (p.metric === "energy.power_kw" || p.metric === "energy.active_energy"));
+      };
+      const dayKeyTz = (iso: string) => {
+        const p = new Intl.DateTimeFormat("en-CA", { timeZone: siteTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+        return p; // YYYY-MM-DD, ordinabile
+      };
+      let reportEnergyConsumption: Array<Record<string, unknown>> = filteredEnergyData as unknown as Array<Record<string, unknown>>;
+      if (freshEnergyPts.length) {
+        const byDay = new Map<string, Array<Record<string, unknown>>>();
+        for (const p of freshEnergyPts as Array<Record<string, unknown>>) {
+          const k = dayKeyTz((p.ts_bucket ?? p.ts) as string);
+          if (!byDay.has(k)) byDay.set(k, []);
+          byDay.get(k)!.push(p);
+        }
+        reportEnergyConsumption = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([day, pts]) => ({
+          label: `${day.slice(8, 10)}/${day.slice(5, 7)}`,
+          value: Number(sumPointsAsKwh(pts as any, bucketH, genFilter).toFixed(2)),
+        }));
+      }
+      // Breakdown per categoria (General/HVAC/Luci/Prese) dai dati freschi.
+      let reportDevices: Array<{ name: string; value: number }> = energyDistributionData.map(d => ({ name: d.name, value: d.value }));
+      if (freshEnergyPts.length) {
+        const catLabel: Record<string, string> = { general: "General", hvac: "HVAC", lighting: "Lighting", plugs: "Plugs" };
+        const fresh: Array<{ name: string; value: number }> = [];
+        for (const cat of ["general", "hvac", "lighting", "plugs"]) {
+          const kwh = sumPointsAsKwh(freshEnergyPts as any, bucketH, (p: { device_id: string }) => catOf.get(p.device_id) === cat);
+          if (kwh > 0) fresh.push({ name: catLabel[cat], value: Number(kwh.toFixed(1)) });
+        }
+        if (fresh.length) reportDevices = fresh;
+      }
+
       const avgTemp = airAvg("env.temperature") ?? (activeAirMetrics["env.temperature"] ?? null);
       const avgCo2 = airAvg("iaq.co2") ?? (activeAirMetrics["iaq.co2"] ?? null);
       const avgHum = airAvg("env.humidity") ?? (activeAirMetrics["env.humidity"] ?? null);
@@ -3692,7 +3729,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       };
 
       const isIt = language === 'it';
-      const devicesDataForReport = energyDistributionData.map(item => {
+      const devicesDataForReport = reportDevices.map(item => {
         let name = item.name;
         let category = item.name;
         if (item.name === 'HVAC') {
@@ -3740,7 +3777,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         },
         data: {
           energy: {
-            consumption: filteredEnergyData as unknown as Record<string, unknown>[],
+            consumption: reportEnergyConsumption as unknown as Record<string, unknown>[],
             devices: devicesDataForReport, // Passing the correctly summed device categories flat array
             co2: reportEnergyCo2 as unknown as Record<string, unknown>[],
           },
