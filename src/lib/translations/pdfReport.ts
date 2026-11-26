@@ -20,6 +20,18 @@ export interface ReportTranslations {
   /** Dichiarazione al posto di una tabella senza misure. */
   noData: string;
   noDataReasons: { period: string; noSensors: string };
+  /** Tabelle dati per granularità (Fase C2). */
+  dataTable: {
+    bucket: string; value: string; coverage: string; state: string;
+    total: string; average: string;
+    ok: string; future: string; incomplete: string; weekend: string; alarm: string;
+  };
+  /** Sezione allarmi completa (Fase C3). */
+  alarms: {
+    section: string; subtitle: string;
+    metric: string; when: string; value: string; threshold: string; severity: string;
+    none: string;
+  };
 }
 
 const translations: Record<ReportLanguage, ReportTranslations> = {
@@ -37,6 +49,8 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     footer: { page: "Page", of: "of" },
     noData: "No measurements for this period",
     noDataReasons: { period: "nothing recorded in the selected range", noSensors: "no sensor installed for this metric" },
+    dataTable: { bucket: "Bucket", value: "Value", coverage: "Coverage", state: "State", total: "Period total", average: "Period average", ok: "OK", future: "future", incomplete: "incomplete", weekend: "weekend", alarm: "alarm" },
+    alarms: { section: "Alarms", subtitle: "Complete list of threshold breaches in the period — system-generated from the configured thresholds, not by AI.", metric: "Metric", when: "When", value: "Value", threshold: "Threshold", severity: "Severity", none: "No alarms in the selected period." },
   },
   it: {
     progress: { capturingCharts: "Acquisizione grafici...", generatingAiDiagnosis: "Generazione diagnosi energetica AI...", savingPdf: "Salvataggio PDF..." },
@@ -52,6 +66,8 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     footer: { page: "Pagina", of: "di" },
     noData: "Nessuna misura per questo periodo",
     noDataReasons: { period: "niente registrato nell'intervallo selezionato", noSensors: "nessun sensore installato per questa misura" },
+    dataTable: { bucket: "Bucket", value: "Valore", coverage: "Copertura", state: "Stato", total: "Totale periodo", average: "Media periodo", ok: "OK", future: "futuro", incomplete: "incompleto", weekend: "weekend", alarm: "allarme" },
+    alarms: { section: "Allarmi", subtitle: "Elenco completo dei superamenti di soglia nel periodo — generato dal sistema dalle soglie configurate, non dall'AI.", metric: "Grandezza", when: "Quando", value: "Valore", threshold: "Soglia", severity: "Severità", none: "Nessun allarme nel periodo selezionato." },
   },
   fr: {
     progress: { capturingCharts: "Capture des graphiques...", generatingAiDiagnosis: "Génération du diagnostic énergétique IA...", savingPdf: "Enregistrement du PDF..." },
@@ -67,6 +83,8 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     footer: { page: "Page", of: "de" },
     noData: "Aucune mesure pour cette période",
     noDataReasons: { period: "rien enregistré sur la plage sélectionnée", noSensors: "aucun capteur installé pour cette mesure" },
+    dataTable: { bucket: "Bucket", value: "Valeur", coverage: "Couverture", state: "État", total: "Total période", average: "Moyenne période", ok: "OK", future: "futur", incomplete: "incomplet", weekend: "week-end", alarm: "alarme" },
+    alarms: { section: "Alarmes", subtitle: "Liste complète des dépassements de seuil sur la période — générée par le système à partir des seuils configurés, pas par l'IA.", metric: "Grandeur", when: "Quand", value: "Valeur", threshold: "Seuil", severity: "Sévérité", none: "Aucune alarme sur la période sélectionnée." },
   },
   es: {
     progress: { capturingCharts: "Capturando gráficos...", generatingAiDiagnosis: "Generando diagnóstico energético IA...", savingPdf: "Guardando PDF..." },
@@ -82,6 +100,8 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     footer: { page: "Página", of: "de" },
     noData: "Sin mediciones para este período",
     noDataReasons: { period: "nada registrado en el rango seleccionado", noSensors: "ningún sensor instalado para esta medida" },
+    dataTable: { bucket: "Bucket", value: "Valor", coverage: "Cobertura", state: "Estado", total: "Total del período", average: "Media del período", ok: "OK", future: "futuro", incomplete: "incompleto", weekend: "fin de semana", alarm: "alarma" },
+    alarms: { section: "Alarmas", subtitle: "Lista completa de superaciones de umbral en el período — generada por el sistema a partir de los umbrales configurados, no por la IA.", metric: "Magnitud", when: "Cuándo", value: "Valor", threshold: "Umbral", severity: "Severidad", none: "Sin alarmas en el período seleccionado." },
   },
   zh: {
     progress: { capturingCharts: "正在捕获图表...", generatingAiDiagnosis: "正在生成 AI 能源诊断...", savingPdf: "正在保存 PDF..." },
@@ -97,6 +117,8 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     footer: { page: "第", of: "页，共" },
     noData: "本期间无测量数据",
     noDataReasons: { period: "所选范围内无记录", noSensors: "未为此指标安装传感器" },
+    dataTable: { bucket: "时段", value: "数值", coverage: "覆盖率", state: "状态", total: "期间合计", average: "期间平均", ok: "正常", future: "未来", incomplete: "不完整", weekend: "周末", alarm: "报警" },
+    alarms: { section: "报警", subtitle: "本期间所有超阈值事件的完整列表 — 由系统根据配置的阈值生成，非 AI 生成。", metric: "指标", when: "时间", value: "数值", threshold: "阈值", severity: "严重度", none: "所选期间内无报警。" },
   },
 };
 

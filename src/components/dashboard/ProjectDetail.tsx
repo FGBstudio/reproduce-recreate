@@ -39,7 +39,7 @@ import MobileModuleDashboard from "./mobile-dash/MobileModuleDashboard";
 import CertificationsMobile from "./mobile-dash/CertificationsMobile";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { AirDeviceSelector } from "@/components/dashboard/AirDeviceSelector";
-import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp, sumPointsAsKwh } from "@/lib/api";
+import { useDevices, useLatestTelemetry, useTimeseries, useEnergyTimeseries, useEnergyLatest, useWeatherTimeseries, parseTimestamp, sumPointsAsKwh, type ApiTimeseriesPoint } from "@/lib/api";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { co2Level } from "@/lib/airQuality";
 import { SITE_MATERIAL_SKIN } from "@/lib/siteTheme";
@@ -49,6 +49,17 @@ import { usePeerEnergyDensity, useSiteEuiTarget } from "@/hooks/usePeerEnergyDen
 import { areaBasisLabel } from "@/lib/areaBasis";
 import { useWellCertification } from "@/hooks/useCertifications";
 import { useLeedCertification } from "@/hooks/useLeedCertification";
+import { useSiteThresholds } from "@/hooks/useSiteThresholds";
+import {
+  horizonForPeriod,
+  buildReportSeries,
+  reportEnumerationEnd,
+  granularityNote as buildGranularityNote,
+  type ReportTables,
+  type ReportTablePayload,
+  type ReportAlarmRow,
+  type ReportLang,
+} from "@/lib/report/granularity";
 import { useProjectCertifications } from "@/hooks/useProjectCertifications";
 import { LEEDCertificationWidget } from "./LEEDCertificationWidget";
 import { BillAnalysisModule } from "./BillAnalysisModule";
@@ -579,6 +590,10 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     return real;
   }, [airDevicesResp, demoProfile]);
   const airDeviceIds = useMemo(() => airDevices.map((d) => d.id), [airDevices]);
+
+  // Soglie del sito: alimentano i flag di allarme delle tabelle report e la
+  // sezione Allarmi (generate dal sistema, non dall'AI). Assente → default del hook.
+  const { thresholds: siteThresholds } = useSiteThresholds(project?.siteId);
 
   const [selectedAirDeviceIds, setSelectedAirDeviceIds] = useState<string[]>([]);
   const [activeAirHeatmapMetric, setActiveAirHeatmapMetric] = useState<string>("iaq.co2");
@@ -3709,6 +3724,123 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         if (fresh.length) reportDevices = fresh;
       }
 
+      /* ── Fase C2/C3 · Tabelle dati per granularità + sezione allarmi ─────
+         Dagli stessi punti freschi costruisco le serie canoniche (bucket per
+         orizzonte: annuale→mese, mensile→giorno, settimanale→mezza giornata,
+         giornaliero→ora). Ogni bucket porta copertura e flag weekend/futuro/
+         incompleto/vuoto/allarme. Le soglie del sito guidano gli allarmi; se
+         assenti, nessun allarme (mai inventato). */
+      const reportLang: ReportLang = language === "it" ? "it" : "en";
+      const reportHorizon = horizonForPeriod(timePeriod, airStart, airEnd);
+      const reportNow = new Date();
+      // Enumerazione fino alla fine naturale dell'orizzonte (es. tutto il mese):
+      // i bucket oltre "ora" compaiono come futuri. Il fetch resta start..airEnd.
+      const tableEnd = reportEnumerationEnd(timePeriod, airStart, airEnd, siteTimezone);
+      const meanReduce = (pts: ApiTimeseriesPoint[]): number | null => {
+        let s = 0, n = 0;
+        for (const p of pts) {
+          const v = Number(p.value_avg ?? p.value);
+          if (Number.isFinite(v)) { s += v; n++; }
+        }
+        return n ? s / n : null;
+      };
+      const th = siteThresholds;
+      const energyBudget = th?.energy_daily_budget_kwh ?? null;
+      const energyReportSeries = freshEnergyPts.length
+        ? buildReportSeries({
+            points: freshEnergyPts, timezone: siteTimezone, horizon: reportHorizon,
+            start: airStart, end: tableEnd, now: reportNow, lang: reportLang,
+            rawBucketHours: bucketH, summaryKind: "total",
+            reduce: (pts) => sumPointsAsKwh(pts as any, bucketH, genFilter),
+            checkAlarm: energyBudget != null && reportHorizon === "monthly"
+              ? (s) => (s.value != null && s.value > energyBudget ? { kind: "above" as const } : null)
+              : undefined,
+          })
+        : null;
+
+      const airSeriesFor = (
+        metric: string,
+        check?: Parameters<typeof buildReportSeries>[0]["checkAlarm"],
+      ) => {
+        const pts = freshAirPts.filter((p) => p.metric === metric);
+        if (!pts.length) return null;
+        return buildReportSeries({
+          points: pts, timezone: siteTimezone, horizon: reportHorizon,
+          start: airStart, end: tableEnd, now: reportNow, lang: reportLang,
+          rawBucketHours: bucketH, summaryKind: "average", reduce: meanReduce, checkAlarm: check,
+        });
+      };
+      const tMin = th?.air_temp_min_c ?? null, tMax = th?.air_temp_max_c ?? null;
+      const hMin = th?.air_humidity_min_pct ?? null, hMax = th?.air_humidity_max_pct ?? null;
+      const co2Warn = th?.air_co2_warning_ppm ?? null, co2Crit = th?.air_co2_critical_ppm ?? null;
+      const co2SeriesR = airSeriesFor("iaq.co2", co2Warn != null
+        ? (s) => { const v = s.peak ?? s.value; return v != null && v > co2Warn ? { kind: "above" as const } : null; }
+        : undefined);
+      const tempSeriesR = airSeriesFor("env.temperature", (tMin != null || tMax != null)
+        ? (s) => s.value == null ? null
+            : (tMax != null && s.value > tMax ? { kind: "above" as const }
+              : tMin != null && s.value < tMin ? { kind: "below" as const } : null)
+        : undefined);
+      const humSeriesR = airSeriesFor("env.humidity", (hMin != null || hMax != null)
+        ? (s) => s.value == null ? null
+            : (hMax != null && s.value > hMax ? { kind: "above" as const }
+              : hMin != null && s.value < hMin ? { kind: "below" as const } : null)
+        : undefined);
+
+      const L = (it: string, en: string) => (reportLang === "it" ? it : en);
+      const nf = (v: number | null | undefined, dec: number) => {
+        if (v == null || !Number.isFinite(Number(v))) return "–";
+        const s = Number(v).toFixed(dec);
+        return reportLang === "it" ? s.replace(".", ",") : s;
+      };
+      const airTables: ReportTablePayload[] = [];
+      if (co2SeriesR) airTables.push({ title: "CO₂", unit: "ppm", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: co2SeriesR });
+      if (tempSeriesR) airTables.push({ title: L("Temperatura", "Temperature"), unit: "°C", decimals: 1, summaryLabel: L("Media periodo", "Period average"), series: tempSeriesR });
+      if (humSeriesR) airTables.push({ title: L("Umidità relativa", "Relative humidity"), unit: "%", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: humSeriesR });
+
+      // Sezione allarmi: una riga per bucket in allarme, dalle stesse serie.
+      const alarms: ReportAlarmRow[] = [];
+      const pushAlarms = (
+        series: ReturnType<typeof buildReportSeries> | null,
+        metricLabel: string, unit: string, dec: number,
+        thresholdText: (kind: "above" | "below") => string,
+        severityOf: (peak: number | null, value: number | null) => "warning" | "critical",
+        useField: "peak" | "value",
+      ) => {
+        if (!series) return;
+        for (const b of series.buckets) {
+          if (!b.alarm) continue;
+          const shown = useField === "peak" ? (b.peak ?? b.value) : b.value;
+          alarms.push({
+            metric: metricLabel,
+            when: b.label,
+            value: `${nf(shown, dec)} ${unit}`.trim(),
+            threshold: thresholdText(b.alarmKind ?? "above"),
+            severity: severityOf(b.peak, b.value),
+          });
+        }
+      };
+      pushAlarms(co2SeriesR, "CO₂", "ppm", 0,
+        () => co2Crit != null ? `> ${nf(co2Warn, 0)} / ${nf(co2Crit, 0)} ppm` : `> ${nf(co2Warn, 0)} ppm`,
+        (peak) => (co2Crit != null && peak != null && peak > co2Crit ? "critical" : "warning"), "peak");
+      pushAlarms(tempSeriesR, L("Temperatura", "Temperature"), "°C", 1,
+        () => `${nf(tMin, 1)}–${nf(tMax, 1)} °C`, () => "warning", "value");
+      pushAlarms(humSeriesR, L("Umidità relativa", "Relative humidity"), "%", 0,
+        () => `${nf(hMin, 0)}–${nf(hMax, 0)} %`, () => "warning", "value");
+      pushAlarms(energyReportSeries, L("Energia", "Energy"), "kWh", 1,
+        () => `> ${nf(energyBudget, 0)} kWh/${L("g", "d")}`, () => "warning", "value");
+
+      const reportTables: ReportTables = {
+        horizon: reportHorizon,
+        granularityNote: buildGranularityNote(reportHorizon, reportLang),
+        energy: energyReportSeries
+          ? { title: L("Consumo per bucket", "Consumption per bucket"), unit: "kWh", decimals: 1, summaryLabel: L("Totale periodo", "Period total"), series: energyReportSeries }
+          : undefined,
+        air: airTables.length ? airTables : undefined,
+        water: undefined, // nessuna telemetria idrica reale cablata (vedi water:[] sotto)
+        alarms,
+      };
+
       const avgTemp = airAvg("env.temperature") ?? (activeAirMetrics["env.temperature"] ?? null);
       const avgCo2 = airAvg("iaq.co2") ?? (activeAirMetrics["iaq.co2"] ?? null);
       const avgHum = airAvg("env.humidity") ?? (activeAirMetrics["env.humidity"] ?? null);
@@ -3804,6 +3936,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
           waterChart: waterConsumptionRef,
           airQualityChart: co2TrendRef,
         },
+        reportTables,
         language: language,
       });
     } catch (error) {
@@ -3826,7 +3959,17 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     language,
     energyDistributionData,
     totalBreakdownKwh,
-    estimatedCostData
+    estimatedCostData,
+    siteThresholds,
+    siteTimezone,
+    airStart,
+    airEnd,
+    airBucket,
+    timeRange,
+    siteDevices,
+    energyMetrics,
+    airMetrics,
+    airDeviceIds,
   ]);
 
   if (!project) return null;

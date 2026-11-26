@@ -1,5 +1,5 @@
 import { jsPDF, GState } from "jspdf";
-import autoTable from "jspdf-autotable";
+import autoTable, { type CellHookData } from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import { format } from "date-fns";
 import { Project, getBrandById, getHoldingById } from "@/lib/data";
@@ -8,6 +8,7 @@ import { DateRange, getPeriodLabel } from "@/hooks/useTimeFilteredData";
 import { generateEnergyDiagnosis, EnergyDiagnosisInput } from "@/lib/energyDiagnosis";
 import { ReportLanguage, getTranslations, getDateLocale } from "@/lib/translations/pdfReport";
 import { supabase } from "@/integrations/supabase/client";
+import type { ReportTables, ReportTablePayload, ReportBucket } from "@/lib/report/granularity";
 
 // --- INTERFACES ---
 export interface ReportModuleConfig {
@@ -60,6 +61,8 @@ interface GeneratePdfOptions {
   /** Intervallo EFFETTIVO del report (analisi #7): per un mese in corso il
       "November 2026" nascondeva che sono 25 giorni su 30. */
   periodRange?: { start: string; end: string };
+  /** Tabelle dati per granularità + sezione allarmi (Fase C2/C3). */
+  reportTables?: ReportTables;
 }
 
 // --- COLORS ---
@@ -225,6 +228,7 @@ export const generatePdfReport = async ({
   language = 'en',
   precalculatedTotals,
   periodRange,
+  reportTables,
 }: GeneratePdfOptions) => {
   const t = getTranslations(language);
   const dateLocale = await getDateLocale(language);
@@ -494,6 +498,149 @@ export const generatePdfReport = async ({
     yPos = (doc as any).lastAutoTable.finalY + 10;
   };
 
+  // --- Data table per granularità (Fase C2) ---------------------------------
+  /** Y finale dell'ultima autoTable, tipata (evita il cast ad any). */
+  const lastTableY = (): number =>
+    (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? yPos;
+  const MAGENTA: [number, number, number] = [138, 16, 96];   // #8A1060 — attenzione/allarme
+  const WEEKEND_TINT: [number, number, number] = [230, 250, 240]; // mint1 #E6FAF0
+  const MUTED: [number, number, number] = [148, 163, 184];   // futuro / vuoto
+  const AMBER: [number, number, number] = [154, 91, 5];      // #9A5B05 — incompleto
+
+  const fmtLocal = (v: number | null | undefined, dec: number): string => {
+    if (v === null || v === undefined || !Number.isFinite(Number(v))) return '–';
+    const s = Number(v).toFixed(dec);
+    return isIt ? s.replace('.', ',') : s;
+  };
+
+  /** Stato testuale di un bucket (priorità: futuro > allarme > incompleto > ok). */
+  const bucketStateText = (b: ReportBucket): string => {
+    if (b.future) return t.dataTable.future;
+    if (b.empty) return '–';
+    if (b.alarm) return t.dataTable.alarm;
+    if (b.incomplete) return t.dataTable.incomplete;
+    return t.dataTable.ok;
+  };
+
+  const drawDataTable = (payload: ReportTablePayload, noteLine?: string) => {
+    const { series } = payload;
+    if (!series.buckets.length) return;
+    const buckets = series.buckets;
+
+    checkPageBreak(26);
+    // Intestazione card: titolo + tag granularità a destra
+    drawHeader(payload.title, 3);
+    doc.setFont('FuturaLT', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.secondary);
+    doc.text(series.granularityTag, pageWidth - margin, yPos - 6, { align: 'right' });
+    if (noteLine) {
+      doc.text(noteLine, margin, yPos - 1);
+      yPos += 3;
+    }
+
+    const headers = [
+      t.dataTable.bucket,
+      `${t.dataTable.value}${payload.unit ? ` (${payload.unit})` : ''}`,
+      t.dataTable.coverage,
+      t.dataTable.state,
+    ];
+    const body = buckets.map((b) => [
+      b.label,
+      b.future || b.empty ? '–' : fmtLocal(b.value, payload.decimals),
+      b.future || b.empty ? '–' : `${Math.round(b.coverage * 100)}%`,
+      bucketStateText(b),
+    ]);
+    // Riga di sintesi (totale o media del periodo)
+    body.push([
+      payload.summaryLabel,
+      fmtLocal(series.summaryValue, payload.decimals),
+      '',
+      '',
+    ]);
+    const summaryIdx = body.length - 1;
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [headers],
+      body,
+      ...getTableOptions(COLORS.primary),
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'right' },
+        3: { halign: 'left' },
+      },
+      didParseCell: (hook: CellHookData) => {
+        if (hook.section !== 'body') return;
+        const r = hook.row.index;
+        const c = hook.column.index;
+        if (r === summaryIdx) {
+          hook.cell.styles.fontStyle = 'bold';
+          hook.cell.styles.fillColor = COLORS.lightGray;
+          return;
+        }
+        const b = buckets[r];
+        if (!b) return;
+        if (b.weekend) hook.cell.styles.fillColor = WEEKEND_TINT;
+        if (b.future || b.empty) {
+          hook.cell.styles.textColor = MUTED;
+          return;
+        }
+        // Valore + stato in allarme → magenta grassetto
+        if (b.alarm && (c === 1 || c === 3)) {
+          hook.cell.styles.textColor = MAGENTA;
+          hook.cell.styles.fontStyle = 'bold';
+        } else if (b.incomplete && c === 3) {
+          hook.cell.styles.textColor = AMBER;
+        }
+      },
+    });
+    yPos = lastTableY() + 8;
+  };
+
+  // --- Sezione Allarmi completa (Fase C3) -----------------------------------
+  const drawAlarmsSection = () => {
+    const alarms = reportTables?.alarms ?? [];
+    addPage();
+    drawHeader(t.alarms.section, 2);
+    doc.setFont('FuturaLT', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.secondary);
+    const subLines = doc.splitTextToSize(t.alarms.subtitle, pageWidth - 2 * margin);
+    doc.text(subLines, margin, yPos);
+    yPos += subLines.length * 4 + 3;
+
+    if (!alarms.length) {
+      drawNoData(t.alarms.none);
+      return;
+    }
+    const headers = [t.alarms.severity, t.alarms.metric, t.alarms.when, t.alarms.value, t.alarms.threshold];
+    const body = alarms.map((a) => [
+      a.severity === 'critical' ? t.status.critical : t.status.warning,
+      a.metric,
+      a.when,
+      a.value,
+      a.threshold,
+    ]);
+    autoTable(doc, {
+      startY: yPos,
+      head: [headers],
+      body,
+      ...getTableOptions(COLORS.primary),
+      columnStyles: { 3: { halign: 'right' } },
+      didParseCell: (hook: CellHookData) => {
+        if (hook.section !== 'body') return;
+        const a = alarms[hook.row.index];
+        if (!a) return;
+        if (hook.column.index === 0) {
+          hook.cell.styles.fontStyle = 'bold';
+          hook.cell.styles.textColor = a.severity === 'critical' ? MAGENTA : AMBER;
+        }
+      },
+    });
+    yPos = lastTableY() + 10;
+  };
+
   // ================================================================
   //  PAGE 1: COVER
   // ================================================================
@@ -689,33 +836,38 @@ export const generatePdfReport = async ({
 
     if (energyChartImg) addChartImage(energyChartImg, t.energy.consumptionChart, 55);
 
-    // Energy consumption table with cost column
-    drawHeader(t.energy.consumption, 2);
-    if (data.energy.consumption.length > 0) {
-      const headers = [
-        isIt ? 'Periodo' : 'Period',
-        isIt ? 'Consumo (kWh)' : 'Consumption (kWh)',
-        isIt ? 'Costo Stimato (€)' : 'Est. Cost (€)',
-        'CO2 (kg)',
-      ];
+    // Energy consumption table with cost column.
+    // Quando c'e' la nuova tabella granulare (reportTables.energy) la salto:
+    // la sostituisce in fondo alla sezione, con copertura e flag di stato e
+    // SENZA il vecchio energyScaleFactor che riscalava le righe sul totale.
+    if (!reportTables?.energy) {
+      drawHeader(t.energy.consumption, 2);
+      if (data.energy.consumption.length > 0) {
+        const headers = [
+          isIt ? 'Periodo' : 'Period',
+          isIt ? 'Consumo (kWh)' : 'Consumption (kWh)',
+          isIt ? 'Costo Stimato (€)' : 'Est. Cost (€)',
+          'CO2 (kg)',
+        ];
 
-      // Calculate energy scale factor so rows sum to totalEnergyKwh exactly
-      const totalTableKwh = data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0);
-      const energyScaleFactor = (totalTableKwh > 0 && typeof totalEnergyKwh === 'number' && totalEnergyKwh > 0) ? (totalEnergyKwh / totalTableKwh) : 1;
+        // Calculate energy scale factor so rows sum to totalEnergyKwh exactly
+        const totalTableKwh = data.energy.consumption.reduce((s, r) => s + extractNum(r, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual'), 0);
+        const energyScaleFactor = (totalTableKwh > 0 && typeof totalEnergyKwh === 'number' && totalEnergyKwh > 0) ? (totalEnergyKwh / totalTableKwh) : 1;
 
-      const rows = data.energy.consumption.map(row => {
-        const label = String(row['label'] || row['name'] || row['period'] || Object.values(row)[0] || '–');
-        const rawKwh = extractNum(row, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual');
-        const kwh = rawKwh * energyScaleFactor;
-        const cost = kwh * energyPrice;
-        const co2 = kwh * CO2_EMISSION_FACTOR_KG_KWH;
-        return [label, fmtNum(kwh), energyPrice > 0 ? fmtNum(cost) : N_A, fmtNum(co2)];
-      });
-      renderTable(headers, rows, COLORS.primary);
-    } else {
-      // Fase A (analisi #4.2): Energy non lasciava il titolo nel vuoto come
-      // Water/Air — stesso empty-state per tutte le sezioni.
-      drawNoData(t.noDataReasons.period);
+        const rows = data.energy.consumption.map(row => {
+          const label = String(row['label'] || row['name'] || row['period'] || Object.values(row)[0] || '–');
+          const rawKwh = extractNum(row, 'value', 'Consumo (kWh)', 'Consumption (kWh)', 'kwh', 'actual');
+          const kwh = rawKwh * energyScaleFactor;
+          const cost = kwh * energyPrice;
+          const co2 = kwh * CO2_EMISSION_FACTOR_KG_KWH;
+          return [label, fmtNum(kwh), energyPrice > 0 ? fmtNum(cost) : N_A, fmtNum(co2)];
+        });
+        renderTable(headers, rows, COLORS.primary);
+      } else {
+        // Fase A (analisi #4.2): Energy non lasciava il titolo nel vuoto come
+        // Water/Air — stesso empty-state per tutte le sezioni.
+        drawNoData(t.noDataReasons.period);
+      }
     }
 
     if (deviceChartImg) {
@@ -763,6 +915,11 @@ export const generatePdfReport = async ({
       co2SummaryRows.push([isIt ? 'Prezzo Unitario' : 'Unit Price', fmtNum(energyPrice, 4), '€/kWh']);
     }
     renderTable(co2SummaryHeaders, co2SummaryRows, COLORS.success);
+  }
+
+  // Tabella dati energia per granularità (Fase C2): chiude la sezione.
+  if (reportTables?.energy) {
+    drawDataTable(reportTables.energy, reportTables.granularityNote);
   }
 
   // ================================================================
@@ -819,6 +976,13 @@ export const generatePdfReport = async ({
       // Il perimetro idrico non ha contatori per zona: nessuna perdita per zona
       drawNoData(t.noDataReasons.noSensors);
     }
+
+    // Tabella dati acqua per granularità (Fase C2). Oggi assente: nessuna
+    // telemetria idrica reale cablata → la sezione resta con gli empty-state
+    // soprastanti, senza numeri inventati.
+    if (reportTables?.water) {
+      drawDataTable(reportTables.water, reportTables.granularityNote);
+    }
   }
 
   // ================================================================
@@ -831,31 +995,36 @@ export const generatePdfReport = async ({
 
     if (airQualityChartImg) addChartImage(airQualityChartImg, t.airQuality.chart, 55);
 
-    drawHeader(t.airQuality.co2TvocHistory, 2);
-    if (data.airQuality.co2History.length > 0) {
-      const keys = Object.keys(data.airQuality.co2History[0]);
-      const rows = data.airQuality.co2History.map(row => keys.map(k => {
-        const val = row[k];
-        if (typeof val === 'number') return fmtNum(val);
-        return String(val ?? '–');
-      }));
-      renderTable(keys, rows, COLORS.success);
-    } else {
-      drawNoData(t.noDataReasons.period);
-    }
+    // CO₂/TVOC e T/RH: le vecchie tabelle-dump della serie. Quando ci sono le
+    // nuove tabelle granulari (reportTables.air) le salto — le sostituiscono in
+    // fondo, con copertura, flag di stato e valori in allarme evidenziati.
+    if (!reportTables?.air?.length) {
+      drawHeader(t.airQuality.co2TvocHistory, 2);
+      if (data.airQuality.co2History.length > 0) {
+        const keys = Object.keys(data.airQuality.co2History[0]);
+        const rows = data.airQuality.co2History.map(row => keys.map(k => {
+          const val = row[k];
+          if (typeof val === 'number') return fmtNum(val);
+          return String(val ?? '–');
+        }));
+        renderTable(keys, rows, COLORS.success);
+      } else {
+        drawNoData(t.noDataReasons.period);
+      }
 
-    checkPageBreak(60);
-    drawHeader(t.airQuality.tempHumidity, 2);
-    if (data.airQuality.tempHumidity.length > 0) {
-      const keys = Object.keys(data.airQuality.tempHumidity[0]);
-      const rows = data.airQuality.tempHumidity.map(row => keys.map(k => {
-        const val = row[k];
-        if (typeof val === 'number') return fmtNum(val);
-        return String(val ?? '–');
-      }));
-      renderTable(keys, rows, COLORS.primary);
-    } else {
-      drawNoData(t.noDataReasons.period);
+      checkPageBreak(60);
+      drawHeader(t.airQuality.tempHumidity, 2);
+      if (data.airQuality.tempHumidity.length > 0) {
+        const keys = Object.keys(data.airQuality.tempHumidity[0]);
+        const rows = data.airQuality.tempHumidity.map(row => keys.map(k => {
+          const val = row[k];
+          if (typeof val === 'number') return fmtNum(val);
+          return String(val ?? '–');
+        }));
+        renderTable(keys, rows, COLORS.primary);
+      } else {
+        drawNoData(t.noDataReasons.period);
+      }
     }
 
     checkPageBreak(60);
@@ -872,6 +1041,21 @@ export const generatePdfReport = async ({
       // Il particolato lo misurano solo le sonde WELL, non le LEED
       drawNoData(t.noDataReasons.noSensors);
     }
+
+    // Tabelle dati aria per granularità (Fase C2): T, RH, CO₂. La nota di
+    // granularità compare una sola volta, sulla prima tabella.
+    if (reportTables?.air?.length) {
+      reportTables.air.forEach((tbl, i) =>
+        drawDataTable(tbl, i === 0 ? reportTables!.granularityNote : undefined),
+      );
+    }
+  }
+
+  // ================================================================
+  //  ALARMS SECTION (Fase C3) — elenco completo, generato dal sistema
+  // ================================================================
+  if (reportTables) {
+    drawAlarmsSection();
   }
 
   // ================================================================
