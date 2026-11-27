@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { usePortfolioEnergyTrend, usePortfolioAirTrend, useWeatherMonthly } from "@/hooks/usePortfolioTrends";
 import { ZoomableChart } from "@/components/ui/ZoomableChart";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind, Droplets, AlertTriangle, Activity} from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Wifi, WifiOff, Circle, Info, BarChart3, Building2, LayoutList, Zap, Wind, Droplets, AlertTriangle, Activity, Check, Plus} from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { useWrapped } from "@/components/wrapped/WrappedContext";
 import { useAdminData } from "@/contexts/AdminDataContext";
@@ -22,6 +22,8 @@ import { BrandOverlaySkeleton } from "./DashboardSkeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 
@@ -634,7 +636,50 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
         key: 'trend',
         node: (
           <div className="h-full flex flex-col p-6">
-            {header('Portfolio trend', 'Aggregated consumption · last 12 months (current month is partial) — pick up to 4 stores to benchmark them')}
+            {header(
+              'Portfolio trend',
+              'Aggregated consumption · last 12 months (current month is partial) — pick up to 4 stores to benchmark them',
+              energyLeaderboard.length > 0 ? (
+                // Dropdown su TUTTI gli store (i chip sotto mostrano solo i primi 8):
+                // ricerca, nomi per intero, selezione fino a 4 da benchmarkare.
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="shrink-0 inline-flex items-center gap-1.5 bg-foreground/5 border border-foreground/15 text-foreground text-xs rounded-lg px-2.5 py-1.5 hover:bg-foreground/10 transition-colors">
+                      <Plus className="w-3.5 h-3.5" />
+                      {language === 'it' ? 'Store' : 'Stores'}
+                      <span className="text-muted-foreground">({trendSites.length}/4)</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0 border-border/50 bg-popover/95 backdrop-blur-xl" align="end">
+                    <Command className="bg-transparent">
+                      <CommandInput placeholder={language === 'it' ? 'Cerca store…' : 'Search store…'} className="text-xs" />
+                      <CommandList className="max-h-[240px] fgb-invasion-scroll">
+                        <CommandEmpty className="py-4 text-xs text-muted-foreground text-center">{language === 'it' ? 'Nessuno store' : 'No store'}</CommandEmpty>
+                        {energyLeaderboard.map(c => {
+                          const on = trendSites.includes(c.siteId);
+                          return (
+                            <CommandItem
+                              key={c.siteId}
+                              value={c.name}
+                              disabled={!on && trendSites.length >= 4}
+                              onSelect={() =>
+                                setTrendSites(prev =>
+                                  prev.includes(c.siteId) ? prev.filter(x => x !== c.siteId) : prev.length >= 4 ? prev : [...prev, c.siteId]
+                                )
+                              }
+                              className="text-xs gap-2"
+                            >
+                              <Check className={`w-3.5 h-3.5 shrink-0 text-fgb-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
+                              <span className="flex-1 truncate">{c.name}</span>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              ) : undefined,
+            )}
             {candidates.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {candidates.map(c => {
@@ -730,15 +775,20 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
               'Same climate, fair comparison',
               'Store consumption vs the city’s real outdoor temperature · last 12 months',
               energyCities.length > 0 ? (
-                <select
-                  value={focusCity ?? ''}
-                  onChange={e => setCityFocus(e.target.value)}
-                  className="shrink-0 bg-foreground/5 border border-foreground/15 text-foreground text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer hover:bg-foreground/10 transition-colors"
-                >
-                  {energyCities.map(c => (
-                    <option key={c.city} value={c.city}>{c.city} ({c.ids.length})</option>
-                  ))}
-                </select>
+                // Select del sito (non il <select> nativo, che apriva una lista
+                // bianca OS illeggibile): opzioni scure, leggibili e allineate.
+                <Select value={focusCity ?? ''} onValueChange={setCityFocus}>
+                  <SelectTrigger className="shrink-0 w-auto h-auto gap-1.5 bg-foreground/5 border-foreground/15 text-foreground text-xs rounded-lg px-2.5 py-1.5 hover:bg-foreground/10 transition-colors focus:ring-fgb-accent/40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-border/50 bg-popover/95 backdrop-blur-xl max-h-[260px]">
+                    {energyCities.map(c => (
+                      <SelectItem key={c.city} value={c.city} className="text-xs">
+                        {c.city} ({c.ids.length})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : undefined
             )}
             <div className="flex-1 min-h-0">
@@ -1246,7 +1296,9 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <div className="px-3 py-2 border-b border-border/30">
                     <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Punti energia per sito' : 'Energy points by site'}</p>
                   </div>
-                  <ScrollArea className="max-h-[220px]">
+                  {/* Scroll nativo: ScrollArea con solo max-h sul root non dava
+                      altezza definita al viewport e la lista non scrollava. */}
+                  <div className="max-h-[260px] overflow-y-auto fgb-invasion-scroll overscroll-contain">
                     <div className="p-2 space-y-0.5">
                       {energyPoints.list.map((s, i) => (
                         <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
@@ -1258,7 +1310,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         </div>
                       ))}
                     </div>
-                  </ScrollArea>
+                  </div>
                 </PopoverContent>
               </Popover>
               {/* Siti aria (punti di monitoraggio) */}
@@ -1290,7 +1342,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                   <div className="px-3 py-2 border-b border-border/30">
                     <p className="text-xs font-semibold text-foreground">{language === 'it' ? 'Punti aria per sito' : 'Air points by site'}</p>
                   </div>
-                  <ScrollArea className="max-h-[220px]">
+                  <div className="max-h-[260px] overflow-y-auto fgb-invasion-scroll overscroll-contain">
                     <div className="p-2 space-y-0.5">
                       {airPoints.list.map((s, i) => (
                         <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
@@ -1302,7 +1354,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                         </div>
                       ))}
                     </div>
-                  </ScrollArea>
+                  </div>
                 </PopoverContent>
               </Popover>
               {/* Acqua: predisposto — tratteggiato, solo per lo staff FGB */}
@@ -1351,7 +1403,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{t('brand.sites_status')}</p>
                 </div>
-                <ScrollArea className="max-h-[220px]">
+                <div className="max-h-[260px] overflow-y-auto fgb-invasion-scroll overscroll-contain">
                   <div className="p-2 space-y-0.5">
                     {siteStatusList.map((s, i) => (
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
@@ -1361,7 +1413,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               </PopoverContent>
             </Popover>
 
@@ -1387,7 +1439,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{t('brand.consumption_per_site')}</p>
                 </div>
-                <ScrollArea className="max-h-[220px]">
+                <div className="max-h-[260px] overflow-y-auto fgb-invasion-scroll overscroll-contain">
                   <div className="p-2 space-y-0.5">
                     {energyRankedList.length > 0 ? energyRankedList.map((s, i) => (
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
@@ -1399,7 +1451,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <p className="text-xs text-muted-foreground text-center py-3">{t('region.no_data_short')}</p>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </PopoverContent>
             </Popover>
 
@@ -1431,7 +1483,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{t('brand.air_per_site')}</p>
                 </div>
-                <ScrollArea className="max-h-[220px]">
+                <div className="max-h-[260px] overflow-y-auto fgb-invasion-scroll overscroll-contain">
                   <div className="p-2 space-y-0.5">
                     {co2RankedList.length > 0 ? co2RankedList.map((s, i) => (
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
@@ -1446,7 +1498,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <p className="text-xs text-muted-foreground text-center py-3">{t('region.no_data_short')}</p>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </PopoverContent>
             </Popover>
 
@@ -1480,7 +1532,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-semibold text-foreground">{t('brand.alerts_per_site')}</p>
                 </div>
-                <ScrollArea className="max-h-[220px]">
+                <div className="max-h-[260px] overflow-y-auto fgb-invasion-scroll overscroll-contain">
                   <div className="p-2 space-y-0.5">
                     {alertsList.length > 0 ? alertsList.map((s, i) => (
                       <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5">
@@ -1494,7 +1546,7 @@ const BrandOverlay = ({ selectedBrand, selectedHolding, visible = true, currentR
                       <p className="text-xs text-muted-foreground text-center py-3">{t('brand.no_active_alerts')}</p>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </PopoverContent>
             </Popover>
 
