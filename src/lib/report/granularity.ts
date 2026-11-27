@@ -355,6 +355,15 @@ export interface ReportTablePayload {
   /** Summary-row label: "Totale periodo" (total) or "Media periodo" (average). */
   summaryLabel: string;
   series: ReportSeries;
+  /** Optional chart spec for the vector renderer (Fase D). */
+  chart?: {
+    kind: "bar" | "line";
+    /** Threshold line (bar charts): dashed magenta + over-threshold shading. */
+    threshold?: number;
+    /** Target band (line charts): shaded comfort band with dashed borders. */
+    targetMin?: number;
+    targetMax?: number;
+  };
 }
 
 export interface ReportAlarmRow {

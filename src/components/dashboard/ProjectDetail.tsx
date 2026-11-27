@@ -3809,12 +3809,16 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         return reportLang === "it" ? s.replace(".", ",") : s;
       };
       const airTables: ReportTablePayload[] = [];
-      if (co2SeriesR) airTables.push({ title: "CO₂", unit: "ppm", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: co2SeriesR });
-      if (tempSeriesR) airTables.push({ title: L("Temperatura", "Temperature"), unit: "°C", decimals: 1, summaryLabel: L("Media periodo", "Period average"), series: tempSeriesR });
-      if (humSeriesR) airTables.push({ title: L("Umidità relativa", "Relative humidity"), unit: "%", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: humSeriesR });
-      if (tvocSeriesR) airTables.push({ title: "TVOC", unit: "ppb", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: tvocSeriesR });
-      if (pm25SeriesR) airTables.push({ title: "PM2.5", unit: "µg/m³", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: pm25SeriesR });
-      if (pm10SeriesR) airTables.push({ title: "PM10", unit: "µg/m³", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: pm10SeriesR });
+      const avgLbl = L("Media periodo", "Period average");
+      // CO₂/TVOC/PM → barre con soglia; T/RH → linee con fascia obiettivo.
+      if (co2SeriesR) airTables.push({ title: "CO₂", unit: "ppm", decimals: 0, summaryLabel: avgLbl, series: co2SeriesR, chart: { kind: "bar", threshold: co2Warn ?? undefined } });
+      if (tempSeriesR) airTables.push({ title: L("Temperatura", "Temperature"), unit: "°C", decimals: 1, summaryLabel: avgLbl, series: tempSeriesR, chart: { kind: "line", targetMin: tMin ?? undefined, targetMax: tMax ?? undefined } });
+      if (humSeriesR) airTables.push({ title: L("Umidità relativa", "Relative humidity"), unit: "%", decimals: 0, summaryLabel: avgLbl, series: humSeriesR, chart: { kind: "line", targetMin: hMin ?? undefined, targetMax: hMax ?? undefined } });
+      // TVOC/PM: solo tabella (come il mockup, che grafica CO₂ e T/RH). Per
+      // dare loro un grafico basta aggiungere `chart: { kind: "bar", ... }`.
+      if (tvocSeriesR) airTables.push({ title: "TVOC", unit: "ppb", decimals: 0, summaryLabel: avgLbl, series: tvocSeriesR });
+      if (pm25SeriesR) airTables.push({ title: "PM2.5", unit: "µg/m³", decimals: 0, summaryLabel: avgLbl, series: pm25SeriesR });
+      if (pm10SeriesR) airTables.push({ title: "PM10", unit: "µg/m³", decimals: 0, summaryLabel: avgLbl, series: pm10SeriesR });
 
       // Sezione allarmi: una riga per bucket in allarme, dalle stesse serie.
       const alarms: ReportAlarmRow[] = [];

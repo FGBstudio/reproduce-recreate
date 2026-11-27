@@ -621,7 +621,7 @@ export const generatePdfReport = async ({
   };
   const drawReportBarChart = (
     payload: ReportTablePayload,
-    opts: { barColor: [number, number, number]; weekendColor: [number, number, number]; weekdayLabel: string; weekendLabel: string; avgLabel?: string; note?: string },
+    opts: { barColor: [number, number, number]; weekendColor: [number, number, number]; weekdayLabel: string; weekendLabel: string; avgLabel?: string; threshold?: number; thresholdLabel?: string; note?: string },
   ) => {
     const { series } = payload;
     const buckets = series.buckets;
@@ -638,7 +638,7 @@ export const generatePdfReport = async ({
     const padL = 13, padR = 3, padT = 2, plotH = 44;
     const x0 = margin + padL, x1 = margin + chartW - padR;
     const top = yPos, base = top + padT + plotH;
-    const yMax = niceCeil(Math.max(...vals) * 1.12);
+    const yMax = niceCeil(Math.max(...vals, opts.threshold ?? 0) * 1.12);
 
     // griglia orizzontale tratteggiata + etichette Y (0 / metà / max)
     doc.setFontSize(6.4);
@@ -676,6 +676,20 @@ export const generatePdfReport = async ({
 
     // linea di base piena
     doc.setDrawColor(...C_GRID); doc.setLineWidth(0.3); doc.line(x0, base, x1, base);
+
+    // soglia tratteggiata magenta + zona sopra soglia tenue (mockup §4 CO₂)
+    if (opts.threshold != null && opts.threshold > 0) {
+      const ty = base - (Math.min(opts.threshold, yMax) / yMax) * plotH;
+      doc.saveGraphicsState();
+      doc.setGState(new GState({ opacity: 0.12 }));
+      doc.setFillColor(...MAGENTA);
+      doc.rect(x0, top + padT, x1 - x0, Math.max(0, ty - (top + padT)), 'F');
+      doc.restoreGraphicsState();
+      doc.setDrawColor(...MAGENTA); doc.setLineWidth(0.4); doc.setLineDashPattern([1.2, 0.8], 0);
+      doc.line(x0, ty, x1, ty); doc.setLineDashPattern([], 0);
+      doc.setFontSize(6); doc.setTextColor(...MAGENTA);
+      doc.text(`${opts.thresholdLabel ?? fmtLocal(opts.threshold, 0)}`, x1, ty - 1, { align: 'right' });
+    }
 
     // media feriale tratteggiata (solo bucket feriali con dato)
     if (opts.avgLabel) {
@@ -716,6 +730,125 @@ export const generatePdfReport = async ({
       doc.setFillColor(...l.c); doc.circle(lx + dot / 2, lyp - 0.6, dot / 2, 'F');
       doc.setTextColor(...COLORS.secondary);
       doc.text(l.t, lx + dot + 1.2, lyp, { baseline: 'middle' });
+      lx += widths[i] + gap;
+    });
+
+    yPos = base + 13;
+  };
+
+  // --- Grafico a linee vettoriale (Fase D · mockup §4: T/RH) ----------------
+  // Media (linea deep) + banda min–max (menta trasparente) + fascia obiettivo
+  // (mint1 con bordi tratteggiati). La linea si interrompe sui bucket senza
+  // dato (niente valori inventati). Range NON forzato a zero (misura media).
+  const drawReportLineChart = (
+    payload: ReportTablePayload,
+    opts: { lineColor: [number, number, number]; avgLabel: string; targetMin?: number; targetMax?: number },
+  ) => {
+    const { series } = payload;
+    const buckets = series.buckets;
+    const present = buckets
+      .map((b, i) => ({ b, i }))
+      .filter(({ b }) => !b.future && !b.empty && typeof b.value === 'number');
+    if (present.length === 0) { drawNoData(t.noDataReasons.period); return; }
+
+    checkPageBreak(72);
+    drawHeader(payload.title, 3);
+    doc.setFont('FuturaLT', 'normal'); doc.setFontSize(7); doc.setTextColor(...COLORS.secondary);
+    doc.text(series.granularityTag, pageWidth - margin, yPos - 6, { align: 'right' });
+
+    const chartW = pageWidth - 2 * margin;
+    const padL = 13, padR = 3, padT = 2, plotH = 44;
+    const x0 = margin + padL, x1 = margin + chartW - padR;
+    const top = yPos, base = top + padT + plotH;
+
+    const allV: number[] = [];
+    present.forEach(({ b }) => { allV.push(b.value as number, b.peak ?? (b.value as number), b.trough ?? (b.value as number)); });
+    if (opts.targetMin != null) allV.push(opts.targetMin);
+    if (opts.targetMax != null) allV.push(opts.targetMax);
+    const lo = Math.min(...allV);
+    let hi = Math.max(...allV);
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) { drawNoData(t.noDataReasons.period); return; }
+    if (hi === lo) hi = lo + 1;
+    const pad = (hi - lo) * 0.12;
+    const yLo = lo - pad, yHi = hi + pad;
+    const yOf = (v: number) => base - ((v - yLo) / (yHi - yLo)) * plotH;
+
+    // griglia + etichette Y (lo / mid / hi)
+    doc.setFontSize(6.4);
+    for (let g = 0; g <= 2; g++) {
+      const yv = yLo + ((yHi - yLo) * g) / 2;
+      const yy = yOf(yv);
+      doc.setDrawColor(...C_GRID); doc.setLineWidth(0.2);
+      doc.setLineDashPattern(g === 0 ? [] : [0.6, 0.6], 0);
+      doc.line(x0, yy, x1, yy); doc.setLineDashPattern([], 0);
+      doc.setTextColor(...C_AX);
+      doc.text(fmtLocal(yv, payload.decimals), x0 - 1.5, yy + 1.4, { align: 'right' });
+    }
+
+    const n = buckets.length;
+    const slotW = (x1 - x0) / Math.max(1, n);
+    const xOf = (i: number) => x0 + slotW * (i + 0.5);
+
+    // fascia obiettivo
+    if (opts.targetMin != null && opts.targetMax != null) {
+      const yt = yOf(opts.targetMax), yb = yOf(opts.targetMin);
+      doc.saveGraphicsState(); doc.setGState(new GState({ opacity: 0.55 }));
+      doc.setFillColor(...C_MINT1); doc.rect(x0, Math.min(yt, yb), x1 - x0, Math.abs(yb - yt), 'F');
+      doc.restoreGraphicsState();
+      doc.setDrawColor(...C_MINT2); doc.setLineWidth(0.2); doc.setLineDashPattern([0.8, 0.6], 0);
+      doc.line(x0, yt, x1, yt); doc.line(x0, yb, x1, yb); doc.setLineDashPattern([], 0);
+    }
+
+    // banda min–max (rettangoli sottili per bucket, menta trasparente)
+    doc.saveGraphicsState(); doc.setGState(new GState({ opacity: 0.22 })); doc.setFillColor(...C_MINT);
+    present.forEach(({ b, i }) => {
+      const yt = yOf(b.peak ?? (b.value as number)), yb = yOf(b.trough ?? (b.value as number));
+      doc.rect(xOf(i) - slotW * 0.42, Math.min(yt, yb), slotW * 0.84, Math.max(0.4, Math.abs(yb - yt)), 'F');
+    });
+    doc.restoreGraphicsState();
+
+    // linea media, interrotta sui vuoti (segmenti fra bucket adiacenti)
+    doc.setDrawColor(...opts.lineColor); doc.setLineWidth(0.5);
+    for (let k = 1; k < present.length; k++) {
+      const a = present[k - 1], c = present[k];
+      if (c.i - a.i !== 1) continue; // gap: non collegare
+      doc.line(xOf(a.i), yOf(a.b.value as number), xOf(c.i), yOf(c.b.value as number));
+    }
+    // punti bianchi con bordo dove c'e' allarme
+    present.forEach(({ b, i }) => {
+      if (!b.alarm) return;
+      doc.setFillColor(...MAGENTA); doc.circle(xOf(i), yOf(b.value as number), 0.8, 'F');
+    });
+
+    doc.setDrawColor(...C_GRID); doc.setLineWidth(0.3); doc.line(x0, base, x1, base);
+
+    // etichette X
+    const step = n > 20 ? Math.ceil(n / 15) : 1;
+    doc.setFontSize(6);
+    buckets.forEach((b, i) => {
+      if (i % step !== 0 && i !== n - 1) return;
+      doc.setTextColor(...(b.weekend ? C_MINT : C_AX));
+      const lbl = b.label.includes('/') ? b.label.split('/')[0] : b.label;
+      doc.text(lbl, xOf(i), base + 3.6, { align: 'center' });
+    });
+
+    // legenda
+    const legend: Array<{ c: [number, number, number]; t: string; line?: boolean }> = [
+      { c: opts.lineColor, t: opts.avgLabel, line: true },
+      { c: C_MINT, t: 'min–max' },
+    ];
+    if (opts.targetMin != null && opts.targetMax != null) legend.push({ c: C_MINT1, t: isIt ? 'fascia obiettivo' : 'target band' });
+    doc.setFontSize(6.2);
+    const gap = 4, dot = 1.8;
+    const widths = legend.map(l => (l.line ? 4 : dot) + 1.2 + doc.getTextWidth(l.t));
+    const totalW = widths.reduce((a, c) => a + c, 0) + gap * (legend.length - 1);
+    let lx = (pageWidth - totalW) / 2;
+    const lyp = base + 8;
+    legend.forEach((l, i) => {
+      if (l.line) { doc.setDrawColor(...l.c); doc.setLineWidth(0.6); doc.line(lx, lyp - 0.6, lx + 4, lyp - 0.6); }
+      else { doc.setFillColor(...l.c); doc.circle(lx + dot / 2, lyp - 0.6, dot / 2, 'F'); }
+      doc.setTextColor(...COLORS.secondary);
+      doc.text(l.t, lx + (l.line ? 4 : dot) + 1.2, lyp, { baseline: 'middle' });
       lx += widths[i] + gap;
     });
 
@@ -1109,7 +1242,18 @@ export const generatePdfReport = async ({
     drawHeader(t.sections.waterDashboard, 1);
     drawSeparator();
 
-    if (waterChartImg) addChartImage(waterChartImg, t.water.consumptionChart, 55);
+    // Acqua: grafico vettoriale a barre azzurre quando c'e' la serie; il
+    // fallback al raster resta finche' non esiste una sorgente idrica reale.
+    if (reportTables?.water) {
+      drawReportBarChart(reportTables.water, {
+        barColor: C_WATER, weekendColor: C_WATER2,
+        weekdayLabel: isIt ? 'feriale' : 'weekday',
+        weekendLabel: isIt ? 'weekend' : 'weekend',
+        avgLabel: isIt ? 'media feriale' : 'weekday avg',
+      });
+    } else if (waterChartImg) {
+      addChartImage(waterChartImg, t.water.consumptionChart, 55);
+    }
 
     drawHeader(t.water.consumption, 2);
     if (data.water.consumption.length > 0) {
@@ -1172,12 +1316,35 @@ export const generatePdfReport = async ({
     drawHeader(t.sections.airQualityDashboard, 1);
     drawSeparator();
 
-    if (airQualityChartImg) addChartImage(airQualityChartImg, t.airQuality.chart, 55);
+    if (reportTables?.air?.length) {
+      // Fase D: per ogni metrica aria, grafico vettoriale + tabella dati.
+      // CO₂/TVOC/PM → barre con soglia; T/RH → linee con fascia obiettivo.
+      // La nota di granularità compare una volta, sulla prima tabella.
+      reportTables.air.forEach((tbl, i) => {
+        const ch = tbl.chart;
+        if (ch?.kind === 'line') {
+          drawReportLineChart(tbl, {
+            lineColor: C_DEEP,
+            avgLabel: isIt ? 'media' : 'average',
+            targetMin: ch.targetMin,
+            targetMax: ch.targetMax,
+          });
+        } else if (ch?.kind === 'bar') {
+          drawReportBarChart(tbl, {
+            barColor: C_MINT, weekendColor: C_MINT2,
+            weekdayLabel: isIt ? 'feriale' : 'weekday',
+            weekendLabel: isIt ? 'weekend' : 'weekend',
+            threshold: ch.threshold,
+            thresholdLabel: ch.threshold != null ? `${fmtLocal(ch.threshold, 0)} ${tbl.unit}` : undefined,
+          });
+        }
+        // metriche senza `chart` (TVOC/PM): solo tabella.
+        drawDataTable(tbl, i === 0 ? reportTables!.granularityNote : undefined);
+      });
+    } else {
+      // Fallback (serie non disponibile): vecchio screenshot + tabelle-dump.
+      if (airQualityChartImg) addChartImage(airQualityChartImg, t.airQuality.chart, 55);
 
-    // CO₂/TVOC e T/RH: le vecchie tabelle-dump della serie. Quando ci sono le
-    // nuove tabelle granulari (reportTables.air) le salto — le sostituiscono in
-    // fondo, con copertura, flag di stato e valori in allarme evidenziati.
-    if (!reportTables?.air?.length) {
       drawHeader(t.airQuality.co2TvocHistory, 2);
       if (data.airQuality.co2History.length > 0) {
         const keys = Object.keys(data.airQuality.co2History[0]);
@@ -1204,29 +1371,20 @@ export const generatePdfReport = async ({
       } else {
         drawNoData(t.noDataReasons.period);
       }
-    }
 
-    checkPageBreak(60);
-    drawHeader(t.airQuality.particulates, 2);
-    if (data.airQuality.particulates.length > 0) {
-      const keys = Object.keys(data.airQuality.particulates[0]);
-      const rows = data.airQuality.particulates.map(row => keys.map(k => {
-        const val = row[k];
-        if (typeof val === 'number') return fmtNum(val);
-        return String(val ?? '–');
-      }));
-      renderTable(keys, rows, COLORS.warning);
-    } else {
-      // Il particolato lo misurano solo le sonde WELL, non le LEED
-      drawNoData(t.noDataReasons.noSensors);
-    }
-
-    // Tabelle dati aria per granularità (Fase C2): T, RH, CO₂. La nota di
-    // granularità compare una sola volta, sulla prima tabella.
-    if (reportTables?.air?.length) {
-      reportTables.air.forEach((tbl, i) =>
-        drawDataTable(tbl, i === 0 ? reportTables!.granularityNote : undefined),
-      );
+      checkPageBreak(60);
+      drawHeader(t.airQuality.particulates, 2);
+      if (data.airQuality.particulates.length > 0) {
+        const keys = Object.keys(data.airQuality.particulates[0]);
+        const rows = data.airQuality.particulates.map(row => keys.map(k => {
+          const val = row[k];
+          if (typeof val === 'number') return fmtNum(val);
+          return String(val ?? '–');
+        }));
+        renderTable(keys, rows, COLORS.warning);
+      } else {
+        drawNoData(t.noDataReasons.noSensors);
+      }
     }
   }
 
