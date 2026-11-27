@@ -3592,11 +3592,25 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
          deterministico e indipendente da quali tab erano aperte. Se la fetch
          fallisce si ricade sullo stato (comportamento precedente). */
       const reportApi = await import("@/lib/api");
-      const startISO = airStart.toISOString();
-      const endISO = airEnd.toISOString();
+      /* Il report e' SEMPRE il MESE CORRENTE (fuso del sito), indipendente dal
+         periodo selezionato in dashboard. Il default "month" e' una finestra
+         rolling di 30 giorni a cavallo di due mesi: calcolando il mese del
+         report da airStart si prendevano solo i giorni del mese precedente che
+         ci cadevano dentro (29-31 ott = i "3 giorni"). Qui: 1°-del-mese -> ora,
+         con routing automatico alla tabella oraria (<=31 giorni). */
+      const siteTz = resolveTimezone(siteTimezone);
+      const nowD = new Date();
+      const npRep = getPartsInTz(nowD, siteTz);
+      const RY = npRep.year, RM = npRep.month;
+      const RlastDay = new Date(Date.UTC(RY, RM, 0)).getUTCDate();
+      const RnowDay = npRep.day, RnowHour = npRep.hour;
+      const monthStartUtc = new Date(Date.UTC(RY, RM - 1, 1, 0, 0, 0));
+      monthStartUtc.setUTCHours(monthStartUtc.getUTCHours() - 26); // buffer fuso/DST
+      const startISO = monthStartUtc.toISOString();
+      const endISO = nowD.toISOString();
+      const bucketH = 1; // mese -> bucket orario
       const catOf = new Map<string, string>();
       siteDevices.forEach((d) => catOf.set(d.id, (d.category || "").toLowerCase()));
-      const bucketH = timeRange.bucket === "15m" ? 0.25 : timeRange.bucket === "1d" ? 24 : 1;
 
       const freshEnergy = project.siteId
         ? await reportApi.fetchEnergyTimeseriesApi({
@@ -3612,7 +3626,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       const freshAirPts = freshAir?.data ?? [];
 
       // Serie compatta per il PDF (media fra sonde per bucket) da punti freschi.
-      const siteTz = resolveTimezone(siteTimezone);
       const buildFresh = (cols: Array<{ key: string; metric: string }>) => {
         if (!freshAirPts.length) return [] as Record<string, unknown>[];
         const want = new Map(cols.map((c) => [c.metric, c.key]));
@@ -3920,13 +3933,7 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       const { downloadReportPdf, openReportForPrint } = await import("@/lib/report/reportHtml");
       const tsOf = (p: ApiTimeseriesPoint) => (p.ts_bucket ?? p.ts ?? p.ts_hour ?? p.ts_day) as string;
       const partsOf = (iso: string) => getPartsInTz(new Date(iso), siteTz);
-      const sp = getPartsInTz(airStart, siteTz);
-      const RY = sp.year, RM = sp.month;
-      const nowP = getPartsInTz(new Date(), siteTz);
-      const sameMonth = nowP.year === RY && nowP.month === RM;
-      const RlastDay = new Date(Date.UTC(RY, RM, 0)).getUTCDate();
-      const RnowDay = sameMonth ? nowP.day : RlastDay;
-      const RnowHour = sameMonth ? nowP.hour : 24;
+      // RY/RM/RlastDay/RnowDay/RnowHour = mese CORRENTE, calcolati in alto.
       const inMonth = (lp: { year: number; month: number }) => lp.year === RY && lp.month === RM;
       const airKey = (m: string) => {
         const s = String(m).toLowerCase();

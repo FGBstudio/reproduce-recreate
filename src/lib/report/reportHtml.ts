@@ -421,9 +421,9 @@ export async function downloadReportPdf(input: ReportHtmlInput, filename = "FGB 
     if (!pages.length) return false;
     const pdf = new JsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
     for (let i = 0; i < pages.length; i++) {
-      const canvas = await html2canvas(pages[i], { scale: 2.5, backgroundColor: "#ffffff", useCORS: true, logging: false });
+      const canvas = await html2canvas(pages[i], { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false });
       if (i > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 210, 297);
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, 210, 297);
     }
     pdf.save(filename);
     return true;
