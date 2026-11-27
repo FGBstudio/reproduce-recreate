@@ -435,18 +435,34 @@ export async function downloadReportPdf(input: ReportHtmlInput, filename = "FGB 
   }
 }
 
-/** Apre il report in una nuova finestra e lancia la stampa (PDF del browser).
- *  `win` va aperta SINCRONA sul click (gesto utente) per non farla bloccare
- *  dai popup blocker; se assente, prova ad aprirla qui (puo' essere bloccata). */
-export function openReportForPrint(input: ReportHtmlInput, docTitle = "FGB Monitoring Report", win?: Window | null): void {
+/**
+ * Stampa il report (PDF vettoriale del browser) da un IFRAME NASCOSTO nella
+ * pagina corrente: niente window.open, quindi niente popup bloccato — era il
+ * motivo del "clicco e non succede nulla". Aspetta font e logo, poi apre la
+ * finestra di stampa; l'iframe viene rimosso dopo la stampa.
+ * Il terzo parametro (vecchia finestra) e' ignorato, tenuto per compatibilita'.
+ */
+export async function openReportForPrint(input: ReportHtmlInput, docTitle = "FGB Monitoring Report", _win?: Window | null): Promise<void> {
   const body = buildReportHtml(input);
-  const w = win ?? window.open("", "_blank");
-  if (!w) return;
-  w.document.open();
-  w.document.write(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${docTitle.replace(/</g, "&lt;")}</title></head><body>${body}` +
-    `<script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},400);});</scr` + `ipt>` +
-    `</body></html>`,
-  );
-  w.document.close();
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.cssText = "position:fixed;left:-99999px;top:0;width:210mm;height:297mm;border:0";
+  document.body.appendChild(iframe);
+  const w = iframe.contentWindow;
+  const doc = w?.document;
+  if (!w || !doc) { try { document.body.removeChild(iframe); } catch { /* vuoto */ } return; }
+  doc.open();
+  doc.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${docTitle.replace(/</g, "&lt;")}</title></head><body>${body}</body></html>`);
+  doc.close();
+
+  try { await (doc as Document & { fonts?: FontFaceSet }).fonts?.ready; } catch { /* no FontFaceSet */ }
+  const imgs = Array.from(doc.querySelectorAll("img"));
+  await Promise.all(imgs.map(im => im.complete ? Promise.resolve() : new Promise<void>(r => { im.onload = () => r(); im.onerror = () => r(); })));
+  await new Promise(r => setTimeout(r, 300));
+
+  let done = false;
+  const cleanup = () => { if (done) return; done = true; try { document.body.removeChild(iframe); } catch { /* gia' rimosso */ } };
+  try { w.addEventListener("afterprint", cleanup); } catch { /* ignore */ }
+  setTimeout(cleanup, 120000);
+  try { w.focus(); w.print(); } catch (e) { console.error("print failed", e); cleanup(); }
 }

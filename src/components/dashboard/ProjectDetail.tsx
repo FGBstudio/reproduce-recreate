@@ -3582,11 +3582,6 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     if (!project || isGeneratingPdf) return;
     
     setIsGeneratingPdf(true);
-    // Apri SUBITO la finestra (dentro il gesto del click): aperta dopo gli
-    // await verrebbe bloccata dai popup blocker. Scriviamo il report a dati
-    // pronti e lanciamo la stampa del browser (PDF vettoriale).
-    const printWin = window.open("", "_blank");
-    if (printWin) printWin.document.write('<!doctype html><meta charset="utf-8"><title>FGB Monitoring Report</title><body style="margin:0;font:14px system-ui,sans-serif;color:#0A6367;display:flex;align-items:center;justify-content:center;height:100vh">Generating report…</body>');
     try {
       /* ── FIX report-a-zero (nov 2026) ──────────────────────────────────
          Il PDF prendeva TUTTI i numeri dallo stato a schermo: se non avevi
@@ -4006,10 +4001,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         energyDaily, airDaily, band,
         logo: "/whiteLogoPayoff.png",
       };
-      openReportForPrint(reportInput, `FGB Monitoring — ${project.name}`, printWin);
+      await openReportForPrint(reportInput, `FGB Monitoring — ${project.name}`);
     } catch (error) {
       console.error('PDF generation failed:', error);
-      if (printWin) { try { printWin.document.body.innerHTML = '<div style="font:14px system-ui,sans-serif;color:#8A1060;padding:2rem">Report generation failed. Please try again.</div>'; } catch { /* finestra chiusa */ } }
     } finally {
       setIsGeneratingPdf(false);
     }
