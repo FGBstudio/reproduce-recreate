@@ -81,4 +81,8 @@ table{width:100%;border-collapse:collapse}.st th{text-align:left;font-weight:600
   html,body{background:#fff}
   .page{margin:0;box-shadow:none;page-break-after:always;break-after:page}
   .page:last-child{page-break-after:auto;break-after:auto}
-}`;
+}
+
+/* @page a livello principale (non annidato): forza A4 senza margini, cosi
+   copertina/header arrivano ai bordi (full-bleed). */
+@page{size:A4;margin:0}`;
