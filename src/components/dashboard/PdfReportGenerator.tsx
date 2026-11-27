@@ -559,7 +559,7 @@ export const generatePdfReport = async ({
       '',
     ]);
     const summaryIdx = body.length - 1;
-
+
     autoTable(doc, {
       startY: yPos,
       head: [headers],
@@ -621,7 +621,7 @@ export const generatePdfReport = async ({
       a.when,
       a.value,
       a.threshold,
-    ]);
+    ]);
     autoTable(doc, {
       startY: yPos,
       head: [headers],
@@ -639,6 +639,43 @@ export const generatePdfReport = async ({
       },
     });
     yPos = lastTableY() + 10;
+  };
+
+  // --- Invito all'attivazione (come la card dell'overview) ------------------
+  // Mostra il pitch dei moduli non monitorati: oggi solo Acqua, quando il
+  // sito non ha una sorgente idrica (al posto della sezione vuota rimossa).
+  const drawInvite = (waterMissing: boolean) => {
+    if (!waterMissing) return;
+    const pitch = t.invite.water;
+    checkPageBreak(42);
+    const x = margin;
+    const w = pageWidth - 2 * margin;
+    const boxTop = yPos;
+    // card chiara con bordo tenue, stile overview
+    doc.setFillColor(246, 249, 248);
+    doc.setDrawColor(227, 238, 233);
+    doc.roundedRect(x, boxTop, w, 34, 3, 3, 'FD');
+    let iy = boxTop + 8;
+    doc.setFont('FuturaLT', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.primary);
+    doc.text(t.invite.heading.toUpperCase(), x + 6, iy);
+    iy += 7;
+    doc.setFontSize(13);
+    doc.setTextColor(...COLORS.text);
+    doc.text(pitch.title, x + 6, iy);
+    iy += 6.5;
+    doc.setFont('FuturaLT', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.secondary);
+    const bodyLines = doc.splitTextToSize(pitch.body, w - 12);
+    doc.text(bodyLines, x + 6, iy);
+    iy += bodyLines.length * 4.4 + 2;
+    doc.setFont('FuturaLT', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.primary);
+    doc.text(t.invite.cta, x + 6, iy);
+    yPos = boxTop + 34 + 10;
   };
 
   // ================================================================
@@ -925,7 +962,14 @@ export const generatePdfReport = async ({
   // ================================================================
   //  WATER SECTION
   // ================================================================
-  if (moduleConfig.water.enabled) {
+  // Acqua senza dati: niente sezione (richiesta del proprietario). Al suo
+  // posto, un invito in fondo (drawInvite), come la card dell'overview.
+  const hasWaterData =
+    !!reportTables?.water ||
+    data.water.consumption.length > 0 ||
+    data.water.quality.length > 0 ||
+    data.water.leaks.length > 0;
+  if (moduleConfig.water.enabled && hasWaterData) {
     addPage();
     drawHeader(t.sections.waterDashboard, 1);
     drawSeparator();
@@ -1057,6 +1101,9 @@ export const generatePdfReport = async ({
   if (reportTables) {
     drawAlarmsSection();
   }
+
+  // Invito finale (stile overview) per i moduli non monitorati: Acqua.
+  drawInvite(!hasWaterData);
 
   // ================================================================
   //  POST-PROCESSING: WATERMARK & FOOTER

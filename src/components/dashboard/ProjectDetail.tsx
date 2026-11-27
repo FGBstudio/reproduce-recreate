@@ -3786,6 +3786,21 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
             : (hMax != null && s.value > hMax ? { kind: "above" as const }
               : hMin != null && s.value < hMin ? { kind: "below" as const } : null)
         : undefined);
+      // TVOC: la dashboard mostra ppb (DB: iaq.voc), quindi soglia in ppb.
+      // PM2.5/PM10 in µg/m³. Allarme sul picco del bucket, come CO₂.
+      const vocWarn = th?.air_voc_warning_ppb ?? null;
+      const pm25Warn = th?.air_pm25_warning_ugm3 ?? null;
+      const pm10Warn = th?.air_pm10_warning_ugm3 ?? null;
+      const aboveCheck = (limit: number | null) =>
+        limit != null
+          ? (s: { peak: number | null; value: number | null }) => {
+              const v = s.peak ?? s.value;
+              return v != null && v > limit ? { kind: "above" as const } : null;
+            }
+          : undefined;
+      const tvocSeriesR = airSeriesFor("iaq.voc", aboveCheck(vocWarn));
+      const pm25SeriesR = airSeriesFor("iaq.pm25", aboveCheck(pm25Warn));
+      const pm10SeriesR = airSeriesFor("iaq.pm10", aboveCheck(pm10Warn));
 
       const L = (it: string, en: string) => (reportLang === "it" ? it : en);
       const nf = (v: number | null | undefined, dec: number) => {
@@ -3797,6 +3812,9 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
       if (co2SeriesR) airTables.push({ title: "CO₂", unit: "ppm", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: co2SeriesR });
       if (tempSeriesR) airTables.push({ title: L("Temperatura", "Temperature"), unit: "°C", decimals: 1, summaryLabel: L("Media periodo", "Period average"), series: tempSeriesR });
       if (humSeriesR) airTables.push({ title: L("Umidità relativa", "Relative humidity"), unit: "%", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: humSeriesR });
+      if (tvocSeriesR) airTables.push({ title: "TVOC", unit: "ppb", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: tvocSeriesR });
+      if (pm25SeriesR) airTables.push({ title: "PM2.5", unit: "µg/m³", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: pm25SeriesR });
+      if (pm10SeriesR) airTables.push({ title: "PM10", unit: "µg/m³", decimals: 0, summaryLabel: L("Media periodo", "Period average"), series: pm10SeriesR });
 
       // Sezione allarmi: una riga per bucket in allarme, dalle stesse serie.
       const alarms: ReportAlarmRow[] = [];
@@ -3827,6 +3845,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         () => `${nf(tMin, 1)}–${nf(tMax, 1)} °C`, () => "warning", "value");
       pushAlarms(humSeriesR, L("Umidità relativa", "Relative humidity"), "%", 0,
         () => `${nf(hMin, 0)}–${nf(hMax, 0)} %`, () => "warning", "value");
+      pushAlarms(tvocSeriesR, "TVOC", "ppb", 0,
+        () => `> ${nf(vocWarn, 0)} ppb`, () => "warning", "peak");
+      pushAlarms(pm25SeriesR, "PM2.5", "µg/m³", 0,
+        () => `> ${nf(pm25Warn, 0)} µg/m³`, () => "warning", "peak");
+      pushAlarms(pm10SeriesR, "PM10", "µg/m³", 0,
+        () => `> ${nf(pm10Warn, 0)} µg/m³`, () => "warning", "peak");
       pushAlarms(energyReportSeries, L("Energia", "Energy"), "kWh", 1,
         () => `> ${nf(energyBudget, 0)} kWh/${L("g", "d")}`, () => "warning", "value");
 

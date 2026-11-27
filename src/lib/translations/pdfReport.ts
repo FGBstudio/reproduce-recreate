@@ -32,6 +32,11 @@ export interface ReportTranslations {
     metric: string; when: string; value: string; threshold: string; severity: string;
     none: string;
   };
+  /** Invito all'attivazione (come la card overview), per i moduli non monitorati. */
+  invite: {
+    heading: string; cta: string;
+    water: { title: string; body: string };
+  };
 }
 
 const translations: Record<ReportLanguage, ReportTranslations> = {
@@ -51,6 +56,7 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     noDataReasons: { period: "nothing recorded in the selected range", noSensors: "no sensor installed for this metric" },
     dataTable: { bucket: "Bucket", value: "Value", coverage: "Coverage", state: "State", total: "Period total", average: "Period average", ok: "OK", future: "future", incomplete: "incomplete", weekend: "weekend", alarm: "alarm" },
     alarms: { section: "Alarms", subtitle: "Complete list of threshold breaches in the period — system-generated from the configured thresholds, not by AI.", metric: "Metric", when: "When", value: "Value", threshold: "Threshold", severity: "Severity", none: "No alarms in the selected period." },
+    invite: { heading: "Expand your monitoring", cta: "Ask us how →", water: { title: "You can't save what you don't measure.", body: "Leaks, waste and savings — spotted live, before they hit the bill." } },
   },
   it: {
     progress: { capturingCharts: "Acquisizione grafici...", generatingAiDiagnosis: "Generazione diagnosi energetica AI...", savingPdf: "Salvataggio PDF..." },
@@ -68,6 +74,7 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     noDataReasons: { period: "niente registrato nell'intervallo selezionato", noSensors: "nessun sensore installato per questa misura" },
     dataTable: { bucket: "Bucket", value: "Valore", coverage: "Copertura", state: "Stato", total: "Totale periodo", average: "Media periodo", ok: "OK", future: "futuro", incomplete: "incompleto", weekend: "weekend", alarm: "allarme" },
     alarms: { section: "Allarmi", subtitle: "Elenco completo dei superamenti di soglia nel periodo — generato dal sistema dalle soglie configurate, non dall'AI.", metric: "Grandezza", when: "Quando", value: "Valore", threshold: "Soglia", severity: "Severità", none: "Nessun allarme nel periodo selezionato." },
+    invite: { heading: "Espandi il monitoraggio", cta: "Chiedici come →", water: { title: "Non puoi risparmiare ciò che non misuri.", body: "Perdite, sprechi e risparmi — individuati dal vivo, prima che arrivino in bolletta." } },
   },
   fr: {
     progress: { capturingCharts: "Capture des graphiques...", generatingAiDiagnosis: "Génération du diagnostic énergétique IA...", savingPdf: "Enregistrement du PDF..." },
@@ -85,6 +92,7 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     noDataReasons: { period: "rien enregistré sur la plage sélectionnée", noSensors: "aucun capteur installé pour cette mesure" },
     dataTable: { bucket: "Bucket", value: "Valeur", coverage: "Couverture", state: "État", total: "Total période", average: "Moyenne période", ok: "OK", future: "futur", incomplete: "incomplet", weekend: "week-end", alarm: "alarme" },
     alarms: { section: "Alarmes", subtitle: "Liste complète des dépassements de seuil sur la période — générée par le système à partir des seuils configurés, pas par l'IA.", metric: "Grandeur", when: "Quand", value: "Valeur", threshold: "Seuil", severity: "Sévérité", none: "Aucune alarme sur la période sélectionnée." },
+    invite: { heading: "Étendez votre monitoring", cta: "Demandez-nous comment →", water: { title: "On ne peut pas économiser ce qu'on ne mesure pas.", body: "Fuites, gaspillages et économies — repérés en direct, avant la facture." } },
   },
   es: {
     progress: { capturingCharts: "Capturando gráficos...", generatingAiDiagnosis: "Generando diagnóstico energético IA...", savingPdf: "Guardando PDF..." },
@@ -102,6 +110,7 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     noDataReasons: { period: "nada registrado en el rango seleccionado", noSensors: "ningún sensor instalado para esta medida" },
     dataTable: { bucket: "Bucket", value: "Valor", coverage: "Cobertura", state: "Estado", total: "Total del período", average: "Media del período", ok: "OK", future: "futuro", incomplete: "incompleto", weekend: "fin de semana", alarm: "alarma" },
     alarms: { section: "Alarmas", subtitle: "Lista completa de superaciones de umbral en el período — generada por el sistema a partir de los umbrales configurados, no por la IA.", metric: "Magnitud", when: "Cuándo", value: "Valor", threshold: "Umbral", severity: "Severidad", none: "Sin alarmas en el período seleccionado." },
+    invite: { heading: "Amplía tu monitorización", cta: "Pregúntanos cómo →", water: { title: "No puedes ahorrar lo que no mides.", body: "Fugas, desperdicio y ahorro — detectados en vivo, antes de que lleguen a la factura." } },
   },
   zh: {
     progress: { capturingCharts: "正在捕获图表...", generatingAiDiagnosis: "正在生成 AI 能源诊断...", savingPdf: "正在保存 PDF..." },
@@ -119,6 +128,7 @@ const translations: Record<ReportLanguage, ReportTranslations> = {
     noDataReasons: { period: "所选范围内无记录", noSensors: "未为此指标安装传感器" },
     dataTable: { bucket: "时段", value: "数值", coverage: "覆盖率", state: "状态", total: "期间合计", average: "期间平均", ok: "正常", future: "未来", incomplete: "不完整", weekend: "周末", alarm: "报警" },
     alarms: { section: "报警", subtitle: "本期间所有超阈值事件的完整列表 — 由系统根据配置的阈值生成，非 AI 生成。", metric: "指标", when: "时间", value: "数值", threshold: "阈值", severity: "严重度", none: "所选期间内无报警。" },
+    invite: { heading: "扩展你的监测", cta: "咨询我们 →", water: { title: "无法测量，就无法节省。", body: "漏损、浪费与节约 — 实时发现，先于账单。" } },
   },
 };
 
