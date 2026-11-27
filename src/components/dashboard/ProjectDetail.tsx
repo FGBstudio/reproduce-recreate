@@ -3926,11 +3926,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         };
       });
 
-      /* ── Export report: HTML identico al layout approvato (report-reference),
-         stampato in PDF dal browser (vettoriale nitido). I dati si aggregano
-         per GIORNO locale dai punti freschi. Il vecchio generatore jsPDF non
-         viene piu' usato. ──────────────────────────────────────────────── */
-      const { openReportForPrint } = await import("@/lib/report/reportHtml");
+      /* ── Export report: HTML identico al layout approvato (report-reference).
+         Primario: render lato server (funzione edge render-pdf -> PDFShift) ->
+         PDF A4 vettoriale scaricato DIRETTAMENTE. Se la chiave non e' ancora
+         configurata (503) o la chiamata fallisce, ripiega sulla STAMPA del
+         browser. I dati si aggregano per GIORNO locale dai punti freschi. ── */
+      const { openReportForPrint, buildReportHtml } = await import("@/lib/report/reportHtml");
       const tsOf = (p: ApiTimeseriesPoint) => (p.ts_bucket ?? p.ts ?? p.ts_hour ?? p.ts_day) as string;
       const partsOf = (iso: string) => getPartsInTz(new Date(iso), siteTz);
       // RY/RM/RlastDay/RnowDay/RnowHour = mese CORRENTE, calcolati in alto.
@@ -4001,7 +4002,25 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         energyDaily, airDaily, band,
         logo: "/whiteLogoPayoff.png",
       };
-      await openReportForPrint(reportInput, `FGB Monitoring — ${project.name}`);
+      const safeName = project.name.replace(/[^\w-]+/g, "_");
+      const fileName = `FGB Monitoring - ${safeName} - ${RY}-${String(RM).padStart(2, "0")}.pdf`;
+      let served = false;
+      try {
+        // logo con URL ASSOLUTO: lo scarica il Chrome del servizio PDF.
+        const html = buildReportHtml({ ...reportInput, logo: `${window.location.origin}/whiteLogoPayoff.png` });
+        const { data, error } = await supabase.functions.invoke("render-pdf", { body: { html } });
+        if (!error && data instanceof Blob && data.size > 1000) {
+          const url = URL.createObjectURL(data);
+          const a = document.createElement("a");
+          a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 15000);
+          served = true;
+        }
+      } catch (e) {
+        console.warn("[report] render lato server non disponibile, ripiego sulla stampa", e);
+      }
+      // Fallback: finche' render-pdf/PDFSHIFT_API_KEY non e' configurato.
+      if (!served) await openReportForPrint(reportInput, `FGB Monitoring — ${project.name}`);
     } catch (error) {
       console.error('PDF generation failed:', error);
     } finally {
