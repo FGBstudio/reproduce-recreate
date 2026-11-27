@@ -71,4 +71,14 @@ table{width:100%;border-collapse:collapse}.st th{text-align:left;font-weight:600
 .pill,.cpill,.sd{vertical-align:middle;line-height:1;white-space:nowrap}
 .tbl td{vertical-align:middle}
 .tbl td.r{white-space:nowrap;font-variant-numeric:tabular-nums}
-.kv,.st td{font-variant-numeric:tabular-nums}`;
+.kv,.st td{font-variant-numeric:tabular-nums}
+
+/* Stampa migliore: forza SEMPRE i colori di sfondo (copertina, badge,
+   evidenziazioni) anche se "Background graphics" e disattivo; niente pagina
+   bianca finale. */
+@media print{
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+  html,body{background:#fff}
+  .page{margin:0;box-shadow:none;page-break-after:always;break-after:page}
+  .page:last-child{page-break-after:auto;break-after:auto}
+}`;
