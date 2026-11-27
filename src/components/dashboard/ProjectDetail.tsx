@@ -3582,12 +3582,13 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     if (!project || isGeneratingPdf) return;
     
     setIsGeneratingPdf(true);
+    // Apri SUBITO la finestra di stampa, dentro il gesto del click: aperta
+    // dopo gli await (fetch) verrebbe bloccata dai popup blocker. Ci scriviamo
+    // il report quando i dati sono pronti. L'export non cattura piu' i grafici
+    // a schermo (li disegna in SVG), quindi niente attesa html2canvas.
+    const printWin = window.open("", "_blank");
+    if (printWin) printWin.document.write('<!doctype html><meta charset="utf-8"><title>FGB Monitoring Report</title><body style="margin:0;font:14px system-ui,sans-serif;color:#0A6367;display:flex;align-items:center;justify-content:center;height:100vh">Generating report…</body>');
     try {
-      // LazySlides: con forceMount le slide lontane si montano solo ora —
-      // attendi il commit del render e la fine delle animazioni recharts
-      // (~1,5s) prima delle catture html2canvas via ref.
-      await new Promise((resolve) => setTimeout(resolve, 1600));
-
       /* ── FIX report-a-zero (nov 2026) ──────────────────────────────────
          Il PDF prendeva TUTTI i numeri dallo stato a schermo: se non avevi
          aperto e lasciato caricare le schede Energia/Aria (l'aria e'
@@ -3998,9 +3999,12 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         year: RY, month: RM, lastDay: RlastDay, nowDay: RnowDay, nowHour: RnowHour,
         energyDaily, airDaily, band,
         logo: "/whiteLogoPayoff.png",
-      }, `FGB Monitoring — ${project.name}`);
+      }, `FGB Monitoring — ${project.name}`, printWin);
     } catch (error) {
       console.error('PDF generation failed:', error);
+      if (printWin) {
+        try { printWin.document.body.innerHTML = '<div style="font:14px system-ui,sans-serif;color:#8A1060;padding:2rem">Report generation failed. Please try again.</div>'; } catch { /* finestra chiusa dall\'utente */ }
+      }
     } finally {
       setIsGeneratingPdf(false);
     }

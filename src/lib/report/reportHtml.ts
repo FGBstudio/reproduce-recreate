@@ -386,16 +386,18 @@ ${lineChart(air["env.humidity"], { targetMin: 40, targetMax: 60, dec: 0 })}
   return html;
 }
 
-/** Apre il report in una nuova finestra e lancia la stampa (PDF del browser). */
-export function openReportForPrint(input: ReportHtmlInput, docTitle = "FGB Monitoring Report"): void {
+/** Apre il report in una nuova finestra e lancia la stampa (PDF del browser).
+ *  `win` va aperta SINCRONA sul click (gesto utente) per non farla bloccare
+ *  dai popup blocker; se assente, prova ad aprirla qui (puo' essere bloccata). */
+export function openReportForPrint(input: ReportHtmlInput, docTitle = "FGB Monitoring Report", win?: Window | null): void {
   const body = buildReportHtml(input);
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.open();
-  win.document.write(
+  const w = win ?? window.open("", "_blank");
+  if (!w) return;
+  w.document.open();
+  w.document.write(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${docTitle.replace(/</g, "&lt;")}</title></head><body>${body}` +
     `<script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},400);});</scr` + `ipt>` +
     `</body></html>`,
   );
-  win.document.close();
+  w.document.close();
 }
