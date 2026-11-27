@@ -386,6 +386,55 @@ ${lineChart(air["env.humidity"], { targetMin: 40, targetMax: 60, dec: 0 })}
   return html;
 }
 
+/**
+ * Scarica DIRETTAMENTE il report come file PDF (niente finestra di stampa).
+ * Renderizza l'HTML in un iframe isolato (per non inquinare gli stili
+ * dell'app), lo rasterizza pagina per pagina con html2canvas e compone un
+ * PDF A4 con jsPDF, poi lo salva. Il PDF e' quindi un raster ad alta
+ * risoluzione dell'HTML corretto (vettoriale nitido = render lato server,
+ * follow-up). Restituisce false se qualcosa va storto (il chiamante puo'
+ * ripiegare sulla stampa).
+ */
+export async function downloadReportPdf(input: ReportHtmlInput, filename = "FGB Monitoring Report.pdf"): Promise<boolean> {
+  const inner = buildReportHtml(input);
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:210mm;height:2000mm;border:0;opacity:0;pointer-events:none";
+  document.body.appendChild(iframe);
+  try {
+    const doc = iframe.contentDocument;
+    if (!doc) return false;
+    doc.open();
+    doc.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"></head><body>${inner}</body></html>`);
+    doc.close();
+
+    const [{ default: html2canvas }, jspdf] = await Promise.all([import("html2canvas"), import("jspdf")]);
+    const JsPDF = (jspdf as { jsPDF: typeof import("jspdf").jsPDF }).jsPDF;
+
+    // attendi font (Jost/Gloock via Google Fonts) e immagini (logo)
+    try { await (doc as Document & { fonts?: FontFaceSet }).fonts?.ready; } catch { /* no FontFaceSet */ }
+    const imgs = Array.from(doc.querySelectorAll("img"));
+    await Promise.all(imgs.map(im => im.complete ? Promise.resolve() : new Promise<void>(r => { im.onload = () => r(); im.onerror = () => r(); })));
+    await new Promise(r => setTimeout(r, 200));
+
+    const pages = Array.from(doc.querySelectorAll<HTMLElement>(".page"));
+    if (!pages.length) return false;
+    const pdf = new JsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i], { scale: 2.5, backgroundColor: "#ffffff", useCORS: true, logging: false });
+      if (i > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 210, 297);
+    }
+    pdf.save(filename);
+    return true;
+  } catch (e) {
+    console.error("downloadReportPdf failed", e);
+    return false;
+  } finally {
+    document.body.removeChild(iframe);
+  }
+}
+
 /** Apre il report in una nuova finestra e lancia la stampa (PDF del browser).
  *  `win` va aperta SINCRONA sul click (gesto utente) per non farla bloccare
  *  dai popup blocker; se assente, prova ad aprirla qui (puo' essere bloccata). */

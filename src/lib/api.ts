@@ -627,6 +627,29 @@ function getTableRoute(startDate: Date, endDate: Date): TableRouteConfig {
 }
 
 /**
+ * Legge TUTTE le righe di una query paginando con .range(), per non farsi
+ * troncare dal tetto righe di PostgREST (un `.limit()` non puo' superarlo).
+ * `makeQuery(from, to)` deve restituire una query identica ogni volta, con
+ * un .order() stabile; qui aggiungiamo solo il range. Page 1000, cap di
+ * sicurezza a 200k righe.
+ */
+async function fetchAllPaged<T = any>(
+  makeQuery: () => any,
+  pageSize = 1000,
+  maxRows = 200000,
+): Promise<{ data: T[]; error: any }> {
+  const all: T[] = [];
+  for (let from = 0; from < maxRows; from += pageSize) {
+    const { data, error } = await makeQuery().range(from, from + pageSize - 1);
+    if (error) return { data: all, error };
+    const rows = (data as T[]) || [];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return { data: all, error: null };
+}
+
+/**
  * Fetch time-series telemetry data with smart table routing
  * * Routing logic based on time range duration:
  * - ≤24 hours: telemetry (raw) → maximum detail
@@ -659,30 +682,27 @@ export async function fetchTimeseriesApi(params: {
 
   // Execute query based on route
   if (route.table === 'hourly') {
-    const resp = await supabase
+    // Paginato: il tetto righe di PostgREST troncava un mese orario (tutte le
+    // sonde × 8 metriche) ai primi ~3 giorni; un .limit() non supera il tetto.
+    const resp = await fetchAllPaged(() => supabase
       .from('telemetry_hourly')
       .select('ts_hour, device_id, metric, value_avg, value_min, value_max, sample_count')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true })
-      // Senza limite esplicito scattava il default PostgREST (~1000 righe):
-      // un mese orario con tutte le sonde × 8 metriche veniva troncato ai
-      // primi ~3 giorni (bug del report "3 giorni su un mese").
-      .limit(50000);
+      .order('ts_hour', { ascending: true }));
     data = resp.data as any;
     error = resp.error;
   } else if (route.table === 'daily') {
-    const resp = await supabase
+    const resp = await fetchAllPaged(() => supabase
       .from('telemetry_daily')
       .select('ts_day, device_id, metric, value_avg, value_min, value_max, sample_count')
       .in('device_id', params.device_ids)
       .in('metric', metricFilter)
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true })
-      .limit(50000);
+      .order('ts_day', { ascending: true }));
     data = resp.data as any;
     error = resp.error;
   } else {
@@ -867,29 +887,23 @@ export async function fetchEnergyTimeseriesApi(params: {
   };
 
   if (route.table === 'hourly') {
-    let query = supabase
+    // Paginato: oltre il tetto righe di PostgREST un mese orario di energia
+    // veniva troncato (il .limit non lo supera).
+    const resp = await fetchAllPaged(() => buildQuery(supabase
       .from('energy_hourly')
       .select('ts_hour, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true })
-      .limit(10000);
-
-    query = buildQuery(query);
-    const resp = await query;
+      .order('ts_hour', { ascending: true })));
     data = resp.data as any;
     error = resp.error;
   } else if (route.table === 'daily') {
-    let query = supabase
+    const resp = await fetchAllPaged(() => buildQuery(supabase
       .from('energy_daily')
       .select('ts_day, device_id, metric, value_avg, value_sum, value_min, value_max, sample_count')
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true })
-      .limit(10000);
-
-    query = buildQuery(query);
-    const resp = await query;
+      .order('ts_day', { ascending: true })));
     data = resp.data as any;
     error = resp.error;
   } else {
