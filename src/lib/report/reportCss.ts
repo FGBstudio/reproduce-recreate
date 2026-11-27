@@ -85,4 +85,12 @@ table{width:100%;border-collapse:collapse}.st th{text-align:left;font-weight:600
 
 /* @page a livello principale (non annidato): forza A4 senza margini, cosi
    copertina/header arrivano ai bordi (full-bleed). */
-@page{size:A4;margin:0}`;
+@page{size:A4;margin:0}
+
+/* Stampa robusta: ogni pagina ESATTAMENTE A4 (210x297mm), sforo ritagliato,
+   zero margini. Blocca lo "spill" su pagina extra e il riscalamento. */
+@media print{
+  html,body{width:210mm !important;min-height:0 !important;margin:0 !important;padding:0 !important;background:#fff !important}
+  .page{width:210mm !important;height:297mm !important;min-height:0 !important;max-height:297mm !important;overflow:hidden !important;margin:0 !important;box-shadow:none !important;box-sizing:border-box !important;page-break-after:always;break-after:page}
+  .page:last-child{page-break-after:auto !important;break-after:auto !important}
+}`;
