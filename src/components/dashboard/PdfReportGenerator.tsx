@@ -506,6 +506,15 @@ export const generatePdfReport = async ({
   const WEEKEND_TINT: [number, number, number] = [230, 250, 240]; // mint1 #E6FAF0
   const MUTED: [number, number, number] = [148, 163, 184];   // futuro / vuoto
   const AMBER: [number, number, number] = [154, 91, 5];      // #9A5B05 — incompleto
+  // Palette grafici vettoriali (mockup §4)
+  const C_DEEP: [number, number, number] = [17, 98, 79];     // #11624F — barre feriali
+  const C_MINT2: [number, number, number] = [159, 224, 195]; // #9FE0C3 — barre weekend
+  const C_MINT1: [number, number, number] = [230, 250, 240]; // #E6FAF0 — incompleto (fondo)
+  const C_MINT: [number, number, number] = [43, 181, 130];   // #2BB582 — accento / weekend label
+  const C_GRID: [number, number, number] = [223, 231, 227];  // #DFE7E3 — griglia tratteggiata
+  const C_AX: [number, number, number] = [143, 163, 156];    // #8FA39C — etichette assi
+  const C_WATER: [number, number, number] = [63, 191, 230];  // #3FBFE6 — acqua feriale
+  const C_WATER2: [number, number, number] = [189, 233, 246];// #BDE9F6 — acqua weekend
 
   const fmtLocal = (v: number | null | undefined, dec: number): string => {
     if (v === null || v === undefined || !Number.isFinite(Number(v))) return '–';
@@ -596,6 +605,121 @@ export const generatePdfReport = async ({
       },
     });
     yPos = lastTableY() + 8;
+  };
+
+  // --- Grafico a barre vettoriale (Fase D · mockup §4) ----------------------
+  // Disegnato con primitive jsPDF (niente raster html2canvas): una barra per
+  // bucket secondo la stessa ReportSeries delle tabelle. Feriale/weekend,
+  // incompleto tratteggiato, futuro = pallino sulla linea di base (mai 0),
+  // media feriale tratteggiata. La geometria e' in mm.
+  const niceCeil = (v: number): number => {
+    if (!Number.isFinite(v) || v <= 0) return 1;
+    const mag = Math.pow(10, Math.floor(Math.log10(v)));
+    const n = v / mag;
+    const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+    return step * mag;
+  };
+  const drawReportBarChart = (
+    payload: ReportTablePayload,
+    opts: { barColor: [number, number, number]; weekendColor: [number, number, number]; weekdayLabel: string; weekendLabel: string; avgLabel?: string; note?: string },
+  ) => {
+    const { series } = payload;
+    const buckets = series.buckets;
+    const vals = buckets.filter(b => !b.future && !b.empty && typeof b.value === 'number').map(b => b.value as number);
+    if (vals.length === 0) { drawNoData(t.noDataReasons.period); return; }
+
+    checkPageBreak(72);
+    drawHeader(payload.title, 3);
+    doc.setFont('FuturaLT', 'normal'); doc.setFontSize(7); doc.setTextColor(...COLORS.secondary);
+    doc.text(series.granularityTag, pageWidth - margin, yPos - 6, { align: 'right' });
+    if (opts.note) { doc.text(opts.note, margin, yPos - 1); yPos += 3; }
+
+    const chartW = pageWidth - 2 * margin;
+    const padL = 13, padR = 3, padT = 2, plotH = 44;
+    const x0 = margin + padL, x1 = margin + chartW - padR;
+    const top = yPos, base = top + padT + plotH;
+    const yMax = niceCeil(Math.max(...vals) * 1.12);
+
+    // griglia orizzontale tratteggiata + etichette Y (0 / metà / max)
+    doc.setFontSize(6.4);
+    for (let g = 0; g <= 2; g++) {
+      const yv = (yMax * g) / 2;
+      const yy = base - (yv / yMax) * plotH;
+      doc.setDrawColor(...C_GRID); doc.setLineWidth(0.2);
+      doc.setLineDashPattern(g === 0 ? [] : [0.6, 0.6], 0);
+      doc.line(x0, yy, x1, yy);
+      doc.setLineDashPattern([], 0);
+      doc.setTextColor(...C_AX);
+      doc.text(fmtLocal(yv, yMax >= 100 ? 0 : 1), x0 - 1.5, yy + 1.4, { align: 'right' });
+    }
+
+    const n = buckets.length;
+    const slotW = (x1 - x0) / Math.max(1, n);
+    const barW = Math.min(slotW * 0.62, 6);
+    buckets.forEach((b, i) => {
+      const cx = x0 + slotW * (i + 0.5);
+      if (b.future || b.empty || typeof b.value !== 'number') {
+        doc.setFillColor(...C_GRID); doc.circle(cx, base, 0.5, 'F'); return;
+      }
+      const h = Math.max(0.5, (b.value / yMax) * plotH);
+      const bx = cx - barW / 2, byTop = base - h;
+      if (b.incomplete) {
+        doc.setFillColor(...C_MINT1);
+        doc.roundedRect(bx, byTop, barW, h, 0.5, 0.5, 'F');
+        doc.setDrawColor(...opts.barColor); doc.setLineWidth(0.3); doc.setLineDashPattern([0.8, 0.6], 0);
+        doc.roundedRect(bx, byTop, barW, h, 0.5, 0.5, 'S'); doc.setLineDashPattern([], 0);
+      } else {
+        doc.setFillColor(...(b.alarm ? MAGENTA : b.weekend ? opts.weekendColor : opts.barColor));
+        doc.roundedRect(bx, byTop, barW, h, 0.5, 0.5, 'F');
+      }
+    });
+
+    // linea di base piena
+    doc.setDrawColor(...C_GRID); doc.setLineWidth(0.3); doc.line(x0, base, x1, base);
+
+    // media feriale tratteggiata (solo bucket feriali con dato)
+    if (opts.avgLabel) {
+      const wd = buckets.filter(b => !b.weekend && !b.empty && !b.future && typeof b.value === 'number').map(b => b.value as number);
+      if (wd.length >= 2) {
+        const avg = wd.reduce((a, c) => a + c, 0) / wd.length;
+        const ay = base - (Math.min(avg, yMax) / yMax) * plotH;
+        doc.setDrawColor(...MAGENTA); doc.setLineWidth(0.4); doc.setLineDashPattern([1.2, 0.8], 0);
+        doc.line(x0, ay, x1, ay); doc.setLineDashPattern([], 0);
+        doc.setFontSize(6); doc.setTextColor(...MAGENTA);
+        doc.text(`${opts.avgLabel} ${fmtLocal(avg, payload.decimals)}`, x1, ay - 1, { align: 'right' });
+      }
+    }
+
+    // etichette X (diradate se molte); weekend in menta
+    const step = n > 20 ? Math.ceil(n / 15) : 1;
+    doc.setFontSize(6);
+    buckets.forEach((b, i) => {
+      if (i % step !== 0 && i !== n - 1) return;
+      doc.setTextColor(...(b.weekend ? C_MINT : C_AX));
+      const lbl = b.label.includes('/') ? b.label.split('/')[0] : b.label;
+      doc.text(lbl, x0 + slotW * (i + 0.5), base + 3.6, { align: 'center' });
+    });
+
+    // legenda sotto, centrata, a pallini
+    const legend: Array<{ c: [number, number, number]; t: string }> = [
+      { c: opts.barColor, t: opts.weekdayLabel },
+      { c: opts.weekendColor, t: opts.weekendLabel },
+      { c: C_MINT1, t: t.dataTable.incomplete },
+    ];
+    doc.setFontSize(6.2); doc.setFont('FuturaLT', 'normal');
+    const gap = 4, dot = 1.8;
+    const widths = legend.map(l => dot + 1.2 + doc.getTextWidth(l.t));
+    const totalW = widths.reduce((a, c) => a + c, 0) + gap * (legend.length - 1);
+    let lx = (pageWidth - totalW) / 2;
+    const lyp = base + 8;
+    legend.forEach((l, i) => {
+      doc.setFillColor(...l.c); doc.circle(lx + dot / 2, lyp - 0.6, dot / 2, 'F');
+      doc.setTextColor(...COLORS.secondary);
+      doc.text(l.t, lx + dot + 1.2, lyp, { baseline: 'middle' });
+      lx += widths[i] + gap;
+    });
+
+    yPos = base + 13;
   };
 
   // --- Sezione Allarmi completa (Fase C3) -----------------------------------
@@ -871,7 +995,18 @@ export const generatePdfReport = async ({
     drawHeader(t.sections.energyDashboard, 1);
     drawSeparator();
 
-    if (energyChartImg) addChartImage(energyChartImg, t.energy.consumptionChart, 55);
+    // Grafico vettoriale (Fase D) se ho la serie per bucket; altrimenti il
+    // vecchio screenshot (fallback finche' il reskin non copre tutte le viste).
+    if (reportTables?.energy) {
+      drawReportBarChart(reportTables.energy, {
+        barColor: C_DEEP, weekendColor: C_MINT2,
+        weekdayLabel: isIt ? 'feriale' : 'weekday',
+        weekendLabel: isIt ? 'weekend' : 'weekend',
+        avgLabel: isIt ? 'media feriale' : 'weekday avg',
+      });
+    } else if (energyChartImg) {
+      addChartImage(energyChartImg, t.energy.consumptionChart, 55);
+    }
 
     // Energy consumption table with cost column.
     // Quando c'e' la nuova tabella granulare (reportTables.energy) la salto:
