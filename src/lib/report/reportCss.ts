@@ -63,4 +63,12 @@ table{width:100%;border-collapse:collapse}.st th{text-align:left;font-weight:600
 .sd.on{color:#11624F}.sd.on i{background:#2BB582}.sd.off{color:#9A5B05}.sd.off i{background:#E0A526}.sd.fu{color:#B5C2BD}
 .inv .ic a{color:inherit;text-decoration:none}
 .bh .pill{margin-top:.5mm}
-.st td{vertical-align:top}.inv{margin-bottom:3.5mm}`;
+.st td{vertical-align:top}.inv{margin-bottom:3.5mm}
+
+/* Fix: badge/pill allineati verticalmente col testo della cella; numeri
+   tabulari cosi la "/" e i valori (es. 34.8 / 28.8) restano incolonnati e
+   non vanno mai a capo. */
+.pill,.cpill,.sd{vertical-align:middle;line-height:1;white-space:nowrap}
+.tbl td{vertical-align:middle}
+.tbl td.r{white-space:nowrap;font-variant-numeric:tabular-nums}
+.kv,.st td{font-variant-numeric:tabular-nums}`;
