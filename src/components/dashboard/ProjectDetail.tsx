@@ -3918,55 +3918,87 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
         };
       });
 
-      const { generatePdfReport } = await import("./PdfReportGenerator");
-      await generatePdfReport({
-        onProgress: setPdfProgress,
-        project: enrichedProject,
-        timePeriod,
-        dateRange,
-        periodRange: { start: startISO, end: endISO },
-        moduleConfig: resolvedModuleConfig,
-        precalculatedTotals: {
-          totalEnergyKwh: reportTotalKwh,
-          // costo e CO2 derivano dall'energia: se l'energia e' null (nessuna
-          // misura), restano null → "N/A". La tariffa, se assente, lascia il
-          // costo null (niente stima nascosta).
-          totalCostEur: reportTotalKwh == null ? null
-            : (reportTotalKwh * (Number(project.energy_price_kwh || project.data?.energy_price_kwh) || 0) || (estimatedCostData?.totalCost ?? null)),
-          totalCo2Kg: reportTotalKwh == null ? null : reportTotalKwh * CO2_EMISSION_FACTOR,
+      /* ── Export report: HTML identico al layout approvato (report-reference),
+         stampato in PDF A4 dal browser. I dati si aggregano per GIORNO locale
+         dai punti freschi gia' letti (nessun ricalcolo altrove). Il vecchio
+         generatore jsPDF non viene piu' usato. ──────────────────────────── */
+      const { openReportForPrint } = await import("@/lib/report/reportHtml");
+      const tsOf = (p: ApiTimeseriesPoint) => (p.ts_bucket ?? p.ts ?? p.ts_hour ?? p.ts_day) as string;
+      const partsOf = (iso: string) => getPartsInTz(new Date(iso), siteTz);
+      const sp = getPartsInTz(airStart, siteTz);
+      const RY = sp.year, RM = sp.month;
+      const nowP = getPartsInTz(new Date(), siteTz);
+      const sameMonth = nowP.year === RY && nowP.month === RM;
+      const RlastDay = new Date(Date.UTC(RY, RM, 0)).getUTCDate();
+      const RnowDay = sameMonth ? nowP.day : RlastDay;
+      const RnowHour = sameMonth ? nowP.hour : 24;
+      const inMonth = (lp: { year: number; month: number }) => lp.year === RY && lp.month === RM;
+      const airKey = (m: string) => {
+        const s = String(m).toLowerCase();
+        if (s.includes("co2")) return "iaq.co2";
+        if (s.includes("tvoc") || s.includes("voc")) return "iaq.voc";
+        if (s.includes("pm25") || s.includes("pm2.5")) return "iaq.pm25";
+        if (s.includes("pm10")) return "iaq.pm10";
+        if (s.includes("temp")) return "env.temperature";
+        if (s.includes("humid")) return "env.humidity";
+        return s;
+      };
+      // energia per giorno locale (stessa kWh del fix sumPointsAsKwh)
+      const eDays = new Map<number, { pts: ApiTimeseriesPoint[]; hours: Set<number> }>();
+      for (const p of freshEnergyPts) {
+        const lp = partsOf(tsOf(p)); if (!inMonth(lp)) continue;
+        let e = eDays.get(lp.day); if (!e) { e = { pts: [], hours: new Set() }; eDays.set(lp.day, e); }
+        e.pts.push(p); e.hours.add(lp.hour);
+      }
+      const energyDaily = [...eDays.entries()].map(([d, e]) => ({ d, v: sumPointsAsKwh(e.pts, bucketH, genFilter), hours: e.hours.size }));
+      // aria per metrica per giorno (media/min/max + ore)
+      const AIR_K = ["iaq.co2", "iaq.voc", "env.temperature", "env.humidity", "iaq.pm25", "iaq.pm10"];
+      const airAgg: Record<string, Map<number, { s: number; n: number; mn: number; mx: number; hours: Set<number> }>> = {};
+      for (const p of freshAirPts) {
+        const k = airKey(p.metric); if (!AIR_K.includes(k)) continue;
+        const lp = partsOf(tsOf(p)); if (!inMonth(lp)) continue;
+        const av = Number(p.value_avg ?? p.value); if (!Number.isFinite(av)) continue;
+        const mn = Number(p.value_min ?? p.value_avg ?? p.value), mx = Number(p.value_max ?? p.value_avg ?? p.value);
+        (airAgg[k] ??= new Map());
+        let o = airAgg[k].get(lp.day); if (!o) { o = { s: 0, n: 0, mn: Infinity, mx: -Infinity, hours: new Set() }; airAgg[k].set(lp.day, o); }
+        o.s += av; o.n++; o.mn = Math.min(o.mn, mn); o.mx = Math.max(o.mx, mx); o.hours.add(lp.hour);
+      }
+      const airDaily: Record<string, { d: number; avg: number; min: number; max: number; hours: number }[]> = {};
+      for (const k of Object.keys(airAgg)) airDaily[k] = [...airAgg[k].entries()].map(([d, o]) => ({ d, avg: o.s / o.n, min: o.mn, max: o.mx, hours: o.hours.size }));
+      // tempo in fascia (ore occupate lun-ven 08-18)
+      const bandDef: Record<string, (v: number) => "in" | "below" | "above"> = {
+        "env.temperature": v => (v >= 20 && v <= 26 ? "in" : v < 20 ? "below" : "above"),
+        "env.humidity": v => (v >= 40 && v <= 60 ? "in" : v < 40 ? "below" : "above"),
+        "iaq.co2": v => (v <= 1000 ? "in" : "above"),
+      };
+      const band: Record<string, { in_band: number; below: number; above: number }> = {};
+      for (const k of Object.keys(bandDef)) {
+        let n = 0, ib = 0, bl = 0, ab = 0;
+        for (const p of freshAirPts) {
+          if (airKey(p.metric) !== k) continue;
+          const lp = partsOf(tsOf(p)); if (!inMonth(lp)) continue;
+          const wd = new Date(Date.UTC(lp.year, lp.month - 1, lp.day)).getUTCDay();
+          if (!(wd >= 1 && wd <= 5) || !(lp.hour >= 8 && lp.hour <= 18)) continue;
+          const v = Number(p.value_avg ?? p.value); if (!Number.isFinite(v)) continue;
+          n++; const r = bandDef[k](v); if (r === "in") ib++; else if (r === "below") bl++; else ab++;
+        }
+        band[k] = n ? { in_band: Math.round((100 * ib) / n), below: Math.round((100 * bl) / n), above: Math.round((100 * ab) / n) } : { in_band: 0, below: 0, above: 0 };
+      }
+
+      openReportForPrint({
+        site: {
+          name: project.name,
+          displayName: project.displayName,
+          address: project.address || "",
+          areaM2: project.area_m2 ?? null,
+          timezone: siteTz,
+          price: liveEnergyPriceEur,
+          currency: displayCurrency,
         },
-        data: {
-          energy: {
-            consumption: reportEnergyConsumption as unknown as Record<string, unknown>[],
-            devices: devicesDataForReport, // Passing the correctly summed device categories flat array
-            co2: reportEnergyCo2 as unknown as Record<string, unknown>[],
-          },
-          // Il desktop non legge nessuna telemetria idrica reale: finche' non
-          // c'e' una fonte, le tabelle acqua del report restano vuote e il
-          // documento dichiara perche'. I dati che stavano qui — consumi con
-          // seed casuale, pH/torbidita'/cloro fissi e sei zone di perdita
-          // inventate, nomi e orari compresi — non possono finire in mano a
-          // un cliente.
-          water: {
-            consumption: [],
-            quality: [],
-            leaks: [],
-          },
-          airQuality: {
-            co2History: reportCo2Air,
-            tempHumidity: reportTempHum,
-            particulates: reportParticulate,
-          },
-        },
-        chartRefs: {
-          energyChart: actualVsAvgRef,
-          deviceChart: deviceConsRef,
-          waterChart: waterConsumptionRef,
-          airQualityChart: co2TrendRef,
-        },
-        reportTables,
-        language: language,
-      });
+        year: RY, month: RM, lastDay: RlastDay, nowDay: RnowDay, nowHour: RnowHour,
+        energyDaily, airDaily, band,
+        logo: "/whiteLogoPayoff.png",
+      }, `FGB Monitoring — ${project.name}`);
     } catch (error) {
       console.error('PDF generation failed:', error);
     } finally {
@@ -3998,6 +4030,8 @@ const ProjectDetail = ({ project, onClose, initialDashboard }: ProjectDetailProp
     energyMetrics,
     airMetrics,
     airDeviceIds,
+    liveEnergyPriceEur,
+    displayCurrency,
   ]);
 
   if (!project) return null;

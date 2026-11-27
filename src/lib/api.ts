@@ -666,7 +666,11 @@ export async function fetchTimeseriesApi(params: {
       .in('metric', metricFilter)
       .gte('ts_hour', params.start)
       .lte('ts_hour', params.end)
-      .order('ts_hour', { ascending: true });
+      .order('ts_hour', { ascending: true })
+      // Senza limite esplicito scattava il default PostgREST (~1000 righe):
+      // un mese orario con tutte le sonde × 8 metriche veniva troncato ai
+      // primi ~3 giorni (bug del report "3 giorni su un mese").
+      .limit(50000);
     data = resp.data as any;
     error = resp.error;
   } else if (route.table === 'daily') {
@@ -677,7 +681,8 @@ export async function fetchTimeseriesApi(params: {
       .in('metric', metricFilter)
       .gte('ts_day', startDay)
       .lte('ts_day', endDay)
-      .order('ts_day', { ascending: true });
+      .order('ts_day', { ascending: true })
+      .limit(50000);
     data = resp.data as any;
     error = resp.error;
   } else {
